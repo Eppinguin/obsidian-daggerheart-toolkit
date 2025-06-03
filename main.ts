@@ -141,7 +141,7 @@ export class EncounterBuilderView extends ItemView {
 
 
     addCreatureToEncounter(baseCreature: StatblockData) {
-        const baseNameKey = baseCreature.name; // Use the original name as the key for grouping
+        const baseNameKey = baseCreature.name;
         if (!this.creatureInstanceCounters[baseNameKey]) {
             this.creatureInstanceCounters[baseNameKey] = 0;
         }
@@ -149,21 +149,17 @@ export class EncounterBuilderView extends ItemView {
         const instanceNumber = this.creatureInstanceCounters[baseNameKey];
 
         const newInstance: CreatureInstance = {
-            ...JSON.parse(JSON.stringify(baseCreature)), // Deep copy
+            ...JSON.parse(JSON.stringify(baseCreature)),
             id: `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${instanceNumber}`,
-            currentHp: baseCreature.hp_stress.hp,
-            currentStress: baseCreature.hp_stress.stress,
+            currentHp: 0, // Start with 0 HP (all pips unfilled)
+            currentStress: 0, // Start with 0 Stress (all pips unfilled)
             displayName: `${baseCreature.name} #${instanceNumber}`,
-            // 'name' property from baseCreature is already part of the spread
         };
         this.activeEncounterCreatures.push(newInstance);
     }
 
     removeCreatureFromEncounter(instanceId: string) {
         this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.id !== instanceId);
-        // Note: creatureInstanceCounters are not decremented here to simplify logic. 
-        // If an instance is removed and a new one of the same type is added, it will get a new higher number.
-        // This is generally fine.
     }
 
     async onClose() {
@@ -283,17 +279,19 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     renderStatblockCard(data: StatblockData | CreatureInstance, containerEl: HTMLElement, isInstance: boolean = false, displayName?: string) {
-        if (!isInstance) { // For direct ```daggerheart-statblock``` rendering in notes
+        if (!isInstance) {
             containerEl.empty();
         }
-        // For instance cards, containerEl IS the .dh-creature-instance-card. Content goes into .dh-instance-card-content
 
         const statblockContentDiv = isInstance ? containerEl.createDiv({ cls: 'dh-instance-card-content' }) : containerEl.createDiv({ cls: 'dh-statblock' });
-        // If it's an instance, the main containerEl already has .dh-creature-instance-card. We add content to it.
-        // If not an instance, containerEl is the code block's parent, and we create .dh-statblock inside.
 
         if (data.image && isInstance) {
-            const imgContainer = containerEl.createDiv({ cls: 'dh-card-image-container', prepend: true }); // Prepend to be at the top of the card
+            const parentCard = containerEl.closest('.dh-creature-instance-card') || containerEl;
+            let imgContainer = parentCard.querySelector('.dh-card-image-container') as HTMLElement;
+            if (!imgContainer) {
+                imgContainer = parentCard.createDiv({ cls: 'dh-card-image-container', prepend: true });
+            }
+            imgContainer.empty();
             imgContainer.createEl('img', { attr: { src: data.image, alt: data.name }, cls: 'dh-card-image' });
         }
 
@@ -431,7 +429,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         if (data.hp_stress && typeof data.hp_stress === 'object') {
             const hpStressContainer = statblockContentDiv.createDiv({ cls: 'dh-hp-stress-container' });
-            if (!isInstance) { // Only show main HP & STRESS title for full statblocks
+            if (!isInstance) {
                 hpStressContainer.createEl('h4', { text: 'HP & STRESS', cls: 'dh-hp-stress-title' });
             }
 
@@ -457,14 +455,11 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             const summaryLineStress = hpStressContainer.createDiv({ cls: 'dh-hp-stress-summary' });
             summaryLineStress.innerHTML = `<span class="dh-summary-label">Stress:</span> <span class="dh-summary-value">${stressMax}</span>`;
 
-            // Only render interactive tracks for the specific instance being displayed by this function call
-            // (which is the first instance if isInstance is true, or not an instance at all)
-            if (isInstance) { // This means it's the main card for an instance group
+            if (isInstance) {
                 const creatureInstance = data as CreatureInstance;
                 this.createInteractiveTrack(hpStressContainer, 'HP', hpMax, `${creatureInstance.id}-hp`, creatureInstance.currentHp, (newHp) => creatureInstance.currentHp = newHp);
                 this.createInteractiveTrack(hpStressContainer, 'Stress', stressMax, `${creatureInstance.id}-stress`, creatureInstance.currentStress, (newStress) => creatureInstance.currentStress = newStress);
 
-                // Add the placeholder for additional trackers
                 hpStressContainer.createDiv({ cls: 'dh-additional-trackers-container' });
             }
         }
