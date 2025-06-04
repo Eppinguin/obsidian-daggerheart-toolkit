@@ -311,6 +311,127 @@ export class EncounterBuilderView extends ItemView {
         this.drawUI();
     }
 
+    private preserveScrollPosition(action: () => void) {
+        const encounterArea = this.containerEl.querySelector('.dh-encounter-area');
+        if (encounterArea) {
+            const scrollTop = encounterArea.scrollTop;
+            action();
+            setTimeout(() => {
+                encounterArea.scrollTop = scrollTop;
+            }, 0);
+        } else {
+            action();
+        }
+    }
+
+    private updateGroupUI(groupId: string) {
+        const groupContainer = this.containerEl.querySelector(`[data-group-id="${groupId}"]`);
+        if (!groupContainer) return false;
+
+        const instancesInGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
+        if (instancesInGroup.length === 0) {
+            // Group is empty, remove it entirely
+            groupContainer.remove();
+            return true;
+        }
+
+        const mainCard = groupContainer.querySelector('.dh-creature-instance-card');
+        const additionalTrackersContainer = groupContainer.querySelector('.dh-additional-trackers-container') as HTMLElement;
+        if (!mainCard || !additionalTrackersContainer) return false;
+
+        // Update group mode class
+        const isGroupMultiple = instancesInGroup.length > 1;
+        mainCard.classList.toggle('dh-group-mode-active', isGroupMultiple);
+
+        // Update trackers
+        additionalTrackersContainer.empty();
+        if (isGroupMultiple) {
+            for (const instance of instancesInGroup) {
+                this.renderAdditionalTrackerRow(instance, additionalTrackersContainer);
+            }
+        }
+
+        return true;
+    }
+
+    private drawCreatureGroup(groupId: string, encounterArea: HTMLElement) {
+        const instancesInGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
+        if (instancesInGroup.length === 0) return;
+
+        instancesInGroup.sort((a, b) => a.id.localeCompare(b.id));
+        const firstInstanceInGroup = instancesInGroup[0];
+
+        const creatureGroupContainer = encounterArea.createDiv({
+            cls: 'dh-creature-group-container',
+            attr: { 'data-group-id': groupId }
+        });
+
+        const instanceTypeClass = firstInstanceInGroup.type ?
+            'dh-type-' + firstInstanceInGroup.type.toLowerCase().replace(/\s+/g, '-') :
+            'dh-type-default';
+
+        const isGroupMultiple = instancesInGroup.length > 1;
+        const mainCardContainerClasses = ['dh-creature-instance-card', instanceTypeClass];
+        if (isGroupMultiple) {
+            mainCardContainerClasses.push('dh-group-mode-active');
+        }
+
+        const mainCardContainer = creatureGroupContainer.createDiv({ cls: mainCardContainerClasses.join(' ') });
+
+        const removeGroupButton = mainCardContainer.createEl("button", {
+            text: "✕",
+            title: `Remove all ${firstInstanceInGroup.name}s`,
+            cls: "dh-remove-instance-btn"
+        });
+        removeGroupButton.addEventListener("click", () =>
+            this.removeCreatureGroupFromActiveEncounter(firstInstanceInGroup.groupId));
+
+        this.plugin.renderStatblockCard(
+            firstInstanceInGroup,
+            mainCardContainer,
+            true,
+            firstInstanceInGroup.name,
+            (newHp) => {
+                const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
+                if (inst) inst.currentHp = newHp;
+                this.autoSaveCurrentEncounter();
+            },
+            (newStress) => {
+                const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
+                if (inst) inst.currentStress = newStress;
+                this.autoSaveCurrentEncounter();
+            },
+            isGroupMultiple
+        );
+
+        const addToGroupButtonContainer = mainCardContainer.createDiv({
+            cls: 'dh-add-to-group-button-container'
+        });
+        const addToGroupButton = addToGroupButtonContainer.createEl('button', {
+            text: '+ Add to Group',
+            title: `Add another ${firstInstanceInGroup.name} to this group`,
+            cls: 'dh-add-to-group-btn'
+        });
+
+        addToGroupButton.addEventListener('click', () => {
+            const baseCreatureData = this.compendiumCreatures.find(c => c.name === firstInstanceInGroup.name);
+            if (baseCreatureData) {
+                this.createNewInstanceInGroup(baseCreatureData, firstInstanceInGroup.groupId);
+                this.autoSaveCurrentEncounter();
+                this.updateGroupUI(firstInstanceInGroup.groupId);
+            } else {
+                new Notice(`Error: Could not find base data for ${firstInstanceInGroup.name} in compendium.`);
+            }
+        });
+
+        const additionalTrackersContainer = mainCardContainer.querySelector('.dh-additional-trackers-container');
+        if (additionalTrackersContainer && isGroupMultiple) {
+            for (const instance of instancesInGroup) {
+                this.renderAdditionalTrackerRow(instance, additionalTrackersContainer as HTMLElement);
+            }
+        }
+    }
+
     drawUI() {
         if (!this.uiContainer) return;
         this.uiContainer.empty();
@@ -349,7 +470,10 @@ export class EncounterBuilderView extends ItemView {
                 if (instancesInGroup.length > 0) {
                     instancesInGroup.sort((a, b) => a.id.localeCompare(b.id));
 
-                    const creatureGroupContainer = encounterArea.createDiv({ cls: 'dh-creature-group-container' });
+                    const creatureGroupContainer = encounterArea.createDiv({
+                        cls: 'dh-creature-group-container',
+                        attr: { 'data-group-id': groupId }
+                    });
                     const firstInstanceInGroup = instancesInGroup[0];
                     const instanceTypeClass = firstInstanceInGroup.type ? 'dh-type-' + firstInstanceInGroup.type.toLowerCase().replace(/\s+/g, '-') : 'dh-type-default';
 
@@ -363,7 +487,7 @@ export class EncounterBuilderView extends ItemView {
                     const removeGroupButton = mainCardContainer.createEl("button", { text: "✕", title: `Remove all ${firstInstanceInGroup.name}s`, cls: "dh-remove-instance-btn" });
                     removeGroupButton.addEventListener("click", () => this.removeCreatureGroupFromActiveEncounter(firstInstanceInGroup.groupId));
 
-                    this.plugin.renderStatblockCard(firstInstanceInGroup, mainCardContainer, true, firstInstanceInGroup.displayName,
+                    this.plugin.renderStatblockCard(firstInstanceInGroup, mainCardContainer, true, firstInstanceInGroup.name,
                         (newHp) => {
                             const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
                             if (inst) inst.currentHp = newHp; this.autoSaveCurrentEncounter();
@@ -387,7 +511,7 @@ export class EncounterBuilderView extends ItemView {
                         if (baseCreatureData) {
                             this.createNewInstanceInGroup(baseCreatureData, firstInstanceInGroup.groupId); // Pass existing groupId
                             this.autoSaveCurrentEncounter();
-                            this.drawUI();
+                            this.updateGroupUI(firstInstanceInGroup.groupId);
                         } else {
                             new Notice(`Error: Could not find base data for ${firstInstanceInGroup.name} in compendium.`);
                         }
@@ -686,9 +810,18 @@ export class EncounterBuilderView extends ItemView {
             return;
         }
         // Always create a new group by passing null for targetGroupId
+        const newGroupId = `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
         this.createNewInstanceInGroup(baseCreature, null);
         this.autoSaveCurrentEncounter();
-        this.drawUI();
+
+        // If it's the first creature, we need to redraw
+        const encounterArea = this.containerEl.querySelector('.dh-encounter-area') as HTMLElement;
+        if (!encounterArea || encounterArea.children.length === 0) {
+            this.drawUI();
+        } else {
+            // Otherwise, just append the new group
+            this.drawCreatureGroup(newGroupId, encounterArea);
+        }
     }
 
     createNewInstanceInGroup(baseCreature: StatblockData, targetGroupId: string | null) {
@@ -724,15 +857,17 @@ export class EncounterBuilderView extends ItemView {
 
         this.activeEncounterCreatures.splice(instanceToRemoveIndex, 1);
         this.updateDisplayNamesForGroup(groupId);
-
         this.autoSaveCurrentEncounter();
-        this.drawUI();
+        this.updateGroupUI(groupId);
     }
 
     removeCreatureGroupFromActiveEncounter(groupId: string) {
-        this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.groupId !== groupId);
-        this.autoSaveCurrentEncounter();
-        this.drawUI();
+        const groupContainer = this.containerEl.querySelector(`[data-group-id="${groupId}"]`);
+        if (groupContainer) {
+            this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.groupId !== groupId);
+            this.autoSaveCurrentEncounter();
+            groupContainer.remove();
+        }
     }
 
     clearEncounter() {
