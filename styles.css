@@ -1,8 +1,5 @@
-/* styles.css for Daggerheart Statblock Plugin - Theme Variables Update */
-
 /* --- General Statblock Rendering (for code blocks and cards) --- */
 .dh-statblock {
-    font-family: var(--font-text-override, 'Helvetica Neue', Helvetica, Arial, sans-serif); 
     background-color: var(--background-primary-alt); 
     border: 2px solid var(--background-modifier-border); 
     border-radius: var(--radius-m, 8px);
@@ -11,7 +8,8 @@
     box-shadow: var(--shadow-s);
     color: var(--text-normal); 
     max-width: 700px;
-    line-height: var(--line-height-normal, 1.5); 
+    line-height: var(--line-height-normal); 
+    font-size: var(--font-text-size, 16px);
 }
 
 .dh-statblock-error {
@@ -27,7 +25,6 @@
     text-align: left;
     margin-bottom: var(--size-4-1, 5px); 
     padding-bottom: var(--size-4-1, 5px); 
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif); 
 }
 .dh-statblock:not(.dh-instance-card-content) .dh-header {
     border-bottom: 1px solid var(--background-modifier-border);
@@ -38,8 +35,8 @@
 
 .dh-header .dh-name,
 .dh-header .dh-title {
-    font-size: var(--font-ui-large, 1.4em); 
-    font-weight: var(--font-bold, bold);
+    font-size: var(--font-ui-larger, 20px); 
+    font-weight: var(--font-bold, 700);
     color: var(--text-accent); 
     display: inline;
     letter-spacing: 0.5px;
@@ -49,8 +46,7 @@
 }
 
 .dh-card-role-text { 
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
-    font-size: var(--font-ui-small, 0.8em);
+    font-size: var(--font-ui-small, 13px);
     font-weight: var(--font-semibold, 600);
     color: var(--text-muted); 
     text-transform: uppercase;
@@ -60,9 +56,8 @@
 
 
 .dh-meta { 
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
-    font-size: var(--font-ui-medium, 1em); 
-    font-weight: var(--font-semibold, bold);
+    font-size: var(--font-ui-medium, 15px); 
+    font-weight: var(--font-semibold, 600);
     margin-bottom: var(--size-4-2, 8px);
     color: var(--text-faint);
 }
@@ -71,38 +66,37 @@
 .dh-description {
     font-style: italic;
     margin-bottom: var(--size-4-2, 10px);
-    font-size: var(--font-text-size, 0.9em); 
-    color: var(--text-normal);
+    font-size: var(--font-small, 0.933em); 
+    color: var(--text-muted);
 }
 .dh-instance-card-content .dh-description {
-    font-size: calc(var(--font-ui-small) * 0.95);
-    color: var(--text-faint);
+    font-size: var(--font-smaller, 0.875em);
     margin-top: var(--size-4-1);
 }
 
 
 .dh-motives {
-    margin-bottom: var(--size-4-2, 10px);
-    font-size: calc(var(--font-text-size) * 0.95); 
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
+    font-size: var(--font-small, 0.933em); 
 }
 .dh-instance-card-content .dh-motives { /* Specific styling for cards */
-    font-size: var(--font-ui-smaller, 0.8em);
-    color: var(--text-faint);
+     font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-light, 300);
+    color: var(--text-normal);
     margin-top: var(--size-4-1);
+    padding-top: var(--size-4-1);
 }
-.dh-motives strong { color: var(--text-accent); font-weight: var(--font-bold, bold); }
-.dh-instance-card-content .dh-motives strong { color: var(--text-muted); }
+.dh-motives strong {font-weight: var(--font-bold, bold); }
+/* .dh-instance-card-content .dh-motives strong { color: var(--text-normal); } */
 
 
 .dh-core-stats-line {
     display: flex;
+    color: var(--text-normal, #333);
     flex-direction: column; 
     gap: var(--size-4-1, 5px); 
     padding: var(--size-4-2, 6px) 0;
     margin-bottom: var(--size-4-2, 8px);
-    font-size: var(--font-ui-medium, 0.9em);
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
+    font-size: var(--font-ui-medium, 15px);
 }
 .dh-statblock:not(.dh-instance-card-content) .dh-core-stats-line {
     border-top: 1px solid var(--background-modifier-border, #e0c9a6);
@@ -112,17 +106,10 @@
     gap: var(--size-4-3, 10px);
 }
 
-.dh-core-stats-line strong { color: var(--color-red); font-weight: var(--font-bold, bold); } 
-.dh-core-stats-line .dh-attack-details-span strong { color: var(--text-accent); } 
+.dh-core-stats-line strong { font-weight: var(--font-bold, bold); color: var(--text-normal);} 
 
 .dh-instance-card-content .dh-core-stats-line {
-    font-size: var(--font-ui-small, 0.85em); 
-    color: var(--text-normal); 
-}
-.dh-instance-card-content .dh-core-stats-line strong { 
-    color: var(--text-muted); 
-}
-.dh-instance-card-content .dh-core-stats-line .dh-attack-details-span {
+    font-size: var(--font-ui-medium, 13px); 
     color: var(--text-normal); 
 }
 .dh-instance-card-content .dh-core-stats-line .dh-attack-details-span strong { 
@@ -131,26 +118,22 @@
 
 
 .dh-experience {
-    margin-bottom: var(--size-4-2, 10px);
-    font-size: calc(var(--font-text-size) * 0.95);
-    padding-top: var(--size-4-2, 6px);
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
+    font-size: var(--font-small, 0.933em); 
 }
-.dh-instance-card-content .dh-experience { /* Specific styling for cards */
-    font-size: var(--font-ui-smaller, 0.8em);
-    color: var(--text-faint);
+.dh-instance-card-content .dh-experience { 
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-light, 300);
+    color: var(--text-normal);
     margin-top: var(--size-4-1);
     padding-top: var(--size-4-1);
 }
-.dh-experience strong { color: var(--text-accent-hover, #503018); font-weight: var(--font-bold, bold); }
-.dh-instance-card-content .dh-experience strong { color: var(--text-muted); }
+.dh-experience strong { font-weight: var(--font-bold, bold); }
 
 
 .dh-features-section { margin-top: var(--size-4-3, 12px); }
 .dh-features-title { 
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
-    font-size: var(--font-ui-large, 1.2em);
-    font-weight: var(--font-bold, bold);
+    font-size: var(--font-ui-larger, 20px);
+    font-weight: var(--font-bold, 700);
     text-align: center;
     margin-bottom: var(--size-4-2, 8px);
     color: var(--text-title-h2, var(--text-accent, #5c3a21));
@@ -160,12 +143,11 @@
     letter-spacing: 1px;
 }
 .dh-instance-features-title { 
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
-    font-size: var(--font-ui-small, 0.8em); 
-    font-weight: var(--font-bold, bold);
+    font-size: var(--font-ui-small, 13px); 
+    font-weight: var(--font-bold, 700);
     text-align: left;
     margin-top: var(--size-4-3, 15px); 
-    margin-bottom: var(--size-4-2, 8px); 
+    margin-bottom: var(--size-2-1, 8px); 
     color: var(--text-muted, #b8c0c8); 
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -173,15 +155,15 @@
 
 .dh-features-list { list-style-type: none; padding-left: 0; }
 .dh-features-list li {
-    margin-bottom: var(--size-4-2, 8px);
+    margin-bottom: var(--size-2-1, 8px);
     padding: var(--size-4-2, 6px);
     border-left: 3px solid var(--color-accent-2-muted, var(--interactive-accent, #c8a079)); 
     background-color: var(--background-secondary-alt-hover, rgba(245, 235, 220, 0.2)); 
     border-radius: 0 var(--radius-s, 4px) var(--radius-s, 4px) 0;
-    font-size: var(--font-text-size, 0.85em); 
+    font-size: var(--font-text-size, 16px); 
 }
 .dh-instance-card-content .dh-features-list li {
-    font-size: calc(var(--font-ui-small) * 0.95); 
+    font-size: var(--font-smaller, 0.875em); 
     background-color: var(--background-modifier-hover, rgba(255,255,255,0.04)); 
     border-left-color: var(--background-modifier-border-hover, #586068); 
     padding: var(--size-4-1, 5px) var(--size-4-2, 7px); 
@@ -196,7 +178,6 @@
 }
 .dh-feature-name {
     font-size: 1em; 
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
     flex-grow: 1; 
 }
 .dh-feature-name strong { color: var(--text-accent); font-weight: var(--font-bold, bold); }
@@ -216,14 +197,14 @@
 }
 
 .dh-feature-description { 
-    font-size: 0.95em; 
+    font-size: var(--font-small, 0.933em); 
     padding-left: var(--size-4-2, 8px); 
     color: var(--text-normal);
-    line-height: var(--line-height-normal, 1.4);
+    line-height: var(--line-height-normal, 1.5);
     margin-top: var(--size-4-1, 4px); 
 }
 .dh-instance-card-content .dh-feature-description {
-    font-size: 0.92em; 
+    font-size: var(--font-smaller, 0.875em); 
     color: var(--text-muted); 
     padding-left: 0; 
     border-top: 1px solid var(--background-modifier-border); 
@@ -255,7 +236,6 @@
 
 .dh-hp-stress-title { 
     text-align: center;
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
     font-weight: var(--font-bold, bold);
     color: var(--text-accent);
     margin-bottom: var(--size-4-2, 8px);
@@ -268,7 +248,7 @@
     display: flex; 
     align-items: center;
     flex-wrap: wrap; 
-    font-size: var(--font-ui-small); /* Made HP/Stress summary font smaller */
+    font-size: var(--font-ui-small); 
 }
 .dh-summary-label { 
     font-weight: var(--font-semibold, bold); 
@@ -294,7 +274,7 @@
 }
 .dh-threshold-box-label {
     font-weight: var(--font-normal, normal); 
-    color: var(--text-accent); 
+    color: var(--text-normal); 
     background-color: var(--background-secondary); 
     padding-left: var(--size-4-2, 8px); padding-right: var(--size-4-2, 8px);
     border-right-width: 0; 
@@ -326,7 +306,6 @@
     display: flex !important; 
     align-items: center; 
     margin-bottom: var(--size-4-2, 8px); 
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif); 
     min-height: 25px; 
 }
 .dh-track-label {
@@ -348,34 +327,28 @@
 }
 
 .dh-track-btn {
-    background-color: var(--background-modifier-hover); 
+    background-color: var(--interactive-normal); 
     border: 1px solid var(--background-modifier-border); 
     color: var(--text-normal);
     font-weight: var(--font-bold, bold); 
     cursor: pointer; 
     border-radius: 50%; 
-    width: 22px; /* Slightly smaller buttons */
-    height: 22px; /* Slightly smaller buttons */
-    font-size: var(--font-ui-small, 14px); /* Smaller font for buttons */
+    width: 22px; 
+    height: 22px; 
+    font-size: var(--font-ui-small, 14px); 
     line-height: 20px; 
     text-align: center; 
     padding: 0; 
     margin: 0 var(--size-4-1, 4px); 
-    user-select: none; 
     flex-shrink: 0; 
     display: inline-flex !important; 
     align-items: center;
     justify-content: center;
 }
-.dh-track-btn:hover { background-color: var(--background-modifier-active-hover); }
+.dh-track-btn:hover { background-color: var(--interactive-hover); }
 .dh-track-btn:active { background-color: var(--background-modifier-border-focus); transform: translateY(1px); }
 
-.dh-track-btn.dh-track-btn-increment,
-.dh-track-btn.dh-track-btn-decrement {
-    font-family: var(--font-interface-override, monospace); 
-    line-height: 1; 
-}
-.dh-track-btn.dh-track-btn-decrement { padding-bottom: 1px; } /* Adjusted for new button size */
+.dh-track-btn.dh-track-btn-decrement { padding-bottom: 1px; } 
 
 .dh-pips-container { 
     display: flex !important; 
@@ -385,11 +358,11 @@
     overflow-y: hidden; 
     position: relative;
     flex-grow: 1; 
-    gap: var(--size-2-1, 3px); /* Slightly reduced gap for pips */
+    gap: var(--size-2-1, 3px); 
 }
 .dh-pip {
-    width: 12px; /* Smaller pips */
-    height: 12px; /* Smaller pips */
+    width: 13px; 
+    height: 13px; 
     border: 1px solid var(--background-modifier-border); 
     background-color: var(--background-secondary-alt); 
     cursor: pointer; 
@@ -485,7 +458,7 @@
 .dh-panel-header h3 {
     margin: 0;
     font-size: var(--font-ui-large, 1.2em);
-    color: var(--text-faint, #aaa);
+    color: var(--text-normal, #aaa);
 }
 .dh-panel-controls .dh-icon-button { 
     background-color: transparent;
@@ -538,13 +511,13 @@
     margin-top: 0; margin-bottom: var(--size-4-2, 10px); padding-bottom: var(--size-4-1, 5px);
     border-bottom: 1px solid var(--background-modifier-border, #555);
     font-size: var(--font-ui-large, 1.2em);
-    color: var(--text-accent, #aaa); 
+    color: var(--interactive-accent, #aaa); 
     cursor: pointer;
     user-select: none;
     transition: color 0.1s ease-in-out;
 }
 .dh-active-encounter-title-clickable:hover {
-    color: var(--text-accent-hover);
+    color: var(--interactive-accent-hover);
 }
 
 
@@ -581,19 +554,19 @@
 .dh-remove-instance-btn { 
     position: absolute;
     top: var(--size-4-1, 5px); 
-    right: var(--size-4-1, 5px);
-    background-color: transparent; /* More subtle background */
+    right: var(--size-4-1, 5px); 
+    background-color: transparent; 
     color: var(--text-faint); 
-    border: none;
-    border-radius: var(--radius-s);;
-    width: 20px;
+    border: none; 
+    border-radius: var(--radius-s); 
+    width: 20px; 
     height: 20px; 
-    /* line-height: 18px;  */
+    line-height: 18px; 
     text-align: center;
-    font-size: var(--font-smallest); /* Smaller X */
+    font-size: var(--font-ui-smaller, 12px); 
     cursor: pointer;
     z-index: 10;
-    opacity: 0.6; /* More subtle opacity */
+    opacity: 0.6; 
     transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 .dh-remove-instance-btn:hover { 
@@ -638,7 +611,7 @@
 
 /* Styling for additional tracker rows container */
 .dh-additional-trackers-container {
-    padding: var(--size-4-2, 8px) var(--size-4-3, 12px); 
+    /* padding: var(--size-4-2, 8px) var(--size-4-3, 12px);  */
     margin-top: var(--size-4-2, 8px); 
 }
 
@@ -667,25 +640,40 @@
 
 .dh-remove-additional-btn {
     background:none;
-    border: 0;
+    border: none;
     color: var(--text-faint); 
-    font-size: var(--font-smallest); /* Adjusted size */
+    font-size: 1em; 
     cursor: pointer;
-    padding: 0 auto;
-    background-color: transparent; /* More subtle background */
-    border-radius: var(--radius-s);;
-    width: 20px;
-    height: 20px; 
-    /* line-height: 18px;  */
-    text-align: center;
-    z-index: 10;
-    opacity: 0.6; /* More subtle opacity */
+    padding: 0 var(--size-4-1, 3px);
+    opacity: 0.6; 
     transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 .dh-remove-additional-btn:hover { 
     color: var(--color-red); 
     opacity: 1;
 }
+
+/* Button to add more instances to an existing group */
+.dh-add-to-group-button-container {
+    text-align: center;
+    padding: var(--size-4-2, 8px) 0;
+    margin-top: var(--size-4-2, 8px);
+    border-top: 1px solid var(--background-modifier-border);
+}
+.dh-add-to-group-btn {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
+    font-size: var(--font-ui-small);
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+.dh-add-to-group-btn:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
 
 .dh-fear-tracker {
     display: flex;

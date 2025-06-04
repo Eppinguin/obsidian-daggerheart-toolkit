@@ -151,46 +151,6 @@ class ManageEncountersModal extends Modal {
     }
 }
 
-// --- MODAL FOR ADD INSTANCE CHOICE ---
-class AddInstanceChoiceModal extends Modal {
-    onSubmit: (choice: 'existing' | 'new') => void;
-    existingGroupName: string;
-
-    constructor(app: App, existingGroupName: string, onSubmit: (choice: 'existing' | 'new') => void) {
-        super(app);
-        this.existingGroupName = existingGroupName;
-        this.onSubmit = onSubmit;
-    }
-
-    onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-        contentEl.addClass('dh-add-instance-choice-modal');
-        contentEl.createEl("h3", { text: "Add Creature Instance" });
-        contentEl.createEl("p", { text: `An instance of "${this.existingGroupName}" already exists.` });
-
-        const buttonContainer = contentEl.createDiv({ cls: 'dh-modal-buttons' });
-        new ButtonComponent(buttonContainer)
-            .setButtonText(`Add to group "${this.existingGroupName}"`)
-            .onClick(() => {
-                this.onSubmit('existing');
-                this.close();
-            });
-        new ButtonComponent(buttonContainer)
-            .setButtonText("Start New Group")
-            .setCta()
-            .onClick(() => {
-                this.onSubmit('new');
-                this.close();
-            });
-    }
-
-    onClose() {
-        this.contentEl.empty();
-    }
-}
-
-
 // --- ENCOUNTER VIEW CLASS ---
 export class EncounterBuilderView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
@@ -353,7 +313,7 @@ export class EncounterBuilderView extends ItemView {
         const mainInterface = containerWrapper.createDiv({ cls: "dh-encounter-main-interface" });
         const activeCreaturesPanel = mainInterface.createDiv({ cls: "dh-active-creatures-panel" });
         const activeEncounterTitleText = currentEncounter ? currentEncounter.name : "No Encounter Selected";
-        const activeEncounterTitleEl = activeCreaturesPanel.createEl("h3", { text: `Active: ${activeEncounterTitleText}`, cls: 'dh-active-encounter-title-clickable' });
+        const activeEncounterTitleEl = activeCreaturesPanel.createEl("h3", { text: `${activeEncounterTitleText}`, cls: 'dh-active-encounter-title-clickable' });
         activeEncounterTitleEl.addEventListener('click', (mouseEvent: MouseEvent) => this.showEncounterSwitcherMenu(mouseEvent));
 
         const encounterArea = activeCreaturesPanel.createDiv({ cls: "dh-encounter-area" });
@@ -371,7 +331,6 @@ export class EncounterBuilderView extends ItemView {
             for (const groupId in groupedByGroupId) {
                 const instancesInGroup = groupedByGroupId[groupId];
                 if (instancesInGroup.length > 0) {
-                    // Sort instances by their original ID for consistent numbering before assigning display names
                     instancesInGroup.sort((a, b) => a.id.localeCompare(b.id));
 
                     const creatureGroupContainer = encounterArea.createDiv({ cls: 'dh-creature-group-container' });
@@ -388,7 +347,6 @@ export class EncounterBuilderView extends ItemView {
                     const removeGroupButton = mainCardContainer.createEl("button", { text: "✕", title: `Remove all ${firstInstanceInGroup.name}s`, cls: "dh-remove-instance-btn" });
                     removeGroupButton.addEventListener("click", () => this.removeCreatureGroupFromActiveEncounter(firstInstanceInGroup.groupId));
 
-                    // The first instance in the sorted group determines the main card's display name
                     this.plugin.renderStatblockCard(firstInstanceInGroup, mainCardContainer, true, firstInstanceInGroup.displayName,
                         (newHp) => {
                             const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
@@ -401,13 +359,31 @@ export class EncounterBuilderView extends ItemView {
                         isGroupMultiple
                     );
 
+                    // Add "Add to Group" button at the bottom of the main card container
+                    const addToGroupButtonContainer = mainCardContainer.createDiv({ cls: 'dh-add-to-group-button-container' });
+                    const addToGroupButton = addToGroupButtonContainer.createEl('button', {
+                        text: '+ Add to Group',
+                        title: `Add another ${firstInstanceInGroup.name} to this group`,
+                        cls: 'dh-add-to-group-btn'
+                    });
+                    addToGroupButton.addEventListener('click', () => {
+                        const baseCreatureData = this.compendiumCreatures.find(c => c.name === firstInstanceInGroup.name);
+                        if (baseCreatureData) {
+                            this.createNewInstanceInGroup(baseCreatureData, firstInstanceInGroup.groupId); // Pass existing groupId
+                            this.autoSaveCurrentEncounter();
+                            this.drawUI();
+                        } else {
+                            new Notice(`Error: Could not find base data for ${firstInstanceInGroup.name} in compendium.`);
+                        }
+                    });
+
+
                     const additionalTrackersContainer = mainCardContainer.querySelector('.dh-additional-trackers-container');
                     if (additionalTrackersContainer) {
                         additionalTrackersContainer.empty();
 
                         if (isGroupMultiple) {
-                            // Render ALL instances as additional trackers if it's a group of multiple.
-                            for (const instance of instancesInGroup) { // Iterate through the sorted list
+                            for (const instance of instancesInGroup) {
                                 this.renderAdditionalTrackerRow(instance, additionalTrackersContainer as HTMLElement);
                             }
                         }
@@ -417,8 +393,9 @@ export class EncounterBuilderView extends ItemView {
         }
 
         const compendiumPanel = mainInterface.createDiv({ cls: "dh-compendium-panel" });
-        if (this.plugin.settings.enableFearTracker && this.uiContainer.parentElement) {
-            const fearTrackerDiv = this.uiContainer.parentElement.createDiv({ cls: "dh-fear-tracker" });
+
+        if (this.plugin.settings.enableFearTracker) {
+            const fearTrackerDiv = containerWrapper.createDiv({ cls: "dh-fear-tracker" });
             fearTrackerDiv.createSpan({ text: "Fear: ", cls: "dh-fear-label" });
             const fearControls = fearTrackerDiv.createDiv({ cls: "dh-fear-controls" });
             const decrementBtn = fearControls.createEl("button", { text: "-", cls: "dh-fear-btn" });
@@ -478,7 +455,7 @@ export class EncounterBuilderView extends ItemView {
                 creatureEntry.createSpan({ text: creatureData.name });
                 const addButton = creatureEntry.createEl("button", { text: "+", title: "Add to active encounter", cls: "dh-add-compendium-btn" });
                 addButton.addEventListener("click", () => {
-                    this.addCreatureToActiveEncounter(creatureData);
+                    this.addCreatureToActiveEncounter(creatureData); // This now always creates a new group
                 });
             });
         }
@@ -566,7 +543,6 @@ export class EncounterBuilderView extends ItemView {
         const removeBtn = header.createEl('button', { text: '✕', title: "Remove this instance", cls: 'dh-remove-additional-btn' });
         removeBtn.addEventListener('click', () => this.removeCreatureFromActiveEncounter(instance.id));
 
-        // Ensure hp_stress values are numbers for the tracker
         const hpMax = Number(instance.hp_stress.hp) || 0;
         const stressMax = Number(instance.hp_stress.stress) || 0;
 
@@ -586,10 +562,10 @@ export class EncounterBuilderView extends ItemView {
 
     private updateDisplayNamesForGroup(groupId: string) {
         const instancesInThisGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
-        instancesInThisGroup.sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID for consistent numbering
+        instancesInThisGroup.sort((a, b) => a.id.localeCompare(b.id));
 
         if (instancesInThisGroup.length === 1) {
-            instancesInThisGroup[0].displayName = instancesInThisGroup[0].name; // Solo instance gets base name
+            instancesInThisGroup[0].displayName = instancesInThisGroup[0].name;
         } else if (instancesInThisGroup.length > 1) {
             instancesInThisGroup.forEach((instance, index) => {
                 instance.displayName = `${instance.name} #${index + 1}`;
@@ -597,32 +573,22 @@ export class EncounterBuilderView extends ItemView {
         }
     }
 
+    // This method now ALWAYS creates a new group when called from compendium
     addCreatureToActiveEncounter(baseCreature: StatblockData) {
         if (!this.currentEncounterId) {
             new Notice("Error: No active encounter. Please create or load an encounter first.");
             return;
         }
-        const existingInstancesOfSameBaseName = this.activeEncounterCreatures.filter(inst => inst.name === baseCreature.name);
-
-        if (existingInstancesOfSameBaseName.length > 0) {
-            // If instances of this base name already exist, prompt user
-            const firstGroupDisplayName = existingInstancesOfSameBaseName[0].displayName.replace(/ #\d+$/, '');
-            new AddInstanceChoiceModal(this.app, firstGroupDisplayName, (choice) => {
-                const targetGroupId = choice === 'existing' ? existingInstancesOfSameBaseName[0].groupId : null;
-                this.createNewInstanceInGroup(baseCreature, targetGroupId);
-                this.autoSaveCurrentEncounter();
-                this.drawUI();
-            }).open();
-        } else {
-            // No instances of this base name exist, create a new group
-            this.createNewInstanceInGroup(baseCreature, null); // null targetGroupId creates a new group
-            this.autoSaveCurrentEncounter();
-            this.drawUI();
-        }
+        // Always create a new group by passing null for targetGroupId
+        this.createNewInstanceInGroup(baseCreature, null);
+        this.autoSaveCurrentEncounter();
+        this.drawUI();
     }
 
     createNewInstanceInGroup(baseCreature: StatblockData, targetGroupId: string | null) {
         const baseName = baseCreature.name;
+        // If targetGroupId is null, it means we are creating a brand new group.
+        // If targetGroupId is provided, we are adding to an existing group.
         const groupIdToUse = targetGroupId || `${baseName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
         const newInstance: CreatureInstance = {
@@ -631,7 +597,7 @@ export class EncounterBuilderView extends ItemView {
             groupId: groupIdToUse,
             currentHp: 0,
             currentStress: 0,
-            displayName: "", // Will be set by updateDisplayNamesForGroup
+            displayName: "",
             hp_stress: {
                 hp: Number(baseCreature.hp_stress.hp) || 0,
                 stress: Number(baseCreature.hp_stress.stress) || 0,
@@ -640,7 +606,7 @@ export class EncounterBuilderView extends ItemView {
             }
         };
         this.activeEncounterCreatures.push(newInstance);
-        this.updateDisplayNamesForGroup(groupIdToUse); // Update names for the entire group
+        this.updateDisplayNamesForGroup(groupIdToUse);
     }
 
     removeCreatureFromActiveEncounter(instanceId: string) {
@@ -651,7 +617,7 @@ export class EncounterBuilderView extends ItemView {
         const groupId = removedInstance.groupId;
 
         this.activeEncounterCreatures.splice(instanceToRemoveIndex, 1);
-        this.updateDisplayNamesForGroup(groupId); // Update names for the remaining members of the group
+        this.updateDisplayNamesForGroup(groupId);
 
         this.autoSaveCurrentEncounter();
         this.drawUI();
