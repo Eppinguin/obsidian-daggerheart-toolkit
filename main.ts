@@ -13,7 +13,7 @@ class NameEncounterModal extends Modal {
     existingNames: string[];
     currentNameValue?: string | null;
     titleText: string;
-    private nameInputComponent!: TextComponent; // Definite assignment assertion
+    private nameInputComponent!: TextComponent;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin, title: string, existingNames: string[], currentNameVal: string | null | undefined, onSubmit: (name: string) => void) {
         super(app);
@@ -40,7 +40,6 @@ class NameEncounterModal extends Modal {
                 text.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        // nameInputComponent is guaranteed to be assigned here by addText
                         this.submitName(this.nameInputComponent.getValue());
                     }
                 });
@@ -52,7 +51,6 @@ class NameEncounterModal extends Modal {
             .setButtonText("Confirm")
             .setCta()
             .onClick(() => {
-                // nameInputComponent is guaranteed to be assigned here
                 this.submitName(this.nameInputComponent.getValue());
             });
         new ButtonComponent(buttonContainer)
@@ -126,7 +124,7 @@ class ManageEncountersModal extends Modal {
                     .onClick(async () => {
                         if (deleteButton.buttonEl.classList.contains('is-confirming-delete')) {
                             await this.view.handleDeleteEncounter(savedEncounter.id);
-                            this.onOpen();
+                            this.onOpen(); // Refresh modal
                         } else {
                             deleteButton.buttonEl.classList.add('is-confirming-delete');
                             deleteButton.setTooltip("Confirm Delete?");
@@ -167,7 +165,7 @@ class AddInstanceChoiceModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.addClass('dh-add-instance-choice-modal'); // Specific class
+        contentEl.addClass('dh-add-instance-choice-modal');
         contentEl.createEl("h3", { text: "Add Creature Instance" });
         contentEl.createEl("p", { text: `An instance of "${this.existingGroupName}" already exists.` });
 
@@ -233,16 +231,9 @@ export class EncounterBuilderView extends ItemView {
             if (persistedState.currentEncounterId) {
                 this.currentEncounterId = persistedState.currentEncounterId;
             }
-            if (typeof persistedState.isCompendiumVisible === 'boolean') {
-                this.isCompendiumVisible = persistedState.isCompendiumVisible;
-            } else {
-                this.isCompendiumVisible = true;
-            }
-            if (typeof persistedState.compendiumSearchTerm === 'string') {
-                this.compendiumSearchTerm = persistedState.compendiumSearchTerm;
-            }
+            this.isCompendiumVisible = typeof persistedState.isCompendiumVisible === 'boolean' ? persistedState.isCompendiumVisible : true;
+            this.compendiumSearchTerm = typeof persistedState.compendiumSearchTerm === 'string' ? persistedState.compendiumSearchTerm : "";
         }
-
 
         this.ensureActiveEncounter();
         this.loadCreaturesForCurrentEncounter();
@@ -282,23 +273,21 @@ export class EncounterBuilderView extends ItemView {
         };
     }
 
-
     ensureActiveEncounter() {
         if (this.plugin.settings.savedEncounters.length === 0) {
             this.handleNewEncounter(true, "My First Encounter");
         } else if (!this.currentEncounterId || !this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId)) {
-            this.currentEncounterId = this.plugin.settings.savedEncounters[0].id;
+            this.currentEncounterId = this.plugin.settings.savedEncounters[0]?.id || null;
+            if (!this.currentEncounterId && this.plugin.settings.savedEncounters.length > 0) {
+                this.handleNewEncounter(true, "My First Encounter");
+            }
         }
     }
 
     loadCreaturesForCurrentEncounter() {
         if (this.currentEncounterId) {
             const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
-            if (encounter) {
-                this.activeEncounterCreatures = JSON.parse(JSON.stringify(encounter.creatures));
-            } else {
-                this.activeEncounterCreatures = [];
-            }
+            this.activeEncounterCreatures = encounter ? JSON.parse(JSON.stringify(encounter.creatures)) : [];
         } else {
             this.activeEncounterCreatures = [];
         }
@@ -322,25 +311,8 @@ export class EncounterBuilderView extends ItemView {
 
     showEncounterSwitcherMenu(event: MouseEvent) {
         const menu = new Menu();
-
-        menu.addItem((item) =>
-            item
-                .setTitle("Create New Encounter...")
-                .setIcon("plus-circle")
-                .onClick(() => {
-                    this.handleNewEncounter();
-                })
-        );
-
-        menu.addItem((item) =>
-            item
-                .setTitle("Manage Saved Encounters...")
-                .setIcon("settings")
-                .onClick(() => {
-                    new ManageEncountersModal(this.app, this).open();
-                })
-        );
-
+        menu.addItem((item) => item.setTitle("Create New Encounter...").setIcon("plus-circle").onClick(() => this.handleNewEncounter()));
+        menu.addItem((item) => item.setTitle("Manage Saved Encounters...").setIcon("settings").onClick(() => new ManageEncountersModal(this.app, this).open()));
 
         if (this.plugin.settings.savedEncounters.length > 0) {
             menu.addSeparator();
@@ -349,9 +321,7 @@ export class EncounterBuilderView extends ItemView {
                     item.setTitle(savedEncounter.name)
                         .setIcon(savedEncounter.id === this.currentEncounterId ? "check" : "")
                         .onClick(() => {
-                            if (savedEncounter.id !== this.currentEncounterId) {
-                                this.loadEncounter(savedEncounter.id);
-                            }
+                            if (savedEncounter.id !== this.currentEncounterId) this.loadEncounter(savedEncounter.id);
                         });
                 });
             });
@@ -365,7 +335,6 @@ export class EncounterBuilderView extends ItemView {
         this.drawUI();
     }
 
-
     drawUI() {
         if (!this.uiContainer) return;
         this.uiContainer.empty();
@@ -375,71 +344,72 @@ export class EncounterBuilderView extends ItemView {
 
         const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
         header.createEl("h2", { text: "Daggerheart Encounters" });
-
         const controls = header.createDiv({ cls: "dh-encounter-controls" });
-
-        const toggleCompendiumButton = controls.createEl("button", {
-            title: this.isCompendiumVisible ? "Hide Compendium" : "Show Compendium"
-        });
+        const toggleCompendiumButton = controls.createEl("button", { title: this.isCompendiumVisible ? "Hide Compendium" : "Show Compendium" });
         setIcon(toggleCompendiumButton, this.isCompendiumVisible ? "panel-right-close" : "panel-left-open");
         toggleCompendiumButton.addClass("dh-icon-button");
         toggleCompendiumButton.addEventListener("click", () => this.toggleCompendiumVisibility());
 
         const mainInterface = containerWrapper.createDiv({ cls: "dh-encounter-main-interface" });
-
         const activeCreaturesPanel = mainInterface.createDiv({ cls: "dh-active-creatures-panel" });
         const activeEncounterTitleText = currentEncounter ? currentEncounter.name : "No Encounter Selected";
-        const activeEncounterTitleEl = activeCreaturesPanel.createEl("h3", {
-            text: `Active: ${activeEncounterTitleText}`,
-            cls: 'dh-active-encounter-title-clickable'
-        });
-        activeEncounterTitleEl.addEventListener('click', (mouseEvent: MouseEvent) => {
-            this.showEncounterSwitcherMenu(mouseEvent);
-        });
+        const activeEncounterTitleEl = activeCreaturesPanel.createEl("h3", { text: `Active: ${activeEncounterTitleText}`, cls: 'dh-active-encounter-title-clickable' });
+        activeEncounterTitleEl.addEventListener('click', (mouseEvent: MouseEvent) => this.showEncounterSwitcherMenu(mouseEvent));
 
         const encounterArea = activeCreaturesPanel.createDiv({ cls: "dh-encounter-area" });
         if (this.activeEncounterCreatures.length === 0 && currentEncounter) {
-            encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures from the compendium.` });
+            encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
         } else if (this.activeEncounterCreatures.length === 0 && !currentEncounter) {
             encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
         } else {
             const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
             this.activeEncounterCreatures.forEach(instance => {
-                if (!groupedByGroupId[instance.groupId]) {
-                    groupedByGroupId[instance.groupId] = [];
-                }
+                if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
                 groupedByGroupId[instance.groupId].push(instance);
             });
 
             for (const groupId in groupedByGroupId) {
                 const instancesInGroup = groupedByGroupId[groupId];
                 if (instancesInGroup.length > 0) {
-                    const creatureGroupContainer = encounterArea.createDiv({ cls: 'dh-creature-group-container' });
-                    const firstInstance = instancesInGroup[0];
-                    const instanceTypeClass = firstInstance.type ? 'dh-type-' + firstInstance.type.toLowerCase().replace(/\s+/g, '-') : 'dh-type-default';
-                    const mainCardContainer = creatureGroupContainer.createDiv({ cls: `dh-creature-instance-card ${instanceTypeClass}` });
+                    // Sort instances by their original ID for consistent numbering before assigning display names
+                    instancesInGroup.sort((a, b) => a.id.localeCompare(b.id));
 
-                    const removeGroupButton = mainCardContainer.createEl("button", { text: "✕", title: `Remove all ${firstInstance.name}s`, cls: "dh-remove-instance-btn" });
-                    removeGroupButton.addEventListener("click", () => {
-                        this.removeCreatureGroupFromActiveEncounter(firstInstance.groupId);
-                    });
-                    this.plugin.renderStatblockCard(firstInstance, mainCardContainer, true, firstInstance.displayName,
+                    const creatureGroupContainer = encounterArea.createDiv({ cls: 'dh-creature-group-container' });
+                    const firstInstanceInGroup = instancesInGroup[0];
+                    const instanceTypeClass = firstInstanceInGroup.type ? 'dh-type-' + firstInstanceInGroup.type.toLowerCase().replace(/\s+/g, '-') : 'dh-type-default';
+
+                    const isGroupMultiple = instancesInGroup.length > 1;
+                    const mainCardContainerClasses = ['dh-creature-instance-card', instanceTypeClass];
+                    if (isGroupMultiple) {
+                        mainCardContainerClasses.push('dh-group-mode-active');
+                    }
+                    const mainCardContainer = creatureGroupContainer.createDiv({ cls: mainCardContainerClasses.join(' ') });
+
+                    const removeGroupButton = mainCardContainer.createEl("button", { text: "✕", title: `Remove all ${firstInstanceInGroup.name}s`, cls: "dh-remove-instance-btn" });
+                    removeGroupButton.addEventListener("click", () => this.removeCreatureGroupFromActiveEncounter(firstInstanceInGroup.groupId));
+
+                    // The first instance in the sorted group determines the main card's display name
+                    this.plugin.renderStatblockCard(firstInstanceInGroup, mainCardContainer, true, firstInstanceInGroup.displayName,
                         (newHp) => {
-                            const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstance.id);
-                            if (inst) inst.currentHp = newHp;
-                            this.autoSaveCurrentEncounter();
+                            const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
+                            if (inst) inst.currentHp = newHp; this.autoSaveCurrentEncounter();
                         },
                         (newStress) => {
-                            const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstance.id);
-                            if (inst) inst.currentStress = newStress;
-                            this.autoSaveCurrentEncounter();
-                        }
+                            const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
+                            if (inst) inst.currentStress = newStress; this.autoSaveCurrentEncounter();
+                        },
+                        isGroupMultiple
                     );
 
                     const additionalTrackersContainer = mainCardContainer.querySelector('.dh-additional-trackers-container');
                     if (additionalTrackersContainer) {
-                        for (let i = 1; i < instancesInGroup.length; i++) {
-                            this.renderAdditionalTrackerRow(instancesInGroup[i], additionalTrackersContainer as HTMLElement);
+                        additionalTrackersContainer.empty();
+
+                        if (isGroupMultiple) {
+                            // Render ALL instances as additional trackers if it's a group of multiple.
+                            for (const instance of instancesInGroup) { // Iterate through the sorted list
+                                this.renderAdditionalTrackerRow(instance, additionalTrackersContainer as HTMLElement);
+                            }
                         }
                     }
                 }
@@ -447,17 +417,12 @@ export class EncounterBuilderView extends ItemView {
         }
 
         const compendiumPanel = mainInterface.createDiv({ cls: "dh-compendium-panel" });
-
-        if (this.plugin.settings.enableFearTracker) {
-            const fearTrackerDiv = this.containerEl.children[1].createDiv({ cls: "dh-fear-tracker" });
-            const fearLabel = fearTrackerDiv.createSpan({ text: "Fear: ", cls: "dh-fear-label" });
-
+        if (this.plugin.settings.enableFearTracker && this.uiContainer.parentElement) {
+            const fearTrackerDiv = this.uiContainer.parentElement.createDiv({ cls: "dh-fear-tracker" });
+            fearTrackerDiv.createSpan({ text: "Fear: ", cls: "dh-fear-label" });
             const fearControls = fearTrackerDiv.createDiv({ cls: "dh-fear-controls" });
             const decrementBtn = fearControls.createEl("button", { text: "-", cls: "dh-fear-btn" });
-            const fearValue = fearControls.createSpan({
-                text: this.plugin.settings.fearCounter.toString(),
-                cls: "dh-fear-value"
-            });
+            const fearValue = fearControls.createSpan({ text: this.plugin.settings.fearCounter.toString(), cls: "dh-fear-value" });
             const incrementBtn = fearControls.createEl("button", { text: "+", cls: "dh-fear-btn" });
 
             decrementBtn.addEventListener("click", async () => {
@@ -474,12 +439,10 @@ export class EncounterBuilderView extends ItemView {
                 fearValue.textContent = this.plugin.settings.fearCounter.toString();
             });
         }
-        if (!this.isCompendiumVisible) {
-            compendiumPanel.addClass('dh-compendium-panel-hidden');
-        }
+
+        if (!this.isCompendiumVisible) compendiumPanel.addClass('dh-compendium-panel-hidden');
         const compendiumHeader = compendiumPanel.createDiv({ cls: "dh-panel-header" });
         compendiumHeader.createEl("h3", { text: "Compendium" });
-
         const compendiumControls = compendiumHeader.createDiv({ cls: "dh-panel-controls" });
         const refreshCompendiumListButton = compendiumControls.createEl("button", { title: "Refresh Compendium" });
         setIcon(refreshCompendiumListButton, "refresh-cw");
@@ -489,19 +452,13 @@ export class EncounterBuilderView extends ItemView {
             this.drawUI();
             new Notice("Compendium refreshed!");
         });
-
-        const searchInput = compendiumPanel.createEl("input", {
-            type: "text",
-            placeholder: "Search compendium...",
-            cls: "dh-compendium-search"
-        });
+        const searchInput = compendiumPanel.createEl("input", { type: "text", placeholder: "Search compendium...", cls: "dh-compendium-search" });
         searchInput.value = this.compendiumSearchTerm;
         searchInput.addEventListener("input", (e) => {
             this.compendiumSearchTerm = (e.target as HTMLInputElement).value;
             this.leaf.setEphemeralState(this.getState());
             this.renderCompendiumList(compendiumPanel.querySelector(".dh-compendium-list") as HTMLElement);
         });
-
         const compendiumList = compendiumPanel.createDiv({ cls: "dh-compendium-list" });
         this.renderCompendiumList(compendiumList);
 
@@ -511,13 +468,11 @@ export class EncounterBuilderView extends ItemView {
     renderCompendiumList(listContainer: HTMLElement) {
         listContainer.empty();
         const searchTerm = this.compendiumSearchTerm.toLowerCase();
-        const filteredCreatures = this.compendiumCreatures.filter(creature =>
-            creature.name.toLowerCase().includes(searchTerm)
-        );
-
+        const filteredCreatures = this.compendiumCreatures.filter(c => c.name.toLowerCase().includes(searchTerm));
         if (filteredCreatures.length === 0) {
             listContainer.createEl("p", { text: searchTerm ? "No matching creatures found." : "No creatures in compendium. Check settings." });
-        } else {
+        }
+        else {
             filteredCreatures.forEach(creatureData => {
                 const creatureEntry = listContainer.createDiv({ cls: "dh-compendium-entry" });
                 creatureEntry.createSpan({ text: creatureData.name });
@@ -534,18 +489,9 @@ export class EncounterBuilderView extends ItemView {
         let newEncounterNameBase = defaultName || "New Encounter";
         let newEncounterName = newEncounterNameBase;
         let counter = 1;
-
-        while (existingNames.includes(newEncounterName)) {
-            newEncounterName = `${newEncounterNameBase} ${counter++}`;
-        }
-
-        if (isDefaultCreation) {
-            this.saveNewEncounter(newEncounterName);
-        } else {
-            new NameEncounterModal(this.app, this.plugin, "Create New Encounter", existingNames, newEncounterName, (name) => {
-                this.saveNewEncounter(name);
-            }).open();
-        }
+        while (existingNames.includes(newEncounterName)) newEncounterName = `${newEncounterNameBase} ${counter++}`;
+        if (isDefaultCreation) this.saveNewEncounter(newEncounterName);
+        else new NameEncounterModal(this.app, this.plugin, "Create New Encounter", existingNames, newEncounterName, (name) => this.saveNewEncounter(name)).open();
     }
 
     saveNewEncounter(name: string) {
@@ -553,7 +499,6 @@ export class EncounterBuilderView extends ItemView {
         const newEncounter: SavedEncounter = { id: newId, name: name, creatures: [] };
         this.plugin.settings.savedEncounters.push(newEncounter);
         this.plugin.saveSettings();
-
         this.currentEncounterId = newId;
         this.loadCreaturesForCurrentEncounter();
         new Notice(`Encounter "${name}" created and activated.`);
@@ -583,7 +528,6 @@ export class EncounterBuilderView extends ItemView {
             console.log("Attempted to load already active encounter.");
             return;
         }
-
         const encounterToLoad = this.plugin.settings.savedEncounters.find(e => e.id === encounterId);
         if (encounterToLoad) {
             this.currentEncounterId = encounterToLoad.id;
@@ -596,13 +540,13 @@ export class EncounterBuilderView extends ItemView {
         }
     }
 
-    handleDeleteEncounter(encounterId: string) {
+    async handleDeleteEncounter(encounterId: string) {
         const encounterIndex = this.plugin.settings.savedEncounters.findIndex(e => e.id === encounterId);
         if (encounterIndex === -1) return;
 
         const encounterName = this.plugin.settings.savedEncounters[encounterIndex].name;
         this.plugin.settings.savedEncounters.splice(encounterIndex, 1);
-        this.plugin.saveSettings();
+        await this.plugin.saveSettings();
 
         if (this.currentEncounterId === encounterId) {
             this.currentEncounterId = null;
@@ -614,30 +558,43 @@ export class EncounterBuilderView extends ItemView {
         this.leaf.setEphemeralState(this.getState());
     }
 
+
     renderAdditionalTrackerRow(instance: CreatureInstance, parentEl: HTMLElement) {
         const trackerRow = parentEl.createDiv({ cls: 'dh-additional-tracker-row' });
-
         const header = trackerRow.createDiv({ cls: 'dh-additional-tracker-header' });
         header.createSpan({ text: instance.displayName, cls: 'dh-additional-tracker-name' });
         const removeBtn = header.createEl('button', { text: '✕', title: "Remove this instance", cls: 'dh-remove-additional-btn' });
-        removeBtn.addEventListener('click', () => {
-            this.removeCreatureFromActiveEncounter(instance.id, false);
-        });
+        removeBtn.addEventListener('click', () => this.removeCreatureFromActiveEncounter(instance.id));
 
-        this.plugin.createInteractiveTrack(trackerRow, 'HP', instance.hp_stress.hp, `${instance.id}-hp`, instance.currentHp,
+        // Ensure hp_stress values are numbers for the tracker
+        const hpMax = Number(instance.hp_stress.hp) || 0;
+        const stressMax = Number(instance.hp_stress.stress) || 0;
+
+        this.plugin.createInteractiveTrack(trackerRow, 'HP', hpMax, `${instance.id}-hp-add`, instance.currentHp,
             (newHp) => {
                 const inst = this.activeEncounterCreatures.find(c => c.id === instance.id);
-                if (inst) inst.currentHp = newHp;
-                this.autoSaveCurrentEncounter();
+                if (inst) inst.currentHp = newHp; this.autoSaveCurrentEncounter();
             }
         );
-        this.plugin.createInteractiveTrack(trackerRow, 'Stress', instance.hp_stress.stress, `${instance.id}-stress`, instance.currentStress,
+        this.plugin.createInteractiveTrack(trackerRow, 'Stress', stressMax, `${instance.id}-stress-add`, instance.currentStress,
             (newStress) => {
                 const inst = this.activeEncounterCreatures.find(c => c.id === instance.id);
-                if (inst) inst.currentStress = newStress;
-                this.autoSaveCurrentEncounter();
+                if (inst) inst.currentStress = newStress; this.autoSaveCurrentEncounter();
             }
         );
+    }
+
+    private updateDisplayNamesForGroup(groupId: string) {
+        const instancesInThisGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
+        instancesInThisGroup.sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID for consistent numbering
+
+        if (instancesInThisGroup.length === 1) {
+            instancesInThisGroup[0].displayName = instancesInThisGroup[0].name; // Solo instance gets base name
+        } else if (instancesInThisGroup.length > 1) {
+            instancesInThisGroup.forEach((instance, index) => {
+                instance.displayName = `${instance.name} #${index + 1}`;
+            });
+        }
     }
 
     addCreatureToActiveEncounter(baseCreature: StatblockData) {
@@ -645,74 +602,57 @@ export class EncounterBuilderView extends ItemView {
             new Notice("Error: No active encounter. Please create or load an encounter first.");
             return;
         }
+        const existingInstancesOfSameBaseName = this.activeEncounterCreatures.filter(inst => inst.name === baseCreature.name);
 
-        const existingInstancesOfThisType = this.activeEncounterCreatures.filter(
-            (inst) => inst.name === baseCreature.name
-        );
-
-        if (existingInstancesOfThisType.length > 0) {
-            const firstGroupDisplayName = existingInstancesOfThisType[0].displayName.replace(/ #\d+$/, '');
-            new AddInstanceChoiceModal(this.app, firstGroupDisplayName, (choice: 'existing' | 'new') => { // Typed 'choice'
-                if (choice === 'existing') {
-                    const firstGroupId = existingInstancesOfThisType[0].groupId;
-                    this.createNewInstanceInGroup(baseCreature, firstGroupId);
-                } else {
-                    this.createNewInstanceInGroup(baseCreature, null);
-                }
+        if (existingInstancesOfSameBaseName.length > 0) {
+            // If instances of this base name already exist, prompt user
+            const firstGroupDisplayName = existingInstancesOfSameBaseName[0].displayName.replace(/ #\d+$/, '');
+            new AddInstanceChoiceModal(this.app, firstGroupDisplayName, (choice) => {
+                const targetGroupId = choice === 'existing' ? existingInstancesOfSameBaseName[0].groupId : null;
+                this.createNewInstanceInGroup(baseCreature, targetGroupId);
                 this.autoSaveCurrentEncounter();
                 this.drawUI();
             }).open();
         } else {
-            this.createNewInstanceInGroup(baseCreature, null);
+            // No instances of this base name exist, create a new group
+            this.createNewInstanceInGroup(baseCreature, null); // null targetGroupId creates a new group
             this.autoSaveCurrentEncounter();
             this.drawUI();
         }
     }
 
     createNewInstanceInGroup(baseCreature: StatblockData, targetGroupId: string | null) {
-        let groupIdToUse: string;
-        let instanceNumberInGroup = 1;
-        let displayName = baseCreature.name;
-
-        if (targetGroupId) {
-            groupIdToUse = targetGroupId;
-            const instancesInThisGroup = this.activeEncounterCreatures.filter(
-                (inst) => inst.groupId === groupIdToUse
-            );
-            instanceNumberInGroup = instancesInThisGroup.length + 1;
-            displayName = `${baseCreature.name} #${instanceNumberInGroup}`;
-        } else {
-            groupIdToUse = `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-        }
+        const baseName = baseCreature.name;
+        const groupIdToUse = targetGroupId || `${baseName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
         const newInstance: CreatureInstance = {
             ...JSON.parse(JSON.stringify(baseCreature)),
-            id: `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            id: `${baseName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             groupId: groupIdToUse,
             currentHp: 0,
             currentStress: 0,
-            displayName: displayName,
+            displayName: "", // Will be set by updateDisplayNamesForGroup
+            hp_stress: {
+                hp: Number(baseCreature.hp_stress.hp) || 0,
+                stress: Number(baseCreature.hp_stress.stress) || 0,
+                major_hp: baseCreature.hp_stress.major_hp ? Number(baseCreature.hp_stress.major_hp) : null,
+                severe_hp: baseCreature.hp_stress.severe_hp ? Number(baseCreature.hp_stress.severe_hp) : null,
+            }
         };
         this.activeEncounterCreatures.push(newInstance);
+        this.updateDisplayNamesForGroup(groupIdToUse); // Update names for the entire group
     }
 
+    removeCreatureFromActiveEncounter(instanceId: string) {
+        const instanceToRemoveIndex = this.activeEncounterCreatures.findIndex(c => c.id === instanceId);
+        if (instanceToRemoveIndex === -1) return;
 
-    removeCreatureFromActiveEncounter(instanceId: string, isGroupRemovalTrigger: boolean = false) {
-        const instanceToRemove = this.activeEncounterCreatures.find(c => c.id === instanceId);
-        if (!instanceToRemove) return;
+        const removedInstance = this.activeEncounterCreatures[instanceToRemoveIndex];
+        const groupId = removedInstance.groupId;
 
-        if (isGroupRemovalTrigger) {
-            this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.groupId !== instanceToRemove.groupId);
-        } else {
-            this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.id !== instanceId);
-            const remainingInGroup = this.activeEncounterCreatures.filter(c => c.groupId === instanceToRemove.groupId);
-            if (remainingInGroup.length > 0 && instanceToRemove.displayName === instanceToRemove.name) {
-                remainingInGroup[0].displayName = remainingInGroup[0].name;
-                for (let i = 1; i < remainingInGroup.length; i++) {
-                    remainingInGroup[i].displayName = `${remainingInGroup[i].name} #${i + 1}`;
-                }
-            }
-        }
+        this.activeEncounterCreatures.splice(instanceToRemoveIndex, 1);
+        this.updateDisplayNamesForGroup(groupId); // Update names for the remaining members of the group
+
         this.autoSaveCurrentEncounter();
         this.drawUI();
     }
@@ -722,7 +662,6 @@ export class EncounterBuilderView extends ItemView {
         this.autoSaveCurrentEncounter();
         this.drawUI();
     }
-
 
     clearEncounter() {
         if (this.currentEncounterId) {
@@ -737,14 +676,12 @@ export class EncounterBuilderView extends ItemView {
             new Notice("Active encounter cleared (no saved encounter was loaded).");
         }
     }
-
     async onClose() {
-        // Clean up
+        // Clean up if necessary
     }
 }
 
-// ... (DaggerheartStatblockPlugin and DaggerheartSettingTab classes - ensure they are complete from previous versions) ...
-// (Make sure to include the full DaggerheartStatblockPlugin and DaggerheartSettingTab classes here)
+
 export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;
 
@@ -756,11 +693,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             try {
                 const cleanedSource = source.replace(/\u00A0/g, ' ');
                 const data = YAML.load(cleanedSource) as StatblockData;
-
-                if (!data || typeof data !== 'object') {
-                    throw new Error("Parsed data is not a valid object.");
-                }
-                this.renderStatblockCard(data, el, false, data.name, undefined, undefined); // No callbacks for non-instance
+                if (!data || typeof data !== 'object') throw new Error("Parsed data is not a valid object.");
+                this.renderStatblockCard(data, el, false, data.name);
             } catch (e: any) {
                 console.error('Daggerheart Statblock: Error processing code block.', e);
                 const errorEl = el.createEl('pre', { cls: 'dh-statblock-error' });
@@ -768,23 +702,9 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             }
         });
 
-        this.registerView(
-            ENCOUNTER_BUILDER_VIEW_TYPE,
-            (leaf) => new EncounterBuilderView(leaf, this)
-        );
-
-        this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => {
-            this.activateView();
-        });
-
-        this.addCommand({
-            id: 'open-daggerheart-encounter-builder',
-            name: 'Open Encounter Builder',
-            callback: () => {
-                this.activateView();
-            },
-        });
-
+        this.registerView(ENCOUNTER_BUILDER_VIEW_TYPE, (leaf) => new EncounterBuilderView(leaf, this));
+        this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => this.activateView());
+        this.addCommand({ id: 'open-daggerheart-encounter-builder', name: 'Open Encounter Builder', callback: () => this.activateView() });
         this.addSettingTab(new DaggerheartSettingTab(this.app, this));
     }
 
@@ -803,160 +723,72 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     async getCompendiumCreatures(): Promise<StatblockData[]> {
         const creatures: StatblockData[] = [];
-        // Load SRD Adversaries if toggled
         if (this.settings.useSrdAdversaries) {
             try {
                 const srdFilePath = `${this.manifest.dir}/${SRD_ADVERSARIES_FILE}`;
-                console.log(`Daggerheart: Attempting to load SRD adversaries from ${srdFilePath}`);
                 if (await this.app.vault.adapter.exists(srdFilePath)) {
                     const srdFileContent = await this.app.vault.adapter.read(srdFilePath);
-                    // Remove BOM if present
                     const cleanedSrdContent = srdFileContent.charCodeAt(0) === 0xFEFF ? srdFileContent.substring(1) : srdFileContent;
                     const srdRawCreatures = JSON.parse(cleanedSrdContent) as any[];
-
                     srdRawCreatures.forEach(rawAdv => {
                         const transformed = this.parseSrdAdversaryData(rawAdv);
                         if (transformed) creatures.push(transformed);
                     });
-                    console.log(`Daggerheart: Loaded ${creatures.filter(c => c.sourceFile === SRD_ADVERSARIES_FILE).length} creatures from SRD file.`);
-                } else {
-                    console.warn(`Daggerheart: SRD file not found at ${srdFilePath}`);
-                    new Notice(`SRD adversaries file (${SRD_ADVERSARIES_FILE}) not found in plugin folder. Make sure it's named correctly and in the root of the plugin directory.`);
-                }
-            } catch (e: any) {
-                console.error("Daggerheart: Error loading SRD adversaries:", e);
-                new Notice("Error loading SRD adversaries. Check console.");
-            }
+                } else { new Notice(`SRD file (${SRD_ADVERSARIES_FILE}) not found.`); }
+            } catch (e: any) { console.error("Error loading SRD:", e); new Notice("Error SRD."); }
         }
 
-
-        // Load creatures from user-specified compendium folder
         const folderPath = this.settings.compendiumFolder;
         if (folderPath) {
-            console.log(`Daggerheart: Attempting to read user compendium from path: "${folderPath}"`);
             const abstractFileOrFolder = this.app.vault.getAbstractFileByPath(folderPath);
-            if (!abstractFileOrFolder) {
-                new Notice(`User compendium path "${folderPath}" not found.`);
-            } else if (abstractFileOrFolder instanceof TFile && abstractFileOrFolder.extension === 'md') {
-                const fileContent = await this.app.vault.cachedRead(abstractFileOrFolder);
-                this.extractStatblocksFromFile(fileContent, abstractFileOrFolder.path, creatures);
+            if (!abstractFileOrFolder) { new Notice(`Compendium path "${folderPath}" not found.`); }
+            else if (abstractFileOrFolder instanceof TFile && abstractFileOrFolder.extension === 'md') {
+                this.extractStatblocksFromFile(await this.app.vault.cachedRead(abstractFileOrFolder), abstractFileOrFolder.path, creatures);
             } else if (abstractFileOrFolder instanceof TFolder) {
-                const files = abstractFileOrFolder.children.filter(
-                    (file): file is TFile => file instanceof TFile && file.extension === 'md'
-                );
-                for (const file of files) {
-                    const fileContent = await this.app.vault.cachedRead(file);
-                    this.extractStatblocksFromFile(fileContent, file.path, creatures);
+                for (const file of abstractFileOrFolder.children.filter((f): f is TFile => f instanceof TFile && f.extension === 'md')) {
+                    this.extractStatblocksFromFile(await this.app.vault.cachedRead(file), file.path, creatures);
                 }
-            } else {
-                new Notice(`User compendium path "${folderPath}" is not a valid Markdown file or folder.`);
-            }
+            } else { new Notice(`Compendium path "${folderPath}" is not valid.`); }
         }
 
         const uniqueCreatures: StatblockData[] = [];
         const names = new Set<string>();
-
-        creatures.forEach(c => {
-            if (!names.has(c.name)) {
-                uniqueCreatures.push(c);
-                names.add(c.name);
-            }
-        });
-
-
-        console.log(`Daggerheart: Total ${uniqueCreatures.length} unique creatures loaded into compendium.`);
+        creatures.forEach(c => { if (!names.has(c.name)) { uniqueCreatures.push(c); names.add(c.name); } });
         return uniqueCreatures;
     }
 
     private parseSrdAdversaryData(srd: any): StatblockData | null {
         try {
-            if (!srd.name || !srd.hp || !srd.stress) {
-                console.warn("SRD object missing essential fields (name, hp, stress):", srd);
-                return null;
-            }
-
-            const hpStress: StatblockHpStress = {
-                hp: Number(srd.hp) || 0,
-                stress: Number(srd.stress) || 0,
-            };
+            if (!srd.name || !srd.hp || !srd.stress) return null;
+            const hpStress: StatblockHpStress = { hp: Number(srd.hp) || 0, stress: Number(srd.stress) || 0 };
             if (srd.thresholds && typeof srd.thresholds === 'string') {
                 const parts = srd.thresholds.split('/');
-                if (parts.length >= 1 && parts[0].trim().toLowerCase() !== "none") hpStress.major_hp = Number(parts[0].trim()) || null; // SRD first threshold is major
-                if (parts.length >= 2 && parts[1].trim().toLowerCase() !== "none") hpStress.severe_hp = Number(parts[1].trim()) || null; // SRD second is severe
+                if (parts.length >= 1 && parts[0].trim().toLowerCase() !== "none") hpStress.major_hp = Number(parts[0].trim()) || null;
+                if (parts.length >= 2 && parts[1].trim().toLowerCase() !== "none") hpStress.severe_hp = Number(parts[1].trim()) || null;
             }
-
             const features: StatblockFeature[] = [];
             if (srd.feats && Array.isArray(srd.feats)) {
                 srd.feats.forEach((feat: any) => {
                     if (feat.name && feat.text) {
-                        let featNameFull = feat.name;
-                        let cost: string | number | undefined = undefined;
-                        let type = "Passive";
-                        let nameOnly = featNameFull;
-
+                        let featNameFull = feat.name, cost: string | number | undefined, type = "Passive", nameOnly = featNameFull;
                         const typeMatch = featNameFull.match(/-\s*(Passive|Action|Reaction(?:[:\s].*)?)$/i);
-                        if (typeMatch) {
-                            type = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1).toLowerCase().replace(/:.*/, '').trim();
-                            nameOnly = featNameFull.substring(0, typeMatch.index).trim();
-                        }
-
+                        if (typeMatch) { type = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1).toLowerCase().replace(/:.*/, '').trim(); nameOnly = featNameFull.substring(0, typeMatch.index).trim(); }
                         const costMatch = nameOnly.match(/\(([^)]+)\)$/);
-                        if (costMatch) {
-                            const costStr = costMatch[1];
-                            if (!isNaN(Number(costStr))) {
-                                cost = Number(costStr);
-                            } else {
-                                cost = costStr;
-                            }
-                            nameOnly = nameOnly.substring(0, costMatch.index).trim();
-                        }
-
-                        features.push({
-                            name: nameOnly.trim(),
-                            type: type,
-                            cost: cost,
-                            description: feat.text,
-                        });
+                        if (costMatch) { const costStr = costMatch[1]; cost = !isNaN(Number(costStr)) ? Number(costStr) : costStr; nameOnly = nameOnly.substring(0, costMatch.index).trim(); }
+                        features.push({ name: nameOnly.trim(), type, cost, description: feat.text });
                     }
                 });
             }
-
-            let experience: StatblockExperience | string | undefined;
-            if (srd.experience && typeof srd.experience === 'string') {
-                experience = srd.experience;
-            }
-
-            let motives_tactics: string[] | string | undefined;
-            if (srd.motives_and_tactics && typeof srd.motives_and_tactics === 'string') {
-                motives_tactics = srd.motives_and_tactics;
-            }
-
-
-            const statblock: StatblockData = {
-                name: srd.name,
-                tier: srd.tier ? (isNaN(Number(srd.tier)) ? srd.tier : Number(srd.tier)) : undefined,
-                type: srd.type,
-                description: srd.description,
-                motives_tactics: motives_tactics,
+            return {
+                name: srd.name, tier: srd.tier ? (isNaN(Number(srd.tier)) ? srd.tier : Number(srd.tier)) : undefined, type: srd.type,
+                description: srd.description, motives_tactics: srd.motives_and_tactics,
                 difficulty: srd.difficulty ? (isNaN(Number(srd.difficulty)) ? srd.difficulty : Number(srd.difficulty)) : undefined,
                 hp_stress: hpStress,
-                attack: {
-                    name: srd.attack || "Attack",
-                    range: srd.range || "",
-                    damage: srd.damage || "",
-                    modifier: srd.atk || "0"
-                },
-                experience: experience,
-                features: features,
-                sourceFile: SRD_ADVERSARIES_FILE
+                attack: { name: srd.attack || "Attack", range: srd.range || "", damage: srd.damage || "", modifier: srd.atk || "0" },
+                experience: srd.experience, features, sourceFile: SRD_ADVERSARIES_FILE
             };
-            return statblock;
-        } catch (e: any) {
-            console.error("Error transforming SRD adversary data:", srd, e);
-            return null;
-        }
+        } catch (e) { console.error("Error parsing SRD data:", srd, e); return null; }
     }
-
 
     private extractStatblocksFromFile(content: string, filePath: string, creaturesArray: StatblockData[]) {
         const codeBlockRegex = /```daggerheart-statblock\s*([\s\S]*?)```/g;
@@ -965,40 +797,21 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             try {
                 const yamlContent = match[1].replace(/\u00A0/g, ' ');
                 const statblock = YAML.load(yamlContent) as StatblockData;
-
-                if (statblock && statblock.name && statblock.hp_stress) {
+                if (statblock?.name && statblock.hp_stress) {
                     statblock.sourceFile = filePath;
                     statblock.hp_stress.hp = Number(statblock.hp_stress.hp);
                     statblock.hp_stress.stress = Number(statblock.hp_stress.stress);
                     if (statblock.hp_stress.major_hp) statblock.hp_stress.major_hp = Number(statblock.hp_stress.major_hp);
                     if (statblock.hp_stress.severe_hp) statblock.hp_stress.severe_hp = Number(statblock.hp_stress.severe_hp);
-
                     if (typeof statblock.experience === 'string') {
                         const expObj: StatblockExperience = {};
-                        const expParts = statblock.experience.split(',');
-                        expParts.forEach(part => {
-                            const subParts = part.trim().split(/\s+/);
-                            if (subParts.length === 2 && !isNaN(Number(subParts[1]))) {
-                                expObj[subParts[0]] = Number(subParts[1]);
-                            }
-                        });
+                        statblock.experience.split(',').forEach(part => { const sp = part.trim().split(/\s+/); if (sp.length === 2 && !isNaN(Number(sp[1]))) expObj[sp[0]] = Number(sp[1]); });
                         statblock.experience = expObj;
-                    } else if (!statblock.experience) {
-                        statblock.experience = {};
-                    }
-
-
-                    if (typeof statblock.motives_tactics === 'string') {
-                        statblock.motives_tactics = statblock.motives_tactics.split(',').map(s => s.trim());
-                    } else if (!statblock.motives_tactics) {
-                        statblock.motives_tactics = [];
-                    }
-
+                    } else if (!statblock.experience) statblock.experience = {};
+                    statblock.motives_tactics = typeof statblock.motives_tactics === 'string' ? statblock.motives_tactics.split(',').map(s => s.trim()) : (statblock.motives_tactics || []);
                     creaturesArray.push(statblock);
                 }
-            } catch (e: any) {
-                console.warn(`Daggerheart: Failed to parse YAML for a statblock in ${filePath}: ${e.message}.`);
-            }
+            } catch (e: any) { console.warn(`Failed to parse YAML in ${filePath}: ${e.message}.`); }
         }
     }
 
@@ -1008,31 +821,33 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         isInstance: boolean = false,
         displayName?: string,
         hpUpdateCallback?: (newHp: number) => void,
-        stressUpdateCallback?: (newStress: number) => void
+        stressUpdateCallback?: (newStress: number) => void,
+        isGroupedInstance: boolean = false
     ) {
         if (!isInstance) {
             containerEl.empty();
         }
 
-        const statblockContentDiv = isInstance ? containerEl.createDiv({ cls: 'dh-instance-card-content' }) : containerEl.createDiv({ cls: 'dh-statblock' });
+        let statblockContentDiv: HTMLElement;
+        if (isInstance) {
+            let existingContent = containerEl.querySelector('.dh-instance-card-content') as HTMLElement;
+            if (existingContent) { existingContent.empty(); statblockContentDiv = existingContent; }
+            else { statblockContentDiv = containerEl.createDiv({ cls: 'dh-instance-card-content' }); }
+        } else {
+            statblockContentDiv = containerEl.createDiv({ cls: 'dh-statblock' });
+        }
 
         if (data.image && isInstance) {
             const parentCard = containerEl.closest('.dh-creature-instance-card') || containerEl;
             let imgContainer = parentCard.querySelector('.dh-card-image-container') as HTMLElement;
-            if (!imgContainer) {
-                imgContainer = parentCard.createDiv({ cls: 'dh-card-image-container', prepend: true });
-            }
+            if (!imgContainer) imgContainer = parentCard.createDiv({ cls: 'dh-card-image-container', prepend: true });
             imgContainer.empty();
             imgContainer.createEl('img', { attr: { src: data.image, alt: data.name }, cls: 'dh-card-image' });
         }
 
         const headerDiv = statblockContentDiv.createDiv({ cls: 'dh-header' });
         const nameToDisplay = displayName || data.name;
-
-        if (nameToDisplay) {
-            const nameEl = headerDiv.createSpan({ cls: 'dh-name' });
-            nameEl.setText(`${nameToDisplay.toUpperCase()}`);
-        }
+        if (nameToDisplay) headerDiv.createSpan({ cls: 'dh-name', text: nameToDisplay.toUpperCase() });
 
         if (isInstance) {
             let roleTagText = "";
@@ -1042,19 +857,15 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 const roleTagDiv = statblockContentDiv.createDiv({ text: roleTagText.trim(), cls: 'dh-card-role-text' });
                 headerDiv.insertAdjacentElement('afterend', roleTagDiv);
             }
-        }
-        // Removed 'else if (data.title)' as title is no longer used for full statblocks
-
-        if (!isInstance && data.tier) {
+        } else if (data.tier) {
             const metaDiv = statblockContentDiv.createDiv({ cls: 'dh-meta' });
             metaDiv.createSpan({ text: `Tier ${data.tier}`, cls: 'dh-tier' });
             if (data.type) metaDiv.createSpan({ text: data.type, cls: 'dh-type' });
         }
-        // Show description on instance cards if setting is enabled
+
         if (data.description && (!isInstance || (isInstance && this.settings.showDescriptionOnCards))) {
             statblockContentDiv.createDiv({ text: data.description, cls: 'dh-description' });
         }
-
 
         if (data.motives_tactics) {
             const motivesText = Array.isArray(data.motives_tactics) ? data.motives_tactics.join(', ') : data.motives_tactics;
@@ -1067,9 +878,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         if (data.experience) {
             let expStringContent = "";
-            if (typeof data.experience === 'string') {
-                expStringContent = data.experience;
-            } else if (typeof data.experience === 'object' && Object.keys(data.experience).length > 0) {
+            if (typeof data.experience === 'string') expStringContent = data.experience;
+            else if (typeof data.experience === 'object' && Object.keys(data.experience).length > 0) {
                 expStringContent = Object.entries(data.experience)
                     .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)} ${value}`)
                     .join(', ');
@@ -1081,52 +891,30 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             }
         }
 
-
         const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
-        if (data.difficulty !== undefined) {
-            coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
-        }
+        if (data.difficulty !== undefined) coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
         if (data.attack) {
-            let modifierText = data.attack.modifier !== undefined && data.attack.modifier !== null
-                ? String(data.attack.modifier) : 'N/A';
+            let modifierText = data.attack.modifier !== undefined && data.attack.modifier !== null ? String(data.attack.modifier) : 'N/A';
             if (modifierText !== 'N/A' && !modifierText.startsWith('+') && !modifierText.startsWith('-')) {
                 const numModifier = parseFloat(modifierText);
-                if (!isNaN(numModifier) && numModifier > 0) {
-                    modifierText = `+${modifierText}`;
-                }
+                if (!isNaN(numModifier) && numModifier > 0) modifierText = `+${modifierText}`;
             }
-            let attackDisplay = "";
-            if (isInstance) {
-                attackDisplay = `<strong>${data.attack.name || 'Attack'}:</strong> ${data.attack.range || ''} – ${data.attack.damage || ''} (ATK ${modifierText})`;
-            } else {
-                attackDisplay = `<strong>ATK:</strong> ${modifierText} | <strong>${data.attack.name || 'Attack'}:</strong> ${data.attack.range || ''} | ${data.attack.damage || ''}`;
-            }
-            const attackSpan = coreStatsLine.createSpan({ cls: 'dh-attack-details-span' });
-            attackSpan.innerHTML = attackDisplay;
+            const attackDisplay = isInstance ? `<strong>${data.attack.name || 'Attack'}:</strong> ${data.attack.range || ''} – ${data.attack.damage || ''} (ATK ${modifierText})`
+                : `<strong>ATK:</strong> ${modifierText} | <strong>${data.attack.name || 'Attack'}:</strong> ${data.attack.range || ''} | ${data.attack.damage || ''}`;
+            coreStatsLine.createSpan({ cls: 'dh-attack-details-span' }).innerHTML = attackDisplay;
         }
-
 
         if (data.features && Array.isArray(data.features) && data.features.length > 0) {
             const featuresSectionDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
             featuresSectionDiv.createDiv({ text: 'FEATURES', cls: isInstance ? 'dh-instance-features-title' : 'dh-features-title' });
-
             const featuresListUl = featuresSectionDiv.createEl('ul', { cls: 'dh-features-list' });
             data.features.forEach(feature => {
                 if (typeof feature !== 'object' || !feature.name) return;
                 const featureLi = featuresListUl.createEl('li');
-
                 const headerContainer = featureLi.createDiv({ cls: 'dh-feature-header-container' });
-
-                let featureHeaderString = `<strong>${feature.name}`;
-                if (feature.cost !== undefined && feature.cost !== null && typeof feature.cost === 'number') {
-                    featureHeaderString += ` (${feature.cost})`;
-                } else if (feature.cost && typeof feature.cost === 'string') {
-                    featureHeaderString += ` (${feature.cost})`;
-                }
-                featureHeaderString += `</strong>`;
-                if (feature.type) {
-                    featureHeaderString += ` - ${feature.type}`;
-                }
+                let featureHeaderString = `<strong>${feature.name}</strong>`;
+                if (feature.cost !== undefined && feature.cost !== null) featureHeaderString += ` (${feature.cost})`;
+                if (feature.type) featureHeaderString += ` - ${feature.type}`;
 
                 const nameSpan = headerContainer.createSpan({ cls: 'dh-feature-name' });
                 nameSpan.innerHTML = featureHeaderString;
@@ -1134,63 +922,51 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 let fullDescriptionText = "";
                 if (feature.countdown) {
                     const countdownStr = `Countdown (${feature.countdown}).`;
-                    const descToCheck = feature.description ? String(feature.description).toLowerCase().trim() : "";
-                    const countdownKeyPhrase = `countdown (${String(feature.countdown).toLowerCase().trim()})`;
-                    if (!descToCheck.includes(countdownKeyPhrase)) {
+                    if (!String(feature.description || "").toLowerCase().trim().includes(`countdown (${String(feature.countdown).toLowerCase().trim()})`)) {
                         fullDescriptionText += `${countdownStr} `;
                     }
                 }
-                if (feature.description) {
-                    fullDescriptionText += feature.description;
-                }
+                if (feature.description) fullDescriptionText += feature.description;
 
                 if (isInstance) {
                     if (fullDescriptionText.trim()) {
-                        const toggle = headerContainer.createSpan({
-                            cls: 'dh-feature-toggle',
-                            text: this.settings.showFeatureDetailsOnCards ? ' [-]' : ' [+]'
-                        });
-                        toggle.setAttribute('aria-expanded', String(this.settings.showFeatureDetailsOnCards));
-                        toggle.setAttribute('role', 'button');
-                        const descDiv = featureLi.createDiv({
-                            cls: `dh-feature-description${this.settings.showFeatureDetailsOnCards ? '' : ' dh-feature-description-hidden'}`
-                        });
+                        const toggle = headerContainer.createSpan({ cls: 'dh-feature-toggle', text: this.settings.showFeatureDetailsOnCards ? ' [-]' : ' [+]' });
+                        toggle.setAttrs({ 'aria-expanded': String(this.settings.showFeatureDetailsOnCards), role: 'button' });
+                        const descDiv = featureLi.createDiv({ cls: `dh-feature-description${this.settings.showFeatureDetailsOnCards ? '' : ' dh-feature-description-hidden'}` });
                         descDiv.setText(fullDescriptionText.trim());
                         toggle.addEventListener('click', (event) => {
                             event.stopPropagation();
                             const isHidden = descDiv.classList.toggle('dh-feature-description-hidden');
                             toggle.setText(isHidden ? ' [+]' : ' [-]');
-                            toggle.setAttribute('aria-expanded', String(!isHidden));
+                            toggle.setAttr('aria-expanded', String(!isHidden));
                         });
                     }
                 } else {
                     nameSpan.innerHTML += ':';
-                    if (fullDescriptionText.trim()) {
-                        const descDiv = featureLi.createDiv({ cls: 'dh-feature-description' });
-                        descDiv.setText(fullDescriptionText.trim());
-                    }
+                    if (fullDescriptionText.trim()) featureLi.createDiv({ cls: 'dh-feature-description', text: fullDescriptionText.trim() });
                 }
             });
         }
 
         if (data.hp_stress && typeof data.hp_stress === 'object') {
             const hpStressContainer = statblockContentDiv.createDiv({ cls: 'dh-hp-stress-container' });
+            const originalHpStressSummaryDiv = hpStressContainer.createDiv({ cls: 'dh-original-hp-stress-summary' });
+
             if (!isInstance) {
-                hpStressContainer.createEl('h4', { text: 'HP & STRESS', cls: 'dh-hp-stress-title' });
+                originalHpStressSummaryDiv.createEl('h4', { text: 'HP & STRESS', cls: 'dh-hp-stress-title' });
             }
 
             const hpMax = Number(data.hp_stress.hp) || 0;
             const stressMax = Number(data.hp_stress.stress) || 0;
 
-            const summaryLineHP = hpStressContainer.createDiv({ cls: 'dh-hp-stress-summary' });
+            const summaryLineHP = originalHpStressSummaryDiv.createDiv({ cls: 'dh-hp-stress-summary' });
             summaryLineHP.innerHTML = `<span class="dh-summary-label">HP:</span> <span class="dh-summary-value">${hpMax}</span>`;
-
             const thresholdsInlineContainer = summaryLineHP.createSpan({ cls: 'dh-thresholds-inline' });
-            if (data.hp_stress.major_hp !== undefined && data.hp_stress.major_hp !== null) {
+            if (data.hp_stress.major_hp != null) {
                 thresholdsInlineContainer.createSpan({ text: 'Minor', cls: 'dh-threshold-box dh-threshold-box-label' });
                 thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.major_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
             }
-            if (data.hp_stress.severe_hp !== undefined && data.hp_stress.severe_hp !== null) {
+            if (data.hp_stress.severe_hp != null) {
                 thresholdsInlineContainer.createSpan({ text: 'Major', cls: 'dh-threshold-box dh-threshold-box-label' });
                 thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.severe_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
             }
@@ -1198,8 +974,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 thresholdsInlineContainer.createSpan({ text: 'Severe', cls: 'dh-threshold-box dh-threshold-box-label dh-threshold-box-severe' });
             }
 
-
-            const summaryLineStress = hpStressContainer.createDiv({ cls: 'dh-hp-stress-summary' });
+            const summaryLineStress = originalHpStressSummaryDiv.createDiv({ cls: 'dh-hp-stress-summary' });
             summaryLineStress.innerHTML = `<span class="dh-summary-label">Stress:</span> <span class="dh-summary-value">${stressMax}</span>`;
 
             if (isInstance) {
@@ -1207,21 +982,22 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 const hpCb = hpUpdateCallback || ((newHp) => creatureInstance.currentHp = newHp);
                 const stressCb = stressUpdateCallback || ((newStress) => creatureInstance.currentStress = newStress);
 
-                this.createInteractiveTrack(hpStressContainer, 'HP', hpMax, `${creatureInstance.id}-hp`, creatureInstance.currentHp, hpCb);
-                this.createInteractiveTrack(hpStressContainer, 'Stress', stressMax, `${creatureInstance.id}-stress`, creatureInstance.currentStress, stressCb);
+                this.createInteractiveTrack(originalHpStressSummaryDiv, 'HP', hpMax, `${creatureInstance.id}-hp-main`, creatureInstance.currentHp, hpCb);
+                this.createInteractiveTrack(originalHpStressSummaryDiv, 'Stress', stressMax, `${creatureInstance.id}-stress-main`, creatureInstance.currentStress, stressCb);
+            }
 
-                hpStressContainer.createDiv({ cls: 'dh-additional-trackers-container' });
+            if (isInstance) {
+                let additionalTrackersEl = statblockContentDiv.querySelector('.dh-additional-trackers-container') as HTMLElement;
+                if (!additionalTrackersEl) {
+                    additionalTrackersEl = statblockContentDiv.createDiv({ cls: 'dh-additional-trackers-container' });
+                }
             }
         }
     }
 
     createInteractiveTrack(
-        parentEl: HTMLElement,
-        label: string,
-        maxValue: number,
-        trackIdPrefix: string,
-        currentValue: number,
-        updateCallback: (newValue: number) => void
+        parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string,
+        currentValue: number, updateCallback: (newValue: number) => void
     ) {
         const trackDiv = parentEl.createDiv({ cls: `dh-interactive-track dh-${label.toLowerCase()}-track` });
         trackDiv.createSpan({ text: label.toUpperCase(), cls: 'dh-track-label' });
@@ -1232,56 +1008,35 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         const updatePipsAndState = (newVal: number) => {
             let actualNewValue = Math.max(0, Math.min(newVal, maxValue));
-            pips.forEach((p, idx) => {
-                if (idx < actualNewValue) p.classList.add('dh-pip-marked');
-                else p.classList.remove('dh-pip-marked');
-            });
+            pips.forEach((p, idx) => p.classList.toggle('dh-pip-marked', idx < actualNewValue));
             updateCallback(actualNewValue);
         };
 
         for (let i = 0; i < maxValue; i++) {
             const pip = pipsContainer.createDiv({ cls: 'dh-pip' });
             pip.dataset.index = i.toString();
-            if (i < currentValue) {
-                pip.classList.add('dh-pip-marked');
-            }
+            if (i < currentValue) pip.classList.add('dh-pip-marked');
             pip.addEventListener('click', () => {
                 const clickedIndex = parseInt(pip.dataset.index!);
                 const currentMarkedCount = pips.filter(p => p.classList.contains('dh-pip-marked')).length;
-                if (pip.classList.contains('dh-pip-marked') && clickedIndex === currentMarkedCount - 1 && currentMarkedCount === clickedIndex + 1) {
-                    updatePipsAndState(clickedIndex);
-                } else {
-                    updatePipsAndState(clickedIndex + 1);
-                }
+                updatePipsAndState(pip.classList.contains('dh-pip-marked') && clickedIndex === currentMarkedCount - 1 ? clickedIndex : clickedIndex + 1);
             });
             pips.push(pip);
         }
 
         const incButton = controlsDiv.createEl('button', { text: '+', cls: 'dh-track-btn dh-track-btn-increment' });
-
         decrementButton.addEventListener('click', () => {
             const currentMarkedCount = pips.filter(p => p.classList.contains('dh-pip-marked')).length;
-            if (currentMarkedCount > 0) {
-                updatePipsAndState(currentMarkedCount - 1);
-            }
+            if (currentMarkedCount > 0) updatePipsAndState(currentMarkedCount - 1);
         });
-
         incButton.addEventListener('click', () => {
             const currentMarkedCount = pips.filter(p => p.classList.contains('dh-pip-marked')).length;
-            if (currentMarkedCount < maxValue) {
-                updatePipsAndState(currentMarkedCount + 1);
-            }
+            if (currentMarkedCount < maxValue) updatePipsAndState(currentMarkedCount + 1);
         });
     }
 
-    async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    }
-
-    async saveSettings() {
-        await this.saveData(this.settings);
-    }
-
+    async loadSettings() { this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()); }
+    async saveSettings() { await this.saveData(this.settings); }
     onunload() {
         console.log('Unloading Daggerheart Statblock Plugin');
         this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
@@ -1290,12 +1045,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
 class DaggerheartSettingTab extends PluginSettingTab {
     plugin: DaggerheartStatblockPlugin;
-
-    constructor(app: App, plugin: DaggerheartStatblockPlugin) {
-        super(app, plugin);
-        this.plugin = plugin;
-    }
-
+    constructor(app: App, plugin: DaggerheartStatblockPlugin) { super(app, plugin); this.plugin = plugin; }
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -1305,23 +1055,21 @@ class DaggerheartSettingTab extends PluginSettingTab {
             .setName('Compendium Folder')
             .setDesc('Path to the folder containing your Daggerheart statblock Markdown files (e.g., "System/Daggerheart/Creatures"). Leave empty to disable user compendium.')
             .addText((text: TextComponent) => {
-                text
-                    .setPlaceholder('Example: Path/To/Creatures')
+                text.setPlaceholder('Example: Path/To/Creatures')
                     .setValue(this.plugin.settings.compendiumFolder)
                     .onChange(async (value) => {
                         this.plugin.settings.compendiumFolder = value.trim();
                         await this.plugin.saveSettings();
                         const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
                         if (view instanceof EncounterBuilderView) {
-                            await view.loadCompendium();
-                            view.drawUI();
+                            await view.loadCompendium(); view.drawUI();
                         }
                     });
             });
 
         new Setting(containerEl)
             .setName('Use SRD Adversaries')
-            .setDesc(`Include the Daggerheart SRD adversaries from the plugin's "${SRD_ADVERSARIES_FILE}" file in the compendium. This file must be present in the plugin's root folder.`)
+            .setDesc(`Include the Daggerheart SRD adversaries from the plugin's "${SRD_ADVERSARIES_FILE}" file.`)
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.useSrdAdversaries)
                 .onChange(async (value) => {
@@ -1329,8 +1077,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
                     if (view instanceof EncounterBuilderView) {
-                        await view.loadCompendium();
-                        view.drawUI();
+                        await view.loadCompendium(); view.drawUI();
                     }
                 }));
 
@@ -1348,7 +1095,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Expand Feature Descriptions by Default')
-            .setDesc('If enabled, feature descriptions will be expanded by default on creature cards. If disabled, descriptions will be collapsed but can still be toggled with the [+] button.')
+            .setDesc('If enabled, feature descriptions will be expanded by default on creature cards.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showFeatureDetailsOnCards)
                 .onChange(async (value) => {
@@ -1360,7 +1107,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Enable Fear Tracker')
-            .setDesc('If enabled, a fear counter will be shown in the encounter view that persists across encounters.')
+            .setDesc('If enabled, a fear counter will be shown in the encounter view.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableFearTracker)
                 .onChange(async (value) => {

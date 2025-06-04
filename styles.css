@@ -3,22 +3,22 @@
 /* --- General Statblock Rendering (for code blocks and cards) --- */
 .dh-statblock {
     font-family: var(--font-text-override, 'Helvetica Neue', Helvetica, Arial, sans-serif); 
-    background-color: var(--background-primary-alt, #fdf5e6); 
-    border: 2px solid var(--background-modifier-border-hover, #6a4f4b); 
+    background-color: var(--background-primary-alt); 
+    border: 2px solid var(--background-modifier-border); 
     border-radius: var(--radius-m, 8px);
     padding: 15px;
     margin: 15px 0;
-    box-shadow: var(--shadow-s, 2px 2px 8px rgba(0,0,0,0.15));
-    color: var(--text-normal, #3a2d21); 
+    box-shadow: var(--shadow-s);
+    color: var(--text-normal); 
     max-width: 700px;
     line-height: var(--line-height-normal, 1.5); 
 }
 
 .dh-statblock-error {
-    background-color: var(--background-modifier-error, #ffebee);
-    color: var(--text-error, #c62828);
+    background-color: var(--background-modifier-error);
+    color: var(--text-error);
     padding: var(--size-4-2, 10px);
-    border: 1px solid var(--color-red-muted, var(--background-modifier-error-hover, #e57373));
+    border: 1px solid var(--color-red);
     border-radius: var(--radius-s, 4px);
     white-space: pre-wrap;
 }
@@ -30,7 +30,7 @@
     font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif); 
 }
 .dh-statblock:not(.dh-instance-card-content) .dh-header {
-    border-bottom: 1px solid var(--background-modifier-border, #d2b48c);
+    border-bottom: 1px solid var(--background-modifier-border);
     margin-bottom: var(--size-4-2, 10px); 
     padding-bottom: var(--size-4-2, 8px);
 }
@@ -40,7 +40,7 @@
 .dh-header .dh-title {
     font-size: var(--font-ui-large, 1.4em); 
     font-weight: var(--font-bold, bold);
-    color: var(--text-title-h2, var(--text-accent, #5c3a21)); 
+    color: var(--text-accent); 
     display: inline;
     letter-spacing: 0.5px;
 }
@@ -52,7 +52,7 @@
     font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
     font-size: var(--font-ui-small, 0.8em);
     font-weight: var(--font-semibold, 600);
-    color: var(--text-muted, #a0a8b0); 
+    color: var(--text-muted); 
     text-transform: uppercase;
     margin-bottom: var(--size-4-2, 10px); 
     padding: var(--size-4-1, 2px) 0; 
@@ -64,7 +64,7 @@
     font-size: var(--font-ui-medium, 1em); 
     font-weight: var(--font-semibold, bold);
     margin-bottom: var(--size-4-2, 8px);
-    color: var(--text-faint, #705038);
+    color: var(--text-faint);
 }
 .dh-meta .dh-tier { margin-right: var(--size-4-3, 12px); }
 
@@ -72,7 +72,7 @@
     font-style: italic;
     margin-bottom: var(--size-4-2, 10px);
     font-size: var(--font-text-size, 0.9em); 
-    color: var(--text-normal, #4a3b32);
+    color: var(--text-normal);
 }
 .dh-instance-card-content .dh-description {
     font-size: calc(var(--font-ui-small) * 0.95);
@@ -91,7 +91,7 @@
     color: var(--text-faint);
     margin-top: var(--size-4-1);
 }
-.dh-motives strong { color: var(--text-accent-hover, #503018); font-weight: var(--font-bold, bold); }
+.dh-motives strong { color: var(--text-accent); font-weight: var(--font-bold, bold); }
 .dh-instance-card-content .dh-motives strong { color: var(--text-muted); }
 
 
@@ -112,8 +112,8 @@
     gap: var(--size-4-3, 10px);
 }
 
-.dh-core-stats-line strong { color: var(--color-red, #b71c1c); font-weight: var(--font-bold, bold); } 
-.dh-core-stats-line .dh-attack-details-span strong { color: var(--text-accent-hover, #503018); } 
+.dh-core-stats-line strong { color: var(--color-red); font-weight: var(--font-bold, bold); } 
+.dh-core-stats-line .dh-attack-details-span strong { color: var(--text-accent); } 
 
 .dh-instance-card-content .dh-core-stats-line {
     font-size: var(--font-ui-small, 0.85em); 
@@ -199,34 +199,34 @@
     font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
     flex-grow: 1; 
 }
-.dh-feature-name strong { color: var(--text-strong, #4a311c); font-weight: var(--font-bold, bold); }
+.dh-feature-name strong { color: var(--text-accent); font-weight: var(--font-bold, bold); }
 .dh-instance-card-content .dh-feature-name { color: var(--text-normal); } 
 .dh-instance-card-content .dh-feature-name strong { color: var(--text-strong); } 
 
 .dh-feature-toggle {
     font-size: 0.9em;
-    color: var(--text-accent, #88aaff); 
+    color: var(--text-accent); 
     margin-left: var(--size-4-2, 8px);
     cursor: pointer;
     user-select: none;
     flex-shrink: 0; 
 }
 .dh-feature-toggle:hover {
-    color: var(--text-accent-hover, #aaccff);
+    color: var(--text-accent-hover);
 }
 
 .dh-feature-description { 
     font-size: 0.95em; 
     padding-left: var(--size-4-2, 8px); 
-    color: var(--text-normal, #4a392c);
+    color: var(--text-normal);
     line-height: var(--line-height-normal, 1.4);
     margin-top: var(--size-4-1, 4px); 
 }
 .dh-instance-card-content .dh-feature-description {
     font-size: 0.92em; 
-    color: var(--text-muted, #a8b0b8); 
+    color: var(--text-muted); 
     padding-left: 0; 
-    border-top: 1px solid var(--background-modifier-border, rgba(255,255,255,0.07)); 
+    border-top: 1px solid var(--background-modifier-border); 
     padding-top: var(--size-4-1, 6px);
     margin-top: var(--size-4-1, 5px); 
 }
@@ -235,119 +235,147 @@
 }
 
 
-/* HP & STRESS Section (shared styles) */
+/* HP & STRESS Section */
 .dh-hp-stress-container {
     margin-top: var(--size-4-3, 12px);
     padding-top: var(--size-4-2, 8px);
 }
 .dh-statblock:not(.dh-instance-card-content) .dh-hp-stress-container { 
-     border-top: 1px dashed var(--background-modifier-border-focus, #c8a079); 
+     border-top: 1px dashed var(--background-modifier-border); 
 }
-.dh-instance-card-content .dh-hp-stress-container {
-    margin-top: var(--size-4-2, 10px); 
+
+.dh-original-hp-stress-summary {
+    margin-bottom: var(--size-4-2, 10px); 
 }
+
+.dh-creature-instance-card.dh-group-mode-active .dh-original-hp-stress-summary > .dh-interactive-track {
+    display: none !important;
+}
+
 
 .dh-hp-stress-title { 
     text-align: center;
     font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
     font-weight: var(--font-bold, bold);
-    color: var(--text-title-h3, var(--text-accent-hover, #503018));
+    color: var(--text-accent);
     margin-bottom: var(--size-4-2, 8px);
     font-size: var(--font-ui-large, 1.1em);
     letter-spacing: 1px;
 }
-.dh-thresholds-display {
-    font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
-    font-size: var(--font-ui-small, 0.85em); 
-    margin-bottom: var(--size-4-2, 10px);
-    color: var(--text-normal, #4a3b32);
-}
+
 .dh-hp-stress-summary {
     margin-bottom: var(--size-4-1, 6px); 
     display: flex; 
     align-items: center;
     flex-wrap: wrap; 
+    font-size: var(--font-ui-small); /* Made HP/Stress summary font smaller */
 }
-.dh-summary-label { font-weight: var(--font-semibold, bold); margin-right: var(--size-4-1, 4px); }
-.dh-summary-value { font-weight: var(--font-bold, bold); color: var(--text-strong, #3a2d21); margin-right: var(--size-4-2, 10px); }
-.dh-instance-card-content .dh-summary-label,
-.dh-instance-card-content .dh-summary-value { color: var(--text-normal); }
-
+.dh-summary-label { 
+    font-weight: var(--font-semibold, bold); 
+    margin-right: var(--size-4-1, 4px); 
+    color: var(--text-normal);
+}
+.dh-summary-value { 
+    font-weight: var(--font-bold, bold); 
+    color: var(--text-normal); 
+    margin-right: var(--size-4-2, 10px); 
+}
 
 .dh-thresholds-inline { display: inline-flex; flex-wrap: nowrap; align-items: stretch; }
 .dh-threshold-box {
     display: flex; align-items: center; justify-content: center;
-    padding: var(--size-4-1, 3px) var(--size-4-2, 6px); border: 1px solid var(--background-modifier-border-hover, #a08464); 
-    background-color: var(--background-secondary-alt, #ede4d5); text-align: center;
+    padding: var(--size-4-1, 3px) var(--size-4-2, 6px); 
+    border: 1px solid var(--background-modifier-border); 
+    background-color: var(--background-secondary-alt); 
+    text-align: center;
     font-size: 0.9em; 
     min-width: 25px; height: 24px; box-sizing: border-box;
     margin-right: -1px; 
 }
 .dh-threshold-box-label {
-    font-weight: var(--font-normal, normal); color: var(--text-accent-hover, #503018); background-color: var(--background-secondary, #e6dacb); 
+    font-weight: var(--font-normal, normal); 
+    color: var(--text-accent); 
+    background-color: var(--background-secondary); 
     padding-left: var(--size-4-2, 8px); padding-right: var(--size-4-2, 8px);
-    border-right-width: 0; border-top-left-radius: var(--radius-s, 3px); border-bottom-left-radius: var(--radius-s, 3px);
+    border-right-width: 0; 
+    border-top-left-radius: var(--radius-s, 3px); 
+    border-bottom-left-radius: var(--radius-s, 3px);
 }
 .dh-threshold-box-value {
-    font-weight: var(--font-bold, bold); color: var(--text-strong, #3a2d21); background-color: var(--background-primary-alt, #f7f2e9); 
-    border-left-width: 0; border-top-right-radius: var(--radius-s, 3px); border-bottom-right-radius: var(--radius-s, 3px);
+    font-weight: var(--font-bold, bold); 
+    color: var(--text-normal); 
+    background-color: var(--background-primary-alt); 
+    border-left-width: 0; 
+    border-top-right-radius: var(--radius-s, 3px); 
+    border-bottom-right-radius: var(--radius-s, 3px);
 }
 .dh-thresholds-inline .dh-threshold-box-label + .dh-threshold-box-value {
-    border-left: 1px solid var(--background-modifier-border-hover, #a08464); margin-left: -1px; 
+    border-left: 1px solid var(--background-modifier-border-hover, #a08464); 
+    margin-left: -1px; 
 }
-.dh-thresholds-inline .dh-threshold-box-label:last-child {
-    border-right-width: 1px; border-top-right-radius: var(--radius-s, 3px); border-bottom-right-radius: var(--radius-s, 3px);
+.dh-thresholds-inline .dh-threshold-box-label:last-child { 
+    border-right-width: 1px; 
+    border-top-right-radius: var(--radius-s, 3px); 
+    border-bottom-right-radius: var(--radius-s, 3px);
 }
 .dh-thresholds-inline > .dh-threshold-box:last-child { margin-right: 0; }
 
-.dh-instance-card-content .dh-threshold-box { background-color: var(--background-modifier-form-field, #4a4a5a); border-color: var(--background-modifier-border-focus, #606070); font-size: var(--font-ui-small, 0.85em); height: 22px;}
-.dh-instance-card-content .dh-threshold-box-label { background-color: var(--background-secondary, #525262); color: var(--text-muted, #bbb); }
-.dh-instance-card-content .dh-threshold-box-value { background-color: var(--background-primary-alt, #404050); color: var(--text-normal, #ddd); }
 
-
-/* Interactive Tracks Styling (shared) */
+/* --- Unified Interactive Tracks Styling --- */
 .dh-interactive-track { 
     display: flex !important; 
     align-items: center; 
     margin-bottom: var(--size-4-2, 8px); 
     font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif); 
     min-height: 25px; 
-    visibility: visible !important; 
-    opacity: 1 !important;
 }
 .dh-track-label {
-    font-weight: var(--font-semibold, bold); margin-right: var(--size-4-2, 8px); width: 60px; 
-    text-align: left; font-size: var(--font-ui-medium, 0.9em); color: var(--text-accent-hover, #503018);
-    flex-shrink: 0; white-space: nowrap; 
-    visibility: visible !important; opacity: 1 !important;
+    font-weight: var(--font-semibold, bold); 
+    margin-right: var(--size-4-1, 5px); /* Adjusted margin for alignment */
+    width: 45px; /* Fixed width for alignment */
+    text-align: left; 
+    font-size: var(--font-ui-small); /* Made HP/Stress track label font smaller */
+    color: var(--text-normal); 
+    flex-shrink: 0; 
+    white-space: nowrap; 
 }
-.dh-instance-card-content .dh-track-label { font-size: var(--font-ui-small, 0.85em); color: var(--text-muted, #bbb); width: 45px; }
 
 .dh-track-controls { 
     display: flex !important; 
     align-items: center; 
     flex-grow: 1; 
-    visibility: visible !important; opacity: 1 !important;
     overflow: hidden; 
 }
 
 .dh-track-btn {
-    background-color: var(--background-modifier-hover, #e0e0e0); border: 1px solid var(--background-modifier-border, #bdbdbd); color: var(--text-normal, #333);
-    font-weight: var(--font-bold, bold); cursor: pointer; border-radius: 50%; 
-    width: 24px; height: 24px; font-size: var(--font-ui-medium, 16px); line-height: 22px; 
-    text-align: center; padding: 0; margin: 0 var(--size-4-1, 4px); user-select: none; flex-shrink: 0; 
+    background-color: var(--background-modifier-hover); 
+    border: 1px solid var(--background-modifier-border); 
+    color: var(--text-normal);
+    font-weight: var(--font-bold, bold); 
+    cursor: pointer; 
+    border-radius: 50%; 
+    width: 22px; /* Slightly smaller buttons */
+    height: 22px; /* Slightly smaller buttons */
+    font-size: var(--font-ui-small, 14px); /* Smaller font for buttons */
+    line-height: 20px; 
+    text-align: center; 
+    padding: 0; 
+    margin: 0 var(--size-4-1, 4px); 
+    user-select: none; 
+    flex-shrink: 0; 
     display: inline-flex !important; 
     align-items: center;
     justify-content: center;
-    visibility: visible !important; opacity: 1 !important;
 }
-.dh-instance-card-content .dh-track-btn { background-color: var(--interactive-normal, #555); border-color: var(--interactive-normal-border, #777); color: var(--text-on-accent, #eee); width: 22px; height: 22px; font-size: var(--font-ui-small, 14px); line-height: 20px;}
+.dh-track-btn:hover { background-color: var(--background-modifier-active-hover); }
+.dh-track-btn:active { background-color: var(--background-modifier-border-focus); transform: translateY(1px); }
 
-.dh-track-btn:hover { background-color: var(--background-modifier-active-hover, #d5d5d5); }
-.dh-instance-card-content .dh-track-btn:hover { background-color: var(--interactive-hover, #666); }
-.dh-track-btn:active { background-color: var(--background-modifier-border-focus, #c0c0c0); transform: translateY(1px); }
-.dh-instance-card-content .dh-track-btn:active { background-color: var(--interactive-active, #444); }
-
+.dh-track-btn.dh-track-btn-increment,
+.dh-track-btn.dh-track-btn-decrement {
+    font-family: var(--font-interface-override, monospace); 
+    line-height: 1; 
+}
+.dh-track-btn.dh-track-btn-decrement { padding-bottom: 1px; } /* Adjusted for new button size */
 
 .dh-pips-container { 
     display: flex !important; 
@@ -357,29 +385,22 @@
     overflow-y: hidden; 
     position: relative;
     flex-grow: 1; 
+    gap: var(--size-2-1, 3px); /* Slightly reduced gap for pips */
 }
 .dh-pip {
-    width: 14px; height: 14px; border: 1px solid var(--background-modifier-border, #7d7d7d); 
-    background-color: var(--background-secondary-alt, #f0f0f0); 
-    margin-right: var(--size-4-2, 8px); 
-    margin-bottom: var(--size-4-1, 4px); 
-    cursor: pointer; box-sizing: border-box; border-radius: var(--radius-s, 3px); 
-    flex-shrink: 0; position: relative; z-index: 1; 
-    display: inline-block !important; 
-    visibility: visible !important; opacity: 1 !important;
+    width: 12px; /* Smaller pips */
+    height: 12px; /* Smaller pips */
+    border: 1px solid var(--background-modifier-border); 
+    background-color: var(--background-secondary-alt); 
+    cursor: pointer; 
+    box-sizing: border-box; 
+    border-radius: var(--radius-s, 3px); 
+    flex-shrink: 0; 
 }
-.dh-instance-card-content .dh-pip { 
-    width: 12px; height: 12px; border-color: var(--background-modifier-border-hover, #666); background-color: var(--background-modifier-form-field, #444); 
-    margin-right: var(--size-4-1, 6px); margin-bottom: var(--size-4-1, 3px);
+.dh-pip-marked { 
+    background-color: var(--interactive-accent); 
+    border-color: var(--interactive-accent-hover);
 }
-
-
-.dh-pip::after { 
-    display: none !important;
-}
-
-.dh-pip-marked { background-color: var(--text-accent, #607080); border-color: var(--text-accent-hover, #4b5863); }
-.dh-instance-card-content .dh-pip-marked { background-color: var(--interactive-accent, #88aaff); border-color: var(--interactive-accent-hover, #6688cc); }
 
 
 /* --- Encounter Builder UI Specific Styles --- */
@@ -388,8 +409,9 @@
     flex-direction: column;
     height: 100%; 
     padding: var(--size-4-2, 10px);
-    background-color: var(--background-secondary, #2a2a32); 
+    background-color: var(--background-secondary); 
     overflow: hidden; 
+    margin: 0 auto 0;
 }
 
 .dh-encounter-header {
@@ -424,7 +446,6 @@
     overflow: hidden; 
 }
 
-/* Compendium Panel (Now on the Right) */
 .dh-compendium-panel {
     background-color: var(--background-primary, #333); 
     border: 1px solid var(--background-modifier-border, #444);
@@ -437,7 +458,7 @@
     min-width: 240px;
     color: var(--text-normal, #ccc);
     transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out, border 0.3s ease-in-out, margin 0.3s ease-in-out; 
-    order: 2; /* Make it appear on the right */
+    order: 2; 
 }
 .dh-compendium-panel.dh-compendium-panel-hidden {
     flex-basis: 0 !important; 
@@ -502,7 +523,6 @@
     background-color: var(--interactive-accent-hover);
 }
 
-/* Active Encounter Creatures Panel (Now on the Left) */
 .dh-active-creatures-panel { 
     background-color: var(--background-primary-alt, #25252d); 
     border: 1px solid var(--background-modifier-border, #444);
@@ -512,7 +532,7 @@
     flex-direction: column; 
     flex-grow: 1; 
     overflow: hidden; 
-    order: 1; /* Make it appear on the left */
+    order: 1; 
 }
 .dh-active-encounter-title-clickable { 
     margin-top: 0; margin-bottom: var(--size-4-2, 10px); padding-bottom: var(--size-4-1, 5px);
@@ -547,12 +567,12 @@
 
 
 .dh-creature-instance-card {
-    background-color: var(--color-base-25, #2c2c38); 
-    color: var(--text-normal, #e0e0e0); 
+    background-color: var(--color-base-25); 
+    color: var(--text-normal); 
     border-radius: var(--radius-m, 8px);
     padding: 0; 
     width: 300px; 
-    box-shadow: var(--shadow-m, 0 4px 12px rgba(0,0,0,0.3));
+    box-shadow: var(--shadow-m);
     display: flex;
     flex-direction: column;
     position: relative; 
@@ -560,30 +580,36 @@
 }
 .dh-remove-instance-btn { 
     position: absolute;
-    top: var(--size-4-2, 8px); 
-    right: var(--size-4-2, 8px);
-    background-color: rgba(var(--mono-rgb-100), 0.1); 
-    color: var(--text-on-accent-inverted, #fff); 
-    border: 1px solid rgba(var(--mono-rgb-100), 0.3);
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    line-height: 22px; 
+    top: var(--size-4-1, 5px); 
+    right: var(--size-4-1, 5px);
+    background-color: transparent; /* More subtle background */
+    color: var(--text-faint); 
+    border: none;
+    border-radius: var(--radius-s);;
+    width: 20px;
+    height: 20px; 
+    /* line-height: 18px;  */
     text-align: center;
-    font-size: var(--font-ui-small, 14px); 
+    font-size: var(--font-smallest); /* Smaller X */
     cursor: pointer;
     z-index: 10;
+    opacity: 0.6; /* More subtle opacity */
+    transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
 }
-.dh-remove-instance-btn:hover { background-color: rgba(var(--color-red-rgb), 0.5); }
+.dh-remove-instance-btn:hover { 
+    background-color: var(--background-modifier-hover); 
+    color: var(--text-normal);
+    opacity: 1;
+}
 
 .dh-instance-card-content { 
-    background-color: var(--background-primary, #383848); 
+    background-color: var(--background-primary); 
     border: none; 
     border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px); 
     padding: var(--size-4-3, 12px);
     margin: 0;
     box-shadow: none;
-    color: var(--text-normal, #d0d0d0); 
+    color: var(--text-normal); 
     flex-grow: 1; 
     overflow-y: auto; 
 }
@@ -593,16 +619,15 @@
 }
 .dh-creature-instance-card .dh-header .dh-name {
     font-size: var(--font-ui-medium, 1.15em); 
-    color: var(--text-title-h1, #fff); 
+    color: var(--text-normal, #fff); 
 }
 
-/* Card Image and Role Tag (No longer an overlay tag) */
 .dh-card-image-container {
     width: 100%;
     height: 120px; 
     overflow: hidden;
     border-radius: var(--radius-m, 8px) var(--radius-m, 8px) 0 0; 
-    background-color: var(--color-base-20, #222); 
+    background-color: var(--color-base-20); 
     position: relative; 
 }
 .dh-card-image {
@@ -611,67 +636,62 @@
     object-fit: cover; 
 }
 
-/* Styling for additional tracker rows */
+/* Styling for additional tracker rows container */
 .dh-additional-trackers-container {
-    padding: 0 var(--size-4-3, 12px) var(--size-4-3, 12px) var(--size-4-3, 12px); 
-    background-color: var(--background-primary, #383848); 
-    border-top: 1px solid var(--background-modifier-border, #4a4a5a); 
-    border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px); 
+    padding: var(--size-4-2, 8px) var(--size-4-3, 12px); 
+    margin-top: var(--size-4-2, 8px); 
 }
-
-.dh-creature-instance-card > .dh-instance-card-content + .dh-additional-trackers-container {
-    border-top: 1px solid var(--background-modifier-border, #4a4a5a);
-    margin-top: -1px; 
-}
-
 
 .dh-additional-tracker-row {
-    padding: var(--size-4-2, 8px) 0;
-    border-bottom: 1px solid var(--background-modifier-border, #4a4a5a); 
     display: flex;
-    flex-direction: column; 
-    gap: var(--size-4-1, 5px);
+    flex-direction: column;
+    gap: var(--size-4-1, 6px); 
+    margin-bottom: var(--size-4-3, 12px); 
 }
 .dh-additional-tracker-row:last-child {
-    border-bottom: none;
+    margin-bottom: 0; 
 }
+
 .dh-additional-tracker-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--size-4-1, 5px);
+    margin-bottom: var(--size-4-1, 4px); 
 }
+
 .dh-additional-tracker-name {
-    font-size: var(--font-ui-small, 0.9em);
+    font-size: var(--font-ui-medium, 1em);
     font-weight: var(--font-semibold, bold);
-    color: var(--text-normal, #e0e0e0);
+    color: var(--text-normal); 
 }
+
 .dh-remove-additional-btn {
-    background: none;
-    border: none;
-    color: var(--text-muted, #aaa);
-    font-size: 1.1em;
+    background:none;
+    border: 0;
+    color: var(--text-faint); 
+    font-size: var(--font-smallest); /* Adjusted size */
     cursor: pointer;
-    padding: 0 var(--size-4-1, 3px);
+    padding: 0 auto;
+    background-color: transparent; /* More subtle background */
+    border-radius: var(--radius-s);;
+    width: 20px;
+    height: 20px; 
+    /* line-height: 18px;  */
+    text-align: center;
+    z-index: 10;
+    opacity: 0.6; /* More subtle opacity */
+    transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
 }
-.dh-remove-additional-btn:hover {
-    color: var(--color-red, #ff8080);
+.dh-remove-additional-btn:hover { 
+    color: var(--color-red); 
+    opacity: 1;
 }
 
-.dh-additional-tracker-row .dh-track-label { font-size: var(--font-ui-small, 0.85em); color: var(--text-muted, #bbb); width: 45px; }
-.dh-additional-tracker-row .dh-track-btn { background-color: var(--interactive-normal, #555); border-color: var(--interactive-normal-border, #777); color: var(--text-on-accent, #eee); width: 22px; height: 22px; font-size: var(--font-ui-small, 14px); line-height: 20px;}
-.dh-additional-tracker-row .dh-pip { width: 12px; height: 12px; border-color: var(--background-modifier-border-hover, #666); background-color: var(--background-modifier-form-field, #444); margin-right: var(--size-4-1, 6px); margin-bottom: var(--size-4-1, 3px);}
-.dh-additional-tracker-row .dh-pip-marked { background-color: var(--interactive-accent, #88aaff); border-color: var(--interactive-accent-hover, #6688cc); }
-.dh-additional-tracker-row .dh-pips-container {
-    max-width: calc(100% - 50px - 50px); 
-}
-
-/* Fear Tracker Styling */
 .dh-fear-tracker {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto;
+    margin: 0 auto 0;
     padding: 4px 8px;
     background-color: var(--background-secondary);
     border-radius: 4px;
@@ -716,21 +736,20 @@
     font-size: 16px;
 }
 
-/* Modal Styling */
 .dh-name-modal .modal-title, 
 .dh-manage-encounters-modal .modal-title { 
-    color: var(--text-title-h1);
-    text-align: center; /* Center modal titles */
+    color: var(--text-normal);
+    text-align: center; 
 }
 .dh-name-modal .setting-item-info,
 .dh-manage-encounters-modal .setting-item-info { 
     color: var(--text-normal);
 }
 .dh-modal-input {
-    border-color: var(--background-modifier-border-focus) !important; 
-    background-color: var(--background-primary) !important;
-    color: var(--text-normal) !important;
-    width: 100%; /* Make input take full width in setting item */
+    border-color: var(--background-modifier-border-focus);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    width: 100%; 
 }
 .dh-modal-buttons {
     display: flex;
@@ -742,14 +761,13 @@
     min-width: 80px;
 }
 
-/* Manage Encounters Modal List */
 .dh-manage-list {
     display: flex;
     flex-direction: column;
     gap: var(--size-4-1);
     max-height: 60vh; 
     overflow-y: auto;
-    margin-top: var(--size-4-3); /* Space above list */
+    margin-top: var(--size-4-3); 
 }
 .dh-manage-list-item {
     display: flex;
@@ -760,14 +778,14 @@
     border-radius: var(--radius-s);
     border: 1px solid var(--background-modifier-border);
 }
-.dh-manage-item-name-container { /* Container for name or input */
+.dh-manage-item-name-container { 
     flex-grow: 1;
     margin-right: var(--size-4-2);
 }
 .dh-manage-item-name {
     color: var(--text-normal);
 }
-.dh-manage-item-input { /* Style for the inline input */
+.dh-manage-item-input { 
     width: 100%;
     padding: var(--size-2-1) var(--size-2-2);
     border: 1px solid var(--background-modifier-border-focus);
@@ -785,7 +803,7 @@
     border: none;
     color: var(--text-muted);
     cursor: pointer;
-    padding: var(--size-2-1); /* Small padding for icon buttons */
+    padding: var(--size-2-1); 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -799,13 +817,10 @@
     background-color: rgba(var(--color-red-rgb), 0.1);
 }
 
-
-/* Ensure menu items are styled correctly if needed */
 .menu-item-icon { 
     margin-right: var(--size-4-2);
 }
 
-/* Styles for the popover menu (to ensure Obsidian theme is applied) */
 .menu { 
     background-color: var(--background-secondary);
     color: var(--text-normal);
@@ -817,7 +832,6 @@
 }
 .menu-item:hover {
     background-color: var(--background-modifier-hover);
-    color: var(--text-normal); 
 }
 .menu-item.is-checked { 
     background-color: var(--interactive-accent);
@@ -834,7 +848,7 @@
 }
 
 .dh-compendium-search {
-    width: calc(100% - var(--size-4-2) * 2); /* Full width minus padding */
+    width: calc(100% - var(--size-4-2) * 2); 
     padding: var(--size-4-2);
     margin-bottom: var(--size-4-3);
     border: 1px solid var(--background-modifier-border);
@@ -844,10 +858,9 @@
 }
 .dh-compendium-search:focus {
     border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px var(--interactive-accent-rgb, 0.2); /* Focus ring */
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2); 
 }
 
-/* Encounter Wrapper */
 .dh-encounter-wrapper {
     display: flex;
     flex-direction: column;
@@ -857,4 +870,3 @@
     overflow: hidden;
     margin-bottom: 8px;
 }
-
