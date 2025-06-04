@@ -1,3 +1,250 @@
 {
-  "compendiumFolder": "compendium"
+  "compendiumFolder": "compendium",
+  "savedEncounters": [
+    {
+      "id": "dh-encounter-1749023759773",
+      "name": "Test",
+      "creatures": [
+        {
+          "name": "Adult Flickerfly",
+          "tier": 3,
+          "type": "Solo",
+          "description": "A winged insect the size of a large house with iridescent scales and wings that move too fast to track.",
+          "motives_tactics": "Collect shiny things, hunt, nest, swoop",
+          "difficulty": 17,
+          "hp_stress": {
+            "hp": 12,
+            "stress": 6,
+            "major_hp": 20,
+            "severe_hp": 35
+          },
+          "attack": {
+            "name": "Wing Slash",
+            "range": "Very Close",
+            "damage": "3d20 phy",
+            "modifier": "+3"
+          },
+          "features": [
+            {
+              "name": "Relentless",
+              "type": "Passive",
+              "cost": 4,
+              "description": "The Flickerfly can be spotlighted up to four times per GM turn. Spend Fear as usual to spotlight them."
+            },
+            {
+              "name": "Never Misses",
+              "type": "Passive",
+              "description": "When the Flickerfly makes an attack, the target’s Evasion is halved against the attack."
+            },
+            {
+              "name": "Deadly Flight",
+              "type": "Passive",
+              "description": "While flying, the Flickerfly can move up to Far range instead of Close range before taking an action."
+            },
+            {
+              "name": "Whirlwind",
+              "type": "Action",
+              "description": "Spend a Fear to whirl, making an attack against all targets within Very Close range. Targets the Flickerfly succeeds against take 3d8 direct physical damage."
+            },
+            {
+              "name": "Mind Dance",
+              "type": "Action",
+              "description": "Mark a Stress to create a magically dazzling display that grapples the minds of nearby foes. All targets within Close range must make an Instinct Reaction Roll. For each target who failed, you gain a Fear and the Flickerfly learns one of the target’s fears."
+            },
+            {
+              "name": "Hallucinatory Breath - Action: Countdown",
+              "type": "Passive",
+              "cost": "Loop 1d6",
+              "description": "When the Flickerfly takes damage for the first time, activate the countdown. When it triggers, the Flickerfly breathes hallucinatory gas on all targets in front of them up to Far range. Targets must make an Instinct Reaction Roll or become overwhelmed by fearful hallucinations. Targets whose fears are known to the Flickerfly have disadvantage on this roll. Targets who fail lose 2 Hope and take 3d8+3 direct magic damage."
+            },
+            {
+              "name": "Uncanny Reflexes",
+              "type": "Reaction",
+              "description": "When the Flickerfly takes damage from an attack within Close range, you can mark a Stress to take half damage."
+            }
+          ],
+          "sourceFile": "adversaries.json",
+          "id": "adult-flickerfly-1749031860862-a6d6k",
+          "groupId": "adult-flickerfly-1749031860862",
+          "currentHp": 0,
+          "currentStress": 0,
+          "displayName": "Adult Flickerfly"
+        },
+        {
+          "name": "Arch-Necromancer",
+          "tier": 4,
+          "type": "Leader",
+          "description": "A decaying mage adorned in dark, tattered robes.",
+          "motives_tactics": "Corrupt, decay, flee to fight another day, resurrect",
+          "difficulty": 21,
+          "hp_stress": {
+            "hp": 9,
+            "stress": 8,
+            "major_hp": 33,
+            "severe_hp": 66
+          },
+          "attack": {
+            "name": "Necrotic Blast",
+            "range": "Far",
+            "damage": "4d12+8 mag",
+            "modifier": "+6"
+          },
+          "experience": "Forbidden Knowledge +3, Wisdom of Centuries +3",
+          "features": [
+            {
+              "name": "Dance of Death",
+              "type": "Action",
+              "description": "Mark a Stress to spotlight 1d4 allies. Attacks they make while spotlighted in this way deal half damage, or full damage if you spend a Fear."
+            },
+            {
+              "name": "Beam of Decay",
+              "type": "Action",
+              "description": "Mark 2 Stress to cause all targets within Far range to make a Strength Reaction Roll. Targets who fail take 2d20+12 magic damage and you gain a Fear. Targets who succeed take half damage. A target who marks 2 or more HP must also mark 2 Stress and becomes Vulnerable until they roll with Hope."
+            },
+            {
+              "name": "Open the Gates of Death",
+              "type": "Action",
+              "description": "Spend a Fear to summon a Zombie Legion, which appears at Close range and immediately takes the spotlight."
+            },
+            {
+              "name": "Not Today, My Dears",
+              "type": "Reaction",
+              "description": "When the Necromancer has marked 7 or more of their HP, you can spend a Fear to have them teleport away to a safe location to recover. A PC who succeeds on an Instinct Roll can trace the teleportation magic to their destination."
+            },
+            {
+              "name": "Your Demise is Near",
+              "type": "Reaction",
+              "description": "Countdown (2d6). When the Necromancer has marked 6 or more of their HP, activate the countdown. When it triggers, deal 2d10+6 direct magic damage to a target within Close range. The Necromancer then clears a number of Stress or HP equal to the number of HP marked by the target from this attack."
+            }
+          ],
+          "sourceFile": "adversaries.json",
+          "id": "arch-necromancer-1749031862504-iu7u6",
+          "groupId": "arch-necromancer-1749031862504",
+          "currentHp": 0,
+          "currentStress": 0,
+          "displayName": "Arch-Necromancer"
+        },
+        {
+          "name": "Acid Burrower",
+          "tier": 1,
+          "type": "Solo",
+          "description": "A horse-sized insect with digging claws and acidic blood.",
+          "motives_tactics": "Burrow, drag away, feed, reposition",
+          "difficulty": 14,
+          "hp_stress": {
+            "hp": 8,
+            "stress": 3,
+            "major_hp": 8,
+            "severe_hp": 15
+          },
+          "attack": {
+            "name": "Claws",
+            "range": "Very Close",
+            "damage": "1d12+2 phy",
+            "modifier": "+3"
+          },
+          "experience": "Tremor Sense +2",
+          "features": [
+            {
+              "name": "Relentless",
+              "type": "Passive",
+              "cost": 3,
+              "description": "The Burrower can be spotlighted up to three times per GM turn. Spend Fear as usual to spotlight them."
+            },
+            {
+              "name": "Earth Eruption",
+              "type": "Action",
+              "description": "Mark a Stress to have the Burrower burst out of the ground. All creatures within Very Close range must succeed on an Agility Reaction Roll or be knocked over, making them Vulnerable until they next act."
+            },
+            {
+              "name": "Spit Acid",
+              "type": "Action",
+              "description": "Make an attack against all targets in front of the Burrower within Close range. Targets the Burrower succeeds against take 2d6 physical damage and must mark an Armor Slot without receiving its benefits (they can still use armor to reduce the damage). If they can’t mark an Armor Slot, they must mark an additional HP and you gain a Fear."
+            },
+            {
+              "name": "Acid Bath",
+              "type": "Reaction",
+              "description": "When the Burrower takes Severe damage, all creatures within Close range are bathed in their acidic blood, taking 1d10 physical damage. This splash covers the ground within Very Close range with blood, and all creatures other than the Burrower who move through it take 1d6 physical damage."
+            }
+          ],
+          "sourceFile": "adversaries.json",
+          "id": "acid-burrower-1749032418131-6y5nu",
+          "groupId": "acid-burrower-1749032418131",
+          "currentHp": 0,
+          "currentStress": 0,
+          "displayName": "Acid Burrower"
+        }
+      ]
+    },
+    {
+      "id": "dh-encounter-1749023889776",
+      "name": "Goblins Attack",
+      "creatures": [
+        {
+          "name": "Acid Burrower",
+          "tier": 4,
+          "type": "SOLO",
+          "description": "A massive worm that secretes corrosive acid, tunneling through earth and stone.",
+          "attack": {
+            "name": "Acid Spray",
+            "range": "Close",
+            "damage": "4d10+8",
+            "modifier": 6
+          },
+          "difficulty": 19,
+          "motives_tactics": [
+            "Burrow",
+            "Dissolve",
+            "Hunt",
+            "Tunnel"
+          ],
+          "hp_stress": {
+            "hp": 8,
+            "stress": 6,
+            "minor_hp": null,
+            "major_hp": null,
+            "severe_hp": null
+          },
+          "features": [
+            {
+              "name": "Relentless",
+              "type": "Passive",
+              "cost": 3,
+              "description": "Can be spotlighted up to three times per GM turn. Spend Fear as usual to spotlight them."
+            },
+            {
+              "name": "Earth Eruption",
+              "type": "Action",
+              "description": "Burrow beneath the surface and erupt at a point within Far range, making an attack against all targets within Close range of that point."
+            },
+            {
+              "name": "Spit Acid",
+              "type": "Action",
+              "description": "Make a ranged attack against a target within Far range, dealing acid damage."
+            },
+            {
+              "name": "Acid Bath",
+              "type": "Reaction",
+              "description": "When the Acid Burrower takes damage, spray acid in all directions, affecting nearby targets."
+            }
+          ],
+          "sourceFile": "compendium/ACID BURROWER.md",
+          "id": "acid-burrower-1749025022722-1",
+          "currentHp": 5,
+          "currentStress": 3,
+          "displayName": "Acid Burrower #1"
+        }
+      ]
+    },
+    {
+      "id": "dh-encounter-1749031877471",
+      "name": "New Encounter",
+      "creatures": []
+    }
+  ],
+  "useSrdAdversaries": true,
+  "showDescriptionOnCards": true,
+  "showMotivesOnCards": true,
+  "showExperienceOnCards": true,
+  "showFeatureDetailsOnCards": true
 }

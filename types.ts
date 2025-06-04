@@ -8,7 +8,7 @@ export interface StatblockAttack {
 }
 
 export interface StatblockExperience {
-    [key: string]: number; // e.g., conquest: 3, history: 2
+    [key: string]: number;
 }
 
 export interface StatblockHpStress {
@@ -16,7 +16,7 @@ export interface StatblockHpStress {
     stress: number;
     minor_hp?: number | null;
     major_hp?: number | null;
-    severe_hp?: number | null; // Retained for completeness, though not directly in new threshold display
+    severe_hp?: number | null;
 }
 
 export interface StatblockFeature {
@@ -29,36 +29,49 @@ export interface StatblockFeature {
 
 export interface StatblockData {
     name: string;
-    title?: string;
+    image?: string;
     tier?: number | string;
-    type?: string; // e.g., SOLO, HORDE, etc.
+    type?: string;
     description?: string;
     attack?: StatblockAttack;
     difficulty?: number | string;
-    experience?: StatblockExperience;
-    motives_tactics?: string[];
+    experience?: StatblockExperience | string;
+    motives_tactics?: string[] | string;
     hp_stress: StatblockHpStress;
     features?: StatblockFeature[];
-    sourceFile?: string; // Path to the source file for this statblock
-    image?: string; // Optional image URL/path for the card header
+    sourceFile?: string;
 }
 
 export interface CreatureInstance extends StatblockData {
-    id: string; // Unique ID for this instance, e.g., "brawny-zombie-1"
+    id: string;
+    groupId: string;
     currentHp: number;
     currentStress: number;
-    displayName: string; // e.g., "Brawny Zombie #1"
+    displayName: string;
 }
 
-export interface EncounterData {
+export interface SavedEncounter {
+    id: string;
     name: string;
     creatures: CreatureInstance[];
 }
 
 export interface DaggerheartPluginSettings {
     compendiumFolder: string;
+    savedEncounters: SavedEncounter[];
+    useSrdAdversaries: boolean;
+    showDescriptionOnCards: boolean;
+    showMotivesOnCards: boolean;
+    showExperienceOnCards: boolean;
+    showFeatureDetailsOnCards: boolean;
 }
 
 export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     compendiumFolder: '',
+    savedEncounters: [],
+    useSrdAdversaries: true,
+    showDescriptionOnCards: false,
+    showMotivesOnCards: true,
+    showExperienceOnCards: true,
+    showFeatureDetailsOnCards: true
 };

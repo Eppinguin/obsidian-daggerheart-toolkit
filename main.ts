@@ -1,16 +1,208 @@
-import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, ItemView, TFile, TFolder, Notice, TextComponent } from 'obsidian';
+import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, WorkspaceLeaf, ItemView, TFile, TFolder, Notice, TextComponent, Modal, ButtonComponent, Menu, setIcon } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, CreatureInstance, DaggerheartPluginSettings, DEFAULT_SETTINGS, StatblockHpStress } from './types'; // Assuming types.ts is in the same directory
+import { StatblockData, CreatureInstance, DaggerheartPluginSettings, DEFAULT_SETTINGS, SavedEncounter, StatblockFeature, StatblockExperience, StatblockHpStress } from './types';
 
 // --- CONSTANTS ---
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
+const SRD_ADVERSARIES_FILE = "adversaries.json";
+
+// --- MODAL FOR NAMING/RENAMING ENCOUNTER ---
+class NameEncounterModal extends Modal {
+    plugin: DaggerheartStatblockPlugin;
+    onSubmit: (name: string) => void;
+    existingNames: string[];
+    currentNameValue?: string | null;
+    titleText: string;
+    private nameInputComponent!: TextComponent; // Definite assignment assertion
+
+    constructor(app: App, plugin: DaggerheartStatblockPlugin, title: string, existingNames: string[], currentNameVal: string | null | undefined, onSubmit: (name: string) => void) {
+        super(app);
+        this.plugin = plugin;
+        this.titleText = title;
+        this.onSubmit = onSubmit;
+        this.existingNames = existingNames;
+        this.currentNameValue = currentNameVal;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('dh-name-modal');
+        contentEl.createEl("h2", { text: this.titleText });
+
+        new Setting(contentEl)
+            .setName("Encounter Name")
+            .addText((text) => {
+                this.nameInputComponent = text;
+                text.setPlaceholder("Enter encounter name")
+                    .setValue(this.currentNameValue || "");
+                text.inputEl.addClass('dh-modal-input');
+                text.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        // nameInputComponent is guaranteed to be assigned here by addText
+                        this.submitName(this.nameInputComponent.getValue());
+                    }
+                });
+                this.app.workspace.onLayoutReady(() => text.inputEl.focus());
+            });
+
+        const buttonContainer = contentEl.createDiv({ cls: 'dh-modal-buttons' });
+        new ButtonComponent(buttonContainer)
+            .setButtonText("Confirm")
+            .setCta()
+            .onClick(() => {
+                // nameInputComponent is guaranteed to be assigned here
+                this.submitName(this.nameInputComponent.getValue());
+            });
+        new ButtonComponent(buttonContainer)
+            .setButtonText("Cancel")
+            .onClick(() => {
+                this.close();
+            });
+    }
+
+    submitName(name: string) {
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+            new Notice("Encounter name cannot be empty.");
+            return;
+        }
+        if (this.existingNames.includes(trimmedName) && trimmedName !== this.currentNameValue) {
+            new Notice(`An encounter named "${trimmedName}" already exists. Choose a different name.`);
+            return;
+        }
+        this.onSubmit(trimmedName);
+        this.close();
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+
+// --- MODAL FOR MANAGING SAVED ENCOUNTERS ---
+class ManageEncountersModal extends Modal {
+    view: EncounterBuilderView;
+
+    constructor(app: App, view: EncounterBuilderView) {
+        super(app);
+        this.view = view;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('dh-manage-encounters-modal');
+        contentEl.createEl("h2", { text: "Manage Saved Encounters" });
+
+        const listEl = contentEl.createDiv({ cls: "dh-manage-list" });
+
+        if (this.view.plugin.settings.savedEncounters.length === 0) {
+            listEl.createEl("p", { text: "No saved encounters." });
+        } else {
+            this.view.plugin.settings.savedEncounters.forEach(savedEncounter => {
+                const entryEl = listEl.createDiv({ cls: "dh-manage-list-item" });
+
+                const nameContainer = entryEl.createDiv({ cls: "dh-manage-item-name-container" });
+                nameContainer.createSpan({ text: savedEncounter.name, cls: "dh-manage-item-name" });
+
+                const buttonsEl = entryEl.createDiv({ cls: "dh-manage-item-buttons" });
+
+                new ButtonComponent(buttonsEl)
+                    .setIcon("pencil")
+                    .setTooltip("Rename Encounter")
+                    .setClass("dh-icon-button")
+                    .onClick(() => {
+                        this.close();
+                        this.view.handleRenameEncounter(savedEncounter.id);
+                    });
+
+                const deleteButton = new ButtonComponent(buttonsEl)
+                    .setIcon("trash")
+                    .setTooltip("Delete Encounter")
+                    .setClass("dh-icon-button")
+                    .setClass("dh-delete-btn-confirmable")
+                    .onClick(async () => {
+                        if (deleteButton.buttonEl.classList.contains('is-confirming-delete')) {
+                            await this.view.handleDeleteEncounter(savedEncounter.id);
+                            this.onOpen();
+                        } else {
+                            deleteButton.buttonEl.classList.add('is-confirming-delete');
+                            deleteButton.setTooltip("Confirm Delete?");
+                            setIcon(deleteButton.buttonEl, "check-circle");
+                            setTimeout(() => {
+                                if (deleteButton.buttonEl.classList.contains('is-confirming-delete')) {
+                                    deleteButton.buttonEl.classList.remove('is-confirming-delete');
+                                    deleteButton.setTooltip("Delete Encounter");
+                                    setIcon(deleteButton.buttonEl, "trash");
+                                }
+                            }, 3000);
+                        }
+                    });
+            });
+        }
+        const closeButtonContainer = contentEl.createDiv({ cls: 'dh-modal-buttons', attr: { 'style': 'justify-content: center; margin-top: var(--size-4-4);' } });
+        new ButtonComponent(closeButtonContainer)
+            .setButtonText("Close")
+            .onClick(() => this.close());
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+
+// --- MODAL FOR ADD INSTANCE CHOICE ---
+class AddInstanceChoiceModal extends Modal {
+    onSubmit: (choice: 'existing' | 'new') => void;
+    existingGroupName: string;
+
+    constructor(app: App, existingGroupName: string, onSubmit: (choice: 'existing' | 'new') => void) {
+        super(app);
+        this.existingGroupName = existingGroupName;
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('dh-add-instance-choice-modal'); // Specific class
+        contentEl.createEl("h3", { text: "Add Creature Instance" });
+        contentEl.createEl("p", { text: `An instance of "${this.existingGroupName}" already exists.` });
+
+        const buttonContainer = contentEl.createDiv({ cls: 'dh-modal-buttons' });
+        new ButtonComponent(buttonContainer)
+            .setButtonText(`Add to group "${this.existingGroupName}"`)
+            .onClick(() => {
+                this.onSubmit('existing');
+                this.close();
+            });
+        new ButtonComponent(buttonContainer)
+            .setButtonText("Start New Group")
+            .setCta()
+            .onClick(() => {
+                this.onSubmit('new');
+                this.close();
+            });
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+
 
 // --- ENCOUNTER VIEW CLASS ---
 export class EncounterBuilderView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
     compendiumCreatures: StatblockData[] = [];
     activeEncounterCreatures: CreatureInstance[] = [];
-    private creatureInstanceCounters: { [key: string]: number } = {};
+
+    currentEncounterId: string | null = null;
+    private uiContainer: HTMLElement | null = null;
+    private isCompendiumVisible: boolean = true;
+    private compendiumSearchTerm: string = "";
 
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
@@ -22,20 +214,94 @@ export class EncounterBuilderView extends ItemView {
     }
 
     getDisplayText(): string {
-        return "Daggerheart Encounter Builder";
-    }
-
-    getIcon(): string {
-        return "swords";
+        if (this.currentEncounterId) {
+            const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+            return currentEncounter ? `Encounter: ${currentEncounter.name}` : "Daggerheart Encounters";
+        }
+        return "Daggerheart Encounters";
     }
 
     async onOpen() {
-        const container = this.containerEl.children[1];
-        container.empty();
-        container.addClass("dh-encounter-builder-container");
+        this.uiContainer = this.containerEl.children[1] as HTMLElement;
+        this.uiContainer.empty();
+        this.uiContainer.addClass("dh-encounter-builder-container");
 
         await this.loadCompendium();
-        this.drawUI(container);
+
+        const persistedState = this.leaf.getEphemeralState();
+        if (persistedState) {
+            if (persistedState.currentEncounterId) {
+                this.currentEncounterId = persistedState.currentEncounterId;
+            }
+            if (typeof persistedState.isCompendiumVisible === 'boolean') {
+                this.isCompendiumVisible = persistedState.isCompendiumVisible;
+            } else {
+                this.isCompendiumVisible = true;
+            }
+            if (typeof persistedState.compendiumSearchTerm === 'string') {
+                this.compendiumSearchTerm = persistedState.compendiumSearchTerm;
+            }
+        }
+
+
+        this.ensureActiveEncounter();
+        this.loadCreaturesForCurrentEncounter();
+        this.drawUI();
+        this.leaf.setEphemeralState(this.getState());
+    }
+
+    async setState(state: any, result: any) {
+        if (state) {
+            if (state.currentEncounterId) {
+                this.currentEncounterId = state.currentEncounterId;
+                if (!this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId)) {
+                    this.currentEncounterId = null;
+                }
+            }
+            if (typeof state.isCompendiumVisible === 'boolean') {
+                this.isCompendiumVisible = state.isCompendiumVisible;
+            }
+            if (typeof state.compendiumSearchTerm === 'string') {
+                this.compendiumSearchTerm = state.compendiumSearchTerm;
+            }
+        }
+        this.ensureActiveEncounter();
+        this.loadCreaturesForCurrentEncounter();
+        if (this.uiContainer && this.contentEl.children.length > 0) {
+            this.drawUI();
+        }
+        await super.setState(state, result);
+        this.app.workspace.requestSaveLayout();
+    }
+
+    getState() {
+        return {
+            currentEncounterId: this.currentEncounterId,
+            isCompendiumVisible: this.isCompendiumVisible,
+            compendiumSearchTerm: this.compendiumSearchTerm
+        };
+    }
+
+
+    ensureActiveEncounter() {
+        if (this.plugin.settings.savedEncounters.length === 0) {
+            this.handleNewEncounter(true, "My First Encounter");
+        } else if (!this.currentEncounterId || !this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId)) {
+            this.currentEncounterId = this.plugin.settings.savedEncounters[0].id;
+        }
+    }
+
+    loadCreaturesForCurrentEncounter() {
+        if (this.currentEncounterId) {
+            const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+            if (encounter) {
+                this.activeEncounterCreatures = JSON.parse(JSON.stringify(encounter.creatures));
+            } else {
+                this.activeEncounterCreatures = [];
+            }
+        } else {
+            this.activeEncounterCreatures = [];
+        }
     }
 
     async loadCompendium() {
@@ -43,85 +309,280 @@ export class EncounterBuilderView extends ItemView {
         this.compendiumCreatures.sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    drawUI(container: Element) {
-        container.empty();
+    async autoSaveCurrentEncounter() {
+        if (this.currentEncounterId) {
+            const encounterIndex = this.plugin.settings.savedEncounters.findIndex(e => e.id === this.currentEncounterId);
+            if (encounterIndex !== -1) {
+                this.plugin.settings.savedEncounters[encounterIndex].creatures = JSON.parse(JSON.stringify(this.activeEncounterCreatures));
+                await this.plugin.saveSettings();
+                console.log(`Daggerheart: Encounter "${this.plugin.settings.savedEncounters[encounterIndex].name}" (ID: ${this.currentEncounterId}) autosaved.`);
+            }
+        }
+    }
 
-        const header = container.createDiv({ cls: "dh-encounter-header" });
-        header.createEl("h2", { text: "Encounter Builder" });
-        const controls = header.createDiv({ cls: "dh-encounter-controls" });
-        const refreshButton = controls.createEl("button", { text: "Refresh Compendium" });
-        refreshButton.addEventListener("click", async () => {
-            await this.loadCompendium();
-            this.drawUI(container);
-            new Notice("Compendium refreshed!");
-        });
+    showEncounterSwitcherMenu(event: MouseEvent) {
+        const menu = new Menu();
 
-        const mainInterface = container.createDiv({ cls: "dh-encounter-main-interface" });
+        menu.addItem((item) =>
+            item
+                .setTitle("Create New Encounter...")
+                .setIcon("plus-circle")
+                .onClick(() => {
+                    this.handleNewEncounter();
+                })
+        );
 
-        const compendiumPanel = mainInterface.createDiv({ cls: "dh-compendium-panel" });
-        compendiumPanel.createEl("h3", { text: "Compendium" });
-        const compendiumList = compendiumPanel.createDiv({ cls: "dh-compendium-list" });
+        menu.addItem((item) =>
+            item
+                .setTitle("Manage Saved Encounters...")
+                .setIcon("settings")
+                .onClick(() => {
+                    new ManageEncountersModal(this.app, this).open();
+                })
+        );
 
-        if (this.compendiumCreatures.length === 0) {
-            compendiumList.createEl("p", { text: "No creatures found. Check plugin settings for the Compendium Folder and ensure it contains .md files with 'daggerheart-statblock' code blocks." });
-        } else {
-            this.compendiumCreatures.forEach(creatureData => {
-                const creatureEntry = compendiumList.createDiv({ cls: "dh-compendium-entry" });
-                creatureEntry.createSpan({ text: creatureData.name });
-                const addButton = creatureEntry.createEl("button", { text: "+", cls: "dh-add-compendium-btn" });
-                addButton.addEventListener("click", () => {
-                    this.addCreatureToEncounter(creatureData);
-                    this.drawUI(container);
+
+        if (this.plugin.settings.savedEncounters.length > 0) {
+            menu.addSeparator();
+            this.plugin.settings.savedEncounters.forEach((savedEncounter) => {
+                menu.addItem((item) => {
+                    item.setTitle(savedEncounter.name)
+                        .setIcon(savedEncounter.id === this.currentEncounterId ? "check" : "")
+                        .onClick(() => {
+                            if (savedEncounter.id !== this.currentEncounterId) {
+                                this.loadEncounter(savedEncounter.id);
+                            }
+                        });
                 });
             });
         }
+        menu.showAtMouseEvent(event);
+    }
 
-        const encounterPanel = mainInterface.createDiv({ cls: "dh-encounter-panel" });
-        encounterPanel.createEl("h3", { text: "Active Encounter" });
-        const encounterArea = encounterPanel.createDiv({ cls: "dh-encounter-area" });
+    toggleCompendiumVisibility() {
+        this.isCompendiumVisible = !this.isCompendiumVisible;
+        this.leaf.setEphemeralState(this.getState());
+        this.drawUI();
+    }
 
-        if (this.activeEncounterCreatures.length === 0) {
-            encounterArea.createEl("p", { text: "No creatures added to the encounter yet." });
+
+    drawUI() {
+        if (!this.uiContainer) return;
+        this.uiContainer.empty();
+        const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+
+        const header = this.uiContainer.createDiv({ cls: "dh-encounter-header" });
+        header.createEl("h2", { text: "Daggerheart Encounters" });
+
+        const controls = header.createDiv({ cls: "dh-encounter-controls" });
+
+        const toggleCompendiumButton = controls.createEl("button", {
+            title: this.isCompendiumVisible ? "Hide Compendium" : "Show Compendium"
+        });
+        setIcon(toggleCompendiumButton, this.isCompendiumVisible ? "panel-right-close" : "panel-left-open");
+        toggleCompendiumButton.addClass("dh-icon-button");
+        toggleCompendiumButton.addEventListener("click", () => this.toggleCompendiumVisibility());
+
+        const mainInterface = this.uiContainer.createDiv({ cls: "dh-encounter-main-interface" });
+
+        const activeCreaturesPanel = mainInterface.createDiv({ cls: "dh-active-creatures-panel" });
+        const activeEncounterTitleText = currentEncounter ? currentEncounter.name : "No Encounter Selected";
+        const activeEncounterTitleEl = activeCreaturesPanel.createEl("h3", {
+            text: `Active: ${activeEncounterTitleText}`,
+            cls: 'dh-active-encounter-title-clickable'
+        });
+        activeEncounterTitleEl.addEventListener('click', (mouseEvent: MouseEvent) => {
+            this.showEncounterSwitcherMenu(mouseEvent);
+        });
+
+        const encounterArea = activeCreaturesPanel.createDiv({ cls: "dh-encounter-area" });
+        if (this.activeEncounterCreatures.length === 0 && currentEncounter) {
+            encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures from the compendium.` });
+        } else if (this.activeEncounterCreatures.length === 0 && !currentEncounter) {
+            encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
         } else {
-            // Group instances by base creature name
-            const groupedInstances: { [key: string]: CreatureInstance[] } = {};
+            const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
             this.activeEncounterCreatures.forEach(instance => {
-                if (!groupedInstances[instance.name]) {
-                    groupedInstances[instance.name] = [];
+                if (!groupedByGroupId[instance.groupId]) {
+                    groupedByGroupId[instance.groupId] = [];
                 }
-                groupedInstances[instance.name].push(instance);
+                groupedByGroupId[instance.groupId].push(instance);
             });
 
-            for (const baseName in groupedInstances) {
-                const instances = groupedInstances[baseName];
-                if (instances.length > 0) {
-                    // Create a container for this group of creatures (main card + additional trackers)
+            for (const groupId in groupedByGroupId) {
+                const instancesInGroup = groupedByGroupId[groupId];
+                if (instancesInGroup.length > 0) {
                     const creatureGroupContainer = encounterArea.createDiv({ cls: 'dh-creature-group-container' });
-
-                    // Render the first instance as a full card
-                    const firstInstance = instances[0];
+                    const firstInstance = instancesInGroup[0];
                     const instanceTypeClass = firstInstance.type ? 'dh-type-' + firstInstance.type.toLowerCase().replace(/\s+/g, '-') : 'dh-type-default';
                     const mainCardContainer = creatureGroupContainer.createDiv({ cls: `dh-creature-instance-card ${instanceTypeClass}` });
 
-                    const removeButton = mainCardContainer.createEl("button", { text: "✕", cls: "dh-remove-instance-btn" });
-                    removeButton.addEventListener("click", () => {
-                        this.removeCreatureFromEncounter(firstInstance.id);
-                        this.drawUI(container); // Redraw entire UI
+                    const removeGroupButton = mainCardContainer.createEl("button", { text: "✕", title: `Remove all ${firstInstance.name}s`, cls: "dh-remove-instance-btn" });
+                    removeGroupButton.addEventListener("click", () => {
+                        this.removeCreatureGroupFromActiveEncounter(firstInstance.groupId);
                     });
-                    this.plugin.renderStatblockCard(firstInstance, mainCardContainer, true, firstInstance.displayName);
+                    this.plugin.renderStatblockCard(firstInstance, mainCardContainer, true, firstInstance.displayName,
+                        (newHp) => {
+                            const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstance.id);
+                            if (inst) inst.currentHp = newHp;
+                            this.autoSaveCurrentEncounter();
+                        },
+                        (newStress) => {
+                            const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstance.id);
+                            if (inst) inst.currentStress = newStress;
+                            this.autoSaveCurrentEncounter();
+                        }
+                    );
 
-                    // Find the placeholder for additional trackers within the rendered main card
                     const additionalTrackersContainer = mainCardContainer.querySelector('.dh-additional-trackers-container');
-
-                    // Render subsequent instances as additional tracker rows
                     if (additionalTrackersContainer) {
-                        for (let i = 1; i < instances.length; i++) {
-                            this.renderAdditionalTrackerRow(instances[i], additionalTrackersContainer as HTMLElement);
+                        for (let i = 1; i < instancesInGroup.length; i++) {
+                            this.renderAdditionalTrackerRow(instancesInGroup[i], additionalTrackersContainer as HTMLElement);
                         }
                     }
                 }
             }
         }
+
+        const compendiumPanel = mainInterface.createDiv({ cls: "dh-compendium-panel" });
+        if (!this.isCompendiumVisible) {
+            compendiumPanel.addClass('dh-compendium-panel-hidden');
+        }
+        const compendiumHeader = compendiumPanel.createDiv({ cls: "dh-panel-header" });
+        compendiumHeader.createEl("h3", { text: "Compendium" });
+
+        const compendiumControls = compendiumHeader.createDiv({ cls: "dh-panel-controls" });
+        const refreshCompendiumListButton = compendiumControls.createEl("button", { title: "Refresh Compendium" });
+        setIcon(refreshCompendiumListButton, "refresh-cw");
+        refreshCompendiumListButton.addClass("dh-icon-button");
+        refreshCompendiumListButton.addEventListener("click", async () => {
+            await this.loadCompendium();
+            this.drawUI();
+            new Notice("Compendium refreshed!");
+        });
+
+        const searchInput = compendiumPanel.createEl("input", {
+            type: "text",
+            placeholder: "Search compendium...",
+            cls: "dh-compendium-search"
+        });
+        searchInput.value = this.compendiumSearchTerm;
+        searchInput.addEventListener("input", (e) => {
+            this.compendiumSearchTerm = (e.target as HTMLInputElement).value;
+            this.leaf.setEphemeralState(this.getState());
+            this.renderCompendiumList(compendiumPanel.querySelector(".dh-compendium-list") as HTMLElement);
+        });
+
+        const compendiumList = compendiumPanel.createDiv({ cls: "dh-compendium-list" });
+        this.renderCompendiumList(compendiumList);
+
+        this.leaf.onResize();
+    }
+
+    renderCompendiumList(listContainer: HTMLElement) {
+        listContainer.empty();
+        const searchTerm = this.compendiumSearchTerm.toLowerCase();
+        const filteredCreatures = this.compendiumCreatures.filter(creature =>
+            creature.name.toLowerCase().includes(searchTerm)
+        );
+
+        if (filteredCreatures.length === 0) {
+            listContainer.createEl("p", { text: searchTerm ? "No matching creatures found." : "No creatures in compendium. Check settings." });
+        } else {
+            filteredCreatures.forEach(creatureData => {
+                const creatureEntry = listContainer.createDiv({ cls: "dh-compendium-entry" });
+                creatureEntry.createSpan({ text: creatureData.name });
+                const addButton = creatureEntry.createEl("button", { text: "+", title: "Add to active encounter", cls: "dh-add-compendium-btn" });
+                addButton.addEventListener("click", () => {
+                    this.addCreatureToActiveEncounter(creatureData);
+                });
+            });
+        }
+    }
+
+    handleNewEncounter(isDefaultCreation: boolean = false, defaultName?: string) {
+        const existingNames = this.plugin.settings.savedEncounters.map(e => e.name);
+        let newEncounterNameBase = defaultName || "New Encounter";
+        let newEncounterName = newEncounterNameBase;
+        let counter = 1;
+
+        while (existingNames.includes(newEncounterName)) {
+            newEncounterName = `${newEncounterNameBase} ${counter++}`;
+        }
+
+        if (isDefaultCreation) {
+            this.saveNewEncounter(newEncounterName);
+        } else {
+            new NameEncounterModal(this.app, this.plugin, "Create New Encounter", existingNames, newEncounterName, (name) => {
+                this.saveNewEncounter(name);
+            }).open();
+        }
+    }
+
+    saveNewEncounter(name: string) {
+        const newId = `dh-encounter-${Date.now()}`;
+        const newEncounter: SavedEncounter = { id: newId, name: name, creatures: [] };
+        this.plugin.settings.savedEncounters.push(newEncounter);
+        this.plugin.saveSettings();
+
+        this.currentEncounterId = newId;
+        this.loadCreaturesForCurrentEncounter();
+        new Notice(`Encounter "${name}" created and activated.`);
+        this.drawUI();
+        this.leaf.setEphemeralState(this.getState());
+    }
+
+    handleRenameEncounter(encounterId: string) {
+        const encounterToRename = this.plugin.settings.savedEncounters.find(e => e.id === encounterId);
+        if (!encounterToRename) return;
+
+        const existingNames = this.plugin.settings.savedEncounters.map(e => e.name).filter(name => name !== encounterToRename.name);
+
+        new NameEncounterModal(this.app, this.plugin, "Rename Encounter", existingNames, encounterToRename.name, (newName) => {
+            encounterToRename.name = newName;
+            this.plugin.saveSettings();
+            new Notice(`Encounter renamed to "${newName}".`);
+            this.drawUI();
+            if (encounterId === this.currentEncounterId) {
+                this.leaf.setEphemeralState(this.getState());
+            }
+        }).open();
+    }
+
+    loadEncounter(encounterId: string) {
+        if (this.currentEncounterId === encounterId) {
+            console.log("Attempted to load already active encounter.");
+            return;
+        }
+
+        const encounterToLoad = this.plugin.settings.savedEncounters.find(e => e.id === encounterId);
+        if (encounterToLoad) {
+            this.currentEncounterId = encounterToLoad.id;
+            this.loadCreaturesForCurrentEncounter();
+            new Notice(`Encounter "${encounterToLoad.name}" loaded.`);
+            this.drawUI();
+            this.leaf.setEphemeralState(this.getState());
+        } else {
+            new Notice("Failed to load encounter.");
+        }
+    }
+
+    handleDeleteEncounter(encounterId: string) {
+        const encounterIndex = this.plugin.settings.savedEncounters.findIndex(e => e.id === encounterId);
+        if (encounterIndex === -1) return;
+
+        const encounterName = this.plugin.settings.savedEncounters[encounterIndex].name;
+        this.plugin.settings.savedEncounters.splice(encounterIndex, 1);
+        this.plugin.saveSettings();
+
+        if (this.currentEncounterId === encounterId) {
+            this.currentEncounterId = null;
+            this.ensureActiveEncounter();
+            this.loadCreaturesForCurrentEncounter();
+        }
+        new Notice(`Encounter "${encounterName}" deleted.`);
+        this.drawUI();
+        this.leaf.setEphemeralState(this.getState());
     }
 
     renderAdditionalTrackerRow(instance: CreatureInstance, parentEl: HTMLElement) {
@@ -129,37 +590,123 @@ export class EncounterBuilderView extends ItemView {
 
         const header = trackerRow.createDiv({ cls: 'dh-additional-tracker-header' });
         header.createSpan({ text: instance.displayName, cls: 'dh-additional-tracker-name' });
-        const removeBtn = header.createEl('button', { text: '✕', cls: 'dh-remove-additional-btn' });
+        const removeBtn = header.createEl('button', { text: '✕', title: "Remove this instance", cls: 'dh-remove-additional-btn' });
         removeBtn.addEventListener('click', () => {
-            this.removeCreatureFromEncounter(instance.id);
-            this.drawUI(this.containerEl.children[1]); // Redraw the whole view
+            this.removeCreatureFromActiveEncounter(instance.id, false);
         });
 
-        this.plugin.createInteractiveTrack(trackerRow, 'HP', instance.hp_stress.hp, `${instance.id}-hp`, instance.currentHp, (newHp) => instance.currentHp = newHp);
-        this.plugin.createInteractiveTrack(trackerRow, 'Stress', instance.hp_stress.stress, `${instance.id}-stress`, instance.currentStress, (newStress) => instance.currentStress = newStress);
+        this.plugin.createInteractiveTrack(trackerRow, 'HP', instance.hp_stress.hp, `${instance.id}-hp`, instance.currentHp,
+            (newHp) => {
+                const inst = this.activeEncounterCreatures.find(c => c.id === instance.id);
+                if (inst) inst.currentHp = newHp;
+                this.autoSaveCurrentEncounter();
+            }
+        );
+        this.plugin.createInteractiveTrack(trackerRow, 'Stress', instance.hp_stress.stress, `${instance.id}-stress`, instance.currentStress,
+            (newStress) => {
+                const inst = this.activeEncounterCreatures.find(c => c.id === instance.id);
+                if (inst) inst.currentStress = newStress;
+                this.autoSaveCurrentEncounter();
+            }
+        );
     }
 
-
-    addCreatureToEncounter(baseCreature: StatblockData) {
-        const baseNameKey = baseCreature.name;
-        if (!this.creatureInstanceCounters[baseNameKey]) {
-            this.creatureInstanceCounters[baseNameKey] = 0;
+    addCreatureToActiveEncounter(baseCreature: StatblockData) {
+        if (!this.currentEncounterId) {
+            new Notice("Error: No active encounter. Please create or load an encounter first.");
+            return;
         }
-        this.creatureInstanceCounters[baseNameKey]++;
-        const instanceNumber = this.creatureInstanceCounters[baseNameKey];
+
+        const existingInstancesOfThisType = this.activeEncounterCreatures.filter(
+            (inst) => inst.name === baseCreature.name
+        );
+
+        if (existingInstancesOfThisType.length > 0) {
+            const firstGroupDisplayName = existingInstancesOfThisType[0].displayName.replace(/ #\d+$/, '');
+            new AddInstanceChoiceModal(this.app, firstGroupDisplayName, (choice: 'existing' | 'new') => { // Typed 'choice'
+                if (choice === 'existing') {
+                    const firstGroupId = existingInstancesOfThisType[0].groupId;
+                    this.createNewInstanceInGroup(baseCreature, firstGroupId);
+                } else {
+                    this.createNewInstanceInGroup(baseCreature, null);
+                }
+                this.autoSaveCurrentEncounter();
+                this.drawUI();
+            }).open();
+        } else {
+            this.createNewInstanceInGroup(baseCreature, null);
+            this.autoSaveCurrentEncounter();
+            this.drawUI();
+        }
+    }
+
+    createNewInstanceInGroup(baseCreature: StatblockData, targetGroupId: string | null) {
+        let groupIdToUse: string;
+        let instanceNumberInGroup = 1;
+        let displayName = baseCreature.name;
+
+        if (targetGroupId) {
+            groupIdToUse = targetGroupId;
+            const instancesInThisGroup = this.activeEncounterCreatures.filter(
+                (inst) => inst.groupId === groupIdToUse
+            );
+            instanceNumberInGroup = instancesInThisGroup.length + 1;
+            displayName = `${baseCreature.name} #${instanceNumberInGroup}`;
+        } else {
+            groupIdToUse = `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+        }
 
         const newInstance: CreatureInstance = {
             ...JSON.parse(JSON.stringify(baseCreature)),
-            id: `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${instanceNumber}`,
-            currentHp: 0, // Start with 0 HP (all pips unfilled)
-            currentStress: 0, // Start with 0 Stress (all pips unfilled)
-            displayName: `${baseCreature.name} #${instanceNumber}`,
+            id: `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            groupId: groupIdToUse,
+            currentHp: 0,
+            currentStress: 0,
+            displayName: displayName,
         };
         this.activeEncounterCreatures.push(newInstance);
     }
 
-    removeCreatureFromEncounter(instanceId: string) {
-        this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.id !== instanceId);
+
+    removeCreatureFromActiveEncounter(instanceId: string, isGroupRemovalTrigger: boolean = false) {
+        const instanceToRemove = this.activeEncounterCreatures.find(c => c.id === instanceId);
+        if (!instanceToRemove) return;
+
+        if (isGroupRemovalTrigger) {
+            this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.groupId !== instanceToRemove.groupId);
+        } else {
+            this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.id !== instanceId);
+            const remainingInGroup = this.activeEncounterCreatures.filter(c => c.groupId === instanceToRemove.groupId);
+            if (remainingInGroup.length > 0 && instanceToRemove.displayName === instanceToRemove.name) {
+                remainingInGroup[0].displayName = remainingInGroup[0].name;
+                for (let i = 1; i < remainingInGroup.length; i++) {
+                    remainingInGroup[i].displayName = `${remainingInGroup[i].name} #${i + 1}`;
+                }
+            }
+        }
+        this.autoSaveCurrentEncounter();
+        this.drawUI();
+    }
+
+    removeCreatureGroupFromActiveEncounter(groupId: string) {
+        this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.groupId !== groupId);
+        this.autoSaveCurrentEncounter();
+        this.drawUI();
+    }
+
+
+    clearEncounter() {
+        if (this.currentEncounterId) {
+            this.activeEncounterCreatures = [];
+            this.autoSaveCurrentEncounter();
+            this.drawUI();
+            const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+            new Notice(`Creatures cleared from "${currentEncounter ? currentEncounter.name : 'active encounter'}".`);
+        } else {
+            this.activeEncounterCreatures = [];
+            this.drawUI();
+            new Notice("Active encounter cleared (no saved encounter was loaded).");
+        }
     }
 
     async onClose() {
@@ -167,6 +714,8 @@ export class EncounterBuilderView extends ItemView {
     }
 }
 
+// ... (DaggerheartStatblockPlugin and DaggerheartSettingTab classes - ensure they are complete from previous versions) ...
+// (Make sure to include the full DaggerheartStatblockPlugin and DaggerheartSettingTab classes here)
 export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;
 
@@ -182,7 +731,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 if (!data || typeof data !== 'object') {
                     throw new Error("Parsed data is not a valid object.");
                 }
-                this.renderStatblockCard(data, el, false, data.name);
+                this.renderStatblockCard(data, el, false, data.name, undefined, undefined); // No callbacks for non-instance
             } catch (e: any) {
                 console.error('Daggerheart Statblock: Error processing code block.', e);
                 const errorEl = el.createEl('pre', { cls: 'dh-statblock-error' });
@@ -225,37 +774,160 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     async getCompendiumCreatures(): Promise<StatblockData[]> {
         const creatures: StatblockData[] = [];
-        const folderPath = this.settings.compendiumFolder;
+        // Load SRD Adversaries if toggled
+        if (this.settings.useSrdAdversaries) {
+            try {
+                const srdFilePath = `${this.manifest.dir}/${SRD_ADVERSARIES_FILE}`;
+                console.log(`Daggerheart: Attempting to load SRD adversaries from ${srdFilePath}`);
+                if (await this.app.vault.adapter.exists(srdFilePath)) {
+                    const srdFileContent = await this.app.vault.adapter.read(srdFilePath);
+                    // Remove BOM if present
+                    const cleanedSrdContent = srdFileContent.charCodeAt(0) === 0xFEFF ? srdFileContent.substring(1) : srdFileContent;
+                    const srdRawCreatures = JSON.parse(cleanedSrdContent) as any[];
 
-        if (!folderPath) {
-            new Notice("Compendium folder not set in Daggerheart plugin settings.");
-            return [];
-        }
-
-        const abstractFileOrFolder = this.app.vault.getAbstractFileByPath(folderPath);
-
-        if (!abstractFileOrFolder) {
-            new Notice(`Compendium path "${folderPath}" not found.`);
-            return [];
-        }
-
-        if (abstractFileOrFolder instanceof TFile && abstractFileOrFolder.extension === 'md') {
-            const fileContent = await this.app.vault.cachedRead(abstractFileOrFolder);
-            this.extractStatblocksFromFile(fileContent, abstractFileOrFolder.path, creatures);
-        } else if (abstractFileOrFolder instanceof TFolder) {
-            const files = abstractFileOrFolder.children.filter(
-                (file): file is TFile => file instanceof TFile && file.extension === 'md'
-            );
-            for (const file of files) {
-                const fileContent = await this.app.vault.cachedRead(file);
-                this.extractStatblocksFromFile(fileContent, file.path, creatures);
+                    srdRawCreatures.forEach(rawAdv => {
+                        const transformed = this.parseSrdAdversaryData(rawAdv);
+                        if (transformed) creatures.push(transformed);
+                    });
+                    console.log(`Daggerheart: Loaded ${creatures.filter(c => c.sourceFile === SRD_ADVERSARIES_FILE).length} creatures from SRD file.`);
+                } else {
+                    console.warn(`Daggerheart: SRD file not found at ${srdFilePath}`);
+                    new Notice(`SRD adversaries file (${SRD_ADVERSARIES_FILE}) not found in plugin folder. Make sure it's named correctly and in the root of the plugin directory.`);
+                }
+            } catch (e: any) {
+                console.error("Daggerheart: Error loading SRD adversaries:", e);
+                new Notice("Error loading SRD adversaries. Check console.");
             }
-        } else {
-            new Notice(`Compendium path "${folderPath}" is not a valid Markdown file or folder.`);
-            return [];
         }
-        return creatures;
+
+
+        // Load creatures from user-specified compendium folder
+        const folderPath = this.settings.compendiumFolder;
+        if (folderPath) {
+            console.log(`Daggerheart: Attempting to read user compendium from path: "${folderPath}"`);
+            const abstractFileOrFolder = this.app.vault.getAbstractFileByPath(folderPath);
+            if (!abstractFileOrFolder) {
+                new Notice(`User compendium path "${folderPath}" not found.`);
+            } else if (abstractFileOrFolder instanceof TFile && abstractFileOrFolder.extension === 'md') {
+                const fileContent = await this.app.vault.cachedRead(abstractFileOrFolder);
+                this.extractStatblocksFromFile(fileContent, abstractFileOrFolder.path, creatures);
+            } else if (abstractFileOrFolder instanceof TFolder) {
+                const files = abstractFileOrFolder.children.filter(
+                    (file): file is TFile => file instanceof TFile && file.extension === 'md'
+                );
+                for (const file of files) {
+                    const fileContent = await this.app.vault.cachedRead(file);
+                    this.extractStatblocksFromFile(fileContent, file.path, creatures);
+                }
+            } else {
+                new Notice(`User compendium path "${folderPath}" is not a valid Markdown file or folder.`);
+            }
+        }
+
+        const uniqueCreatures: StatblockData[] = [];
+        const names = new Set<string>();
+
+        creatures.forEach(c => {
+            if (!names.has(c.name)) {
+                uniqueCreatures.push(c);
+                names.add(c.name);
+            }
+        });
+
+
+        console.log(`Daggerheart: Total ${uniqueCreatures.length} unique creatures loaded into compendium.`);
+        return uniqueCreatures;
     }
+
+    private parseSrdAdversaryData(srd: any): StatblockData | null {
+        try {
+            if (!srd.name || !srd.hp || !srd.stress) {
+                console.warn("SRD object missing essential fields (name, hp, stress):", srd);
+                return null;
+            }
+
+            const hpStress: StatblockHpStress = {
+                hp: Number(srd.hp) || 0,
+                stress: Number(srd.stress) || 0,
+            };
+            if (srd.thresholds && typeof srd.thresholds === 'string') {
+                const parts = srd.thresholds.split('/');
+                if (parts.length >= 1 && parts[0].trim().toLowerCase() !== "none") hpStress.major_hp = Number(parts[0].trim()) || null; // SRD first threshold is major
+                if (parts.length >= 2 && parts[1].trim().toLowerCase() !== "none") hpStress.severe_hp = Number(parts[1].trim()) || null; // SRD second is severe
+            }
+
+            const features: StatblockFeature[] = [];
+            if (srd.feats && Array.isArray(srd.feats)) {
+                srd.feats.forEach((feat: any) => {
+                    if (feat.name && feat.text) {
+                        let featNameFull = feat.name;
+                        let cost: string | number | undefined = undefined;
+                        let type = "Passive";
+                        let nameOnly = featNameFull;
+
+                        const typeMatch = featNameFull.match(/-\s*(Passive|Action|Reaction(?:[:\s].*)?)$/i);
+                        if (typeMatch) {
+                            type = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1).toLowerCase().replace(/:.*/, '').trim();
+                            nameOnly = featNameFull.substring(0, typeMatch.index).trim();
+                        }
+
+                        const costMatch = nameOnly.match(/\(([^)]+)\)$/);
+                        if (costMatch) {
+                            const costStr = costMatch[1];
+                            if (!isNaN(Number(costStr))) {
+                                cost = Number(costStr);
+                            } else {
+                                cost = costStr;
+                            }
+                            nameOnly = nameOnly.substring(0, costMatch.index).trim();
+                        }
+
+                        features.push({
+                            name: nameOnly.trim(),
+                            type: type,
+                            cost: cost,
+                            description: feat.text,
+                        });
+                    }
+                });
+            }
+
+            let experience: StatblockExperience | string | undefined;
+            if (srd.experience && typeof srd.experience === 'string') {
+                experience = srd.experience;
+            }
+
+            let motives_tactics: string[] | string | undefined;
+            if (srd.motives_and_tactics && typeof srd.motives_and_tactics === 'string') {
+                motives_tactics = srd.motives_and_tactics;
+            }
+
+
+            const statblock: StatblockData = {
+                name: srd.name,
+                tier: srd.tier ? (isNaN(Number(srd.tier)) ? srd.tier : Number(srd.tier)) : undefined,
+                type: srd.type,
+                description: srd.description,
+                motives_tactics: motives_tactics,
+                difficulty: srd.difficulty ? (isNaN(Number(srd.difficulty)) ? srd.difficulty : Number(srd.difficulty)) : undefined,
+                hp_stress: hpStress,
+                attack: {
+                    name: srd.attack || "Attack",
+                    range: srd.range || "",
+                    damage: srd.damage || "",
+                    modifier: srd.atk || "0"
+                },
+                experience: experience,
+                features: features,
+                sourceFile: SRD_ADVERSARIES_FILE
+            };
+            return statblock;
+        } catch (e: any) {
+            console.error("Error transforming SRD adversary data:", srd, e);
+            return null;
+        }
+    }
+
 
     private extractStatblocksFromFile(content: string, filePath: string, creaturesArray: StatblockData[]) {
         const codeBlockRegex = /```daggerheart-statblock\s*([\s\S]*?)```/g;
@@ -264,12 +936,35 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             try {
                 const yamlContent = match[1].replace(/\u00A0/g, ' ');
                 const statblock = YAML.load(yamlContent) as StatblockData;
+
                 if (statblock && statblock.name && statblock.hp_stress) {
                     statblock.sourceFile = filePath;
                     statblock.hp_stress.hp = Number(statblock.hp_stress.hp);
                     statblock.hp_stress.stress = Number(statblock.hp_stress.stress);
-                    if (statblock.hp_stress.minor_hp) statblock.hp_stress.minor_hp = Number(statblock.hp_stress.minor_hp);
                     if (statblock.hp_stress.major_hp) statblock.hp_stress.major_hp = Number(statblock.hp_stress.major_hp);
+                    if (statblock.hp_stress.severe_hp) statblock.hp_stress.severe_hp = Number(statblock.hp_stress.severe_hp);
+
+                    if (typeof statblock.experience === 'string') {
+                        const expObj: StatblockExperience = {};
+                        const expParts = statblock.experience.split(',');
+                        expParts.forEach(part => {
+                            const subParts = part.trim().split(/\s+/);
+                            if (subParts.length === 2 && !isNaN(Number(subParts[1]))) {
+                                expObj[subParts[0]] = Number(subParts[1]);
+                            }
+                        });
+                        statblock.experience = expObj;
+                    } else if (!statblock.experience) {
+                        statblock.experience = {};
+                    }
+
+
+                    if (typeof statblock.motives_tactics === 'string') {
+                        statblock.motives_tactics = statblock.motives_tactics.split(',').map(s => s.trim());
+                    } else if (!statblock.motives_tactics) {
+                        statblock.motives_tactics = [];
+                    }
+
                     creaturesArray.push(statblock);
                 }
             } catch (e: any) {
@@ -278,7 +973,14 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
-    renderStatblockCard(data: StatblockData | CreatureInstance, containerEl: HTMLElement, isInstance: boolean = false, displayName?: string) {
+    renderStatblockCard(
+        data: StatblockData | CreatureInstance,
+        containerEl: HTMLElement,
+        isInstance: boolean = false,
+        displayName?: string,
+        hpUpdateCallback?: (newHp: number) => void,
+        stressUpdateCallback?: (newStress: number) => void
+    ) {
         if (!isInstance) {
             containerEl.empty();
         }
@@ -311,25 +1013,45 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 const roleTagDiv = statblockContentDiv.createDiv({ text: roleTagText.trim(), cls: 'dh-card-role-text' });
                 headerDiv.insertAdjacentElement('afterend', roleTagDiv);
             }
-        } else if (data.title) {
-            headerDiv.createSpan({ text: ` ${data.title.toUpperCase()}`, cls: 'dh-title' });
         }
-
+        // Removed 'else if (data.title)' as title is no longer used for full statblocks
 
         if (!isInstance && data.tier) {
             const metaDiv = statblockContentDiv.createDiv({ cls: 'dh-meta' });
             metaDiv.createSpan({ text: `Tier ${data.tier}`, cls: 'dh-tier' });
             if (data.type) metaDiv.createSpan({ text: data.type, cls: 'dh-type' });
         }
-        if (!isInstance && data.description) {
+        // Show description on instance cards if setting is enabled
+        if (data.description && (!isInstance || (isInstance && this.settings.showDescriptionOnCards))) {
             statblockContentDiv.createDiv({ text: data.description, cls: 'dh-description' });
         }
 
-        if (!isInstance && data.motives_tactics && Array.isArray(data.motives_tactics) && data.motives_tactics.length > 0) {
-            const motivesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
-            motivesDiv.createEl('strong', { text: 'Motives & Tactics:' });
-            motivesDiv.appendText(` ${data.motives_tactics.join(', ')}`);
+
+        if (data.motives_tactics) {
+            const motivesText = Array.isArray(data.motives_tactics) ? data.motives_tactics.join(', ') : data.motives_tactics;
+            if (motivesText && (!isInstance || (isInstance && this.settings.showMotivesOnCards))) {
+                const motivesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
+                motivesDiv.createEl('strong', { text: 'Motives & Tactics: ' });
+                motivesDiv.appendText(motivesText);
+            }
         }
+
+        if (data.experience) {
+            let expStringContent = "";
+            if (typeof data.experience === 'string') {
+                expStringContent = data.experience;
+            } else if (typeof data.experience === 'object' && Object.keys(data.experience).length > 0) {
+                expStringContent = Object.entries(data.experience)
+                    .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)} ${value}`)
+                    .join(', ');
+            }
+            if (expStringContent && (!isInstance || (isInstance && this.settings.showExperienceOnCards))) {
+                const expDiv = statblockContentDiv.createDiv({ cls: 'dh-experience' });
+                expDiv.createEl('strong', { text: 'Experience: ' });
+                expDiv.appendText(expStringContent);
+            }
+        }
+
 
         const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
         if (data.difficulty !== undefined) {
@@ -354,18 +1076,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             attackSpan.innerHTML = attackDisplay;
         }
 
-        if (!isInstance && data.experience && typeof data.experience === 'object') {
-            const expDiv = statblockContentDiv.createDiv({ cls: 'dh-experience' });
-            let expString = '<strong>Experience:</strong> ';
-            const expParts = [];
-            for (const key in data.experience) {
-                if (Object.prototype.hasOwnProperty.call(data.experience, key)) {
-                    expParts.push(`${key.charAt(0).toUpperCase() + key.slice(1)} +${data.experience[key]}`);
-                }
-            }
-            expString += expParts.join(', ');
-            expDiv.innerHTML = expString;
-        }
 
         if (data.features && Array.isArray(data.features) && data.features.length > 0) {
             const featuresSectionDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
@@ -380,6 +1090,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
                 let featureHeaderString = `<strong>${feature.name}`;
                 if (feature.cost !== undefined && feature.cost !== null && typeof feature.cost === 'number') {
+                    featureHeaderString += ` (${feature.cost})`;
+                } else if (feature.cost && typeof feature.cost === 'string') {
                     featureHeaderString += ` (${feature.cost})`;
                 }
                 featureHeaderString += `</strong>`;
@@ -404,7 +1116,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 }
 
                 if (isInstance) {
-                    if (fullDescriptionText.trim()) {
+                    if (fullDescriptionText.trim() && this.settings.showFeatureDetailsOnCards) {
                         const toggle = headerContainer.createSpan({ cls: 'dh-feature-toggle', text: ' [+]' });
                         toggle.setAttribute('aria-expanded', 'false');
                         toggle.setAttribute('role', 'button');
@@ -440,25 +1152,29 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             summaryLineHP.innerHTML = `<span class="dh-summary-label">HP:</span> <span class="dh-summary-value">${hpMax}</span>`;
 
             const thresholdsInlineContainer = summaryLineHP.createSpan({ cls: 'dh-thresholds-inline' });
-            if (data.hp_stress.minor_hp !== undefined && data.hp_stress.minor_hp !== null) {
-                thresholdsInlineContainer.createSpan({ text: 'Minor', cls: 'dh-threshold-box dh-threshold-box-label' });
-                thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.minor_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
-            }
             if (data.hp_stress.major_hp !== undefined && data.hp_stress.major_hp !== null) {
-                thresholdsInlineContainer.createSpan({ text: 'Major', cls: 'dh-threshold-box dh-threshold-box-label' });
+                thresholdsInlineContainer.createSpan({ text: 'Minor', cls: 'dh-threshold-box dh-threshold-box-label' });
                 thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.major_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
             }
-            if (Object.prototype.hasOwnProperty.call(data.hp_stress, 'severe_hp') || data.hp_stress.minor_hp || data.hp_stress.major_hp) {
-                thresholdsInlineContainer.createSpan({ text: 'Severe', cls: 'dh-threshold-box dh-threshold-box-label' });
+            if (data.hp_stress.severe_hp !== undefined && data.hp_stress.severe_hp !== null) {
+                thresholdsInlineContainer.createSpan({ text: 'Major', cls: 'dh-threshold-box dh-threshold-box-label' });
+                thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.severe_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
             }
+            if (data.hp_stress.major_hp || data.hp_stress.severe_hp) {
+                thresholdsInlineContainer.createSpan({ text: 'Severe', cls: 'dh-threshold-box dh-threshold-box-label dh-threshold-box-severe' });
+            }
+
 
             const summaryLineStress = hpStressContainer.createDiv({ cls: 'dh-hp-stress-summary' });
             summaryLineStress.innerHTML = `<span class="dh-summary-label">Stress:</span> <span class="dh-summary-value">${stressMax}</span>`;
 
             if (isInstance) {
                 const creatureInstance = data as CreatureInstance;
-                this.createInteractiveTrack(hpStressContainer, 'HP', hpMax, `${creatureInstance.id}-hp`, creatureInstance.currentHp, (newHp) => creatureInstance.currentHp = newHp);
-                this.createInteractiveTrack(hpStressContainer, 'Stress', stressMax, `${creatureInstance.id}-stress`, creatureInstance.currentStress, (newStress) => creatureInstance.currentStress = newStress);
+                const hpCb = hpUpdateCallback || ((newHp) => creatureInstance.currentHp = newHp);
+                const stressCb = stressUpdateCallback || ((newStress) => creatureInstance.currentStress = newStress);
+
+                this.createInteractiveTrack(hpStressContainer, 'HP', hpMax, `${creatureInstance.id}-hp`, creatureInstance.currentHp, hpCb);
+                this.createInteractiveTrack(hpStressContainer, 'Stress', stressMax, `${creatureInstance.id}-stress`, creatureInstance.currentStress, stressCb);
 
                 hpStressContainer.createDiv({ cls: 'dh-additional-trackers-container' });
             }
@@ -553,7 +1269,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Compendium Folder')
-            .setDesc('Path to the folder containing your Daggerheart statblock Markdown files (e.g., "System/Daggerheart/Creatures"). Leave empty to disable compendium.')
+            .setDesc('Path to the folder containing your Daggerheart statblock Markdown files (e.g., "System/Daggerheart/Creatures"). Leave empty to disable user compendium.')
             .addText((text: TextComponent) => {
                 text
                     .setPlaceholder('Example: Path/To/Creatures')
@@ -564,9 +1280,72 @@ class DaggerheartSettingTab extends PluginSettingTab {
                         const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
                         if (view instanceof EncounterBuilderView) {
                             await view.loadCompendium();
-                            view.drawUI(view.containerEl.children[1]);
+                            view.drawUI();
                         }
                     });
             });
+
+        new Setting(containerEl)
+            .setName('Use SRD Adversaries')
+            .setDesc(`Include the Daggerheart SRD adversaries from the plugin's "${SRD_ADVERSARIES_FILE}" file in the compendium. This file must be present in the plugin's root folder.`)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.useSrdAdversaries)
+                .onChange(async (value) => {
+                    this.plugin.settings.useSrdAdversaries = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) {
+                        await view.loadCompendium();
+                        view.drawUI();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName('Show Description on Instance Cards')
+            .setDesc('If enabled, the full description will be shown on creature cards in the encounter builder.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showDescriptionOnCards)
+                .onChange(async (value) => {
+                    this.plugin.settings.showDescriptionOnCards = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) view.drawUI();
+                }));
+
+        new Setting(containerEl)
+            .setName('Show Motives & Tactics on Instance Cards')
+            .setDesc('If enabled, motives & tactics will be shown on creature cards in the encounter builder.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showMotivesOnCards)
+                .onChange(async (value) => {
+                    this.plugin.settings.showMotivesOnCards = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) view.drawUI();
+                }));
+
+        new Setting(containerEl)
+            .setName('Show Experience on Instance Cards')
+            .setDesc('If enabled, experience details will be shown on creature cards in the encounter builder.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showExperienceOnCards)
+                .onChange(async (value) => {
+                    this.plugin.settings.showExperienceOnCards = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) view.drawUI();
+                }));
+
+        new Setting(containerEl)
+            .setName('Show Full Feature Details on Instance Cards')
+            .setDesc('If enabled, feature descriptions will be toggleable on creature cards. If disabled, only feature names/types/costs are shown.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showFeatureDetailsOnCards)
+                .onChange(async (value) => {
+                    this.plugin.settings.showFeatureDetailsOnCards = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) view.drawUI();
+                }));
     }
 }

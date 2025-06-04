@@ -6,8 +6,8 @@
     background-color: var(--background-primary-alt, #fdf5e6); 
     border: 2px solid var(--background-modifier-border-hover, #6a4f4b); 
     border-radius: var(--radius-m, 8px);
-    padding: var(--size-4-4, 15px);
-    margin: var(--size-4-4, 15px) 0;
+    padding: 15px;
+    margin: 15px 0;
     box-shadow: var(--shadow-s, 2px 2px 8px rgba(0,0,0,0.15));
     color: var(--text-normal, #3a2d21); 
     max-width: 700px;
@@ -74,13 +74,26 @@
     font-size: var(--font-text-size, 0.9em); 
     color: var(--text-normal, #4a3b32);
 }
+.dh-instance-card-content .dh-description {
+    font-size: calc(var(--font-ui-small) * 0.95);
+    color: var(--text-faint);
+    margin-top: var(--size-4-1);
+}
+
 
 .dh-motives {
     margin-bottom: var(--size-4-2, 10px);
     font-size: calc(var(--font-text-size) * 0.95); 
     font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
 }
+.dh-instance-card-content .dh-motives { /* Specific styling for cards */
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-faint);
+    margin-top: var(--size-4-1);
+}
 .dh-motives strong { color: var(--text-accent-hover, #503018); font-weight: var(--font-bold, bold); }
+.dh-instance-card-content .dh-motives strong { color: var(--text-muted); }
+
 
 .dh-core-stats-line {
     display: flex;
@@ -123,7 +136,15 @@
     padding-top: var(--size-4-2, 6px);
     font-family: var(--font-interface-override, 'Helvetica Neue', Helvetica, Arial, sans-serif);
 }
+.dh-instance-card-content .dh-experience { /* Specific styling for cards */
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-faint);
+    margin-top: var(--size-4-1);
+    padding-top: var(--size-4-1);
+}
 .dh-experience strong { color: var(--text-accent-hover, #503018); font-weight: var(--font-bold, bold); }
+.dh-instance-card-content .dh-experience strong { color: var(--text-muted); }
+
 
 .dh-features-section { margin-top: var(--size-4-3, 12px); }
 .dh-features-title { 
@@ -381,16 +402,18 @@
     color: var(--text-normal, #ccc); 
 }
 .dh-encounter-header h2 { margin: 0; font-size: var(--font-ui-larger, 1.5em); }
-.dh-encounter-controls button { 
-    margin-left: var(--size-4-2, 10px); 
-    padding: var(--size-4-1, 5px) var(--size-4-2, 10px);
-    background-color: var(--interactive-normal);
-    color: var(--text-on-accent);
-    border: 1px solid var(--interactive-normal-border);
+.dh-encounter-controls .dh-icon-button { 
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: var(--size-2-2); 
+    cursor: pointer;
     border-radius: var(--radius-s);
+    margin-left: var(--size-4-1);
 }
-.dh-encounter-controls button:hover {
-    background-color: var(--interactive-hover);
+.dh-encounter-controls .dh-icon-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
 }
 
 
@@ -399,9 +422,9 @@
     flex-grow: 1; 
     gap: var(--size-4-3, 15px); 
     overflow: hidden; 
-    height: calc(100% - 60px); 
 }
 
+/* Compendium Panel (Now on the Right) */
 .dh-compendium-panel {
     background-color: var(--background-primary, #333); 
     border: 1px solid var(--background-modifier-border, #444);
@@ -413,24 +436,49 @@
     flex: 0 0 280px; 
     min-width: 240px;
     color: var(--text-normal, #ccc);
+    transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out, border 0.3s ease-in-out, margin 0.3s ease-in-out; 
+    order: 2; /* Make it appear on the right */
 }
-.dh-encounter-panel { 
-    background-color: var(--background-primary-alt, #25252d); 
-    border: 1px solid var(--background-modifier-border, #444);
-    border-radius: var(--radius-m, 6px);
-    padding: var(--size-4-2, 10px);
-    display: flex;
-    flex-direction: column; 
-    flex-grow: 1; 
-    overflow: hidden; 
+.dh-compendium-panel.dh-compendium-panel-hidden {
+    flex-basis: 0 !important; 
+    min-width: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important; 
+    border: none !important;
+    margin-left: 0 !important; 
+}
+.dh-compendium-panel.dh-compendium-panel-hidden > * {
+    display: none; 
 }
 
-.dh-compendium-panel h3, .dh-encounter-panel h3 {
-    margin-top: 0; margin-bottom: var(--size-4-2, 10px); padding-bottom: var(--size-4-1, 5px);
+
+.dh-panel-header { 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--size-4-2, 10px);
+    padding-bottom: var(--size-4-1, 5px);
     border-bottom: 1px solid var(--background-modifier-border, #555);
+}
+.dh-panel-header h3 {
+    margin: 0;
     font-size: var(--font-ui-large, 1.2em);
     color: var(--text-faint, #aaa);
 }
+.dh-panel-controls .dh-icon-button { 
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: var(--size-2-1);
+    cursor: pointer;
+    border-radius: var(--radius-s);
+}
+.dh-panel-controls .dh-icon-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
 
 .dh-compendium-list { display: flex; flex-direction: column; gap: var(--size-4-1, 5px); }
 .dh-compendium-entry {
@@ -454,6 +502,31 @@
     background-color: var(--interactive-accent-hover);
 }
 
+/* Active Encounter Creatures Panel (Now on the Left) */
+.dh-active-creatures-panel { 
+    background-color: var(--background-primary-alt, #25252d); 
+    border: 1px solid var(--background-modifier-border, #444);
+    border-radius: var(--radius-m, 6px);
+    padding: var(--size-4-2, 10px);
+    display: flex;
+    flex-direction: column; 
+    flex-grow: 1; 
+    overflow: hidden; 
+    order: 1; /* Make it appear on the left */
+}
+.dh-active-encounter-title-clickable { 
+    margin-top: 0; margin-bottom: var(--size-4-2, 10px); padding-bottom: var(--size-4-1, 5px);
+    border-bottom: 1px solid var(--background-modifier-border, #555);
+    font-size: var(--font-ui-large, 1.2em);
+    color: var(--text-accent, #aaa); 
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.1s ease-in-out;
+}
+.dh-active-encounter-title-clickable:hover {
+    color: var(--text-accent-hover);
+}
+
 
 .dh-encounter-area {
     display: flex; 
@@ -464,7 +537,6 @@
     overflow-x: auto; 
     overflow-y: hidden; 
     flex-grow: 1; 
-    height: 100%; 
 }
 
 .dh-creature-group-container { 
@@ -475,7 +547,7 @@
 
 
 .dh-creature-instance-card {
-    background-color: var(--color-base-25, #2c2c38); /* Darker base for card */
+    background-color: var(--color-base-25, #2c2c38); 
     color: var(--text-normal, #e0e0e0); 
     border-radius: var(--radius-m, 8px);
     padding: 0; 
@@ -490,8 +562,8 @@
     position: absolute;
     top: var(--size-4-2, 8px); 
     right: var(--size-4-2, 8px);
-    background-color: rgba(var(--mono-rgb-100), 0.1); /* Use theme black/white for overlay */
-    color: var(--text-on-accent-inverted, #fff); /* Ensure contrast */
+    background-color: rgba(var(--mono-rgb-100), 0.1); 
+    color: var(--text-on-accent-inverted, #fff); 
     border: 1px solid rgba(var(--mono-rgb-100), 0.3);
     border-radius: 50%;
     width: 24px;
@@ -505,7 +577,7 @@
 .dh-remove-instance-btn:hover { background-color: rgba(var(--color-red-rgb), 0.5); }
 
 .dh-instance-card-content { 
-    background-color: var(--background-primary, #383848); /* Card content bg */
+    background-color: var(--background-primary, #383848); 
     border: none; 
     border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px); 
     padding: var(--size-4-3, 12px);
@@ -592,5 +664,136 @@
 .dh-additional-tracker-row .dh-pip-marked { background-color: var(--interactive-accent, #88aaff); border-color: var(--interactive-accent-hover, #6688cc); }
 .dh-additional-tracker-row .dh-pips-container {
     max-width: calc(100% - 50px - 50px); 
+}
+
+/* Modal Styling */
+.dh-name-modal .modal-title, 
+.dh-manage-encounters-modal .modal-title { 
+    color: var(--text-title-h1);
+    text-align: center; /* Center modal titles */
+}
+.dh-name-modal .setting-item-info,
+.dh-manage-encounters-modal .setting-item-info { 
+    color: var(--text-normal);
+}
+.dh-modal-input {
+    border-color: var(--background-modifier-border-focus) !important; 
+    background-color: var(--background-primary) !important;
+    color: var(--text-normal) !important;
+    width: 100%; /* Make input take full width in setting item */
+}
+.dh-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--size-4-4);
+    gap: var(--size-4-2);
+}
+.dh-modal-buttons button {
+    min-width: 80px;
+}
+
+/* Manage Encounters Modal List */
+.dh-manage-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+    max-height: 60vh; 
+    overflow-y: auto;
+    margin-top: var(--size-4-3); /* Space above list */
+}
+.dh-manage-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+}
+.dh-manage-item-name-container { /* Container for name or input */
+    flex-grow: 1;
+    margin-right: var(--size-4-2);
+}
+.dh-manage-item-name {
+    color: var(--text-normal);
+}
+.dh-manage-item-input { /* Style for the inline input */
+    width: 100%;
+    padding: var(--size-2-1) var(--size-2-2);
+    border: 1px solid var(--background-modifier-border-focus);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    border-radius: var(--radius-s);
+}
+
+.dh-manage-item-buttons {
+    display: flex;
+    gap: var(--size-4-1);
+}
+.dh-manage-item-buttons .dh-icon-button {
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--size-2-1); /* Small padding for icon buttons */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.dh-manage-item-buttons .dh-icon-button:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+.dh-manage-item-buttons .dh-icon-button.dh-delete-btn-confirmable.is-confirming-delete {
+    color: var(--text-error);
+    background-color: rgba(var(--color-red-rgb), 0.1);
+}
+
+
+/* Ensure menu items are styled correctly if needed */
+.menu-item-icon { 
+    margin-right: var(--size-4-2);
+}
+
+/* Styles for the popover menu (to ensure Obsidian theme is applied) */
+.menu { 
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    box-shadow: var(--shadow-l); 
+}
+.menu-item { 
+    color: var(--text-normal);
+}
+.menu-item:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal); 
+}
+.menu-item.is-checked { 
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.menu-item.is-checked:hover {
+    background-color: var(--interactive-accent-hover);
+}
+.menu-separator { 
+    background-color: var(--background-modifier-border);
+}
+.menu.context-menu .menu-item-icon { 
+    color: var(--text-muted);
+}
+
+.dh-compendium-search {
+    width: calc(100% - var(--size-4-2) * 2); /* Full width minus padding */
+    padding: var(--size-4-2);
+    margin-bottom: var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+}
+.dh-compendium-search:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--interactive-accent-rgb, 0.2); /* Focus ring */
 }
 
