@@ -858,3 +858,80 @@
     overflow: hidden;
     margin-bottom: 8px;
 }
+
+/* --- Filter Controls Styling --- */
+.dh-filter-controls {
+    display: flex;
+    gap: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    flex-wrap: wrap;
+}
+
+.dh-filter-section {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+
+.dh-filter-label {
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+.dh-tier-button {
+    padding: var(--size-4-1) var(--size-4-2);
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    min-width: 30px;
+    text-align: center;
+}
+
+.dh-tier-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.dh-tier-button.active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.dh-tier-button.active:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+.dh-type-select {
+    padding: var(--size-4-1) var(--size-4-2);
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    min-width: 150px;
+}
+
+.dh-type-select:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.dh-type-select:focus {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+    outline: none;
+}
+
+.dh-type-select option {
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    padding: var(--size-4-1);
+}

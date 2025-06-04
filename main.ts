@@ -161,6 +161,8 @@ export class EncounterBuilderView extends ItemView {
     private uiContainer: HTMLElement | null = null;
     private isCompendiumVisible: boolean = true;
     private compendiumSearchTerm: string = "";
+    private selectedTiers: Set<number> = new Set();
+    private selectedTypes: Set<string> = new Set();
 
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
@@ -193,6 +195,12 @@ export class EncounterBuilderView extends ItemView {
             }
             this.isCompendiumVisible = typeof persistedState.isCompendiumVisible === 'boolean' ? persistedState.isCompendiumVisible : true;
             this.compendiumSearchTerm = typeof persistedState.compendiumSearchTerm === 'string' ? persistedState.compendiumSearchTerm : "";
+            if (Array.isArray(persistedState.selectedTiers)) {
+                this.selectedTiers = new Set(persistedState.selectedTiers);
+            }
+            if (Array.isArray(persistedState.selectedTypes)) {
+                this.selectedTypes = new Set(persistedState.selectedTypes);
+            }
         }
 
         this.ensureActiveEncounter();
@@ -215,6 +223,12 @@ export class EncounterBuilderView extends ItemView {
             if (typeof state.compendiumSearchTerm === 'string') {
                 this.compendiumSearchTerm = state.compendiumSearchTerm;
             }
+            if (Array.isArray(state.selectedTiers)) {
+                this.selectedTiers = new Set(state.selectedTiers);
+            }
+            if (Array.isArray(state.selectedTypes)) {
+                this.selectedTypes = new Set(state.selectedTypes);
+            }
         }
         this.ensureActiveEncounter();
         this.loadCreaturesForCurrentEncounter();
@@ -229,7 +243,9 @@ export class EncounterBuilderView extends ItemView {
         return {
             currentEncounterId: this.currentEncounterId,
             isCompendiumVisible: this.isCompendiumVisible,
-            compendiumSearchTerm: this.compendiumSearchTerm
+            compendiumSearchTerm: this.compendiumSearchTerm,
+            selectedTiers: Array.from(this.selectedTiers),
+            selectedTypes: Array.from(this.selectedTypes)
         };
     }
 
@@ -436,6 +452,50 @@ export class EncounterBuilderView extends ItemView {
             this.leaf.setEphemeralState(this.getState());
             this.renderCompendiumList(compendiumPanel.querySelector(".dh-compendium-list") as HTMLElement);
         });
+
+        // Add filter controls
+        const filterControls = compendiumPanel.createDiv({ cls: 'dh-filter-controls' });
+
+        // Tier filter
+        const tierSection = filterControls.createDiv({ cls: 'dh-filter-section' });
+        tierSection.createSpan({ text: 'Tier:', cls: 'dh-filter-label' });
+        for (let tier = 1; tier <= 4; tier++) {
+            const tierBtn = tierSection.createEl('button', {
+                text: tier.toString(),
+                cls: `dh-tier-button${this.selectedTiers.has(tier) ? ' active' : ''}`
+            });
+            tierBtn.addEventListener('click', () => this.toggleTier(tier));
+        }
+
+        // Type filter
+        const typeSection = filterControls.createDiv({ cls: 'dh-filter-section' });
+        typeSection.createSpan({ text: 'Type:', cls: 'dh-filter-label' });
+        const typeSelect = typeSection.createEl('select', { cls: 'dh-type-select' }) as HTMLSelectElement;
+
+        // Add "All Types" option
+        typeSelect.createEl('option', {
+            text: 'All Types',
+            value: ''
+        });
+
+        // Get unique types from compendium
+        const uniqueTypes = new Set(this.compendiumCreatures
+            .map(c => c.type)
+            .filter((type): type is string => type !== undefined));
+
+        Array.from(uniqueTypes).sort().forEach(type => {
+            const option = typeSelect.createEl('option', {
+                text: type,
+                value: type
+            });
+            option.selected = this.selectedTypes.has(type);
+        });
+
+        typeSelect.addEventListener('change', (e) => {
+            const select = e.target as HTMLSelectElement;
+            const selectedType = select.value;
+            this.updateTypeFilter(selectedType ? [selectedType] : []);
+        });
         const compendiumList = compendiumPanel.createDiv({ cls: "dh-compendium-list" });
         this.renderCompendiumList(compendiumList);
 
@@ -444,10 +504,9 @@ export class EncounterBuilderView extends ItemView {
 
     renderCompendiumList(listContainer: HTMLElement) {
         listContainer.empty();
-        const searchTerm = this.compendiumSearchTerm.toLowerCase();
-        const filteredCreatures = this.compendiumCreatures.filter(c => c.name.toLowerCase().includes(searchTerm));
+        const filteredCreatures = this.applyFilters(this.compendiumCreatures);
         if (filteredCreatures.length === 0) {
-            listContainer.createEl("p", { text: searchTerm ? "No matching creatures found." : "No creatures in compendium. Check settings." });
+            listContainer.createEl("p", { text: this.compendiumSearchTerm ? "No matching creatures found." : "No creatures in compendium. Check settings." });
         }
         else {
             filteredCreatures.forEach(creatureData => {
@@ -459,6 +518,53 @@ export class EncounterBuilderView extends ItemView {
                 });
             });
         }
+    }
+
+    private applyFilters(creatures: StatblockData[]): StatblockData[] {
+        return creatures.filter(creature => {
+            const matchesSearch = this.compendiumSearchTerm === "" ||
+                creature.name.toLowerCase().includes(this.compendiumSearchTerm.toLowerCase());
+
+            const matchesTier = this.selectedTiers.size === 0 ||
+                (creature.tier !== undefined && (
+                    typeof creature.tier === 'number'
+                        ? this.selectedTiers.has(creature.tier)
+                        : this.selectedTiers.has(Number(creature.tier))
+                ));
+
+            const matchesType = this.selectedTypes.size === 0 ||
+                (creature.type !== undefined && this.selectedTypes.has(creature.type));
+
+            return matchesSearch && matchesTier && matchesType;
+        });
+    }
+
+    private toggleTier(tier: number) {
+        if (this.selectedTiers.has(tier)) {
+            this.selectedTiers.delete(tier);
+        } else {
+            this.selectedTiers.add(tier);
+        }
+
+        // Update the UI for all tier buttons
+        const tierButtons = this.uiContainer?.querySelectorAll('.dh-tier-button');
+        if (tierButtons) {
+            tierButtons.forEach((btn: Element) => {
+                const buttonTier = parseInt(btn.textContent || '0');
+                if (this.selectedTiers.has(buttonTier)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        this.renderCompendiumList(this.uiContainer?.querySelector(".dh-compendium-list") as HTMLElement);
+    }
+
+    private updateTypeFilter(types: string[]) {
+        this.selectedTypes = new Set(types);
+        this.renderCompendiumList(this.uiContainer?.querySelector(".dh-compendium-list") as HTMLElement);
     }
 
     handleNewEncounter(isDefaultCreation: boolean = false, defaultName?: string) {
@@ -874,8 +980,10 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             const featuresSectionDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
             featuresSectionDiv.createDiv({ text: 'FEATURES', cls: isInstance ? 'dh-instance-features-title' : 'dh-features-title' });
             const featuresListUl = featuresSectionDiv.createEl('ul', { cls: 'dh-features-list' });
+
             data.features.forEach(feature => {
                 if (typeof feature !== 'object' || !feature.name) return;
+
                 const featureLi = featuresListUl.createEl('li');
                 const headerContainer = featureLi.createDiv({ cls: 'dh-feature-header-container' });
                 let featureHeaderString = `<strong>${feature.name}</strong>`;
@@ -909,61 +1017,57 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                     }
                 } else {
                     nameSpan.innerHTML += ':';
-                    if (fullDescriptionText.trim()) featureLi.createDiv({ cls: 'dh-feature-description', text: fullDescriptionText.trim() });
+                    if (fullDescriptionText.trim()) {
+                        featureLi.createDiv({ cls: 'dh-feature-description', text: fullDescriptionText.trim() });
+                    }
                 }
             });
         }
 
-        if (data.hp_stress && typeof data.hp_stress === 'object') {
-            const hpStressContainer = statblockContentDiv.createDiv({ cls: 'dh-hp-stress-container' });
-            const originalHpStressSummaryDiv = hpStressContainer.createDiv({ cls: 'dh-original-hp-stress-summary' });
+        // Add container for additional trackers
+        const additionalTrackersEl = statblockContentDiv.createDiv({ cls: 'dh-additional-trackers-container' });
 
-            if (!isInstance) {
-                originalHpStressSummaryDiv.createEl('h4', { text: 'HP & STRESS', cls: 'dh-hp-stress-title' });
-            }
+        // Handle HP/Stress tracks for instances
+        if (isInstance && 'hp_stress' in data) {
+            if (!isGroupedInstance) {
+                const hpMax = Number(data.hp_stress.hp) || 0;
+                const stressMax = Number(data.hp_stress.stress) || 0;
 
-            const hpMax = Number(data.hp_stress.hp) || 0;
-            const stressMax = Number(data.hp_stress.stress) || 0;
+                const currentHp = 'currentHp' in data ? data.currentHp : 0;
+                const currentStress = 'currentStress' in data ? data.currentStress : 0;
 
-            const summaryLineHP = originalHpStressSummaryDiv.createDiv({ cls: 'dh-hp-stress-summary' });
-            summaryLineHP.innerHTML = `<span class="dh-summary-label">HP:</span> <span class="dh-summary-value">${hpMax}</span>`;
-            const thresholdsInlineContainer = summaryLineHP.createSpan({ cls: 'dh-thresholds-inline' });
-            if (data.hp_stress.major_hp != null) {
-                thresholdsInlineContainer.createSpan({ text: 'Minor', cls: 'dh-threshold-box dh-threshold-box-label' });
-                thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.major_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
-            }
-            if (data.hp_stress.severe_hp != null) {
-                thresholdsInlineContainer.createSpan({ text: 'Major', cls: 'dh-threshold-box dh-threshold-box-label' });
-                thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.severe_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
-            }
-            if (data.hp_stress.major_hp || data.hp_stress.severe_hp) {
-                thresholdsInlineContainer.createSpan({ text: 'Severe', cls: 'dh-threshold-box dh-threshold-box-label dh-threshold-box-severe' });
-            }
+                if (hpMax > 0 && hpUpdateCallback) {
+                    this.createInteractiveTrack(
+                        additionalTrackersEl,
+                        'HP',
+                        hpMax,
+                        `${('id' in data ? data.id : 'default')}-hp`,
+                        currentHp,
+                        hpUpdateCallback
+                    );
+                }
 
-            const summaryLineStress = originalHpStressSummaryDiv.createDiv({ cls: 'dh-hp-stress-summary' });
-            summaryLineStress.innerHTML = `<span class="dh-summary-label">Stress:</span> <span class="dh-summary-value">${stressMax}</span>`;
-
-            if (isInstance) {
-                const creatureInstance = data as CreatureInstance;
-                const hpCb = hpUpdateCallback || ((newHp) => creatureInstance.currentHp = newHp);
-                const stressCb = stressUpdateCallback || ((newStress) => creatureInstance.currentStress = newStress);
-
-                this.createInteractiveTrack(originalHpStressSummaryDiv, 'HP', hpMax, `${creatureInstance.id}-hp-main`, creatureInstance.currentHp, hpCb);
-                this.createInteractiveTrack(originalHpStressSummaryDiv, 'Stress', stressMax, `${creatureInstance.id}-stress-main`, creatureInstance.currentStress, stressCb);
-            }
-
-            if (isInstance) {
-                let additionalTrackersEl = statblockContentDiv.querySelector('.dh-additional-trackers-container') as HTMLElement;
-                if (!additionalTrackersEl) {
-                    additionalTrackersEl = statblockContentDiv.createDiv({ cls: 'dh-additional-trackers-container' });
+                if (stressMax > 0 && stressUpdateCallback) {
+                    this.createInteractiveTrack(
+                        additionalTrackersEl,
+                        'Stress',
+                        stressMax,
+                        `${('id' in data ? data.id : 'default')}-stress`,
+                        currentStress,
+                        stressUpdateCallback
+                    );
                 }
             }
         }
     }
 
     createInteractiveTrack(
-        parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string,
-        currentValue: number, updateCallback: (newValue: number) => void
+        parentEl: HTMLElement,
+        label: string,
+        maxValue: number,
+        trackIdPrefix: string,
+        currentValue: number,
+        updateCallback: (newValue: number) => void
     ) {
         const trackDiv = parentEl.createDiv({ cls: `dh-interactive-track dh-${label.toLowerCase()}-track` });
         trackDiv.createSpan({ text: label.toUpperCase(), cls: 'dh-track-label' });
