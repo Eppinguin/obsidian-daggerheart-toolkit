@@ -3,6 +3,7 @@ node_modules/
 
 # Production build output
 main.js
+data.json
 *.js.map
 
 # Development files
