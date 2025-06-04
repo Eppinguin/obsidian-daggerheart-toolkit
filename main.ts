@@ -329,7 +329,7 @@ export class EncounterBuilderView extends ItemView {
         const mainInterface = containerWrapper.createDiv({ cls: "dh-encounter-main-interface" });
         const activeCreaturesPanel = mainInterface.createDiv({ cls: "dh-active-creatures-panel" });
         const activeEncounterTitleText = currentEncounter ? currentEncounter.name : "No Encounter Selected";
-        const activeEncounterTitleEl = activeCreaturesPanel.createEl("h3", { text: `${activeEncounterTitleText}`, cls: 'dh-active-encounter-title-clickable' });
+        const activeEncounterTitleEl = activeCreaturesPanel.createEl("h3", { text: `Active: ${activeEncounterTitleText}`, cls: 'dh-active-encounter-title-clickable' });
         activeEncounterTitleEl.addEventListener('click', (mouseEvent: MouseEvent) => this.showEncounterSwitcherMenu(mouseEvent));
 
         const encounterArea = activeCreaturesPanel.createDiv({ cls: "dh-encounter-area" });
@@ -980,10 +980,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             const featuresSectionDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
             featuresSectionDiv.createDiv({ text: 'FEATURES', cls: isInstance ? 'dh-instance-features-title' : 'dh-features-title' });
             const featuresListUl = featuresSectionDiv.createEl('ul', { cls: 'dh-features-list' });
-
             data.features.forEach(feature => {
                 if (typeof feature !== 'object' || !feature.name) return;
-
                 const featureLi = featuresListUl.createEl('li');
                 const headerContainer = featureLi.createDiv({ cls: 'dh-feature-header-container' });
                 let featureHeaderString = `<strong>${feature.name}</strong>`;
@@ -1017,57 +1015,61 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                     }
                 } else {
                     nameSpan.innerHTML += ':';
-                    if (fullDescriptionText.trim()) {
-                        featureLi.createDiv({ cls: 'dh-feature-description', text: fullDescriptionText.trim() });
-                    }
+                    if (fullDescriptionText.trim()) featureLi.createDiv({ cls: 'dh-feature-description', text: fullDescriptionText.trim() });
                 }
             });
         }
 
-        // Add container for additional trackers
-        const additionalTrackersEl = statblockContentDiv.createDiv({ cls: 'dh-additional-trackers-container' });
+        if (data.hp_stress && typeof data.hp_stress === 'object') {
+            const hpStressContainer = statblockContentDiv.createDiv({ cls: 'dh-hp-stress-container' });
+            const originalHpStressSummaryDiv = hpStressContainer.createDiv({ cls: 'dh-original-hp-stress-summary' });
 
-        // Handle HP/Stress tracks for instances
-        if (isInstance && 'hp_stress' in data) {
-            if (!isGroupedInstance) {
-                const hpMax = Number(data.hp_stress.hp) || 0;
-                const stressMax = Number(data.hp_stress.stress) || 0;
+            if (!isInstance) {
+                originalHpStressSummaryDiv.createEl('h4', { text: 'HP & STRESS', cls: 'dh-hp-stress-title' });
+            }
 
-                const currentHp = 'currentHp' in data ? data.currentHp : 0;
-                const currentStress = 'currentStress' in data ? data.currentStress : 0;
+            const hpMax = Number(data.hp_stress.hp) || 0;
+            const stressMax = Number(data.hp_stress.stress) || 0;
 
-                if (hpMax > 0 && hpUpdateCallback) {
-                    this.createInteractiveTrack(
-                        additionalTrackersEl,
-                        'HP',
-                        hpMax,
-                        `${('id' in data ? data.id : 'default')}-hp`,
-                        currentHp,
-                        hpUpdateCallback
-                    );
-                }
+            const summaryLineHP = originalHpStressSummaryDiv.createDiv({ cls: 'dh-hp-stress-summary' });
+            summaryLineHP.innerHTML = `<span class="dh-summary-label">HP:</span> <span class="dh-summary-value">${hpMax}</span>`;
+            const thresholdsInlineContainer = summaryLineHP.createSpan({ cls: 'dh-thresholds-inline' });
+            if (data.hp_stress.major_hp != null) {
+                thresholdsInlineContainer.createSpan({ text: 'Minor', cls: 'dh-threshold-box dh-threshold-box-label' });
+                thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.major_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
+            }
+            if (data.hp_stress.severe_hp != null) {
+                thresholdsInlineContainer.createSpan({ text: 'Major', cls: 'dh-threshold-box dh-threshold-box-label' });
+                thresholdsInlineContainer.createSpan({ text: String(data.hp_stress.severe_hp), cls: 'dh-threshold-box dh-threshold-box-value' });
+            }
+            if (data.hp_stress.major_hp || data.hp_stress.severe_hp) {
+                thresholdsInlineContainer.createSpan({ text: 'Severe', cls: 'dh-threshold-box dh-threshold-box-label dh-threshold-box-severe' });
+            }
 
-                if (stressMax > 0 && stressUpdateCallback) {
-                    this.createInteractiveTrack(
-                        additionalTrackersEl,
-                        'Stress',
-                        stressMax,
-                        `${('id' in data ? data.id : 'default')}-stress`,
-                        currentStress,
-                        stressUpdateCallback
-                    );
+            const summaryLineStress = originalHpStressSummaryDiv.createDiv({ cls: 'dh-hp-stress-summary' });
+            summaryLineStress.innerHTML = `<span class="dh-summary-label">Stress:</span> <span class="dh-summary-value">${stressMax}</span>`;
+
+            if (isInstance) {
+                const creatureInstance = data as CreatureInstance;
+                const hpCb = hpUpdateCallback || ((newHp) => creatureInstance.currentHp = newHp);
+                const stressCb = stressUpdateCallback || ((newStress) => creatureInstance.currentStress = newStress);
+
+                this.createInteractiveTrack(originalHpStressSummaryDiv, 'HP', hpMax, `${creatureInstance.id}-hp-main`, creatureInstance.currentHp, hpCb);
+                this.createInteractiveTrack(originalHpStressSummaryDiv, 'Stress', stressMax, `${creatureInstance.id}-stress-main`, creatureInstance.currentStress, stressCb);
+            }
+
+            if (isInstance) {
+                let additionalTrackersEl = statblockContentDiv.querySelector('.dh-additional-trackers-container') as HTMLElement;
+                if (!additionalTrackersEl) {
+                    additionalTrackersEl = statblockContentDiv.createDiv({ cls: 'dh-additional-trackers-container' });
                 }
             }
         }
     }
 
     createInteractiveTrack(
-        parentEl: HTMLElement,
-        label: string,
-        maxValue: number,
-        trackIdPrefix: string,
-        currentValue: number,
-        updateCallback: (newValue: number) => void
+        parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string,
+        currentValue: number, updateCallback: (newValue: number) => void
     ) {
         const trackDiv = parentEl.createDiv({ cls: `dh-interactive-track dh-${label.toLowerCase()}-track` });
         trackDiv.createSpan({ text: label.toUpperCase(), cls: 'dh-track-label' });
