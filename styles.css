@@ -205,7 +205,6 @@
 }
 .dh-instance-card-content .dh-feature-description {
     font-size: var(--font-smaller, 0.875em); 
-    color: var(--text-muted); 
     padding-left: 0; 
     border-top: 1px solid var(--background-modifier-border); 
     padding-top: var(--size-4-1, 6px);
