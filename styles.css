@@ -666,6 +666,56 @@
     max-width: calc(100% - 50px - 50px); 
 }
 
+/* Fear Tracker Styling */
+.dh-fear-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    padding: 4px 8px;
+    background-color: var(--background-secondary);
+    border-radius: 4px;
+    max-width: 200px;
+}
+
+.dh-fear-label {
+    font-size: 14px;
+    margin-right: 8px;
+    font-weight: 500;
+}
+
+.dh-fear-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dh-fear-btn {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+}
+
+.dh-fear-btn:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+.dh-fear-value {
+    min-width: 20px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+}
+
 /* Modal Styling */
 .dh-name-modal .modal-title, 
 .dh-manage-encounters-modal .modal-title { 
@@ -795,5 +845,16 @@
 .dh-compendium-search:focus {
     border-color: var(--interactive-accent);
     box-shadow: 0 0 0 2px var(--interactive-accent-rgb, 0.2); /* Focus ring */
+}
+
+/* Encounter Wrapper */
+.dh-encounter-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-m);
+    overflow: hidden;
+    margin-bottom: 8px;
 }
 

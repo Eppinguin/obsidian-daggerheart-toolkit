@@ -61,9 +61,9 @@ export interface DaggerheartPluginSettings {
     savedEncounters: SavedEncounter[];
     useSrdAdversaries: boolean;
     showDescriptionOnCards: boolean;
-    showMotivesOnCards: boolean;
-    showExperienceOnCards: boolean;
     showFeatureDetailsOnCards: boolean;
+    enableFearTracker: boolean;
+    fearCounter: number;
 }
 
 export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
@@ -71,7 +71,7 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     savedEncounters: [],
     useSrdAdversaries: true,
     showDescriptionOnCards: false,
-    showMotivesOnCards: true,
-    showExperienceOnCards: true,
-    showFeatureDetailsOnCards: true
+    showFeatureDetailsOnCards: true,
+    enableFearTracker: false,
+    fearCounter: 0
 };

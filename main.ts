@@ -369,9 +369,11 @@ export class EncounterBuilderView extends ItemView {
     drawUI() {
         if (!this.uiContainer) return;
         this.uiContainer.empty();
+
+        const containerWrapper = this.uiContainer.createDiv({ cls: "dh-encounter-wrapper" });
         const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
 
-        const header = this.uiContainer.createDiv({ cls: "dh-encounter-header" });
+        const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
         header.createEl("h2", { text: "Daggerheart Encounters" });
 
         const controls = header.createDiv({ cls: "dh-encounter-controls" });
@@ -383,7 +385,7 @@ export class EncounterBuilderView extends ItemView {
         toggleCompendiumButton.addClass("dh-icon-button");
         toggleCompendiumButton.addEventListener("click", () => this.toggleCompendiumVisibility());
 
-        const mainInterface = this.uiContainer.createDiv({ cls: "dh-encounter-main-interface" });
+        const mainInterface = containerWrapper.createDiv({ cls: "dh-encounter-main-interface" });
 
         const activeCreaturesPanel = mainInterface.createDiv({ cls: "dh-active-creatures-panel" });
         const activeEncounterTitleText = currentEncounter ? currentEncounter.name : "No Encounter Selected";
@@ -445,6 +447,33 @@ export class EncounterBuilderView extends ItemView {
         }
 
         const compendiumPanel = mainInterface.createDiv({ cls: "dh-compendium-panel" });
+
+        if (this.plugin.settings.enableFearTracker) {
+            const fearTrackerDiv = this.containerEl.children[1].createDiv({ cls: "dh-fear-tracker" });
+            const fearLabel = fearTrackerDiv.createSpan({ text: "Fear: ", cls: "dh-fear-label" });
+
+            const fearControls = fearTrackerDiv.createDiv({ cls: "dh-fear-controls" });
+            const decrementBtn = fearControls.createEl("button", { text: "-", cls: "dh-fear-btn" });
+            const fearValue = fearControls.createSpan({
+                text: this.plugin.settings.fearCounter.toString(),
+                cls: "dh-fear-value"
+            });
+            const incrementBtn = fearControls.createEl("button", { text: "+", cls: "dh-fear-btn" });
+
+            decrementBtn.addEventListener("click", async () => {
+                if (this.plugin.settings.fearCounter > 0) {
+                    this.plugin.settings.fearCounter--;
+                    await this.plugin.saveSettings();
+                    fearValue.textContent = this.plugin.settings.fearCounter.toString();
+                }
+            });
+
+            incrementBtn.addEventListener("click", async () => {
+                this.plugin.settings.fearCounter++;
+                await this.plugin.saveSettings();
+                fearValue.textContent = this.plugin.settings.fearCounter.toString();
+            });
+        }
         if (!this.isCompendiumVisible) {
             compendiumPanel.addClass('dh-compendium-panel-hidden');
         }
@@ -1029,7 +1058,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         if (data.motives_tactics) {
             const motivesText = Array.isArray(data.motives_tactics) ? data.motives_tactics.join(', ') : data.motives_tactics;
-            if (motivesText && (!isInstance || (isInstance && this.settings.showMotivesOnCards))) {
+            if (motivesText) {
                 const motivesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
                 motivesDiv.createEl('strong', { text: 'Motives & Tactics: ' });
                 motivesDiv.appendText(motivesText);
@@ -1045,7 +1074,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                     .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)} ${value}`)
                     .join(', ');
             }
-            if (expStringContent && (!isInstance || (isInstance && this.settings.showExperienceOnCards))) {
+            if (expStringContent) {
                 const expDiv = statblockContentDiv.createDiv({ cls: 'dh-experience' });
                 expDiv.createEl('strong', { text: 'Experience: ' });
                 expDiv.appendText(expStringContent);
@@ -1116,11 +1145,16 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 }
 
                 if (isInstance) {
-                    if (fullDescriptionText.trim() && this.settings.showFeatureDetailsOnCards) {
-                        const toggle = headerContainer.createSpan({ cls: 'dh-feature-toggle', text: ' [+]' });
-                        toggle.setAttribute('aria-expanded', 'false');
+                    if (fullDescriptionText.trim()) {
+                        const toggle = headerContainer.createSpan({
+                            cls: 'dh-feature-toggle',
+                            text: this.settings.showFeatureDetailsOnCards ? ' [-]' : ' [+]'
+                        });
+                        toggle.setAttribute('aria-expanded', String(this.settings.showFeatureDetailsOnCards));
                         toggle.setAttribute('role', 'button');
-                        const descDiv = featureLi.createDiv({ cls: 'dh-feature-description dh-feature-description-hidden' });
+                        const descDiv = featureLi.createDiv({
+                            cls: `dh-feature-description${this.settings.showFeatureDetailsOnCards ? '' : ' dh-feature-description-hidden'}`
+                        });
                         descDiv.setText(fullDescriptionText.trim());
                         toggle.addEventListener('click', (event) => {
                             event.stopPropagation();
@@ -1313,36 +1347,24 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Show Motives & Tactics on Instance Cards')
-            .setDesc('If enabled, motives & tactics will be shown on creature cards in the encounter builder.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.showMotivesOnCards)
-                .onChange(async (value) => {
-                    this.plugin.settings.showMotivesOnCards = value;
-                    await this.plugin.saveSettings();
-                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
-                    if (view instanceof EncounterBuilderView) view.drawUI();
-                }));
-
-        new Setting(containerEl)
-            .setName('Show Experience on Instance Cards')
-            .setDesc('If enabled, experience details will be shown on creature cards in the encounter builder.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.showExperienceOnCards)
-                .onChange(async (value) => {
-                    this.plugin.settings.showExperienceOnCards = value;
-                    await this.plugin.saveSettings();
-                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
-                    if (view instanceof EncounterBuilderView) view.drawUI();
-                }));
-
-        new Setting(containerEl)
-            .setName('Show Full Feature Details on Instance Cards')
-            .setDesc('If enabled, feature descriptions will be toggleable on creature cards. If disabled, only feature names/types/costs are shown.')
+            .setName('Expand Feature Descriptions by Default')
+            .setDesc('If enabled, feature descriptions will be expanded by default on creature cards. If disabled, descriptions will be collapsed but can still be toggled with the [+] button.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showFeatureDetailsOnCards)
                 .onChange(async (value) => {
                     this.plugin.settings.showFeatureDetailsOnCards = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) view.drawUI();
+                }));
+
+        new Setting(containerEl)
+            .setName('Enable Fear Tracker')
+            .setDesc('If enabled, a fear counter will be shown in the encounter view that persists across encounters.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableFearTracker)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableFearTracker = value;
                     await this.plugin.saveSettings();
                     const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
                     if (view instanceof EncounterBuilderView) view.drawUI();
