@@ -299,6 +299,19 @@
 }
 .dh-thresholds-inline > .dh-threshold-box:last-child { margin-right: 0; }
 
+/* --- Rollable Dice Styling --- */
+.dh-rollable-dice {
+    color: var(--interactive-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 3px;
+}
+.dh-rollable-dice:hover {
+    color: var(--interactive-accent-hover);
+    text-decoration-style: solid;
+}
+
 
 /* --- Unified Interactive Tracks Styling --- */
 .dh-interactive-track { 

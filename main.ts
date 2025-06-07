@@ -928,6 +928,66 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
+    async rollDice(diceString: string) {
+        const diceRollerPlugin = (this.app as any).plugins.getPlugin("obsidian-dice-roller");
+        if (!diceRollerPlugin) {
+            new Notice("Dice Roller plugin is not enabled. Please install or enable it to roll dice.");
+            return;
+        }
+
+        const DiceRollerAPI = diceRollerPlugin.api;
+        if (!DiceRollerAPI || typeof DiceRollerAPI.getRoller !== 'function') {
+            new Notice("Dice Roller plugin API not available. Please ensure Dice Roller is up to date.");
+            console.error("Daggerheart: Dice Roller plugin is active, but its API is not available or is missing getRoller.");
+            return;
+        }
+
+        try {
+            const roller = await DiceRollerAPI.getRoller(diceString);
+            await roller.roll();
+            const result = roller.result; // This should be the numeric total
+
+            new Notice(`Rolled ${diceString}: ${result}`, 5000);
+
+        } catch (e) {
+            console.error("Daggerheart: Error rolling dice:", e);
+            new Notice(`Error rolling dice for "${diceString}". See console for details.`);
+        }
+    }
+
+    renderRollableContent(text: string, containerEl: HTMLElement) {
+        // This regex finds dice patterns like "1d20", "2d6+3", "1d10 - 1", etc.
+        const regex = /(\b\d+d\d+(\s*[+-]\s*\d+)*\b)/gi;
+        let lastIndex = 0;
+        let match;
+
+        while ((match = regex.exec(text)) !== null) {
+            // Append text before the match
+            if (match.index > lastIndex) {
+                containerEl.appendText(text.substring(lastIndex, match.index));
+            }
+
+            const diceString = match[0].replace(/\s/g, ''); // Remove whitespace for the roller
+            // Create the rollable span
+            const rollableSpan = containerEl.createSpan({
+                text: match[0], // Display the original text
+                cls: 'dh-rollable-dice',
+                title: `Click to roll ${diceString}`
+            });
+            rollableSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.rollDice(diceString)
+            });
+
+            lastIndex = regex.lastIndex;
+        }
+
+        // Append any remaining text after the last match
+        if (lastIndex < text.length) {
+            containerEl.appendText(text.substring(lastIndex));
+        }
+    }
+
     async getCompendiumCreatures(): Promise<StatblockData[]> {
         const creatures: StatblockData[] = [];
         if (this.settings.useSrdAdversaries) {
@@ -1101,15 +1161,47 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
         if (data.difficulty !== undefined) coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
         if (data.attack) {
-            let modifierText = data.attack.modifier !== undefined && data.attack.modifier !== null ? String(data.attack.modifier) : 'N/A';
-            if (modifierText !== 'N/A' && !modifierText.startsWith('+') && !modifierText.startsWith('-')) {
-                const numModifier = parseFloat(modifierText);
-                if (!isNaN(numModifier) && numModifier > 0) modifierText = `+${modifierText}`;
+            const attackDisplaySpan = coreStatsLine.createSpan({ cls: 'dh-attack-details-span' });
+            let modifierText = String(data.attack.modifier ?? '0').trim();
+
+            const renderModifier = (container: HTMLElement) => {
+                const modifierValue = modifierText;
+                if (/^[+-]?\d+$/.test(modifierValue)) {
+                    let normalizedModifier = modifierValue;
+                    if (!normalizedModifier.startsWith('+') && !normalizedModifier.startsWith('-') && normalizedModifier !== '0') {
+                        normalizedModifier = `+${modifierValue}`;
+                    }
+                    const diceString = `1d20${(normalizedModifier === '+0' || normalizedModifier === '0') ? '' : normalizedModifier}`;
+
+                    const atkRollable = container.createSpan({ text: modifierValue, cls: 'dh-rollable-dice' });
+                    atkRollable.title = `Click to roll ${diceString}`;
+                    atkRollable.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.rollDice(diceString);
+                    });
+                } else {
+                    container.appendText(modifierValue);
+                }
+            };
+
+            if (isInstance) {
+                attackDisplaySpan.createEl('strong', { text: `${data.attack.name || 'Attack'}:` });
+                attackDisplaySpan.appendText(` ${data.attack.range || ''} – `);
+                this.renderRollableContent(data.attack.damage || '', attackDisplaySpan.createSpan());
+                attackDisplaySpan.appendText(' (ATK ');
+                renderModifier(attackDisplaySpan);
+                attackDisplaySpan.appendText(')');
+            } else {
+                attackDisplaySpan.createEl('strong', { text: 'ATK:' });
+                attackDisplaySpan.appendText(' ');
+                renderModifier(attackDisplaySpan);
+                attackDisplaySpan.appendText(` | `);
+                attackDisplaySpan.createEl('strong', { text: `${data.attack.name || 'Attack'}:` });
+                attackDisplaySpan.appendText(` ${data.attack.range || ''} | `);
+                this.renderRollableContent(data.attack.damage || '', attackDisplaySpan.createSpan());
             }
-            const attackDisplay = isInstance ? `<strong>${data.attack.name || 'Attack'}:</strong> ${data.attack.range || ''} – ${data.attack.damage || ''} (ATK ${modifierText})`
-                : `<strong>ATK:</strong> ${modifierText} | <strong>${data.attack.name || 'Attack'}:</strong> ${data.attack.range || ''} | ${data.attack.damage || ''}`;
-            coreStatsLine.createSpan({ cls: 'dh-attack-details-span' }).innerHTML = attackDisplay;
         }
+
 
         if (data.features && Array.isArray(data.features) && data.features.length > 0) {
             const featuresSectionDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
@@ -1140,7 +1232,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                         const toggle = headerContainer.createSpan({ cls: 'dh-feature-toggle', text: this.settings.showFeatureDetailsOnCards ? ' [-]' : ' [+]' });
                         toggle.setAttrs({ 'aria-expanded': String(this.settings.showFeatureDetailsOnCards), role: 'button' });
                         const descDiv = featureLi.createDiv({ cls: `dh-feature-description${this.settings.showFeatureDetailsOnCards ? '' : ' dh-feature-description-hidden'}` });
-                        descDiv.setText(fullDescriptionText.trim());
+                        this.renderRollableContent(fullDescriptionText.trim(), descDiv);
                         toggle.addEventListener('click', (event) => {
                             event.stopPropagation();
                             const isHidden = descDiv.classList.toggle('dh-feature-description-hidden');
@@ -1150,7 +1242,10 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                     }
                 } else {
                     nameSpan.innerHTML += ':';
-                    if (fullDescriptionText.trim()) featureLi.createDiv({ cls: 'dh-feature-description', text: fullDescriptionText.trim() });
+                    if (fullDescriptionText.trim()) {
+                        const descDiv = featureLi.createDiv({ cls: 'dh-feature-description' });
+                        this.renderRollableContent(fullDescriptionText.trim(), descDiv);
+                    }
                 }
             });
         }
