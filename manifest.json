@@ -1,10 +1,10 @@
 {
-    "id": "daggerheart-statblocks",
-    "name": "Daggerheart Statblocks",
-    "version": "1.0.0",
+    "id": "daggerheart-toolkit",
+    "name": "Daggerheart Toolkit",
+    "version": "0.0.1",
     "minAppVersion": "0.15.0",
-    "description": "Create and display Daggerheart Adversary statblocks in your Obsidian notes.",
-    "author": "Your Name",
+    "description": "An Obsidian.md extension for Daggerheart GMs to render statblocks, build and run encounters, and track fear, and countdowns.",
+    "author": "Eppinguin",
     "authorUrl": "https://yourwebsite.com",
     "isDesktopOnly": false
 }
