@@ -144,8 +144,8 @@
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    overflow: hidden; /* This prevents the main container from showing a scrollbar */
-    position: relative; /* Positioning context for the popup */
+    overflow: hidden;
+    position: relative;
 }
 
 .dh-encounter-header {
@@ -155,8 +155,68 @@
     padding: var(--size-4-2);
     border-bottom: 1px solid var(--background-modifier-border);
     flex-shrink: 0;
+    gap: var(--size-4-4);
 }
-.dh-encounter-header h2 { margin: 0; font-size: var(--font-ui-larger, 1.5em); }
+.dh-title-fear-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-4);
+    flex-grow: 1;
+    min-width: 0;
+}
+.dh-active-encounter-title-clickable { 
+    margin: 0;
+    font-size: var(--font-ui-large, 1.2em);
+    color: var(--interactive-accent, #aaa); 
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+}
+.dh-active-encounter-title-clickable:hover {
+    color: var(--interactive-accent-hover);
+}
+.dh-fear-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-4-1);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.dh-fear-label {
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+}
+.dh-fear-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+.dh-fear-btn {
+    background-color: var(--interactive-normal);
+    color: var(--text-on-accent);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1em;
+}
+.dh-fear-btn:hover {
+    background-color: var(--interactive-hover);
+}
+.dh-fear-value {
+    min-width: 24px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1em;
+}
 .dh-encounter-controls {
     display: flex;
     align-items: center;
@@ -279,9 +339,6 @@
 }
 .dh-active-encounter-title-clickable { 
     margin-top: 0; 
-    margin-bottom: var(--size-4-2, 10px); 
-    padding-bottom: var(--size-4-1, 5px);
-    border-bottom: 1px solid var(--background-modifier-border, #555);
     font-size: var(--font-ui-large, 1.2em);
     color: var(--interactive-accent, #aaa); 
     cursor: pointer;
@@ -633,7 +690,7 @@
 .dh-add-to-group-button-container {
     text-align: center;
     padding: var(--size-4-2, 8px) 0;
-    margin-top: var(--size-4-2, 8px);
+    margin-top: 0;
     border-top: 1px solid var(--background-modifier-border);
 }
 .dh-add-to-group-btn {
@@ -851,58 +908,6 @@
     background-color: var(--background-primary);
     color: var(--text-normal);
     padding: var(--size-4-1);
-}
-
-/* --- Bottom Widgets and Popups --- */
-.dh-bottom-widgets-container {
-    padding: var(--size-4-1) var(--size-4-3);
-    border-top: 1px solid var(--background-modifier-border);
-    background-color: var(--background-primary);
-    flex-shrink: 0;
-}
-
-.dh-fear-tracker {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--size-4-1);
-    width: fit-content;
-    margin: 0 auto;
-}
-
-.dh-fear-label {
-    font-size: var(--font-ui-small);
-    font-weight: var(--font-semibold);
-}
-
-.dh-fear-controls {
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-1);
-}
-
-.dh-fear-btn {
-    background-color: var(--interactive-normal);
-    color: var(--text-on-accent);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 1.1em;
-}
-.dh-fear-btn:hover {
-    background-color: var(--interactive-hover);
-}
-
-.dh-fear-value {
-    min-width: 24px;
-    text-align: center;
-    font-weight: bold;
-    font-size: 1em;
 }
 
 /* --- Countdown Popup --- */

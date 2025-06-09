@@ -167,6 +167,7 @@ export class EncounterBuilderView extends ItemView {
     private selectedTypes: Set<string> = new Set();
 
     private countdownsPopup: HTMLElement | null = null;
+    private draggedCountdownId: string | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
@@ -332,14 +333,14 @@ export class EncounterBuilderView extends ItemView {
     }
 
     updateCountdownsPopup() {
-        if (this.countdownsPopup) {
-            this.countdownsPopup.remove();
-            this.countdownsPopup = null;
-        }
-
         const button = this.uiContainer?.querySelector('.dh-countdowns-toggle-btn');
         if (button) {
             button.classList.toggle('is-active', this.isCountdownsPopupVisible);
+        }
+
+        if (this.countdownsPopup) {
+            this.countdownsPopup.remove();
+            this.countdownsPopup = null;
         }
 
         if (!this.isCountdownsPopupVisible) return;
@@ -471,16 +472,21 @@ export class EncounterBuilderView extends ItemView {
         const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
 
         const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
-        header.createEl("h2", { text: "Daggerheart Encounters" });
-        const controls = header.createDiv({ cls: "dh-encounter-controls" });
+        const titleAndFearWrapper = header.createDiv({ cls: 'dh-title-fear-wrapper' });
 
+        const titleText = currentEncounter ? `Active: ${currentEncounter.name}` : "Active: No Encounter";
+        const titleEl = titleAndFearWrapper.createEl('h3', { text: titleText, cls: 'dh-active-encounter-title-clickable' });
+        titleEl.addEventListener('click', (e) => this.showEncounterSwitcherMenu(e));
+
+        if (this.plugin.settings.enableFearTracker) {
+            this.drawFearTracker(titleAndFearWrapper);
+        }
+
+        const controls = header.createDiv({ cls: "dh-encounter-controls" });
         if (this.plugin.settings.enableCountdownTracker) {
             const countdownsButton = controls.createEl("button", { title: "Countdowns", cls: "dh-countdowns-toggle-btn dh-icon-button" });
             setIcon(countdownsButton, "timer");
             countdownsButton.addEventListener("click", () => this.toggleCountdownsPopup());
-            if (this.isCountdownsPopupVisible) {
-                countdownsButton.addClass('is-active');
-            }
         }
 
         const toggleCompendiumButton = controls.createEl("button", { title: this.isCompendiumVisible ? "Hide Compendium" : "Show Compendium" });
@@ -490,52 +496,19 @@ export class EncounterBuilderView extends ItemView {
 
         const mainInterface = containerWrapper.createDiv({ cls: "dh-encounter-main-interface" });
         const activeCreaturesPanel = mainInterface.createDiv({ cls: "dh-active-creatures-panel" });
-        const activeEncounterTitleText = currentEncounter ? currentEncounter.name : "No Encounter Selected";
-        const activeEncounterTitleEl = activeCreaturesPanel.createEl("h3", { text: `Active: ${activeEncounterTitleText}`, cls: 'dh-active-encounter-title-clickable' });
-        activeEncounterTitleEl.addEventListener('click', (mouseEvent: MouseEvent) => this.showEncounterSwitcherMenu(mouseEvent));
 
         const encounterArea = activeCreaturesPanel.createDiv({ cls: "dh-encounter-area" });
-        if (this.activeEncounterCreatures.length === 0 && currentEncounter) {
-            encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
-        } else if (this.activeEncounterCreatures.length === 0 && !currentEncounter) {
-            encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
+        if (this.activeEncounterCreatures.length === 0) {
+            encounterArea.createEl("p", { text: currentEncounter ? `Encounter "${currentEncounter.name}" is empty. Add creatures from the compendium.` : "No active encounter. Create or load one." });
         } else {
-            const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
-            this.activeEncounterCreatures.forEach(instance => {
-                if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
-                groupedByGroupId[instance.groupId].push(instance);
-            });
-
-            for (const groupId in groupedByGroupId) {
-                this.drawCreatureGroup(groupId, encounterArea);
-            }
+            const grouped = this.activeEncounterCreatures.reduce((acc, creature) => {
+                (acc[creature.groupId] = acc[creature.groupId] || []).push(creature);
+                return acc;
+            }, {} as Record<string, CreatureInstance[]>);
+            Object.values(grouped).forEach(group => this.drawCreatureGroup(group[0].groupId, encounterArea));
         }
 
         const compendiumPanel = mainInterface.createDiv({ cls: "dh-compendium-panel" });
-
-        if (this.plugin.settings.enableFearTracker) {
-            const fearTrackerDiv = containerWrapper.createDiv({ cls: "dh-fear-tracker" });
-            fearTrackerDiv.createSpan({ text: "Fear: ", cls: "dh-fear-label" });
-            const fearControls = fearTrackerDiv.createDiv({ cls: "dh-fear-controls" });
-            const decrementBtn = fearControls.createEl("button", { text: "-", cls: "dh-fear-btn" });
-            const fearValue = fearControls.createSpan({ text: this.plugin.settings.fearCounter.toString(), cls: "dh-fear-value" });
-            const incrementBtn = fearControls.createEl("button", { text: "+", cls: "dh-fear-btn" });
-
-            decrementBtn.addEventListener("click", async () => {
-                if (this.plugin.settings.fearCounter > 0) {
-                    this.plugin.settings.fearCounter--;
-                    await this.plugin.saveSettings();
-                    fearValue.textContent = this.plugin.settings.fearCounter.toString();
-                }
-            });
-
-            incrementBtn.addEventListener("click", async () => {
-                this.plugin.settings.fearCounter++;
-                await this.plugin.saveSettings();
-                fearValue.textContent = this.plugin.settings.fearCounter.toString();
-            });
-        }
-
         if (!this.isCompendiumVisible) compendiumPanel.addClass('dh-compendium-panel-hidden');
         const compendiumHeader = compendiumPanel.createDiv({ cls: "dh-panel-header" });
         compendiumHeader.createEl("h3", { text: "Compendium" });
@@ -596,6 +569,29 @@ export class EncounterBuilderView extends ItemView {
         this.leaf.onResize();
     }
 
+    drawFearTracker(parent: HTMLElement) {
+        const fearTrackerDiv = parent.createDiv({ cls: "dh-fear-tracker" });
+        fearTrackerDiv.createSpan({ text: "Fear:", cls: "dh-fear-label" });
+        const fearControls = fearTrackerDiv.createDiv({ cls: "dh-fear-controls" });
+        const decrementBtn = fearControls.createEl("button", { text: "-", cls: "dh-fear-btn" });
+        const fearValue = fearControls.createSpan({ text: this.plugin.settings.fearCounter.toString(), cls: "dh-fear-value" });
+        const incrementBtn = fearControls.createEl("button", { text: "+", cls: "dh-fear-btn" });
+
+        decrementBtn.addEventListener("click", async () => {
+            if (this.plugin.settings.fearCounter > 0) {
+                this.plugin.settings.fearCounter--;
+                await this.plugin.saveSettings();
+                fearValue.textContent = this.plugin.settings.fearCounter.toString();
+            }
+        });
+
+        incrementBtn.addEventListener("click", async () => {
+            this.plugin.settings.fearCounter++;
+            await this.plugin.saveSettings();
+            fearValue.textContent = this.plugin.settings.fearCounter.toString();
+        });
+    }
+
     populateCountdownsPopup(popupEl: HTMLElement) {
         popupEl.empty();
         const header = popupEl.createDiv({ cls: "dh-popup-header" });
@@ -612,10 +608,58 @@ export class EncounterBuilderView extends ItemView {
         } else {
             this.plugin.settings.countdowns.forEach(countdown => this.drawCountdownItem(countdown, body));
         }
+
+        body.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = this.getDragAfterElement(body, e.clientY);
+            const draggable = document.querySelector('.dh-dragging');
+            if (draggable) {
+                if (afterElement == null) {
+                    body.appendChild(draggable);
+                } else {
+                    body.insertBefore(draggable, afterElement);
+                }
+            }
+        });
+    }
+
+    getDragAfterElement(container: HTMLElement, y: number): Element | null {
+        const draggableElements = Array.from(container.querySelectorAll('.dh-countdown-item:not(.dh-dragging)'));
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
     }
 
     drawCountdownItem(countdown: Countdown, container: HTMLElement) {
-        const itemEl = container.createDiv({ cls: 'dh-countdown-item', attr: { 'data-countdown-id': countdown.id } });
+        const itemEl = container.createDiv({ cls: 'dh-countdown-item', attr: { 'data-countdown-id': countdown.id, draggable: 'true' } });
+
+        itemEl.addEventListener('dragstart', () => {
+            itemEl.classList.add('dh-dragging');
+            this.draggedCountdownId = countdown.id;
+        });
+
+        itemEl.addEventListener('dragend', async () => {
+            itemEl.classList.remove('dh-dragging');
+            if (!this.draggedCountdownId) return;
+
+            const newOrderIds = Array.from(container.querySelectorAll('.dh-countdown-item')).map(el => el.getAttribute('data-countdown-id'));
+
+            this.plugin.settings.countdowns.sort((a, b) => {
+                return newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id);
+            });
+
+            this.draggedCountdownId = null;
+            await this.plugin.saveSettings();
+            this.updateCountdownsPopup();
+        });
+
 
         const nameInput = itemEl.createEl('input', {
             type: 'text',
