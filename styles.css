@@ -218,7 +218,7 @@
     align-items: center;
     gap: var(--size-4-1);
 }
-.dh-encounter-controls .dh-icon-button { 
+.dh-icon-button { 
     background-color: transparent;
     border: none;
     color: var(--text-muted);
@@ -226,7 +226,7 @@
     cursor: pointer;
     border-radius: var(--radius-s);
 }
-.dh-encounter-controls .dh-icon-button:hover {
+.dh-icon-button:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
 }
@@ -299,6 +299,54 @@
 .dh-panel-controls .dh-icon-button:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
+}
+
+/* --- Conditions --- */
+.dh-conditions-container {
+    margin-bottom: var(--size-4-2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1);
+    align-items: center;
+}
+.dh-additional-tracker-row .dh-conditions-container {
+    padding: var(--size-4-2) 0 0 0;
+}
+.dh-condition-tag {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+    display: inline-flex;
+    align-items: center;
+    cursor: default;
+}
+.dh-condition-remove {
+    margin-left: var(--size-4-1);
+    cursor: pointer;
+    font-weight: bold;
+    opacity: 0.7;
+}
+.dh-condition-remove:hover {
+    opacity: 1;
+}
+.dh-add-condition-btn {
+    background-color: var(--background-modifier-hover);
+    border: 1px dashed var(--background-modifier-border);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.dh-add-condition-btn:hover {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-style: solid;
 }
 
 
@@ -415,6 +463,10 @@
     overflow-y: auto; 
 }
 .dh-instance-card-content .dh-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-2);
     padding-bottom: var(--size-4-1, 5px); 
     margin-bottom: 0; 
     text-align: left;
@@ -424,6 +476,7 @@
     font-weight: var(--font-bold);
     color: var(--text-normal, #fff); 
     display: inline;
+    flex-grow: 1;
 }
 .dh-card-role-text { 
     font-size: var(--font-ui-small, 13px);
@@ -549,6 +602,7 @@
 .dh-instance-card-content .dh-hp-stress-container {
     margin-top: var(--size-4-3, 12px);
     padding-top: var(--size-4-2, 8px);
+    border-top: 1px solid var(--background-modifier-border);
 }
 
 .dh-interactive-track { 
@@ -577,7 +631,6 @@
 
 .dh-track-btn {
     background-color: var(--interactive-normal); 
-    border: 1px solid var(--background-modifier-border); 
     color: var(--text-normal);
     font-weight: var(--font-bold, bold); 
     cursor: pointer; 
@@ -647,30 +700,48 @@
     display: flex;
     flex-direction: column;
     gap: var(--size-4-1, 6px); 
-    margin-bottom: var(--size-4-3, 12px); 
+    padding-top: var(--size-4-2);
+    margin-top: var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
 }
 .dh-additional-tracker-row:last-child {
     margin-bottom: 0; 
 }
 
+/* This is the first tracker row, it shouldn't have a top border/margin */
+.dh-hp-stress-container > .dh-additional-tracker-row {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+
 .dh-additional-tracker-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--size-4-1, 4px); 
+    gap: var(--size-4-2);
 }
 
 .dh-additional-tracker-name {
     font-size: var(--font-ui-medium, 1em);
     font-weight: var(--font-semibold, bold);
     color: var(--text-normal); 
+    flex-grow: 1;
+}
+
+.dh-additional-tracker-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    flex-shrink: 0;
 }
 
 .dh-remove-additional-btn {
     background:none;
     border: none;
     color: var(--text-faint); 
-    font-size: 1em; 
+    font-size: 1.2em; 
     cursor: pointer;
     padding: 0 var(--size-4-1, 3px);
     opacity: 0.6; 
@@ -684,7 +755,7 @@
 .dh-add-to-group-button-container {
     text-align: center;
     padding: var(--size-4-2, 8px) 0;
-    margin-top: 0;
+    margin-top: var(--size-4-3);
     border-top: 1px solid var(--background-modifier-border);
 }
 .dh-add-to-group-btn {
@@ -726,6 +797,19 @@
 .dh-modal-buttons button {
     min-width: 80px;
 }
+.dh-name-modal .setting-item,
+.dh-manage-encounters-modal .setting-item {
+    border: none;
+}
+.dh-name-modal .setting-item-control,
+.dh-manage-encounters-modal .setting-item-control {
+    width: 100%;
+}
+.dh-name-modal .setting-item-control textarea {
+    width: 100%;
+    min-height: 80px;
+}
+
 
 .dh-manage-list {
     display: flex;
@@ -979,4 +1063,51 @@
     color: var(--text-muted);
     text-align: center;
     padding: var(--size-4-3);
+}
+
+
+/* --- Condition Tag Styles --- */
+
+.dh-conditions-list-container {
+    padding: 0;
+    margin: var(--size-4-1) 0 var(--size-4-2) 0;
+}
+
+.dh-condition-tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1);
+}
+
+.dh-condition-tag {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--background-modifier-hover);
+    border: 1px solid var(--background-modifier-border-hover);
+    color: var(--text-normal);
+    border-radius: var(--radius-s);
+    padding: var(--size-2-1) var(--size-2-2);
+    font-size: var(--font-ui-smaller);
+    cursor: default;
+}
+.dh-condition-tag > span {
+    margin-right: var(--size-4-1);
+}
+
+.dh-remove-condition-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    font-size: var(--font-ui-small);
+}
+.dh-remove-condition-btn:hover {
+    color: var(--text-error);
+}
+
+.dh-add-condition-btn {
+    flex-shrink: 0;
 }

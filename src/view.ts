@@ -1,7 +1,57 @@
 import { App, ItemView, WorkspaceLeaf, Notice, Modal, TextComponent, ButtonComponent, Menu, setIcon, Setting } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
-import { StatblockData, CreatureInstance, SavedEncounter, Countdown } from '../types';
+import { StatblockData, CreatureInstance, SavedEncounter, Countdown, Condition } from '../types';
 import { renderStatblockCard } from './rendering';
+
+// --- CUSTOM CONDITION MODAL ---
+class CustomConditionModal extends Modal {
+    onSubmit: (condition: Condition) => void;
+
+    constructor(app: App, onSubmit: (condition: Condition) => void) {
+        super(app);
+        this.onSubmit = onSubmit;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('dh-name-modal');
+        contentEl.createEl("h2", { text: "Add Custom Condition" });
+
+        let name = '';
+        let description = '';
+
+        new Setting(contentEl)
+            .setName("Condition Name")
+            .addText(text => text.setPlaceholder("e.g., On Fire")
+                .onChange(value => name = value.trim()));
+
+        new Setting(contentEl)
+            .setName("Description")
+            .addTextArea(text => text.setPlaceholder("e.g., Takes 1 damage at the start of its turn.")
+                .onChange(value => description = value.trim()));
+
+        const buttonContainer = contentEl.createDiv({ cls: 'dh-modal-buttons' });
+        new ButtonComponent(buttonContainer)
+            .setButtonText("Add")
+            .setCta()
+            .onClick(() => {
+                if (!name) {
+                    new Notice("Condition name is required.");
+                    return;
+                }
+                this.onSubmit({ name, description });
+                this.close();
+            });
+        new ButtonComponent(buttonContainer)
+            .setButtonText("Cancel")
+            .onClick(() => this.close());
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
 
 
 // --- MODAL FOR NAMING/RENAMING ENCOUNTER ---
@@ -149,6 +199,13 @@ class ManageEncountersModal extends Modal {
     }
 }
 
+// --- CONSTANTS ---
+const DAGGERHEART_CONDITIONS: Condition[] = [
+    { name: "Hidden", description: "While you’re out of sight from all enemies and they don’t otherwise know your location, you gain the Hidden condition. Any rolls against a Hidden creature have disadvantage. After an adversary moves to where they would see you, you move into their line of sight, or you make an attack, you are no longer Hidden." },
+    { name: "Restrained", description: "Restrained characters can’t move, but you can still take actions from their current position." },
+    { name: "Vulnerable", description: "When a creature is Vulnerable, all rolls targeting them have advantage." }
+];
+
 
 // --- ENCOUNTER VIEW CLASS ---
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
@@ -169,9 +226,20 @@ export class EncounterBuilderView extends ItemView {
     private countdownsPopup: HTMLElement | null = null;
     private draggedCountdownId: string | null = null;
 
+    // Properties to hold bound event handler functions
+    private boundHandleRequestConditionMenu: (e: Event) => void;
+    private boundHandleRemoveConditionEvent: (e: Event) => void;
+    private boundHandleRemoveInstanceEvent: (e: Event) => void;
+
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
         this.plugin = plugin;
+
+        // Bind event handlers in the constructor to ensure 'this' context is correct
+        // and to have a stable function reference for adding/removing listeners.
+        this.boundHandleRequestConditionMenu = this.handleRequestConditionMenu.bind(this);
+        this.boundHandleRemoveConditionEvent = this.handleRemoveConditionEvent.bind(this);
+        this.boundHandleRemoveInstanceEvent = this.handleRemoveInstanceEvent.bind(this);
     }
 
     getViewType(): string {
@@ -190,6 +258,8 @@ export class EncounterBuilderView extends ItemView {
         this.uiContainer = this.containerEl.children[1] as HTMLElement;
         this.uiContainer.empty();
         this.uiContainer.addClass("dh-encounter-builder-container");
+
+        this.registerViewListeners();
 
         await this.loadCompendium();
 
@@ -214,6 +284,14 @@ export class EncounterBuilderView extends ItemView {
         this.loadCreaturesForCurrentEncounter();
         this.drawUI();
         this.leaf.setEphemeralState(this.getState());
+    }
+
+    // Sets up the main event listeners for the view
+    registerViewListeners() {
+        if (!this.uiContainer) return;
+        this.uiContainer.addEventListener('dh-request-condition-menu', this.boundHandleRequestConditionMenu);
+        this.uiContainer.addEventListener('dh-remove-condition', this.boundHandleRemoveConditionEvent);
+        this.uiContainer.addEventListener('dh-remove-instance', this.boundHandleRemoveInstanceEvent);
     }
 
     async setState(state: any, result: any) {
@@ -408,20 +486,12 @@ export class EncounterBuilderView extends ItemView {
 
         const mainCardContainer = containerEl.createDiv({ cls: mainCardContainerClasses.join(' ') });
 
-        const removeGroupButton = mainCardContainer.createEl("button", {
-            text: "✕",
-            title: `Remove all ${firstInstanceInGroup.name}s`,
-            cls: "dh-remove-instance-btn"
-        });
-        removeGroupButton.addEventListener("click", () =>
-            this.removeCreatureGroupFromActiveEncounter(firstInstanceInGroup.groupId));
-
         renderStatblockCard(
             this.plugin,
             firstInstanceInGroup,
             mainCardContainer,
             true,
-            firstInstanceInGroup.name,
+            firstInstanceInGroup.displayName,
             (newHp) => {
                 const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
                 if (inst) inst.currentHp = newHp;
@@ -891,13 +961,117 @@ export class EncounterBuilderView extends ItemView {
         this.leaf.setEphemeralState(this.getState());
     }
 
+    // --- CONDITION HANDLING ---
+
+    // This handler is called when a 'dh-request-condition-menu' event bubbles up to the view's container.
+    handleRequestConditionMenu(e: Event) {
+        const customEvent = e as CustomEvent;
+        const { instanceId, anchor } = customEvent.detail;
+        if (!instanceId || !anchor) return;
+
+        const menu = new Menu();
+
+        DAGGERHEART_CONDITIONS.forEach(condition => {
+            menu.addItem(item => item
+                .setTitle(condition.name)
+                .onClick(() => this.addConditionToInstance(instanceId, condition)));
+        });
+
+        menu.addSeparator();
+
+        menu.addItem(item => item
+            .setTitle("Add Custom...")
+            .setIcon("plus")
+            .onClick(() => {
+                new CustomConditionModal(this.app, (newCondition) => {
+                    this.addConditionToInstance(instanceId, newCondition);
+                }).open();
+            }));
+
+        const rect = (anchor as HTMLElement).getBoundingClientRect();
+        menu.showAtPosition({ x: rect.left, y: rect.bottom });
+    }
+
+    // This handler is called when a 'dh-remove-condition' event bubbles up.
+    handleRemoveConditionEvent(e: Event) {
+        const customEvent = e as CustomEvent;
+        const { instanceId, conditionName } = customEvent.detail;
+        if (!instanceId || !conditionName) return;
+
+        const instance = this.activeEncounterCreatures.find(c => c.id === instanceId);
+        if (!instance || !instance.conditions) return;
+
+        instance.conditions = instance.conditions.filter(c => c.name !== conditionName);
+        this.autoSaveCurrentEncounter();
+        this.redrawCreatureGroup(instance.groupId);
+    }
+
+    handleRemoveInstanceEvent(e: Event) {
+        const customEvent = e as CustomEvent;
+        const { instanceId } = customEvent.detail;
+        if (!instanceId) return;
+
+        this.removeCreatureFromActiveEncounter(instanceId);
+    }
+
+    addConditionToInstance(instanceId: string, condition: Condition) {
+        const instance = this.activeEncounterCreatures.find(c => c.id === instanceId);
+        if (!instance) return;
+
+        if (!instance.conditions) {
+            instance.conditions = [];
+        }
+
+        if (instance.conditions.some(c => c.name.toLowerCase() === condition.name.toLowerCase())) {
+            new Notice(`"${instance.displayName}" already has the "${condition.name}" condition.`);
+            return;
+        }
+
+        instance.conditions.push(condition);
+        this.autoSaveCurrentEncounter();
+        this.redrawCreatureGroup(instance.groupId);
+    }
 
     renderAdditionalTrackerRow(instance: CreatureInstance, parentEl: HTMLElement) {
         const trackerRow = parentEl.createDiv({ cls: 'dh-additional-tracker-row' });
+
         const header = trackerRow.createDiv({ cls: 'dh-additional-tracker-header' });
         header.createSpan({ text: instance.displayName, cls: 'dh-additional-tracker-name' });
-        const removeBtn = header.createEl('button', { text: '✕', title: "Remove this instance", cls: 'dh-remove-additional-btn' });
-        removeBtn.addEventListener('click', () => this.removeCreatureFromActiveEncounter(instance.id));
+
+        const controlsWrapper = header.createDiv({ cls: 'dh-additional-tracker-controls' });
+        const addConditionButton = controlsWrapper.createEl('button', { title: 'Add Condition', cls: 'dh-icon-button dh-add-condition-btn' });
+        setIcon(addConditionButton, 'tag');
+        addConditionButton.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            addConditionButton.dispatchEvent(new CustomEvent('dh-request-condition-menu', {
+                bubbles: true,
+                detail: { instanceId: instance.id, anchor: addConditionButton }
+            }));
+        });
+        const removeBtn = controlsWrapper.createEl('button', { text: '✕', title: "Remove this instance", cls: 'dh-remove-additional-btn' });
+        removeBtn.addEventListener('click', () => {
+            removeBtn.dispatchEvent(new CustomEvent('dh-remove-instance', {
+                bubbles: true,
+                detail: { instanceId: instance.id }
+            }));
+        });
+
+        const conditionsContainer = trackerRow.createDiv({ cls: 'dh-conditions-list-container' });
+        if (instance.conditions && instance.conditions.length > 0) {
+            const tagsList = conditionsContainer.createDiv({ cls: 'dh-condition-tags-list' });
+            instance.conditions.forEach(condition => {
+                const tagEl = tagsList.createDiv({ cls: 'dh-condition-tag', title: condition.description });
+                tagEl.createSpan({ text: condition.name });
+                const removeTagBtn = tagEl.createEl('button', { text: '✕', cls: 'dh-remove-condition-btn' });
+                removeTagBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    removeTagBtn.dispatchEvent(new CustomEvent('dh-remove-condition', {
+                        bubbles: true,
+                        detail: { instanceId: instance.id, conditionName: condition.name }
+                    }));
+                });
+            });
+        }
 
         const hpMax = Number(instance.hp_stress.hp) || 0;
         const stressMax = Number(instance.hp_stress.stress) || 0;
@@ -942,7 +1116,6 @@ export class EncounterBuilderView extends ItemView {
         if (encounterArea) {
             encounterArea.empty();
 
-            // Re-populate the encounter area
             const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
             this.activeEncounterCreatures.forEach(instance => {
                 if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
@@ -965,6 +1138,7 @@ export class EncounterBuilderView extends ItemView {
             currentHp: 0,
             currentStress: 0,
             displayName: "",
+            conditions: [], // Initialize conditions array
             hp_stress: {
                 hp: Number(baseCreature.hp_stress.hp) || 0,
                 stress: Number(baseCreature.hp_stress.stress) || 0,
@@ -1027,5 +1201,10 @@ export class EncounterBuilderView extends ItemView {
     }
 
     async onClose() {
+        if (this.uiContainer) {
+            this.uiContainer.removeEventListener('dh-request-condition-menu', this.boundHandleRequestConditionMenu);
+            this.uiContainer.removeEventListener('dh-remove-condition', this.boundHandleRemoveConditionEvent);
+            this.uiContainer.removeEventListener('dh-remove-instance', this.boundHandleRemoveInstanceEvent);
+        }
     }
 }

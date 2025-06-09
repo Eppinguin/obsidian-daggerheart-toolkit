@@ -1,7 +1,8 @@
-import { App, Notice } from 'obsidian';
+import { App, Notice, setIcon } from 'obsidian';
 import { StatblockData, CreatureInstance } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { ENCOUNTER_BUILDER_VIEW_TYPE, EncounterBuilderView } from './view';
+import { group } from 'console';
 
 async function rollDice(plugin: DaggerheartStatblockPlugin, diceString: string) {
     const diceRollerPlugin = (plugin.app as any).plugins.getPlugin("obsidian-dice-roller");
@@ -116,7 +117,7 @@ export function createInteractiveTrack(
 function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: StatblockData, containerEl: HTMLElement) {
     containerEl.empty();
     const statblockContentDiv = containerEl.createDiv({ cls: 'dh-editor-statblock' });
-    statblockContentDiv.style.userSelect = 'text';
+    (statblockContentDiv as HTMLElement).style.userSelect = 'text';
 
     if (data.name) statblockContentDiv.createDiv({ cls: 'dh-name', text: data.name.toUpperCase() });
 
@@ -227,40 +228,35 @@ function renderInstanceStatblock(
     plugin: DaggerheartStatblockPlugin,
     data: CreatureInstance,
     containerEl: HTMLElement,
-    displayName: string, // This will be the un-numbered name for the header
-    hpUpdateCallback: ((newHp: number) => void) | undefined,
-    stressUpdateCallback: ((newStress: number) => void) | undefined,
+    displayName: string,
+    hpUpdateCallback?: (newHp: number) => void,
+    stressUpdateCallback?: (newStress: number) => void,
     groupSize: number = 1
 ) {
-    let statblockContentDiv = containerEl.querySelector('.dh-instance-card-content') as HTMLElement;
-    if (statblockContentDiv) {
-        statblockContentDiv.empty();
-    } else {
-        statblockContentDiv = containerEl.createDiv({ cls: 'dh-instance-card-content' });
-    }
+    let statblockContentDiv = containerEl.querySelector('.dh-instance-card-content') ||
+        containerEl.createDiv({ cls: 'dh-instance-card-content' });
+    statblockContentDiv.empty();
+    (statblockContentDiv as HTMLElement).style.userSelect = 'text';
 
-    statblockContentDiv.style.userSelect = 'text';
-
+    // Handle image
     if (data.image) {
         const parentCard = containerEl.closest('.dh-creature-instance-card') || containerEl;
-        let imgContainer = parentCard.querySelector('.dh-card-image-container') as HTMLElement;
-        if (!imgContainer) imgContainer = parentCard.createDiv({ cls: 'dh-card-image-container', prepend: true });
+        const imgContainer = parentCard.querySelector('.dh-card-image-container') ||
+            parentCard.createDiv({ cls: 'dh-card-image-container', prepend: true });
         imgContainer.empty();
         imgContainer.createEl('img', { attr: { src: data.image, alt: data.name }, cls: 'dh-card-image' });
     }
 
+    // Header and basic info
     const headerDiv = statblockContentDiv.createDiv({ cls: 'dh-header' });
-    // Use the passed displayName (which should be the original name) for the main header
     if (displayName) headerDiv.createSpan({ cls: 'dh-name', text: displayName.toUpperCase() });
 
-    let roleTagText = "";
-    if (data.tier) roleTagText += `Tier ${data.tier} `;
-    if (data.type) roleTagText += data.type.toUpperCase();
-    if (roleTagText.trim()) {
-        const roleTagDiv = statblockContentDiv.createDiv({ text: roleTagText.trim(), cls: 'dh-card-role-text' });
-        headerDiv.insertAdjacentElement('afterend', roleTagDiv);
+    const roleTagText = `${data.tier ? `Tier ${data.tier} ` : ''}${data.type || ''}`.trim();
+    if (roleTagText) {
+        statblockContentDiv.createDiv({ text: roleTagText, cls: 'dh-card-role-text' });
     }
 
+    // Optional sections
     if (data.description && plugin.settings.showDescriptionOnCards) {
         statblockContentDiv.createDiv({ text: data.description, cls: 'dh-description' });
     }
@@ -274,123 +270,126 @@ function renderInstanceStatblock(
         }
     }
 
-    if (data.experience) {
-        let expStringContent = "";
-        if (typeof data.experience === 'string') expStringContent = data.experience;
-        else if (typeof data.experience === 'object' && Object.keys(data.experience).length > 0) {
-            expStringContent = Object.entries(data.experience)
-                .map(([key, value]) => `${key.charAt(0).toUpperCase() + key.slice(1)} ${value}`)
-                .join(', ');
-        }
-        if (expStringContent) {
-            const expDiv = statblockContentDiv.createDiv({ cls: 'dh-experience' });
-            expDiv.createEl('strong', { text: 'Experience: ' });
-            expDiv.appendText(expStringContent);
-        }
-    }
-
+    // Core stats
     const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
-    if (data.difficulty !== undefined) coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
-    if (data.attack) {
-        const attackDisplaySpan = coreStatsLine.createSpan({ cls: 'dh-attack-details-span' });
-        let modifierText = String(data.attack.modifier ?? '0').trim();
-
-        const renderModifier = (container: HTMLElement) => {
-            const modifierValue = modifierText;
-            if (/^[+-]?\d+$/.test(modifierValue)) {
-                if (plugin.isDiceRollerEnabled) {
-                    let normalizedModifier = modifierValue;
-                    if (!normalizedModifier.startsWith('+') && !normalizedModifier.startsWith('-') && normalizedModifier !== '0') {
-                        normalizedModifier = `+${modifierValue}`;
-                    }
-                    const diceString = `1d20${(normalizedModifier === '+0' || normalizedModifier === '0') ? '' : normalizedModifier}`;
-
-                    const atkRollable = container.createSpan({ text: modifierValue, cls: 'dh-rollable-dice' });
-                    atkRollable.title = `Click to roll ${diceString}`;
-                    atkRollable.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        rollDice(plugin, diceString);
-                    });
-                } else {
-                    container.appendText(modifierValue);
-                }
-            } else {
-                container.appendText(modifierValue);
-            }
-        };
-
-        attackDisplaySpan.createEl('strong', { text: `${data.attack.name || 'Attack'}:` });
-        attackDisplaySpan.appendText(` ${data.attack.range || ''} – `);
-        renderRollableContent(plugin, data.attack.damage || '', attackDisplaySpan.createSpan());
-        attackDisplaySpan.appendText(' (ATK ');
-        renderModifier(attackDisplaySpan);
-        attackDisplaySpan.appendText(')');
+    if (data.difficulty !== undefined) {
+        coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
     }
 
-    if (data.features && Array.isArray(data.features) && data.features.length > 0) {
-        const featuresSectionDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
-        featuresSectionDiv.createDiv({ text: 'FEATURES', cls: 'dh-instance-features-title' });
-        const featuresListUl = featuresSectionDiv.createEl('ul', { cls: 'dh-features-list' });
+    // Attack section
+    if (data.attack) {
+        const attackSpan = coreStatsLine.createSpan({ cls: 'dh-attack-details-span' });
+        attackSpan.createEl('strong', { text: `${data.attack.name || 'Attack'}:` });
+        attackSpan.appendText(` ${data.attack.range || ''} – `);
+
+        const damageSpan = attackSpan.createSpan();
+        renderRollableContent(plugin, data.attack.damage || '', damageSpan);
+
+        attackSpan.appendText(' (ATK ');
+        const modValue = String(data.attack.modifier ?? '0').trim();
+        if (/^[+-]?\d+$/.test(modValue) && plugin.isDiceRollerEnabled) {
+            const diceString = `1d20${modValue === '0' ? '' : modValue.startsWith('+') ? modValue : `+${modValue}`}`;
+            const rollSpan = attackSpan.createSpan({ text: modValue, cls: 'dh-rollable-dice', attr: { title: `Click to roll ${diceString}` } });
+            rollSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                rollDice(plugin, diceString);
+            });
+        } else {
+            attackSpan.appendText(modValue);
+        }
+        attackSpan.appendText(')');
+    }
+
+    // Features section
+    if (data.features?.length) {
+        const featuresDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
+        featuresDiv.createDiv({ text: 'FEATURES', cls: 'dh-instance-features-title' });
+        const featuresList = featuresDiv.createEl('ul', { cls: 'dh-features-list' });
+
         data.features.forEach(feature => {
-            if (typeof feature !== 'object' || !feature.name) return;
-            const featureLi = featuresListUl.createEl('li');
-            const headerContainer = featureLi.createDiv({ cls: 'dh-feature-header-container' });
-            let featureHeaderString = `<strong>${feature.name}</strong>`;
-            if (feature.cost !== undefined && feature.cost !== null) featureHeaderString += ` (${feature.cost})`;
-            if (feature.type) featureHeaderString += ` - ${feature.type}`;
+            if (!feature?.name) return;
+            const li = featuresList.createEl('li');
+            const header = li.createDiv({ cls: 'dh-feature-header-container' });
 
-            const nameSpan = headerContainer.createSpan({ cls: 'dh-feature-name' });
-            nameSpan.innerHTML = featureHeaderString;
+            const nameSpan = header.createSpan({ cls: 'dh-feature-name' });
+            nameSpan.innerHTML = `<strong>${feature.name}</strong>${feature.cost ? ` (${feature.cost})` : ''}${feature.type ? ` - ${feature.type}` : ''}`;
 
-            let fullDescriptionText = "";
-            if (feature.countdown) {
-                const countdownStr = `Countdown (${feature.countdown}).`;
-                if (!String(feature.description || "").toLowerCase().trim().includes(`countdown (${String(feature.countdown).toLowerCase().trim()})`)) {
-                    fullDescriptionText += `${countdownStr} `;
-                }
-            }
-            if (feature.description) fullDescriptionText += feature.description;
+            if (feature.description) {
+                const toggle = header.createSpan({
+                    cls: 'dh-feature-toggle',
+                    text: plugin.settings.showFeatureDetailsOnCards ? ' [-]' : ' [+]'
+                });
+                const descDiv = li.createDiv({
+                    cls: `dh-feature-description${plugin.settings.showFeatureDetailsOnCards ? '' : ' dh-feature-description-hidden'}`
+                });
+                renderRollableContent(plugin, feature.description, descDiv);
 
-            if (fullDescriptionText.trim()) {
-                const toggle = headerContainer.createSpan({ cls: 'dh-feature-toggle', text: plugin.settings.showFeatureDetailsOnCards ? ' [-]' : ' [+]' });
-                toggle.setAttrs({ 'aria-expanded': String(plugin.settings.showFeatureDetailsOnCards), role: 'button' });
-                const descDiv = featureLi.createDiv({ cls: `dh-feature-description${plugin.settings.showFeatureDetailsOnCards ? '' : ' dh-feature-description-hidden'}` });
-                renderRollableContent(plugin, fullDescriptionText.trim(), descDiv);
-                toggle.addEventListener('click', (event) => {
-                    event.stopPropagation();
+                toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const isHidden = descDiv.classList.toggle('dh-feature-description-hidden');
                     toggle.setText(isHidden ? ' [+]' : ' [-]');
-                    toggle.setAttr('aria-expanded', String(!isHidden));
                 });
             }
         });
     }
 
+    // HP and Stress tracks
     if (data.hp_stress) {
-        const hpStressContainer = statblockContentDiv.createDiv({ cls: 'dh-hp-stress-container' });
+        const trackContainer = statblockContentDiv.createDiv({ cls: 'dh-hp-stress-container' });
+        const row = trackContainer.createDiv({ cls: 'dh-additional-tracker-row' });
 
-        const primaryTrackerRow = hpStressContainer.createDiv({
-            cls: 'dh-additional-tracker-row'
+        // Instance header with name and controls
+        const header = row.createDiv({ cls: 'dh-additional-tracker-header' });
+        header.createSpan({ text: data.displayName, cls: 'dh-additional-tracker-name' });
+        const controlsWrapper = header.createDiv({ cls: 'dh-additional-tracker-controls' });
+        addConditionButton(controlsWrapper, data.id, containerEl);
+        const removeBtn = controlsWrapper.createEl('button', { text: '✕', title: "Remove this instance", cls: 'dh-remove-additional-btn' });
+        removeBtn.addEventListener('click', () => containerEl.dispatchEvent(new CustomEvent('dh-remove-instance', {
+            bubbles: true,
+            detail: { instanceId: data.id }
+        })));
+
+        // Conditions
+        const conditionsDiv = row.createDiv({ cls: 'dh-conditions-container' });
+
+        data.conditions?.forEach(condition => {
+            const tag = conditionsDiv.createDiv({ cls: 'dh-condition-tag', attr: { title: condition.description } });
+            tag.createSpan({ text: condition.name });
+            const removeBtn = tag.createSpan({ text: '✕', cls: 'dh-condition-remove' });
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                containerEl.dispatchEvent(new CustomEvent('dh-remove-condition', {
+                    bubbles: true,
+                    detail: { instanceId: data.id, conditionName: condition.name }
+                }));
+            });
         });
 
-        if (groupSize > 1) {
-            const header = primaryTrackerRow.createDiv({ cls: 'dh-additional-tracker-header' });
-            // Here we use the instance-specific, numbered `displayName` from the data object
-            header.createSpan({ text: data.displayName, cls: 'dh-additional-tracker-name' });
-        }
-
+        // Create HP and Stress tracks
         const hpMax = Number(data.hp_stress.hp) || 0;
         const stressMax = Number(data.hp_stress.stress) || 0;
+        createInteractiveTrack(row, 'HP', hpMax, `${data.id}-hp-main`, data.currentHp,
+            hpUpdateCallback || ((hp) => data.currentHp = hp));
+        createInteractiveTrack(row, 'Stress', stressMax, `${data.id}-stress-main`, data.currentStress,
+            stressUpdateCallback || ((stress) => data.currentStress = stress));
 
-        const creatureInstance = data as CreatureInstance;
-        const hpCb = hpUpdateCallback || ((newHp) => creatureInstance.currentHp = newHp);
-        const stressCb = stressUpdateCallback || ((newStress) => creatureInstance.currentStress = newStress);
-
-        createInteractiveTrack(primaryTrackerRow, 'HP', hpMax, `${creatureInstance.id}-hp-main`, creatureInstance.currentHp, hpCb);
-        createInteractiveTrack(primaryTrackerRow, 'Stress', stressMax, `${creatureInstance.id}-stress-main`, creatureInstance.currentStress, stressCb);
-
-        hpStressContainer.createDiv({ cls: 'dh-additional-trackers-container' });
+        trackContainer.createDiv({ cls: 'dh-additional-trackers-container' });
     }
+}
+
+function addConditionButton(container: HTMLElement, instanceId: string, containerEl: HTMLElement) {
+    const btn = container.createEl('button', {
+        title: 'Add Condition',
+        cls: 'dh-icon-button dh-add-condition-btn'
+    });
+    setIcon(btn, 'tag');
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        containerEl.dispatchEvent(new CustomEvent('dh-request-condition-menu', {
+            bubbles: true,
+            detail: { instanceId, anchor: btn }
+        }));
+    });
 }
 
 export function renderStatblockCard(

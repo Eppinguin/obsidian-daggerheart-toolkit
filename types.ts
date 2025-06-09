@@ -25,6 +25,12 @@ export interface StatblockFeature {
     description: string;
 }
 
+// NEW: Defines the structure for a condition
+export interface Condition {
+    name: string;
+    description: string;
+}
+
 export interface StatblockData {
     name: string;
     image?: string;
@@ -46,6 +52,7 @@ export interface CreatureInstance extends StatblockData {
     currentHp: number;
     currentStress: number;
     displayName: string;
+    conditions?: Condition[]; // NEW: Added to store active conditions
 }
 
 export interface SavedEncounter {
