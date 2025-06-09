@@ -1,6 +1,7 @@
 import { App, Notice } from 'obsidian';
 import { StatblockData, CreatureInstance } from '../types';
 import DaggerheartStatblockPlugin from '../main';
+import { ENCOUNTER_BUILDER_VIEW_TYPE, EncounterBuilderView } from './view';
 
 async function rollDice(app: App, diceString: string) {
     const diceRollerPlugin = (app as any).plugins.getPlugin("obsidian-dice-roller");
@@ -217,9 +218,10 @@ function renderInstanceStatblock(
     plugin: DaggerheartStatblockPlugin,
     data: CreatureInstance,
     containerEl: HTMLElement,
-    displayName?: string,
-    hpUpdateCallback?: (newHp: number) => void,
-    stressUpdateCallback?: (newStress: number) => void
+    displayName: string, // This will be the un-numbered name for the header
+    hpUpdateCallback: ((newHp: number) => void) | undefined,
+    stressUpdateCallback: ((newStress: number) => void) | undefined,
+    groupSize: number = 1
 ) {
     let statblockContentDiv = containerEl.querySelector('.dh-instance-card-content') as HTMLElement;
     if (statblockContentDiv) {
@@ -239,8 +241,8 @@ function renderInstanceStatblock(
     }
 
     const headerDiv = statblockContentDiv.createDiv({ cls: 'dh-header' });
-    const nameToDisplay = displayName || data.name;
-    if (nameToDisplay) headerDiv.createSpan({ cls: 'dh-name', text: nameToDisplay.toUpperCase() });
+    // Use the passed displayName (which should be the original name) for the main header
+    if (displayName) headerDiv.createSpan({ cls: 'dh-name', text: displayName.toUpperCase() });
 
     let roleTagText = "";
     if (data.tier) roleTagText += `Tier ${data.tier} `;
@@ -357,7 +359,16 @@ function renderInstanceStatblock(
 
     if (data.hp_stress) {
         const hpStressContainer = statblockContentDiv.createDiv({ cls: 'dh-hp-stress-container' });
-        const originalHpStressSummaryDiv = hpStressContainer.createDiv({ cls: 'dh-original-hp-stress-summary' });
+
+        const primaryTrackerRow = hpStressContainer.createDiv({
+            cls: 'dh-additional-tracker-row'
+        });
+
+        if (groupSize > 1) {
+            const header = primaryTrackerRow.createDiv({ cls: 'dh-additional-tracker-header' });
+            // Here we use the instance-specific, numbered `displayName` from the data object
+            header.createSpan({ text: data.displayName, cls: 'dh-additional-tracker-name' });
+        }
 
         const hpMax = Number(data.hp_stress.hp) || 0;
         const stressMax = Number(data.hp_stress.stress) || 0;
@@ -366,13 +377,10 @@ function renderInstanceStatblock(
         const hpCb = hpUpdateCallback || ((newHp) => creatureInstance.currentHp = newHp);
         const stressCb = stressUpdateCallback || ((newStress) => creatureInstance.currentStress = newStress);
 
-        createInteractiveTrack(originalHpStressSummaryDiv, 'HP', hpMax, `${creatureInstance.id}-hp-main`, creatureInstance.currentHp, hpCb);
-        createInteractiveTrack(originalHpStressSummaryDiv, 'Stress', stressMax, `${creatureInstance.id}-stress-main`, creatureInstance.currentStress, stressCb);
+        createInteractiveTrack(primaryTrackerRow, 'HP', hpMax, `${creatureInstance.id}-hp-main`, creatureInstance.currentHp, hpCb);
+        createInteractiveTrack(primaryTrackerRow, 'Stress', stressMax, `${creatureInstance.id}-stress-main`, creatureInstance.currentStress, stressCb);
 
-        let additionalTrackersEl = statblockContentDiv.querySelector('.dh-additional-trackers-container') as HTMLElement;
-        if (!additionalTrackersEl) {
-            additionalTrackersEl = statblockContentDiv.createDiv({ cls: 'dh-additional-trackers-container' });
-        }
+        hpStressContainer.createDiv({ cls: 'dh-additional-trackers-container' });
     }
 }
 
@@ -383,10 +391,11 @@ export function renderStatblockCard(
     isInstance: boolean = false,
     displayName?: string,
     hpUpdateCallback?: (newHp: number) => void,
-    stressUpdateCallback?: (newStress: number) => void
+    stressUpdateCallback?: (newStress: number) => void,
+    groupSize?: number
 ) {
     if (isInstance) {
-        renderInstanceStatblock(plugin, data as CreatureInstance, containerEl, displayName, hpUpdateCallback, stressUpdateCallback);
+        renderInstanceStatblock(plugin, data as CreatureInstance, containerEl, displayName || data.name, hpUpdateCallback, stressUpdateCallback, groupSize);
     } else {
         renderEditorStatblock(plugin, data, containerEl);
     }

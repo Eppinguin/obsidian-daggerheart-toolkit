@@ -333,14 +333,14 @@ export class EncounterBuilderView extends ItemView {
     }
 
     updateCountdownsPopup() {
-        const button = this.uiContainer?.querySelector('.dh-countdowns-toggle-btn');
-        if (button) {
-            button.classList.toggle('is-active', this.isCountdownsPopupVisible);
-        }
-
         if (this.countdownsPopup) {
             this.countdownsPopup.remove();
             this.countdownsPopup = null;
+        }
+
+        const button = this.uiContainer?.querySelector('.dh-countdowns-toggle-btn');
+        if (button) {
+            button.classList.toggle('is-active', this.isCountdownsPopupVisible);
         }
 
         if (!this.isCountdownsPopupVisible) return;
@@ -357,45 +357,44 @@ export class EncounterBuilderView extends ItemView {
         this.countdownsPopup.style.right = `${parentRect.right - buttonRect.right}px`;
     }
 
+    private redrawCreatureGroup(groupId: string) {
+        const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
+        let groupContainer = encounterArea?.querySelector(`[data-group-id="${groupId}"]`) as HTMLElement;
 
-    private updateGroupUI(groupId: string) {
-        const groupContainer = this.containerEl.querySelector(`[data-group-id="${groupId}"]`);
-        if (!groupContainer) return false;
+        if (!encounterArea) {
+            this.drawUI();
+            return;
+        }
 
         const instancesInGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
+
         if (instancesInGroup.length === 0) {
-            groupContainer.remove();
-            return true;
+            groupContainer?.remove();
+            return;
         }
 
-        const mainCard = groupContainer.querySelector('.dh-creature-instance-card');
-        const additionalTrackersContainer = groupContainer.querySelector('.dh-additional-trackers-container') as HTMLElement;
-        if (!mainCard || !additionalTrackersContainer) return false;
-
-        const isGroupMultiple = instancesInGroup.length > 1;
-        mainCard.classList.toggle('dh-group-mode-active', isGroupMultiple);
-
-        additionalTrackersContainer.empty();
-        if (isGroupMultiple) {
-            for (const instance of instancesInGroup) {
-                this.renderAdditionalTrackerRow(instance, additionalTrackersContainer);
-            }
+        if (!groupContainer) {
+            groupContainer = this.drawCreatureGroup(groupId, encounterArea);
         }
 
-        return true;
+        const contentScroller = groupContainer.querySelector('.dh-instance-card-content');
+        const scrollTop = contentScroller?.scrollTop ?? 0;
+
+        groupContainer.empty();
+        this.populateCreatureGroupContainer(groupId, groupContainer);
+
+        const newContentScroller = groupContainer.querySelector('.dh-instance-card-content');
+        if (newContentScroller) {
+            newContentScroller.scrollTop = scrollTop;
+        }
     }
 
-    private drawCreatureGroup(groupId: string, encounterArea: HTMLElement) {
+    private populateCreatureGroupContainer(groupId: string, containerEl: HTMLElement) {
         const instancesInGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
         if (instancesInGroup.length === 0) return;
 
         instancesInGroup.sort((a, b) => a.id.localeCompare(b.id));
         const firstInstanceInGroup = instancesInGroup[0];
-
-        const creatureGroupContainer = encounterArea.createDiv({
-            cls: 'dh-creature-group-container',
-            attr: { 'data-group-id': groupId }
-        });
 
         const instanceTypeClass = firstInstanceInGroup.type ?
             'dh-type-' + firstInstanceInGroup.type.toLowerCase().replace(/\s+/g, '-') :
@@ -407,7 +406,7 @@ export class EncounterBuilderView extends ItemView {
             mainCardContainerClasses.push('dh-group-mode-active');
         }
 
-        const mainCardContainer = creatureGroupContainer.createDiv({ cls: mainCardContainerClasses.join(' ') });
+        const mainCardContainer = containerEl.createDiv({ cls: mainCardContainerClasses.join(' ') });
 
         const removeGroupButton = mainCardContainer.createEl("button", {
             text: "✕",
@@ -432,7 +431,8 @@ export class EncounterBuilderView extends ItemView {
                 const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
                 if (inst) inst.currentStress = newStress;
                 this.autoSaveCurrentEncounter();
-            }
+            },
+            instancesInGroup.length
         );
 
         const addToGroupButtonContainer = mainCardContainer.createDiv({
@@ -449,18 +449,27 @@ export class EncounterBuilderView extends ItemView {
             if (baseCreatureData) {
                 this.createNewInstanceInGroup(baseCreatureData, firstInstanceInGroup.groupId);
                 this.autoSaveCurrentEncounter();
-                this.updateGroupUI(firstInstanceInGroup.groupId);
+                this.redrawCreatureGroup(firstInstanceInGroup.groupId);
             } else {
                 new Notice(`Error: Could not find base data for ${firstInstanceInGroup.name} in compendium.`);
             }
         });
 
         const additionalTrackersContainer = mainCardContainer.querySelector('.dh-additional-trackers-container');
-        if (additionalTrackersContainer && isGroupMultiple) {
-            for (const instance of instancesInGroup) {
+        if (additionalTrackersContainer) {
+            for (const instance of instancesInGroup.slice(1)) {
                 this.renderAdditionalTrackerRow(instance, additionalTrackersContainer as HTMLElement);
             }
         }
+    }
+
+    private drawCreatureGroup(groupId: string, encounterArea: HTMLElement): HTMLElement {
+        const creatureGroupContainer = encounterArea.createDiv({
+            cls: 'dh-creature-group-container',
+            attr: { 'data-group-id': groupId }
+        });
+        this.populateCreatureGroupContainer(groupId, creatureGroupContainer);
+        return creatureGroupContainer;
     }
 
     drawUI() {
@@ -468,13 +477,13 @@ export class EncounterBuilderView extends ItemView {
         this.uiContainer.empty();
 
         const containerWrapper = this.uiContainer.createDiv({ cls: "dh-encounter-wrapper" });
-        containerWrapper.style.position = 'relative'; // Needed for absolute positioning of the popup
+        containerWrapper.style.position = 'relative';
         const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
 
         const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
         const titleAndFearWrapper = header.createDiv({ cls: 'dh-title-fear-wrapper' });
 
-        const titleText = currentEncounter ? `Active: ${currentEncounter.name}` : "Active: No Encounter";
+        const titleText = currentEncounter ? `${currentEncounter.name}` : "No Encounter active";
         const titleEl = titleAndFearWrapper.createEl('h3', { text: titleText, cls: 'dh-active-encounter-title-clickable' });
         titleEl.addEventListener('click', (e) => this.showEncounterSwitcherMenu(e));
 
@@ -483,10 +492,14 @@ export class EncounterBuilderView extends ItemView {
         }
 
         const controls = header.createDiv({ cls: "dh-encounter-controls" });
+
         if (this.plugin.settings.enableCountdownTracker) {
             const countdownsButton = controls.createEl("button", { title: "Countdowns", cls: "dh-countdowns-toggle-btn dh-icon-button" });
             setIcon(countdownsButton, "timer");
             countdownsButton.addEventListener("click", () => this.toggleCountdownsPopup());
+            if (this.isCountdownsPopupVisible) {
+                countdownsButton.addClass('is-active');
+            }
         }
 
         const toggleCompendiumButton = controls.createEl("button", { title: this.isCompendiumVisible ? "Hide Compendium" : "Show Compendium" });
@@ -498,17 +511,28 @@ export class EncounterBuilderView extends ItemView {
         const activeCreaturesPanel = mainInterface.createDiv({ cls: "dh-active-creatures-panel" });
 
         const encounterArea = activeCreaturesPanel.createDiv({ cls: "dh-encounter-area" });
-        if (this.activeEncounterCreatures.length === 0) {
-            encounterArea.createEl("p", { text: currentEncounter ? `Encounter "${currentEncounter.name}" is empty. Add creatures from the compendium.` : "No active encounter. Create or load one." });
+        encounterArea.empty(); // Clear any existing content
+
+        const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
+        this.activeEncounterCreatures.forEach(instance => {
+            if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
+            groupedByGroupId[instance.groupId].push(instance);
+        });
+
+        if (Object.keys(groupedByGroupId).length === 0) {
+            if (currentEncounter) {
+                encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
+            } else {
+                encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
+            }
         } else {
-            const grouped = this.activeEncounterCreatures.reduce((acc, creature) => {
-                (acc[creature.groupId] = acc[creature.groupId] || []).push(creature);
-                return acc;
-            }, {} as Record<string, CreatureInstance[]>);
-            Object.values(grouped).forEach(group => this.drawCreatureGroup(group[0].groupId, encounterArea));
+            for (const groupId in groupedByGroupId) {
+                this.drawCreatureGroup(groupId, encounterArea);
+            }
         }
 
         const compendiumPanel = mainInterface.createDiv({ cls: "dh-compendium-panel" });
+
         if (!this.isCompendiumVisible) compendiumPanel.addClass('dh-compendium-panel-hidden');
         const compendiumHeader = compendiumPanel.createDiv({ cls: "dh-panel-header" });
         compendiumHeader.createEl("h3", { text: "Compendium" });
@@ -564,7 +588,7 @@ export class EncounterBuilderView extends ItemView {
         const compendiumList = compendiumPanel.createDiv({ cls: "dh-compendium-list" });
         this.renderCompendiumList(compendiumList);
 
-        this.updateCountdownsPopup(); // Draw or remove the popup based on state
+        this.updateCountdownsPopup();
 
         this.leaf.onResize();
     }
@@ -913,7 +937,24 @@ export class EncounterBuilderView extends ItemView {
         const newGroupId = `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
         this.createNewInstanceInGroup(baseCreature, newGroupId);
         this.autoSaveCurrentEncounter();
-        this.drawUI();
+
+        const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
+        if (encounterArea) {
+            encounterArea.empty();
+
+            // Re-populate the encounter area
+            const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
+            this.activeEncounterCreatures.forEach(instance => {
+                if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
+                groupedByGroupId[instance.groupId].push(instance);
+            });
+
+            for (const groupId in groupedByGroupId) {
+                this.drawCreatureGroup(groupId, encounterArea);
+            }
+        } else {
+            this.drawUI();
+        }
     }
 
     createNewInstanceInGroup(baseCreature: StatblockData, targetGroupId: string) {
@@ -945,7 +986,21 @@ export class EncounterBuilderView extends ItemView {
         this.activeEncounterCreatures.splice(instanceToRemoveIndex, 1);
         this.updateDisplayNamesForGroup(groupId);
         this.autoSaveCurrentEncounter();
-        this.updateGroupUI(groupId);
+
+        const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
+        if (encounterArea) {
+            if (this.activeEncounterCreatures.length === 0) {
+                encounterArea.empty();
+                const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+                if (currentEncounter) {
+                    encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
+                } else {
+                    encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
+                }
+            } else {
+                this.redrawCreatureGroup(groupId);
+            }
+        }
     }
 
     removeCreatureGroupFromActiveEncounter(groupId: string) {
@@ -953,7 +1008,21 @@ export class EncounterBuilderView extends ItemView {
         if (groupContainer) {
             this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.groupId !== groupId);
             this.autoSaveCurrentEncounter();
-            groupContainer.remove();
+
+            const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
+            if (encounterArea) {
+                if (this.activeEncounterCreatures.length === 0) {
+                    encounterArea.empty();
+                    const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+                    if (currentEncounter) {
+                        encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
+                    } else {
+                        encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
+                    }
+                } else {
+                    groupContainer.remove();
+                }
+            }
         }
     }
 

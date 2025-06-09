@@ -196,10 +196,6 @@
     gap: var(--size-4-1);
 }
 .dh-fear-btn {
-    background-color: var(--interactive-normal);
-    color: var(--text-on-accent);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
     width: 24px;
     height: 24px;
     display: flex;
@@ -248,7 +244,7 @@
     flex-grow: 1; 
     gap: var(--size-4-3, 15px); 
     overflow: hidden; /* We'll control scrolling on a child element */
-    padding: var(--size-4-2);
+    padding: var(--size-4-2) var(--size-4-2) var(--size-4-2) 0;
 }
 
 .dh-compendium-panel {
@@ -258,13 +254,12 @@
     padding: var(--size-4-2, 10px);
     display: flex;
     flex-direction: column;
-    overflow-y: auto; 
     flex: 0 0 280px; 
     min-width: 240px;
+    height: 100%;
     color: var(--text-normal, #ccc);
     transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out, border 0.3s ease-in-out, margin 0.3s ease-in-out; 
     order: 2;
-    align-self: flex-start; /* Align to top */
 }
 .dh-compendium-panel.dh-compendium-panel-hidden {
     flex-basis: 0 !important; 
@@ -307,7 +302,14 @@
 }
 
 
-.dh-compendium-list { display: flex; flex-direction: column; gap: var(--size-4-1, 5px); }
+.dh-compendium-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: var(--size-4-1, 5px); 
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
 .dh-compendium-entry {
     display: flex; justify-content: space-between; align-items: center;
     padding: var(--size-4-2, 8px); background-color: var(--background-secondary, #3a3a44);
@@ -334,8 +336,7 @@
     flex-direction: column; 
     flex-grow: 1; 
     order: 1; 
-    overflow-y: auto; /* Make this panel scroll, not the parent */
-    padding-right: var(--size-4-2); /* Add padding for scrollbar */
+    overflow-y: auto;
 }
 .dh-active-encounter-title-clickable { 
     margin-top: 0; 
@@ -376,7 +377,7 @@
     display: flex;
     flex-direction: column;
     position: relative; 
-    max-height: 80vh; /* Adjust max height to prevent excessively long cards from breaking layout */
+    max-height: 80vh;
 }
 .dh-remove-instance-btn { 
     position: absolute;
@@ -548,13 +549,6 @@
 .dh-instance-card-content .dh-hp-stress-container {
     margin-top: var(--size-4-3, 12px);
     padding-top: var(--size-4-2, 8px);
-}
-.dh-instance-card-content .dh-original-hp-stress-summary {
-    margin-bottom: var(--size-4-2, 10px); 
-}
-
-.dh-creature-instance-card.dh-group-mode-active .dh-original-hp-stress-summary > .dh-interactive-track {
-    display: none !important;
 }
 
 .dh-interactive-track { 
