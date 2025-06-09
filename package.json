@@ -1,5 +1,5 @@
 {
-    "name": "daggerheart-statblocks",
+    "name": "daggerheart-toolkit",
     "version": "1.0.0",
     "description": "Obsidian plugin for Daggerheart Adversary statblocks",
     "main": "main.js",
