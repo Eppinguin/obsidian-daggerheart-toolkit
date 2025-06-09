@@ -3,8 +3,8 @@ import { StatblockData, CreatureInstance } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { ENCOUNTER_BUILDER_VIEW_TYPE, EncounterBuilderView } from './view';
 
-async function rollDice(app: App, diceString: string) {
-    const diceRollerPlugin = (app as any).plugins.getPlugin("obsidian-dice-roller");
+async function rollDice(plugin: DaggerheartStatblockPlugin, diceString: string) {
+    const diceRollerPlugin = (plugin.app as any).plugins.getPlugin("obsidian-dice-roller");
     if (!diceRollerPlugin) {
         new Notice("Dice Roller plugin is not enabled. Please install or enable it to roll dice.");
         return;
@@ -18,11 +18,20 @@ async function rollDice(app: App, diceString: string) {
     }
 
     try {
+        console.log(plugin.settings.useGraphicalDice, "useGraphicalDice setting");
         const roller = await DiceRollerAPI.getRoller(diceString);
-        await roller.roll();
-        const result = roller.result;
+        if (plugin.settings.useGraphicalDice) {
 
-        new Notice(`Rolled ${diceString}: ${result}`, 5000);
+            await roller.roll({
+                showDice: plugin.settings.useGraphicalDice,
+                throw: plugin.settings.useGraphicalDice
+            });
+        }
+        else {
+            await roller.roll();
+            const result = roller.result;
+            new Notice(`Rolled ${diceString}: ${result}`, 5000);
+        }
 
     } catch (e) {
         console.error("Daggerheart: Error rolling dice:", e);
@@ -53,7 +62,7 @@ function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string,
         });
         rollableSpan.addEventListener('click', (e) => {
             e.stopPropagation();
-            rollDice(plugin.app, diceString)
+            rollDice(plugin, diceString)
         });
 
         lastIndex = regex.lastIndex;
@@ -173,7 +182,7 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
             const diceString = `1d20${(normalizedModifier === '+0' || normalizedModifier === '0') ? '' : normalizedModifier}`;
             const atkRollable = atkSpan.createSpan({ text: modifierValue, cls: 'dh-rollable-dice' });
             atkRollable.title = `Click to roll ${diceString}`;
-            atkRollable.addEventListener('click', (e) => { e.stopPropagation(); rollDice(plugin.app, diceString); });
+            atkRollable.addEventListener('click', (e) => { e.stopPropagation(); rollDice(plugin, diceString); });
         } else {
             atkSpan.appendText(modifierValue);
         }
@@ -300,7 +309,7 @@ function renderInstanceStatblock(
                     atkRollable.title = `Click to roll ${diceString}`;
                     atkRollable.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        rollDice(plugin.app, diceString);
+                        rollDice(plugin, diceString);
                     });
                 } else {
                     container.appendText(modifierValue);

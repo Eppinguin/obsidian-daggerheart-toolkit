@@ -70,6 +70,8 @@ export interface DaggerheartPluginSettings {
     fearCounter: number;
     enableCountdownTracker: boolean;
     countdowns: Countdown[];
+    enableDiceRoller: boolean;
+    useGraphicalDice: boolean;
 }
 
 export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
@@ -82,4 +84,6 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     fearCounter: 0,
     enableCountdownTracker: true,
     countdowns: [],
+    enableDiceRoller: false,
+    useGraphicalDice: false,
 };

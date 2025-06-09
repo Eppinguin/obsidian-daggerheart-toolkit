@@ -1,4 +1,4 @@
-import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf } from 'obsidian';
+import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice } from 'obsidian';
 import * as YAML from 'js-yaml';
 import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/view';
@@ -14,13 +14,17 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         await this.loadSettings();
 
         // Check if the Dice Roller plugin and its API are available.
-        this.isDiceRollerEnabled = (this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api != null;
-        if (this.isDiceRollerEnabled) {
-            console.log('Daggerheart: Dice Roller plugin detected.');
+        this.isDiceRollerEnabled = this.settings.enableDiceRoller && (this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api != null;
+        if (this.settings.enableDiceRoller) {
+            if (this.isDiceRollerEnabled) {
+                console.log('Daggerheart: Dice Roller plugin detected and enabled.');
+            } else {
+                console.log('Daggerheart: Dice Roller plugin not found but enabled in settings.');
+                new Notice('Dice Roller plugin not found. Please install it to use dice rolling features.');
+            }
         } else {
-            console.log('Daggerheart: Dice Roller plugin not detected. Dice rolling will be disabled.');
+            console.log('Daggerheart: Dice Roller integration disabled in settings.');
         }
-
 
         this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el, ctx) => {
             try {
@@ -159,5 +163,50 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
                     if (view instanceof EncounterBuilderView) view.drawUI();
                 }));
+
+        new Setting(containerEl)
+            .setName('Enable Dice Roller Integration')
+            .setDesc('Enable integration with the Dice Roller plugin for rolling dice in statblocks.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableDiceRoller)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableDiceRoller = value;
+                    await this.plugin.saveSettings();
+
+                    // Update dice roller state immediately
+                    this.plugin.isDiceRollerEnabled = value && (this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api != null;
+                    if (value && !this.plugin.isDiceRollerEnabled) {
+                        new Notice('Dice Roller plugin not found. Please install it to use dice rolling features.');
+                    }
+
+                    // Force refresh the settings UI to update the graphical dice toggle state
+                    this.display();
+                }));
+
+        // Only show graphical dice setting if dice roller integration is enabled
+        if (this.plugin.settings.enableDiceRoller) {
+            const diceToggle = new Setting(containerEl)
+                .setName('Use Graphical Dice')
+                .setDesc('If enabled, dice rolls will use graphical 3D dice (requires Dice Roller plugin).')
+                .addToggle(toggle => {
+                    const isPluginAvailable = this.plugin.isDiceRollerEnabled;
+                    toggle
+                        .setValue(isPluginAvailable ? this.plugin.settings.useGraphicalDice : false)
+                        .setDisabled(!isPluginAvailable)
+                        .onChange(async (value) => {
+                            this.plugin.settings.useGraphicalDice = value;
+                            await this.plugin.saveSettings();
+                        });
+                });
+
+            // Add disabled class and notice if dice roller plugin is not installed
+            if (!this.plugin.isDiceRollerEnabled) {
+                diceToggle.setClass('setting-disabled');
+                containerEl.createEl('div', {
+                    text: 'Dice Roller plugin is not installed. Install it to enable graphical dice.',
+                    cls: 'setting-item-description'
+                });
+            }
+        }
     }
 }
