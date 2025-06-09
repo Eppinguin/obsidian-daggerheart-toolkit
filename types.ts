@@ -1,5 +1,3 @@
-// types.ts
-
 export interface StatblockAttack {
     name: string;
     range: string;
@@ -56,6 +54,12 @@ export interface SavedEncounter {
     creatures: CreatureInstance[];
 }
 
+export interface Countdown {
+    id: string;
+    name: string;
+    value: number;
+}
+
 export interface DaggerheartPluginSettings {
     compendiumFolder: string;
     savedEncounters: SavedEncounter[];
@@ -64,6 +68,8 @@ export interface DaggerheartPluginSettings {
     showFeatureDetailsOnCards: boolean;
     enableFearTracker: boolean;
     fearCounter: number;
+    enableCountdownTracker: boolean;
+    countdowns: Countdown[];
 }
 
 export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
@@ -73,5 +79,7 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     showDescriptionOnCards: false,
     showFeatureDetailsOnCards: true,
     enableFearTracker: false,
-    fearCounter: 0
+    fearCounter: 0,
+    enableCountdownTracker: true,
+    countdowns: [],
 };

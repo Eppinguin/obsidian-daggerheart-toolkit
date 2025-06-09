@@ -147,5 +147,17 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
                     if (view instanceof EncounterBuilderView) view.drawUI();
                 }));
+
+        new Setting(containerEl)
+            .setName('Enable Countdown Tracker')
+            .setDesc('If enabled, a button to show the countdown tracker will be available in the encounter view.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableCountdownTracker)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableCountdownTracker = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) view.drawUI();
+                }));
     }
 }

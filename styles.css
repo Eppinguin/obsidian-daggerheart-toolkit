@@ -5,7 +5,6 @@
     border: 1px solid #dcdad5;
     border-radius: 8px;
     padding: 1.5em;
-    font-family: sans-serif;
     color: #333;
     max-width: 550px;
     box-shadow: none;
@@ -133,28 +132,36 @@
 
 
 /* --- Encounter Builder UI & View Statblock Styles --- */
-/* The rest of the styling for the Encounter Builder view is restored and separate */
-
 .dh-encounter-builder-container {
     display: flex;
     flex-direction: column;
     height: 100%; 
-    padding: var(--size-4-2, 10px);
     background-color: var(--background-secondary); 
-    overflow: hidden; 
-    margin: 0 auto 0;
+    overflow: hidden;
+}
+
+.dh-encounter-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden; /* This prevents the main container from showing a scrollbar */
+    position: relative; /* Positioning context for the popup */
 }
 
 .dh-encounter-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--size-4-2, 10px);
-    padding-bottom: var(--size-4-2, 10px);
-    border-bottom: 1px solid var(--background-modifier-border, #444); 
-    color: var(--text-normal, #ccc); 
+    padding: var(--size-4-2);
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
 }
 .dh-encounter-header h2 { margin: 0; font-size: var(--font-ui-larger, 1.5em); }
+.dh-encounter-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
 .dh-encounter-controls .dh-icon-button { 
     background-color: transparent;
     border: none;
@@ -162,11 +169,17 @@
     padding: var(--size-2-2); 
     cursor: pointer;
     border-radius: var(--radius-s);
-    margin-left: var(--size-4-1);
 }
 .dh-encounter-controls .dh-icon-button:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
+}
+.dh-encounter-controls .dh-icon-button.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.dh-encounter-controls .dh-icon-button.is-active:hover {
+    background-color: var(--interactive-accent-hover);
 }
 
 
@@ -174,7 +187,8 @@
     display: flex;
     flex-grow: 1; 
     gap: var(--size-4-3, 15px); 
-    overflow: hidden; 
+    overflow: hidden; /* We'll control scrolling on a child element */
+    padding: var(--size-4-2);
 }
 
 .dh-compendium-panel {
@@ -189,7 +203,8 @@
     min-width: 240px;
     color: var(--text-normal, #ccc);
     transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out, border 0.3s ease-in-out, margin 0.3s ease-in-out; 
-    order: 2; 
+    order: 2;
+    align-self: flex-start; /* Align to top */
 }
 .dh-compendium-panel.dh-compendium-panel-hidden {
     flex-basis: 0 !important; 
@@ -255,18 +270,17 @@
 }
 
 .dh-active-creatures-panel { 
-    background-color: var(--background-primary-alt, #25252d); 
-    border: 1px solid var(--background-modifier-border, #444);
-    border-radius: var(--radius-m, 6px);
-    padding: var(--size-4-2, 10px);
     display: flex;
     flex-direction: column; 
     flex-grow: 1; 
-    overflow: hidden; 
     order: 1; 
+    overflow-y: auto; /* Make this panel scroll, not the parent */
+    padding-right: var(--size-4-2); /* Add padding for scrollbar */
 }
 .dh-active-encounter-title-clickable { 
-    margin-top: 0; margin-bottom: var(--size-4-2, 10px); padding-bottom: var(--size-4-1, 5px);
+    margin-top: 0; 
+    margin-bottom: var(--size-4-2, 10px); 
+    padding-bottom: var(--size-4-1, 5px);
     border-bottom: 1px solid var(--background-modifier-border, #555);
     font-size: var(--font-ui-large, 1.2em);
     color: var(--interactive-accent, #aaa); 
@@ -284,10 +298,8 @@
     flex-wrap: nowrap; 
     gap: var(--size-4-3, 15px); 
     align-items: flex-start; 
-    padding: var(--size-4-1, 5px); 
     overflow-x: auto; 
-    overflow-y: hidden; 
-    flex-grow: 1; 
+    padding-bottom: var(--size-4-3); /* Ensure space for scrollbar */
 }
 
 .dh-creature-group-container { 
@@ -307,7 +319,7 @@
     display: flex;
     flex-direction: column;
     position: relative; 
-    max-height: 85vh; 
+    max-height: 80vh; /* Adjust max height to prevent excessively long cards from breaking layout */
 }
 .dh-remove-instance-btn { 
     position: absolute;
@@ -639,55 +651,6 @@
 }
 
 
-.dh-fear-tracker {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 0;
-    padding: 4px 8px;
-    background-color: var(--background-secondary);
-    border-radius: 4px;
-    max-width: 200px;
-}
-
-.dh-fear-label {
-    font-size: 14px;
-    margin-right: 8px;
-    font-weight: 500;
-}
-
-.dh-fear-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.dh-fear-btn {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border: none;
-    border-radius: 4px;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 0;
-}
-
-.dh-fear-btn:hover {
-    background-color: var(--interactive-accent-hover);
-}
-
-.dh-fear-value {
-    min-width: 20px;
-    text-align: center;
-    font-weight: bold;
-    font-size: 16px;
-}
-
 .dh-name-modal .modal-title, 
 .dh-manage-encounters-modal .modal-title { 
     color: var(--text-normal);
@@ -813,16 +776,6 @@
     box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2); 
 }
 
-.dh-encounter-wrapper {
-    display: flex;
-    flex-direction: column;
-    flex-grow: 1;
-    background-color: var(--background-secondary);
-    border-radius: var(--radius-m);
-    overflow: hidden;
-    margin-bottom: 8px;
-}
-
 /* --- Filter Controls Styling --- */
 .dh-filter-controls {
     display: flex;
@@ -898,4 +851,133 @@
     background-color: var(--background-primary);
     color: var(--text-normal);
     padding: var(--size-4-1);
+}
+
+/* --- Bottom Widgets and Popups --- */
+.dh-bottom-widgets-container {
+    padding: var(--size-4-1) var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary);
+    flex-shrink: 0;
+}
+
+.dh-fear-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-4-1);
+    width: fit-content;
+    margin: 0 auto;
+}
+
+.dh-fear-label {
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+}
+
+.dh-fear-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+
+.dh-fear-btn {
+    background-color: var(--interactive-normal);
+    color: var(--text-on-accent);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1em;
+}
+.dh-fear-btn:hover {
+    background-color: var(--interactive-hover);
+}
+
+.dh-fear-value {
+    min-width: 24px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1em;
+}
+
+/* --- Countdown Popup --- */
+.dh-countdowns-popup {
+    position: absolute;
+    z-index: 100;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-l);
+    padding: var(--size-4-2);
+    width: 350px;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.dh-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+.dh-popup-header h4 {
+    margin: 0;
+    font-size: var(--font-ui-large);
+}
+
+.dh-countdowns-body {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.dh-countdown-item {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.dh-countdown-name-input {
+    flex-grow: 1;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
+    border-radius: var(--radius-s);
+    padding: var(--size-2-2);
+}
+.dh-countdown-name-input:focus {
+    border-color: var(--interactive-accent);
+}
+
+.dh-countdown-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.dh-countdown-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 1.1em;
+}
+
+.dh-countdown-value {
+    font-weight: var(--font-bold);
+    min-width: 20px;
+    text-align: center;
+}
+
+.dh-no-items-message {
+    color: var(--text-muted);
+    text-align: center;
+    padding: var(--size-4-3);
 }

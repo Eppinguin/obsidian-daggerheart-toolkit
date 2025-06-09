@@ -1,6 +1,6 @@
 import { App, ItemView, WorkspaceLeaf, Notice, Modal, TextComponent, ButtonComponent, Menu, setIcon, Setting } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
-import { StatblockData, CreatureInstance, SavedEncounter } from '../types';
+import { StatblockData, CreatureInstance, SavedEncounter, Countdown } from '../types';
 import { renderStatblockCard } from './rendering';
 
 
@@ -161,9 +161,12 @@ export class EncounterBuilderView extends ItemView {
     currentEncounterId: string | null = null;
     private uiContainer: HTMLElement | null = null;
     private isCompendiumVisible: boolean = true;
+    private isCountdownsPopupVisible: boolean = false;
     private compendiumSearchTerm: string = "";
     private selectedTiers: Set<number> = new Set();
     private selectedTypes: Set<string> = new Set();
+
+    private countdownsPopup: HTMLElement | null = null;
 
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
@@ -195,6 +198,7 @@ export class EncounterBuilderView extends ItemView {
                 this.currentEncounterId = persistedState.currentEncounterId;
             }
             this.isCompendiumVisible = typeof persistedState.isCompendiumVisible === 'boolean' ? persistedState.isCompendiumVisible : true;
+            this.isCountdownsPopupVisible = typeof persistedState.isCountdownsPopupVisible === 'boolean' ? persistedState.isCountdownsPopupVisible : false;
             this.compendiumSearchTerm = typeof persistedState.compendiumSearchTerm === 'string' ? persistedState.compendiumSearchTerm : "";
             if (Array.isArray(persistedState.selectedTiers)) {
                 this.selectedTiers = new Set(persistedState.selectedTiers);
@@ -205,6 +209,7 @@ export class EncounterBuilderView extends ItemView {
         }
 
         this.ensureActiveEncounter();
+        this.icon = 'swords';
         this.loadCreaturesForCurrentEncounter();
         this.drawUI();
         this.leaf.setEphemeralState(this.getState());
@@ -220,6 +225,9 @@ export class EncounterBuilderView extends ItemView {
             }
             if (typeof state.isCompendiumVisible === 'boolean') {
                 this.isCompendiumVisible = state.isCompendiumVisible;
+            }
+            if (typeof state.isCountdownsPopupVisible === 'boolean') {
+                this.isCountdownsPopupVisible = state.isCountdownsPopupVisible;
             }
             if (typeof state.compendiumSearchTerm === 'string') {
                 this.compendiumSearchTerm = state.compendiumSearchTerm;
@@ -244,6 +252,7 @@ export class EncounterBuilderView extends ItemView {
         return {
             currentEncounterId: this.currentEncounterId,
             isCompendiumVisible: this.isCompendiumVisible,
+            isCountdownsPopupVisible: this.isCountdownsPopupVisible,
             compendiumSearchTerm: this.compendiumSearchTerm,
             selectedTiers: Array.from(this.selectedTiers),
             selectedTypes: Array.from(this.selectedTypes)
@@ -258,6 +267,10 @@ export class EncounterBuilderView extends ItemView {
             if (!this.currentEncounterId && this.plugin.settings.savedEncounters.length > 0) {
                 this.handleNewEncounter(true, "My First Encounter");
             }
+        }
+        // Ensure at least one default countdown if enabled
+        if (this.plugin.settings.enableCountdownTracker && this.plugin.settings.countdowns.length === 0) {
+            this.handleAddCountdown(true);
         }
     }
 
@@ -311,6 +324,38 @@ export class EncounterBuilderView extends ItemView {
         this.leaf.setEphemeralState(this.getState());
         this.drawUI();
     }
+
+    toggleCountdownsPopup() {
+        this.isCountdownsPopupVisible = !this.isCountdownsPopupVisible;
+        this.leaf.setEphemeralState(this.getState());
+        this.updateCountdownsPopup();
+    }
+
+    updateCountdownsPopup() {
+        if (this.countdownsPopup) {
+            this.countdownsPopup.remove();
+            this.countdownsPopup = null;
+        }
+
+        const button = this.uiContainer?.querySelector('.dh-countdowns-toggle-btn');
+        if (button) {
+            button.classList.toggle('is-active', this.isCountdownsPopupVisible);
+        }
+
+        if (!this.isCountdownsPopupVisible) return;
+
+        const parent = this.uiContainer?.querySelector('.dh-encounter-wrapper');
+        if (!parent || !button) return;
+
+        this.countdownsPopup = parent.createDiv({ cls: 'dh-countdowns-popup' });
+        this.populateCountdownsPopup(this.countdownsPopup);
+
+        const buttonRect = button.getBoundingClientRect();
+        const parentRect = parent.getBoundingClientRect();
+        this.countdownsPopup.style.top = `${buttonRect.bottom - parentRect.top + 5}px`;
+        this.countdownsPopup.style.right = `${parentRect.right - buttonRect.right}px`;
+    }
+
 
     private updateGroupUI(groupId: string) {
         const groupContainer = this.containerEl.querySelector(`[data-group-id="${groupId}"]`);
@@ -422,11 +467,22 @@ export class EncounterBuilderView extends ItemView {
         this.uiContainer.empty();
 
         const containerWrapper = this.uiContainer.createDiv({ cls: "dh-encounter-wrapper" });
+        containerWrapper.style.position = 'relative'; // Needed for absolute positioning of the popup
         const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
 
         const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
         header.createEl("h2", { text: "Daggerheart Encounters" });
         const controls = header.createDiv({ cls: "dh-encounter-controls" });
+
+        if (this.plugin.settings.enableCountdownTracker) {
+            const countdownsButton = controls.createEl("button", { title: "Countdowns", cls: "dh-countdowns-toggle-btn dh-icon-button" });
+            setIcon(countdownsButton, "timer");
+            countdownsButton.addEventListener("click", () => this.toggleCountdownsPopup());
+            if (this.isCountdownsPopupVisible) {
+                countdownsButton.addClass('is-active');
+            }
+        }
+
         const toggleCompendiumButton = controls.createEl("button", { title: this.isCompendiumVisible ? "Hide Compendium" : "Show Compendium" });
         setIcon(toggleCompendiumButton, this.isCompendiumVisible ? "panel-right-close" : "panel-left-open");
         toggleCompendiumButton.addClass("dh-icon-button");
@@ -535,7 +591,100 @@ export class EncounterBuilderView extends ItemView {
         const compendiumList = compendiumPanel.createDiv({ cls: "dh-compendium-list" });
         this.renderCompendiumList(compendiumList);
 
+        this.updateCountdownsPopup(); // Draw or remove the popup based on state
+
         this.leaf.onResize();
+    }
+
+    populateCountdownsPopup(popupEl: HTMLElement) {
+        popupEl.empty();
+        const header = popupEl.createDiv({ cls: "dh-popup-header" });
+        header.createEl("h4", { text: "Countdowns" });
+        const controls = header.createDiv({ cls: "dh-panel-controls" });
+        const addButton = controls.createEl("button", { title: "Add Countdown" });
+        setIcon(addButton, "plus");
+        addButton.addClass("dh-icon-button");
+        addButton.addEventListener("click", () => this.handleAddCountdown());
+
+        const body = popupEl.createDiv({ cls: "dh-countdowns-body" });
+        if (this.plugin.settings.countdowns.length === 0) {
+            body.createEl("p", { text: "No countdowns. Add one!", cls: "dh-no-items-message" });
+        } else {
+            this.plugin.settings.countdowns.forEach(countdown => this.drawCountdownItem(countdown, body));
+        }
+    }
+
+    drawCountdownItem(countdown: Countdown, container: HTMLElement) {
+        const itemEl = container.createDiv({ cls: 'dh-countdown-item', attr: { 'data-countdown-id': countdown.id } });
+
+        const nameInput = itemEl.createEl('input', {
+            type: 'text',
+            value: countdown.name,
+            cls: 'dh-countdown-name-input'
+        });
+        nameInput.addEventListener('change', () => {
+            this.handleRenameCountdown(countdown.id, nameInput.value);
+        });
+
+        const controls = itemEl.createDiv({ cls: 'dh-countdown-controls' });
+
+        const decrementBtn = controls.createEl('button', { text: '−', cls: 'dh-countdown-btn' });
+        decrementBtn.addEventListener('click', () => {
+            this.handleCountdownValueChange(countdown.id, -1);
+        });
+
+        controls.createSpan({ text: countdown.value.toString(), cls: 'dh-countdown-value' });
+
+        const incrementBtn = controls.createEl('button', { text: '+', cls: 'dh-countdown-btn' });
+        incrementBtn.addEventListener('click', () => {
+            this.handleCountdownValueChange(countdown.id, 1);
+        });
+
+        const removeBtn = controls.createEl('button', { title: 'Remove Countdown', cls: 'dh-icon-button' });
+        setIcon(removeBtn, 'trash');
+        removeBtn.addEventListener('click', () => {
+            this.handleRemoveCountdown(countdown.id);
+        });
+    }
+
+    async handleAddCountdown(isDefault: boolean = false) {
+        const newCountdown: Countdown = {
+            id: `dh-countdown-${Date.now()}`,
+            name: isDefault ? 'Default Countdown' : `Countdown ${this.plugin.settings.countdowns.length + 1}`,
+            value: 0
+        };
+        this.plugin.settings.countdowns.push(newCountdown);
+        await this.plugin.saveSettings();
+        if (!isDefault) this.updateCountdownsPopup();
+    }
+
+    async handleRemoveCountdown(id: string) {
+        this.plugin.settings.countdowns = this.plugin.settings.countdowns.filter(c => c.id !== id);
+        await this.plugin.saveSettings();
+        this.updateCountdownsPopup();
+    }
+
+    async handleRenameCountdown(id: string, newName: string) {
+        const countdown = this.plugin.settings.countdowns.find(c => c.id === id);
+        if (countdown && countdown.name !== newName) {
+            countdown.name = newName;
+            await this.plugin.saveSettings();
+        }
+    }
+
+    async handleCountdownValueChange(id: string, delta: number) {
+        const countdown = this.plugin.settings.countdowns.find(c => c.id === id);
+        if (countdown) {
+            countdown.value += delta;
+            await this.plugin.saveSettings();
+            if (this.countdownsPopup) {
+                const itemEl = this.countdownsPopup.querySelector(`[data-countdown-id="${id}"]`);
+                if (itemEl) {
+                    const valueEl = itemEl.querySelector('.dh-countdown-value');
+                    if (valueEl) valueEl.textContent = countdown.value.toString();
+                }
+            }
+        }
     }
 
     renderCompendiumList(listContainer: HTMLElement) {
