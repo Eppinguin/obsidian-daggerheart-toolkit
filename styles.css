@@ -1165,6 +1165,93 @@
     color: var(--text-muted);
 }
 .dh-budget-modal .setting-item {
-    padding-top: var(--size-4-2);
-    padding-bottom: var(--size-4-2);
+    padding-right: 0;
+}
+
+/* --- Edit Adversary Modal --- */
+
+/* Target the root modal element to override its default layout */
+.dh-edit-adversary-modal-root {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Make the content area fill the new modal height */
+.dh-edit-adversary-modal-root .modal-content {
+    flex-grow: 1;
+    padding: 0; /* Remove default padding */
+    overflow: hidden; /* Prevent the contentEl itself from scrolling */
+}
+
+/* This is the class on contentEl, which now acts as our main container */
+.dh-edit-adversary-modal {
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Fill the parent (.modal-content) */
+}
+
+.dh-edit-adversary-modal .modal-header {
+    flex-shrink: 0;
+    padding: var(--modal-padding, 1.5rem);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.dh-edit-adversary-modal .modal-header h2 {
+    margin: 0;
+}
+
+.dh-edit-adversary-modal .modal-body {
+    flex-grow: 1;
+    overflow-y: auto; /* This is the only element that should scroll */
+    padding: var(--modal-padding, 1.5rem);
+}
+
+.dh-edit-adversary-modal .modal-footer {
+    flex-shrink: 0;
+    padding: var(--size-4-3) var(--modal-padding, 1.5rem);
+    border-top: 1px solid var(--background-modifier-border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.dh-edit-adversary-modal .dh-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--size-4-2);
+}
+
+
+/* --- New Styles for Card Header Controls --- */
+.dh-card-header-controls {
+    position: absolute;
+    top: var(--size-4-2);
+    right: var(--size-4-2);
+    display: flex;
+    gap: var(--size-4-1);
+    z-index: 10;
+}
+
+.dh-card-header-controls .dh-icon-button {
+    background-color: rgba(var(--background-modifier-hover-rgb), 0.8);
+    backdrop-filter: blur(4px);
+    color: var(--text-normal);
+    border-radius: var(--radius-s);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-card-header-controls .dh-icon-button:hover {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    opacity: 1;
+}
+
+/* Ensure the image container allows for the controls */
+.dh-card-image-container {
+    padding-top: var(--size-4-4);
 }

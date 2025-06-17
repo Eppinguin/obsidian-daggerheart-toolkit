@@ -43,6 +43,7 @@ export interface StatblockData {
     hp_stress: StatblockHpStress;
     features?: StatblockFeature[];
     sourceFile?: string;
+    isCustom?: boolean; // Flag for user-created adversaries
 }
 
 export interface CreatureInstance extends StatblockData {
@@ -78,6 +79,7 @@ export interface DaggerheartPluginSettings {
     compendiumFolder: string;
     savedEncounters: SavedEncounter[];
     useSrdAdversaries: boolean;
+    userCompendiumFile: string; // New setting for the user's JSON compendium
     showDescriptionOnCards: boolean;
     showFeatureDetailsOnCards: boolean;
     enableFearTracker: boolean;
@@ -94,6 +96,7 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     compendiumFolder: '',
     savedEncounters: [],
     useSrdAdversaries: true,
+    userCompendiumFile: 'User-Adversaries.json',
     showDescriptionOnCards: false,
     showFeatureDetailsOnCards: true,
     enableFearTracker: false,
@@ -111,3 +114,4 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
         useLowerTier: false,
     },
 };
+Daggerheart - Compendium

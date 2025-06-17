@@ -1,8 +1,8 @@
-import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice } from 'obsidian';
+import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, TFile } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS } from './types';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, CreatureInstance } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/view';
-import { getCompendiumCreatures } from './src/parsing';
+import { getCompendiumCreatures, saveCreatureToUserCompendium } from './src/parsing';
 import { renderStatblockCard, createInteractiveTrack } from './src/rendering';
 
 export default class DaggerheartStatblockPlugin extends Plugin {
@@ -62,6 +62,10 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         return getCompendiumCreatures(this);
     }
 
+    saveCreatureToUserCompendium(creatureData: StatblockData) {
+        return saveCreatureToUserCompendium(this, creatureData);
+    }
+
     createInteractiveTrack(
         parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string,
         currentValue: number, updateCallback: (newValue: number) => void
@@ -85,6 +89,8 @@ class DaggerheartSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         containerEl.createEl('h2', { text: 'Daggerheart Statblock Settings' });
+
+        containerEl.createEl('h3', { text: 'Compendium Settings' });
 
         new Setting(containerEl)
             .setName('Compendium Folder')
@@ -115,6 +121,26 @@ class DaggerheartSettingTab extends PluginSettingTab {
                         await view.loadCompendium(); view.drawUI();
                     }
                 }));
+
+        new Setting(containerEl)
+            .setName('User Compendium File')
+            .setDesc('The name of the JSON file in the plugin folder for storing custom adversaries. It will be created if it doesn\'t exist.')
+            .addText(text => text
+                .setValue(this.plugin.settings.userCompendiumFile)
+                .onChange(async (value) => {
+                    this.plugin.settings.userCompendiumFile = value.trim() || DEFAULT_SETTINGS.userCompendiumFile;
+                    if (!this.plugin.settings.userCompendiumFile.toLowerCase().endsWith('.json')) {
+                        this.plugin.settings.userCompendiumFile += '.json';
+                    }
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) {
+                        await view.loadCompendium();
+                        view.drawUI();
+                    }
+                }));
+
+        containerEl.createEl('h3', { text: 'Encounter View Settings' });
 
         new Setting(containerEl)
             .setName('Show Description on Instance Cards')
@@ -177,6 +203,8 @@ class DaggerheartSettingTab extends PluginSettingTab {
                         view.drawUI();
                     }
                 }));
+
+        containerEl.createEl('h3', { text: 'Integrations' });
 
         new Setting(containerEl)
             .setName('Enable Dice Roller Integration')

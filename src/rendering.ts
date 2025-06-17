@@ -343,7 +343,9 @@ function renderInstanceStatblock(
         const header = row.createDiv({ cls: 'dh-additional-tracker-header' });
         header.createSpan({ text: data.displayName, cls: 'dh-additional-tracker-name' });
         const controlsWrapper = header.createDiv({ cls: 'dh-additional-tracker-controls' });
-        addConditionButton(controlsWrapper, data.id, containerEl);
+
+        addControlButtons(controlsWrapper, data.id, containerEl);
+
         const removeBtn = controlsWrapper.createEl('button', { text: '✕', title: "Remove this instance", cls: 'dh-remove-additional-btn' });
         removeBtn.addEventListener('click', () => containerEl.dispatchEvent(new CustomEvent('dh-remove-instance', {
             bubbles: true,
@@ -378,17 +380,17 @@ function renderInstanceStatblock(
     }
 }
 
-function addConditionButton(container: HTMLElement, instanceId: string, containerEl: HTMLElement) {
-    const btn = container.createEl('button', {
+function addControlButtons(container: HTMLElement, instanceId: string, containerEl: HTMLElement) {
+    const conditionBtn = container.createEl('button', {
         title: 'Add Condition',
         cls: 'dh-icon-button dh-add-condition-btn'
     });
-    setIcon(btn, 'tag');
-    btn.addEventListener('click', (e) => {
+    setIcon(conditionBtn, 'tag');
+    conditionBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         containerEl.dispatchEvent(new CustomEvent('dh-request-condition-menu', {
             bubbles: true,
-            detail: { instanceId, anchor: btn }
+            detail: { instanceId, anchor: conditionBtn }
         }));
     });
 }
