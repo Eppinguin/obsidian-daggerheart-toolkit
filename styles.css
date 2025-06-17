@@ -1170,29 +1170,26 @@
 
 /* --- Edit Adversary Modal --- */
 
-/* Target the root modal element to override its default layout */
 .dh-edit-adversary-modal-root {
     display: flex;
     flex-direction: column;
 }
 
-/* Make the content area fill the new modal height */
 .dh-edit-adversary-modal-root .modal-content {
     flex-grow: 1;
-    padding: 0; /* Remove default padding */
-    overflow: hidden; /* Prevent the contentEl itself from scrolling */
+    padding: 0; 
+    overflow: hidden;
 }
 
-/* This is the class on contentEl, which now acts as our main container */
 .dh-edit-adversary-modal {
     display: flex;
     flex-direction: column;
-    height: 100%; /* Fill the parent (.modal-content) */
+    height: 100%;
 }
 
 .dh-edit-adversary-modal .modal-header {
     flex-shrink: 0;
-    padding: var(--modal-padding, 1.5rem);
+    padding: var(--modal-padding);
     border-bottom: 1px solid var(--background-modifier-border);
 }
 
@@ -1202,13 +1199,118 @@
 
 .dh-edit-adversary-modal .modal-body {
     flex-grow: 1;
-    overflow-y: auto; /* This is the only element that should scroll */
-    padding: var(--modal-padding, 1.5rem);
+    overflow-y: auto;
+    padding: var(--modal-padding);
 }
+
+.dh-edit-adversary-modal .dh-modal-section {
+    margin-bottom: var(--size-4-6);
+}
+
+.dh-edit-adversary-modal .dh-modal-section h3 {
+    margin-top: 0;
+    margin-bottom: var(--size-4-4);
+    font-size: var(--font-ui-large);
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-1);
+    font-weight: 600;
+}
+
+.dh-modal-field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--size-4-4) var(--size-4-6);
+}
+
+.dh-modal-field-grid .setting-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--size-4-1);
+    padding: 0;
+    border: none;
+}
+.dh-modal-field-grid .setting-item-info {
+    width: 100%;
+}
+.dh-modal-field-grid .setting-item-control {
+    width: 100%;
+}
+
+.dh-grid-span-all {
+    grid-column: 1 / -1;
+}
+
+
+.dh-features-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-4);
+}
+.dh-feature-editor-item {
+    background-color: var(--background-secondary-alt);
+    padding: var(--size-4-3);
+    border-radius: var(--radius-m);
+    border: 1px solid var(--background-modifier-border);
+    position: relative;
+    padding-right: 40px; /* Space for the remove button */
+}
+.dh-feature-editor-item .setting-item {
+    padding: var(--size-2-2) 0;
+}
+.dh-feature-editor-item .setting-item-control {
+    display: flex;
+    flex-wrap: wrap; /* Allow inputs to wrap on smaller screens */
+    gap: var(--size-4-2);
+    width: 100%;
+}
+.dh-feature-editor-item .setting-item-name {
+    font-weight: var(--font-bold);
+    color: var(--text-normal);
+}
+.dh-feature-remove-btn {
+    position: absolute;
+    top: var(--size-4-2);
+    right: var(--size-4-2);
+    background-color: transparent !important;
+    border: none !important;
+    color: var(--text-faint) !important;
+    box-shadow: none !important;
+}
+.dh-feature-remove-btn:hover {
+    color: var(--text-error) !important;
+}
+.dh-feature-desc-input {
+    width: 100%;
+}
+.dh-feature-desc-input textarea {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+}
+.dh-add-feature-btn {
+    margin-top: var(--size-4-2);
+    width: fit-content;
+    align-self: flex-start;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 
 .dh-edit-adversary-modal .modal-footer {
     flex-shrink: 0;
-    padding: var(--size-4-3) var(--modal-padding, 1.5rem);
+    padding: var(--size-4-3) var(--modal-padding);
     border-top: 1px solid var(--background-modifier-border);
     display: flex;
     justify-content: flex-end;

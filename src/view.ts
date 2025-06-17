@@ -162,43 +162,64 @@ class EditAdversaryModal extends Modal {
         contentEl.empty();
         contentEl.addClass('dh-edit-adversary-modal');
 
-        // Create header
         const headerEl = contentEl.createDiv({ cls: 'modal-header' });
         headerEl.createEl("h2", { text: `Edit ${this.creature.name}` });
 
-        // Create scrollable content area
         const contentBodyEl = contentEl.createDiv({ cls: 'modal-body' });
 
-        // Basic Info
-        new Setting(contentBodyEl).setName("Name").addText(text => text.setValue(this.creature.name).onChange(val => this.creature.name = val));
-        new Setting(contentBodyEl).setName("Image URL").addText(text => text.setValue(this.creature.image || '').onChange(val => this.creature.image = val));
-        new Setting(contentBodyEl).setName("Tier").addText(text => text.setValue(String(this.creature.tier || '')).onChange(val => this.creature.tier = val));
-        new Setting(contentBodyEl).setName("Type").addText(text => text.setValue(this.creature.type || '').onChange(val => this.creature.type = val));
-        new Setting(contentBodyEl).setName("Description").addTextArea(text => text.setValue(this.creature.description || '').onChange(val => this.creature.description = val));
+        // --- Basic Info Section ---
+        const basicInfoSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
+        basicInfoSection.createEl('h3', { text: "Basic Information" });
+        const infoGrid = basicInfoSection.createDiv({ cls: 'dh-modal-field-grid' });
+
+        const nameSetting = new Setting(infoGrid).setName("Name").addText(text => text.setValue(this.creature.name).onChange(val => this.creature.name = val));
+        nameSetting.settingEl.addClass('dh-grid-span-all');
+
+        const imageSetting = new Setting(infoGrid).setName("Image URL").addText(text => text.setValue(this.creature.image || '').onChange(val => this.creature.image = val));
+        imageSetting.settingEl.addClass('dh-grid-span-all');
+
+        new Setting(infoGrid).setName("Tier").addText(text => text.setValue(String(this.creature.tier || '')).onChange(val => this.creature.tier = val));
+        new Setting(infoGrid).setName("Type").addText(text => text.setValue(this.creature.type || '').onChange(val => this.creature.type = val));
+
+        const descSetting = new Setting(infoGrid).setName("Description").addTextArea(text => text.setValue(this.creature.description || '').onChange(val => this.creature.description = val));
+        descSetting.settingEl.addClass('dh-grid-span-all');
 
         let motives = Array.isArray(this.creature.motives_tactics) ? this.creature.motives_tactics.join(', ') : this.creature.motives_tactics || '';
-        new Setting(contentBodyEl).setName("Motives & Tactics").setDesc("Comma-separated").addTextArea(text => text.setValue(motives).onChange(val => this.creature.motives_tactics = val.split(',').map(s => s.trim())));
+        const motivesSetting = new Setting(infoGrid).setName("Motives & Tactics").setDesc("Comma-separated").addTextArea(text => text.setValue(motives).onChange(val => this.creature.motives_tactics = val.split(',').map(s => s.trim())));
+        motivesSetting.settingEl.addClass('dh-grid-span-all');
 
-        // Stats
-        contentBodyEl.createEl('h3', { text: "Statistics" });
-        new Setting(contentBodyEl).setName("Difficulty").addText(text => text.setValue(String(this.creature.difficulty || '')).onChange(val => this.creature.difficulty = val));
-        new Setting(contentBodyEl).setName("Max HP").addText(text => text.setValue(String(this.creature.hp_stress.hp)).onChange(val => this.creature.hp_stress.hp = Number(val) || 0));
-        new Setting(contentBodyEl).setName("Max Stress").addText(text => text.setValue(String(this.creature.hp_stress.stress)).onChange(val => this.creature.hp_stress.stress = Number(val) || 0));
-        new Setting(contentBodyEl).setName("Major HP Threshold").addText(text => text.setValue(String(this.creature.hp_stress.major_hp || '')).onChange(val => this.creature.hp_stress.major_hp = Number(val) || null));
-        new Setting(contentBodyEl).setName("Severe HP Threshold").addText(text => text.setValue(String(this.creature.hp_stress.severe_hp || '')).onChange(val => this.creature.hp_stress.severe_hp = Number(val) || null));
 
-        // Attack
-        contentBodyEl.createEl('h3', { text: "Attack" });
+        // --- Statistics Section ---
+        const statsSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
+        statsSection.createEl('h3', { text: "Statistics" });
+        const statsGrid = statsSection.createDiv({ cls: 'dh-modal-field-grid' });
+        new Setting(statsGrid).setName("Difficulty").addText(text => text.setValue(String(this.creature.difficulty || '')).onChange(val => this.creature.difficulty = val));
+        new Setting(statsGrid).setName("Max HP").addText(text => text.setValue(String(this.creature.hp_stress.hp)).onChange(val => this.creature.hp_stress.hp = Number(val) || 0));
+        new Setting(statsGrid).setName("Max Stress").addText(text => text.setValue(String(this.creature.hp_stress.stress)).onChange(val => this.creature.hp_stress.stress = Number(val) || 0));
+        new Setting(statsGrid).setName("Major HP Threshold").addText(text => text.setValue(String(this.creature.hp_stress.major_hp || '')).onChange(val => this.creature.hp_stress.major_hp = Number(val) || null));
+        new Setting(statsGrid).setName("Severe HP Threshold").addText(text => text.setValue(String(this.creature.hp_stress.severe_hp || '')).onChange(val => this.creature.hp_stress.severe_hp = Number(val) || null));
+        // Add an empty div to balance the grid if there's an odd number of items
+        if (statsGrid.childElementCount % 2 !== 0) {
+            statsGrid.createDiv();
+        }
+
+
+        // --- Attack Section ---
+        const attackSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
+        attackSection.createEl('h3', { text: "Attack" });
         if (!this.creature.attack) this.creature.attack = { name: 'Attack', range: '', damage: '', modifier: '0' };
-        new Setting(contentBodyEl).setName("Attack Name").addText(text => text.setValue(this.creature.attack?.name || '').onChange(val => { if (this.creature.attack) this.creature.attack.name = val; }));
-        new Setting(contentBodyEl).setName("Range").addText(text => text.setValue(this.creature.attack?.range || '').onChange(val => { if (this.creature.attack) this.creature.attack.range = val; }));
-        new Setting(contentBodyEl).setName("Damage").addText(text => text.setValue(this.creature.attack?.damage || '').onChange(val => { if (this.creature.attack) this.creature.attack.damage = val; }));
-        new Setting(contentBodyEl).setName("Modifier").addText(text => text.setValue(String(this.creature.attack?.modifier || '0')).onChange(val => { if (this.creature.attack) this.creature.attack.modifier = val; }));
+        const attackGrid = attackSection.createDiv({ cls: 'dh-modal-field-grid' });
+        new Setting(attackGrid).setName("Attack Name").addText(text => text.setValue(this.creature.attack?.name || '').onChange(val => { if (this.creature.attack) this.creature.attack.name = val; }));
+        new Setting(attackGrid).setName("Range").addText(text => text.setValue(this.creature.attack?.range || '').onChange(val => { if (this.creature.attack) this.creature.attack.range = val; }));
+        new Setting(attackGrid).setName("Damage").addText(text => text.setValue(this.creature.attack?.damage || '').onChange(val => { if (this.creature.attack) this.creature.attack.damage = val; }));
+        new Setting(attackGrid).setName("Modifier").addText(text => text.setValue(String(this.creature.attack?.modifier || '0')).onChange(val => { if (this.creature.attack) this.creature.attack.modifier = val; }));
 
-        // Features
-        contentBodyEl.createEl('h3', { text: "Features" });
-        const featuresContainer = contentBodyEl.createDiv({ cls: 'dh-features-editor' });
+        // --- Features Section ---
+        const featuresSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
+        featuresSection.createEl('h3', { text: "Features" });
+        const featuresContainer = featuresSection.createDiv({ cls: 'dh-features-editor' });
         this.renderFeaturesEditor(featuresContainer);
+
 
         // --- Footer with Buttons ---
         const footerEl = contentEl.createDiv({ cls: 'modal-footer' });
@@ -229,21 +250,33 @@ class EditAdversaryModal extends Modal {
 
         this.creature.features.forEach((feature, index) => {
             const featureEl = container.createDiv({ cls: 'dh-feature-editor-item' });
-            new Setting(featureEl).setName(`Feature #${index + 1} Name`).addText(text => text.setValue(feature.name).onChange(val => feature.name = val));
-            new Setting(featureEl).setName("Type").addText(text => text.setValue(feature.type).onChange(val => feature.type = val));
-            new Setting(featureEl).setName("Cost").addText(text => text.setValue(String(feature.cost || '')).onChange(val => feature.cost = val));
-            new Setting(featureEl).setName("Description").addTextArea(text => text.setValue(feature.description).onChange(val => feature.description = val));
+            new Setting(featureEl)
+                .setName(`Feature #${index + 1}`)
+                .addText(text => text.setPlaceholder("Name").setValue(feature.name).onChange(val => feature.name = val))
+                .addText(text => text.setPlaceholder("Type (e.g. Action)").setValue(feature.type).onChange(val => feature.type = val))
+                .addText(text => text.setPlaceholder("Cost").setValue(String(feature.cost || '')).onChange(val => feature.cost = val));
+
+            const featureDescSetting = new Setting(featureEl)
+                .addTextArea(text => text.setPlaceholder("Description").setValue(feature.description).onChange(val => feature.description = val));
+            featureDescSetting.controlEl.addClass('dh-feature-desc-input');
+            featureDescSetting.nameEl.addClass('visually-hidden');
+
             const featureControls = featureEl.createDiv({ cls: 'dh-feature-controls' });
-            new ButtonComponent(featureControls).setIcon("trash").setTooltip("Remove Feature").onClick(() => {
-                if (this.creature.features) {
-                    this.creature.features.splice(index, 1);
-                    this.renderFeaturesEditor(container);
-                }
-            });
+            new ButtonComponent(featureControls)
+                .setIcon("trash")
+                .setTooltip("Remove Feature")
+                .setClass('dh-feature-remove-btn')
+                .onClick(() => {
+                    if (this.creature.features) {
+                        this.creature.features.splice(index, 1);
+                        this.renderFeaturesEditor(container);
+                    }
+                });
         });
 
         new ButtonComponent(container)
             .setButtonText("Add Feature")
+            .setClass('dh-add-feature-btn')
             .onClick(() => {
                 if (!this.creature.features) {
                     this.creature.features = [];
