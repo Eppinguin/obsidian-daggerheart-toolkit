@@ -437,17 +437,27 @@ export class EncounterBuilderView extends ItemView {
     private boundHandleRemoveConditionEvent: (e: Event) => void;
     private boundHandleRemoveInstanceEvent: (e: Event) => void;
     private boundHandleEditInstanceEvent: (e: Event) => void;
+    private boundHandleDragStart: (e: DragEvent) => void;
+    private boundHandleDragOver: (e: DragEvent) => void;
+    private boundHandleDrop: (e: DragEvent) => void;
+    private boundHandleDragEnd: (e: DragEvent) => void;
+
+    private draggedGroupId: string | null = null;
+
 
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
         this.plugin = plugin;
 
-        // Bind event handlers in the constructor to ensure 'this' context is correct
-        // and to have a stable function reference for adding/removing listeners.
+        // Bind event handlers
         this.boundHandleRequestConditionMenu = this.handleRequestConditionMenu.bind(this);
         this.boundHandleRemoveConditionEvent = this.handleRemoveConditionEvent.bind(this);
         this.boundHandleRemoveInstanceEvent = this.handleRemoveInstanceEvent.bind(this);
         this.boundHandleEditInstanceEvent = this.handleEditInstanceEvent.bind(this);
+        this.boundHandleDragStart = this.handleDragStart.bind(this);
+        this.boundHandleDragOver = this.handleDragOver.bind(this);
+        this.boundHandleDrop = this.handleDrop.bind(this);
+        this.boundHandleDragEnd = this.handleDragEnd.bind(this);
     }
 
     getViewType(): string {
@@ -581,6 +591,7 @@ export class EncounterBuilderView extends ItemView {
             const encounterIndex = this.plugin.settings.savedEncounters.findIndex(e => e.id === this.currentEncounterId);
             if (encounterIndex !== -1) {
                 this.plugin.settings.savedEncounters[encounterIndex].creatures = JSON.parse(JSON.stringify(this.activeEncounterCreatures));
+                // The creatureGroupOrder is saved separately on drop event.
                 await this.plugin.saveSettings();
                 console.log(`Daggerheart: Encounter "${this.plugin.settings.savedEncounters[encounterIndex].name}" (ID: ${this.currentEncounterId}) autosaved.`);
             }
@@ -764,7 +775,7 @@ export class EncounterBuilderView extends ItemView {
     private drawCreatureGroup(groupId: string, encounterArea: HTMLElement): HTMLElement {
         const creatureGroupContainer = encounterArea.createDiv({
             cls: 'dh-creature-group-container',
-            attr: { 'data-group-id': groupId }
+            attr: { 'data-group-id': groupId, draggable: 'true' }
         });
         this.populateCreatureGroupContainer(groupId, creatureGroupContainer);
         return creatureGroupContainer;
@@ -817,20 +828,42 @@ export class EncounterBuilderView extends ItemView {
         const encounterArea = activeCreaturesPanel.createDiv({ cls: "dh-encounter-area" });
         encounterArea.empty(); // Clear any existing content
 
+        // Add Drag and Drop listeners
+        encounterArea.addEventListener('dragstart', this.boundHandleDragStart);
+        encounterArea.addEventListener('dragover', this.boundHandleDragOver);
+        encounterArea.addEventListener('drop', this.boundHandleDrop);
+        encounterArea.addEventListener('dragend', this.boundHandleDragEnd);
+
         const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
         this.activeEncounterCreatures.forEach(instance => {
             if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
             groupedByGroupId[instance.groupId].push(instance);
         });
 
-        if (Object.keys(groupedByGroupId).length === 0) {
+        // Get the order of groups, falling back and syncing if needed
+        const savedOrder = currentEncounter?.creatureGroupOrder || [];
+        const actualGroupIds = Object.keys(groupedByGroupId);
+
+        const orderedGroupIds = [...savedOrder.filter(id => actualGroupIds.includes(id))];
+        actualGroupIds.forEach(id => {
+            if (!orderedGroupIds.includes(id)) {
+                orderedGroupIds.push(id);
+            }
+        });
+
+        if (currentEncounter && JSON.stringify(orderedGroupIds) !== JSON.stringify(currentEncounter.creatureGroupOrder)) {
+            currentEncounter.creatureGroupOrder = orderedGroupIds;
+        }
+
+
+        if (orderedGroupIds.length === 0) {
             if (currentEncounter) {
                 encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
             } else {
                 encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
             }
         } else {
-            for (const groupId in groupedByGroupId) {
+            for (const groupId of orderedGroupIds) {
                 this.drawCreatureGroup(groupId, encounterArea);
             }
         }
@@ -1160,7 +1193,7 @@ export class EncounterBuilderView extends ItemView {
 
     saveNewEncounter(name: string) {
         const newId = `dh-encounter-${Date.now()}`;
-        const newEncounter: SavedEncounter = { id: newId, name: name, creatures: [] };
+        const newEncounter: SavedEncounter = { id: newId, name: name, creatures: [], creatureGroupOrder: [] };
         this.plugin.settings.savedEncounters.push(newEncounter);
         this.plugin.saveSettings();
         this.currentEncounterId = newId;
@@ -1305,7 +1338,76 @@ export class EncounterBuilderView extends ItemView {
         return { spent, total };
     }
 
-    // --- EVENT HANDLING ---
+    // --- DRAG AND DROP HANDLERS ---
+    private getHorizontalDragAfterElement(container: HTMLElement, x: number): Element | null {
+        const draggableElements = Array.from(container.querySelectorAll('.dh-creature-group-container:not(.dh-dragging)'));
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = x - box.left - box.width / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+    }
+
+    private handleDragStart(e: DragEvent) {
+        const target = e.target as HTMLElement;
+        const groupContainer = target.closest('.dh-creature-group-container');
+        if (groupContainer instanceof HTMLElement && groupContainer.draggable) {
+            this.draggedGroupId = groupContainer.getAttribute('data-group-id');
+            if (this.draggedGroupId) {
+                setTimeout(() => groupContainer.classList.add('dh-dragging'), 0);
+                if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+            }
+        }
+    }
+
+    private handleDragOver(e: DragEvent) {
+        e.preventDefault();
+        const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
+        if (!encounterArea || !this.draggedGroupId) return;
+
+        const afterElement = this.getHorizontalDragAfterElement(encounterArea, e.clientX);
+        const draggingElement = encounterArea.querySelector('.dh-dragging');
+
+        if (draggingElement) {
+            if (afterElement == null) {
+                encounterArea.appendChild(draggingElement);
+            } else {
+                encounterArea.insertBefore(draggingElement, afterElement);
+            }
+        }
+    }
+
+    private handleDrop(e: DragEvent) {
+        e.preventDefault();
+        if (this.draggedGroupId) {
+            const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
+            const newOrderedIds = Array.from(encounterArea.querySelectorAll('.dh-creature-group-container'))
+                .map(el => el.getAttribute('data-group-id'))
+                .filter((id): id is string => id !== null);
+
+            const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+            if (currentEncounter) {
+                currentEncounter.creatureGroupOrder = newOrderedIds;
+                this.plugin.saveSettings();
+            }
+        }
+    }
+
+    private handleDragEnd(e: DragEvent) {
+        const draggedElement = this.uiContainer?.querySelector('.dh-dragging');
+        if (draggedElement) {
+            draggedElement.classList.remove('dh-dragging');
+        }
+        this.draggedGroupId = null;
+        this.drawUI(); // Redraw to ensure clean state
+    }
+
+    // --- EVENT HANDLING & CREATURE MANAGEMENT ---
 
     handleEditInstanceEvent(e: Event) {
         const customEvent = e as CustomEvent;
@@ -1480,8 +1582,15 @@ export class EncounterBuilderView extends ItemView {
             new Notice("Error: No active encounter. Please create or load an encounter first.");
             return;
         }
+        const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+        if (!encounter) return;
+
         const newGroupId = `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
         this.createNewInstanceInGroup(baseCreature, newGroupId);
+
+        if (!encounter.creatureGroupOrder) encounter.creatureGroupOrder = [];
+        encounter.creatureGroupOrder.push(newGroupId);
+
         this.autoSaveCurrentEncounter();
         this.drawUI();
     }
@@ -1514,6 +1623,19 @@ export class EncounterBuilderView extends ItemView {
         const groupId = removedInstance.groupId;
 
         this.activeEncounterCreatures.splice(instanceToRemoveIndex, 1);
+
+        const isGroupEmpty = !this.activeEncounterCreatures.some(inst => inst.groupId === groupId);
+
+        if (isGroupEmpty) {
+            const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+            if (encounter && encounter.creatureGroupOrder) {
+                const groupIndex = encounter.creatureGroupOrder.indexOf(groupId);
+                if (groupIndex > -1) {
+                    encounter.creatureGroupOrder.splice(groupIndex, 1);
+                }
+            }
+        }
+
         this.updateDisplayNamesForGroup(groupId);
         this.autoSaveCurrentEncounter();
         this.drawUI();
@@ -1534,6 +1656,14 @@ export class EncounterBuilderView extends ItemView {
             this.uiContainer.removeEventListener('dh-remove-condition', this.boundHandleRemoveConditionEvent);
             this.uiContainer.removeEventListener('dh-remove-instance', this.boundHandleRemoveInstanceEvent);
             this.uiContainer.removeEventListener('dh-edit-instance', this.boundHandleEditInstanceEvent);
+
+            const encounterArea = this.uiContainer.querySelector('.dh-encounter-area');
+            if (encounterArea) {
+                encounterArea.removeEventListener('dragstart', this.boundHandleDragStart);
+                encounterArea.removeEventListener('dragover', this.boundHandleDragOver);
+                encounterArea.removeEventListener('drop', this.boundHandleDrop);
+                encounterArea.removeEventListener('dragend', this.boundHandleDragEnd);
+            }
         }
     }
 }

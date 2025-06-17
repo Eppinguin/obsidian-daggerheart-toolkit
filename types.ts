@@ -59,6 +59,7 @@ export interface SavedEncounter {
     id: string;
     name: string;
     creatures: CreatureInstance[];
+    creatureGroupOrder: string[]; // <-- ADDED
 }
 
 export interface Countdown {

@@ -1255,3 +1255,10 @@
 .dh-card-image-container {
     padding-top: var(--size-4-4);
 }
+
+/* --- Drag and Drop Styles --- */
+.dh-creature-group-container.dh-dragging {
+    opacity: 0.5;
+    border: 2px dashed var(--interactive-accent);
+    background: var(--background-modifier-hover);
+}
