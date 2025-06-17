@@ -114,4 +114,3 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
         useLowerTier: false,
     },
 };
-Daggerheart - Compendium
