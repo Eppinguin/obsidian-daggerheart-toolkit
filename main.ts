@@ -165,6 +165,20 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
+            .setName('Enable Encounter Budget')
+            .setDesc('If enabled, a Daggerheart encounter budget calculator will be shown in the encounter view.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableEncounterBudget)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableEncounterBudget = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) {
+                        view.drawUI();
+                    }
+                }));
+
+        new Setting(containerEl)
             .setName('Enable Dice Roller Integration')
             .setDesc('Enable integration with the Dice Roller plugin for rolling dice in statblocks.')
             .addToggle(toggle => toggle

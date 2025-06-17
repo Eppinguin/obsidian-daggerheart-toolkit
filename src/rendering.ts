@@ -249,7 +249,8 @@ function renderInstanceStatblock(
 
     // Header and basic info
     const headerDiv = statblockContentDiv.createDiv({ cls: 'dh-header' });
-    if (displayName) headerDiv.createSpan({ cls: 'dh-name', text: displayName.toUpperCase() });
+    // Always use the base name without numbering for the header
+    if (data.name) headerDiv.createSpan({ cls: 'dh-name', text: data.name.toUpperCase() });
 
     const roleTagText = `${data.tier ? `Tier ${data.tier} ` : ''}${data.type || ''}`.trim();
     if (roleTagText) {

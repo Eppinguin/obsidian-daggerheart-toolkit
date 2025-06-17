@@ -178,14 +178,22 @@
 .dh-active-encounter-title-clickable:hover {
     color: var(--interactive-accent-hover);
 }
+
+.dh-right-side-trackers {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+    margin-left: auto; /* Pushes this container to the right */
+}
+
 .dh-fear-tracker {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--size-4-1);
     flex-shrink: 0;
-    margin-left: auto;
 }
+
 .dh-fear-label {
     font-size: var(--font-ui-small);
     font-weight: var(--font-semibold);
@@ -213,6 +221,42 @@
     font-weight: bold;
     font-size: 1em;
 }
+
+.dh-budget-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-4-1);
+    flex-shrink: 0;
+    padding: var(--size-2-2) var(--size-4-2);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+.dh-budget-tracker:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+}
+
+.dh-budget-label {
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+}
+
+.dh-budget-value {
+    min-width: 24px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1em;
+    color: var(--text-normal);
+}
+
+.dh-budget-value.dh-budget-over {
+    color: var(--text-error);
+}
+
+
 .dh-encounter-controls {
     display: flex;
     align-items: center;
@@ -1110,4 +1154,17 @@
 
 .dh-add-condition-btn {
     flex-shrink: 0;
+}
+
+.dh-budget-modal h4 {
+    margin-top: var(--size-4-5);
+    margin-bottom: var(--size-4-2);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-1);
+    font-size: var(--font-ui-medium);
+    color: var(--text-muted);
+}
+.dh-budget-modal .setting-item {
+    padding-top: var(--size-4-2);
+    padding-bottom: var(--size-4-2);
 }

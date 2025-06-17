@@ -1,7 +1,97 @@
 import { App, ItemView, WorkspaceLeaf, Notice, Modal, TextComponent, ButtonComponent, Menu, setIcon, Setting } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
-import { StatblockData, CreatureInstance, SavedEncounter, Countdown, Condition } from '../types';
+import { StatblockData, CreatureInstance, SavedEncounter, Countdown, Condition, EncounterBudgetConfig } from '../types';
 import { renderStatblockCard } from './rendering';
+
+
+// --- ENCOUNTER BUDGET MODAL ---
+class EncounterBudgetModal extends Modal {
+    plugin: DaggerheartStatblockPlugin;
+    onSave: () => void;
+    config: EncounterBudgetConfig;
+
+    constructor(app: App, plugin: DaggerheartStatblockPlugin, onSave: () => void) {
+        super(app);
+        this.plugin = plugin;
+        this.onSave = onSave;
+        // Clone the config to avoid modifying it directly until saved
+        this.config = JSON.parse(JSON.stringify(plugin.settings.encounterBudgetConfig));
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.addClass('dh-budget-modal');
+        contentEl.createEl("h2", { text: "Encounter Budget Settings" });
+
+        new Setting(contentEl)
+            .setName("Player Characters")
+            .setDesc("The number of PCs in the combat.")
+            .addText(text => text
+                .setPlaceholder('4')
+                .setValue(this.config.playerCount.toString())
+                .onChange(value => {
+                    const count = parseInt(value);
+                    if (!isNaN(count) && count >= 0) {
+                        this.config.playerCount = count;
+                    }
+                }));
+
+        contentEl.createEl('h4', { text: 'Battle Point Adjustments' });
+
+        new Setting(contentEl)
+            .setName('Easier/Shorter Fight (-1)')
+            .setDesc('Reduces total Battle Points for a quicker encounter.')
+            .addToggle(toggle => toggle
+                .setValue(this.config.isEasier)
+                .onChange(value => {
+                    this.config.isEasier = value;
+                    if (value) this.config.isHarder = false; // Mutually exclusive
+                    this.onOpen(); // Re-render to update the other toggle
+                }));
+
+        new Setting(contentEl)
+            .setName('Harder/Longer Fight (+2)')
+            .setDesc('Increases total Battle Points for a more challenging encounter.')
+            .addToggle(toggle => toggle
+                .setValue(this.config.isHarder)
+                .onChange(value => {
+                    this.config.isHarder = value;
+                    if (value) this.config.isEasier = false; // Mutually exclusive
+                    this.onOpen(); // Re-render to update the other toggle
+                }));
+
+        new Setting(contentEl)
+            .setName('Boosted Damage (-2)')
+            .setDesc('Applies if you add +1d4 (or +2) to all adversary damage rolls.')
+            .addToggle(toggle => toggle
+                .setValue(this.config.isDamageBoosted)
+                .onChange(value => this.config.isDamageBoosted = value));
+
+        new Setting(contentEl)
+            .setName('Lower Tier Adversary (+1)')
+            .setDesc('Applies if you choose an adversary from a lower tier than the party.')
+            .addToggle(toggle => toggle
+                .setValue(this.config.useLowerTier)
+                .onChange(value => this.config.useLowerTier = value));
+
+        const buttonContainer = contentEl.createDiv({ cls: 'dh-modal-buttons' });
+        new ButtonComponent(buttonContainer)
+            .setButtonText("Save & Close")
+            .setCta()
+            .onClick(() => {
+                this.plugin.settings.encounterBudgetConfig = this.config;
+                this.plugin.saveSettings();
+                this.onSave();
+                this.close();
+            });
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+
 
 // --- CUSTOM CONDITION MODAL ---
 class CustomConditionModal extends Modal {
@@ -517,11 +607,20 @@ export class EncounterBuilderView extends ItemView {
         addToGroupButton.addEventListener('click', () => {
             const baseCreatureData = this.compendiumCreatures.find(c => c.name === firstInstanceInGroup.name);
             if (baseCreatureData) {
-                this.createNewInstanceInGroup(baseCreatureData, firstInstanceInGroup.groupId);
+                this.createNewInstanceInGroup(baseCreatureData, groupId);
                 this.autoSaveCurrentEncounter();
-                this.redrawCreatureGroup(firstInstanceInGroup.groupId);
+                // Update the encounter budget display
+                const rightSideTrackers = this.uiContainer?.querySelector('.dh-right-side-trackers') as HTMLElement;
+                if (rightSideTrackers && this.plugin.settings.enableEncounterBudget) {
+                    rightSideTrackers.empty();
+                    this.drawEncounterBudget(rightSideTrackers);
+                    if (this.plugin.settings.enableFearTracker) {
+                        this.drawFearTracker(rightSideTrackers);
+                    }
+                }
+                this.redrawCreatureGroup(groupId);
             } else {
-                new Notice(`Error: Could not find base data for ${firstInstanceInGroup.name} in compendium.`);
+                new Notice(`Could not find creature data for ${firstInstanceInGroup.name}`);
             }
         });
 
@@ -551,14 +650,20 @@ export class EncounterBuilderView extends ItemView {
         const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
 
         const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
-        const titleAndFearWrapper = header.createDiv({ cls: 'dh-title-fear-wrapper' });
+        const titleAndTrackersWrapper = header.createDiv({ cls: 'dh-title-fear-wrapper' });
 
         const titleText = currentEncounter ? `${currentEncounter.name}` : "No Encounter active";
-        const titleEl = titleAndFearWrapper.createEl('h3', { text: titleText, cls: 'dh-active-encounter-title-clickable' });
+        const titleEl = titleAndTrackersWrapper.createEl('h3', { text: titleText, cls: 'dh-active-encounter-title-clickable' });
         titleEl.addEventListener('click', (e) => this.showEncounterSwitcherMenu(e));
 
+        const rightSideTrackers = titleAndTrackersWrapper.createDiv({ cls: 'dh-right-side-trackers' });
+
+        if (this.plugin.settings.enableEncounterBudget) {
+            this.drawEncounterBudget(rightSideTrackers);
+        }
+
         if (this.plugin.settings.enableFearTracker) {
-            this.drawFearTracker(titleAndFearWrapper);
+            this.drawFearTracker(rightSideTrackers);
         }
 
         const controls = header.createDiv({ cls: "dh-encounter-controls" });
@@ -661,6 +766,27 @@ export class EncounterBuilderView extends ItemView {
         this.updateCountdownsPopup();
 
         this.leaf.onResize();
+    }
+
+    drawEncounterBudget(parent: HTMLElement) {
+        const { spent, total } = this.calculateEncounterBudget();
+        const budgetTrackerEl = parent.createDiv({
+            cls: 'dh-budget-tracker',
+            title: 'Click to configure encounter budget'
+        });
+        budgetTrackerEl.addEventListener('click', () => {
+            new EncounterBudgetModal(this.app, this.plugin, () => {
+                this.drawUI(); // Redraw everything when modal saves
+            }).open();
+        });
+
+        budgetTrackerEl.createSpan({ text: 'Budget:', cls: 'dh-budget-label' });
+        const valueEl = budgetTrackerEl.createSpan({ cls: 'dh-budget-value' });
+        valueEl.setText(`${spent} / ${total}`);
+
+        if (spent > total) {
+            valueEl.addClass('dh-budget-over');
+        }
     }
 
     drawFearTracker(parent: HTMLElement) {
@@ -961,6 +1087,91 @@ export class EncounterBuilderView extends ItemView {
         this.leaf.setEphemeralState(this.getState());
     }
 
+    // --- BUDGET CALCULATION ---
+
+    private getAdversaryCost(type: string | undefined): number {
+        if (!type) return 2; // Default to standard if type is missing
+        const t = type.toLowerCase();
+        switch (t) {
+            case 'minion':
+            case 'minions':
+                return 1;
+            case 'social':
+            case 'support':
+                return 1;
+            case 'horde':
+            case 'ranged':
+            case 'skulk':
+            case 'standard':
+                return 2;
+            case 'leader':
+                return 3;
+            case 'bruiser':
+                return 4;
+            case 'solo':
+                return 5;
+            default:
+                return 2; // Treat unknown types as 'Standard'
+        }
+    }
+
+    private calculateEncounterBudget(): { spent: number, total: number } {
+        const config = this.plugin.settings.encounterBudgetConfig;
+        const creatures = this.activeEncounterCreatures;
+
+        // Calculate spent points
+        let spent = 0;
+        const adversaryTypes = new Set<string>();
+        const allGroups = new Set<string>();
+        let soloCount = 0;
+        const minionGroups: { [groupId: string]: number } = {};
+
+        creatures.forEach(c => {
+            allGroups.add(c.groupId);
+            const typeLower = c.type?.toLowerCase();
+            if (typeLower) adversaryTypes.add(typeLower);
+            if (typeLower === 'solo') soloCount++;
+
+            if (typeLower === 'minion' || typeLower === 'minions') {
+                if (!minionGroups[c.groupId]) {
+                    minionGroups[c.groupId] = 0;
+                }
+                minionGroups[c.groupId]++;
+            } else {
+                spent += this.getAdversaryCost(c.type);
+            }
+        });
+
+        // Calculate minion cost based on group size vs party size
+        const playerCount = config.playerCount > 0 ? config.playerCount : 1;
+        for (const groupId in minionGroups) {
+            const count = minionGroups[groupId];
+            spent += Math.ceil(count / playerCount);
+        }
+
+        // Calculate total budget
+        let total = (3 * config.playerCount) + 2;
+
+        // Manual Adjustments from modal
+        if (config.isEasier) total -= 1;
+        if (config.isHarder) total += 2;
+        if (config.isDamageBoosted) total -= 2;
+        if (config.useLowerTier) total += 1;
+
+        // Automatic Adjustments based on encounter composition
+        if (soloCount >= 2) {
+            total -= 2;
+        }
+        const hasComplex = adversaryTypes.has('bruiser') || adversaryTypes.has('horde') || adversaryTypes.has('leader') || adversaryTypes.has('solo');
+        const groupCount = allGroups.size;
+
+        if (!hasComplex && creatures.length > 0 && groupCount <= 1) {
+            total += 1;
+        }
+
+        return { spent, total };
+    }
+
     // --- CONDITION HANDLING ---
 
     // This handler is called when a 'dh-request-condition-menu' event bubbles up to the view's container.
@@ -1111,23 +1322,7 @@ export class EncounterBuilderView extends ItemView {
         const newGroupId = `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
         this.createNewInstanceInGroup(baseCreature, newGroupId);
         this.autoSaveCurrentEncounter();
-
-        const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
-        if (encounterArea) {
-            encounterArea.empty();
-
-            const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
-            this.activeEncounterCreatures.forEach(instance => {
-                if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
-                groupedByGroupId[instance.groupId].push(instance);
-            });
-
-            for (const groupId in groupedByGroupId) {
-                this.drawCreatureGroup(groupId, encounterArea);
-            }
-        } else {
-            this.drawUI();
-        }
+        this.drawUI();
     }
 
     createNewInstanceInGroup(baseCreature: StatblockData, targetGroupId: string) {
@@ -1160,21 +1355,7 @@ export class EncounterBuilderView extends ItemView {
         this.activeEncounterCreatures.splice(instanceToRemoveIndex, 1);
         this.updateDisplayNamesForGroup(groupId);
         this.autoSaveCurrentEncounter();
-
-        const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
-        if (encounterArea) {
-            if (this.activeEncounterCreatures.length === 0) {
-                encounterArea.empty();
-                const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
-                if (currentEncounter) {
-                    encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
-                } else {
-                    encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
-                }
-            } else {
-                this.redrawCreatureGroup(groupId);
-            }
-        }
+        this.drawUI();
     }
 
     removeCreatureGroupFromActiveEncounter(groupId: string) {
@@ -1182,21 +1363,7 @@ export class EncounterBuilderView extends ItemView {
         if (groupContainer) {
             this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.groupId !== groupId);
             this.autoSaveCurrentEncounter();
-
-            const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
-            if (encounterArea) {
-                if (this.activeEncounterCreatures.length === 0) {
-                    encounterArea.empty();
-                    const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
-                    if (currentEncounter) {
-                        encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
-                    } else {
-                        encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
-                    }
-                } else {
-                    groupContainer.remove();
-                }
-            }
+            this.drawUI();
         }
     }
 

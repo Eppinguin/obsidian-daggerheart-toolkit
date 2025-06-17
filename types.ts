@@ -25,7 +25,6 @@ export interface StatblockFeature {
     description: string;
 }
 
-// NEW: Defines the structure for a condition
 export interface Condition {
     name: string;
     description: string;
@@ -52,7 +51,7 @@ export interface CreatureInstance extends StatblockData {
     currentHp: number;
     currentStress: number;
     displayName: string;
-    conditions?: Condition[]; // NEW: Added to store active conditions
+    conditions?: Condition[];
 }
 
 export interface SavedEncounter {
@@ -67,6 +66,14 @@ export interface Countdown {
     value: number;
 }
 
+export interface EncounterBudgetConfig {
+    playerCount: number;
+    isEasier: boolean;
+    isHarder: boolean;
+    isDamageBoosted: boolean;
+    useLowerTier: boolean;
+}
+
 export interface DaggerheartPluginSettings {
     compendiumFolder: string;
     savedEncounters: SavedEncounter[];
@@ -79,6 +86,8 @@ export interface DaggerheartPluginSettings {
     countdowns: Countdown[];
     enableDiceRoller: boolean;
     useGraphicalDice: boolean;
+    enableEncounterBudget: boolean;
+    encounterBudgetConfig: EncounterBudgetConfig;
 }
 
 export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
@@ -93,4 +102,12 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     countdowns: [],
     enableDiceRoller: false,
     useGraphicalDice: false,
+    enableEncounterBudget: false,
+    encounterBudgetConfig: {
+        playerCount: 4,
+        isEasier: false,
+        isHarder: false,
+        isDamageBoosted: false,
+        useLowerTier: false,
+    },
 };
