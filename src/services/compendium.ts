@@ -1,7 +1,7 @@
-import { App, TFile, TFolder, Notice } from 'obsidian';
+import { TFile, TFolder, Notice } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, StatblockHpStress, StatblockFeature, StatblockExperience, AdversaryInstance } from '../types';
-import DaggerheartStatblockPlugin from '../main';
+import { StatblockData, StatblockHpStress, StatblockFeature, StatblockExperience, AdversaryInstance } from '../../types';
+import DaggerheartStatblockPlugin from '../../main';
 
 const SRD_ADVERSARIES_FILE = "adversaries.json";
 
@@ -90,7 +90,6 @@ function extractStatblocksFromFile(content: string, filePath: string, adversarie
                         if (feature.description) {
                             feature.parsedCost = parseFeatureCost(feature.description);
                         }
-                        // Remove old cost property if it exists from YAML
                         if ((feature as any).cost !== undefined) {
                             delete (feature as any).cost;
                         }
@@ -106,7 +105,6 @@ function extractStatblocksFromFile(content: string, filePath: string, adversarie
 export async function getCompendiumAdversaries(plugin: DaggerheartStatblockPlugin): Promise<StatblockData[]> {
     const adversariesMap = new Map<string, StatblockData>();
 
-    // 1. Load SRD Adversaries
     if (plugin.settings.useSrdAdversaries) {
         try {
             const srdFilePath = `${plugin.manifest.dir}/${SRD_ADVERSARIES_FILE}`;
@@ -122,7 +120,6 @@ export async function getCompendiumAdversaries(plugin: DaggerheartStatblockPlugi
         } catch (e: any) { console.error("Error loading SRD:", e); new Notice("Error loading SRD."); }
     }
 
-    // 2. Load User Compendium (JSON)
     if (plugin.settings.userCompendiumFile) {
         const userCompendiumPath = `${plugin.manifest.dir}/${plugin.settings.userCompendiumFile}`;
         if (await plugin.app.vault.adapter.exists(userCompendiumPath)) {
@@ -141,7 +138,6 @@ export async function getCompendiumAdversaries(plugin: DaggerheartStatblockPlugi
         }
     }
 
-    // 3. Load Markdown File/Folder Compendium (overwrites others)
     const folderPath = plugin.settings.compendiumFolder;
     if (folderPath) {
         const abstractFileOrFolder = plugin.app.vault.getAbstractFileByPath(folderPath);
@@ -158,7 +154,6 @@ export async function getCompendiumAdversaries(plugin: DaggerheartStatblockPlugi
 
     return Array.from(adversariesMap.values());
 }
-
 
 export async function saveAdversaryToUserCompendium(plugin: DaggerheartStatblockPlugin, adversaryData: StatblockData): Promise<void> {
     const userCompendiumFileName = plugin.settings.userCompendiumFile;
@@ -183,7 +178,6 @@ export async function saveAdversaryToUserCompendium(plugin: DaggerheartStatblock
         compendium = [];
     }
 
-    // Clean the adversary data before saving
     const adversaryToSave: Partial<AdversaryInstance> = { ...adversaryData };
     delete adversaryToSave.id;
     delete adversaryToSave.groupId;
@@ -193,7 +187,6 @@ export async function saveAdversaryToUserCompendium(plugin: DaggerheartStatblock
     delete adversaryToSave.conditions;
     adversaryToSave.isCustom = true;
     adversaryToSave.sourceFile = filePath;
-
 
     const existingIndex = compendium.findIndex(c => c.name.toLowerCase() === (adversaryToSave as StatblockData).name.toLowerCase());
     if (existingIndex !== -1) {

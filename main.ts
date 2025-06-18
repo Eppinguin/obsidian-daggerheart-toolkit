@@ -1,9 +1,11 @@
-import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, TFile } from 'obsidian';
+import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, TFile, Editor, MarkdownView } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, AdversaryInstance } from './types';
-import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/view';
-import { getCompendiumAdversaries, saveAdversaryToUserCompendium } from './src/parsing';
-import { renderStatblockCard, createInteractiveTrack } from './src/rendering';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS } from './types';
+import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/views/EncounterBuilderView';
+import { getCompendiumAdversaries, saveAdversaryToUserCompendium } from './src/services/compendium';
+import { renderStatblockCard } from './src/rendering/statblock';
+import { createInteractiveTrack } from './src/rendering/components';
+import { AdversaryReferenceModal, EncounterLinkModal } from './src/modals/index';
 
 export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;
@@ -13,13 +15,11 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         console.log('Loading Daggerheart Statblock Plugin');
         await this.loadSettings();
 
-        // Check if the Dice Roller plugin and its API are available.
         this.isDiceRollerEnabled = this.settings.enableDiceRoller && (this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api != null;
         if (this.settings.enableDiceRoller) {
             if (this.isDiceRollerEnabled) {
                 console.log('Daggerheart: Dice Roller plugin detected and enabled.');
             } else {
-                console.log('Daggerheart: Dice Roller plugin not found but enabled in settings.');
                 new Notice('Dice Roller plugin not found. Please install it to use dice rolling features.');
             }
         } else {
@@ -27,30 +27,99 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
 
         this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el, ctx) => {
-            try {
-                const cleanedSource = source.replace(/\u00A0/g, ' ');
-                const data = YAML.load(cleanedSource) as StatblockData;
-                if (!data || typeof data !== 'object') throw new Error("Parsed data is not a valid object.");
-                renderStatblockCard(this, data, el, false, data.name);
-            } catch (e: any) {
-                console.error('Daggerheart Statblock: Error processing code block.', e);
-                const errorEl = el.createEl('pre', { cls: 'dh-statblock-error' });
-                errorEl.setText(`Error rendering Daggerheart Statblock:\n${e.message}\n\nSource:\n${source}`);
+            this.processStatblock(source, el);
+        });
+
+        this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el, ctx) => {
+            this.processEmbed(source, el);
+        });
+
+        this.registerObsidianProtocolHandler("dh-encounter", (params) => {
+            const encounterId = params.id;
+            if (encounterId) {
+                this.activateView(encounterId);
+            } else {
+                new Notice("Could not find encounter ID in the link.");
             }
         });
 
         this.registerView(ENCOUNTER_BUILDER_VIEW_TYPE, (leaf: WorkspaceLeaf) => new EncounterBuilderView(leaf, this));
         this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => this.activateView());
         this.addCommand({ id: 'open-daggerheart-encounter-builder', name: 'Open Encounter Builder', callback: () => this.activateView() });
+        this.addCommand({
+            id: 'insert-adversary-statblock',
+            name: 'Insert Adversary Statblock',
+            editorCallback: (editor: Editor, view: MarkdownView) => {
+                new AdversaryReferenceModal(this.app, this, (adversary) => {
+                    const embedCode = `\`\`\`daggerheart-embed\nadversary: ${adversary.name}\n\`\`\``;
+                    editor.replaceSelection(embedCode);
+                }).open();
+            }
+        });
+
+        this.addCommand({
+            id: 'insert-encounter-link',
+            name: 'Insert Encounter Link',
+            editorCallback: (editor: Editor, view: MarkdownView) => {
+                new EncounterLinkModal(this.app, this, (encounter) => {
+                    const linkText = `[${encounter.name}](obsidian://dh-encounter?id=${encounter.id})`;
+                    editor.replaceSelection(linkText);
+                }).open();
+            }
+        });
+
         this.addSettingTab(new DaggerheartSettingTab(this.app, this));
     }
 
-    async activateView() {
+    async processStatblock(source: string, el: HTMLElement) {
+        try {
+            const cleanedSource = source.replace(/\u00A0/g, ' ');
+            const data = YAML.load(cleanedSource) as StatblockData;
+            if (!data || typeof data !== 'object') throw new Error("Parsed data is not a valid object.");
+            renderStatblockCard(this, data, el, false, data.name);
+        } catch (e: any) {
+            console.error('Daggerheart Statblock: Error processing code block.', e);
+            const errorEl = el.createEl('pre', { cls: 'dh-statblock-error' });
+            errorEl.setText(`Error rendering Daggerheart Statblock:\n${e.message}\n\nSource:\n${source}`);
+        }
+    }
+
+    async processEmbed(source: string, el: HTMLElement) {
+        try {
+            const params = source.split('\n').reduce((acc, line) => {
+                const [key, ...valueParts] = line.split(':');
+                if (key && valueParts.length > 0) {
+                    acc[key.trim()] = valueParts.join(':').trim();
+                }
+                return acc;
+            }, {} as Record<string, string>);
+
+            if (params.adversary) {
+                const adversaries = await this.getCompendiumAdversaries();
+                const adversary = adversaries.find(a => a.name.toLowerCase() === params.adversary.toLowerCase());
+
+                if (adversary) {
+                    renderStatblockCard(this, adversary, el, false);
+                } else {
+                    el.createEl('div', { text: `Adversary "${params.adversary}" not found in compendium.` });
+                }
+            } else {
+                el.createEl('div', { text: 'Invalid embed. Use "adversary: [Adversary Name]".' });
+            }
+        } catch (e: any) {
+            console.error('Daggerheart Embed: Error processing embed block.', e);
+            const errorEl = el.createEl('pre', { cls: 'dh-statblock-error' });
+            errorEl.setText(`Error rendering Daggerheart embed:\n${e.message}`);
+        }
+    }
+
+    async activateView(encounterId?: string) {
         this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
 
         await this.app.workspace.getRightLeaf(false)?.setViewState({
             type: ENCOUNTER_BUILDER_VIEW_TYPE,
             active: true,
+            state: { currentEncounterId: encounterId }
         });
         const leaves = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
         if (leaves.length > 0) {
@@ -72,7 +141,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     ) {
         createInteractiveTrack(parentEl, label, maxValue, trackIdPrefix, currentValue, updateCallback);
     }
-
 
     async loadSettings() { this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()); }
     async saveSettings() { await this.saveData(this.settings); }
@@ -214,18 +282,13 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     this.plugin.settings.enableDiceRoller = value;
                     await this.plugin.saveSettings();
-
-                    // Update dice roller state immediately
                     this.plugin.isDiceRollerEnabled = value && (this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api != null;
                     if (value && !this.plugin.isDiceRollerEnabled) {
                         new Notice('Dice Roller plugin not found. Please install it to use dice rolling features.');
                     }
-
-                    // Force refresh the settings UI to update the graphical dice toggle state
                     this.display();
                 }));
 
-        // Only show graphical dice setting if dice roller integration is enabled
         if (this.plugin.settings.enableDiceRoller) {
             const diceToggle = new Setting(containerEl)
                 .setName('Use Graphical Dice')
@@ -241,7 +304,6 @@ class DaggerheartSettingTab extends PluginSettingTab {
                         });
                 });
 
-            // Add disabled class and notice if dice roller plugin is not installed
             if (!this.plugin.isDiceRollerEnabled) {
                 diceToggle.setClass('setting-disabled');
                 containerEl.createEl('div', {
