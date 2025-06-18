@@ -736,8 +736,16 @@ export class EncounterBuilderView extends ItemView {
 
         const mainCardContainer = containerEl.createDiv({ cls: mainCardContainerClasses.join(' ') });
 
-        // Add edit button to the main card header
+        // Add edit button and drag handle to the main card header
         const headerControls = mainCardContainer.createDiv({ cls: 'dh-card-header-controls' });
+
+        // Drag Handle
+        const dragHandle = headerControls.createDiv({
+            cls: 'dh-drag-handle',
+            attr: { 'draggable': 'true', 'aria-label': 'Drag to reorder' }
+        });
+        setIcon(dragHandle, 'grip-vertical');
+
         const editButton = headerControls.createEl('button', { title: 'Edit Adversary', cls: 'dh-icon-button' });
         setIcon(editButton, 'pencil');
         editButton.addEventListener('click', () => {
@@ -807,7 +815,7 @@ export class EncounterBuilderView extends ItemView {
     private drawCreatureGroup(groupId: string, encounterArea: HTMLElement): HTMLElement {
         const creatureGroupContainer = encounterArea.createDiv({
             cls: 'dh-creature-group-container',
-            attr: { 'data-group-id': groupId, draggable: 'true' }
+            attr: { 'data-group-id': groupId } // Draggable attribute moved to handle
         });
         this.populateCreatureGroupContainer(groupId, creatureGroupContainer);
         return creatureGroupContainer;
@@ -1387,15 +1395,23 @@ export class EncounterBuilderView extends ItemView {
 
     private handleDragStart(e: DragEvent) {
         const target = e.target as HTMLElement;
-        const groupContainer = target.closest('.dh-creature-group-container');
-        if (groupContainer instanceof HTMLElement && groupContainer.draggable) {
-            this.draggedGroupId = groupContainer.getAttribute('data-group-id');
-            if (this.draggedGroupId) {
-                setTimeout(() => groupContainer.classList.add('dh-dragging'), 0);
-                if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+        // Only start drag if the target is the drag handle
+        if (target.classList.contains('dh-drag-handle')) {
+            const groupContainer = target.closest('.dh-creature-group-container');
+            if (groupContainer instanceof HTMLElement) {
+                this.draggedGroupId = groupContainer.getAttribute('data-group-id');
+                if (this.draggedGroupId) {
+                    // Use a timeout to allow the browser to render the drag image before applying the class
+                    setTimeout(() => groupContainer.classList.add('dh-dragging'), 0);
+                    if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+                }
             }
+        } else {
+            // If it's not the handle, prevent the drag event
+            e.preventDefault();
         }
     }
+
 
     private handleDragOver(e: DragEvent) {
         e.preventDefault();

@@ -133,19 +133,61 @@
 
 /* --- Encounter Builder UI & View Statblock Styles --- */
 .dh-encounter-builder-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%; 
-    background-color: var(--background-secondary); 
-    overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden; /* Hide overflow at container level */
+}
+
+.dh-top-row {
+  flex-shrink: 0;
+}
+
+.dh-encounter-area {
+  display: flex; 
+  flex-wrap: nowrap; 
+  gap: var(--size-4-3, 15px); 
+  align-items: stretch; /* Stretch items to fill height */
+  overflow-x: auto; /* Only horizontal scrolling */
+  overflow-y: hidden; /* Prevent vertical scrolling */
+  padding-bottom: var(--size-4-3); /* Ensure space for scrollbar */
+  flex-grow: 1;
+  height: calc(100% - var(--size-4-3)); /* Account for padding */
+}
+
+.dh-creature-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  flex-shrink: 0;
+  width: 280px;
+  /* height: 100%; */
+  align-items: stretch; /* Stretch items to fill width */
+}
+
+.dh-creature-instance-card {
+  flex-shrink: 0;
+  background-color: var(--color-base-25); 
+  color: var(--text-normal); 
+  border-radius: var(--radius-m, 8px);
+  padding: 0; 
+  width: 300px; 
+  box-shadow: var(--shadow-m);
+  display: flex;
+  flex-direction: column;
+  position: relative; 
+  flex-grow: inherit;
+  /* height: 100%; */
+  overflow-y: auto; /* Enable vertical scrolling within card */
 }
 
 .dh-encounter-wrapper {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    overflow: hidden;
+    overflow: hidden; /* Prevent any scrolling at wrapper level */
     position: relative;
+    height: 100%;
 }
 
 .dh-encounter-header {
@@ -447,15 +489,20 @@
     display: flex; 
     flex-wrap: nowrap; 
     gap: var(--size-4-3, 15px); 
-    align-items: flex-start; 
-    overflow-x: auto; 
+    align-items: stretch; /* Stretch items to fill height */
+    overflow-x: auto; /* Only horizontal scrolling */
+    overflow-y: hidden; /* Prevent vertical scrolling */
     padding-bottom: var(--size-4-3); /* Ensure space for scrollbar */
+    flex-grow: 1;
+    height: calc(100% - var(--size-4-3)); /* Account for padding */
 }
 
 .dh-creature-group-container { 
     display: flex;
     flex-direction: column; 
-    flex-shrink: 0; 
+    flex-shrink: 0;
+    gap: var(--size-4-2); /* Add spacing between cards */
+    align-items: stretch; /* Stretch to fill width */
 }
 
 
@@ -469,7 +516,10 @@
     display: flex;
     flex-direction: column;
     position: relative; 
-    max-height: 80vh;
+    flex-grow: inherit;
+    /* height: 100%; */
+    max-height: 100%;
+    overflow-y: auto;
 }
 .dh-remove-instance-btn { 
     position: absolute;
@@ -504,7 +554,9 @@
     box-shadow: none;
     color: var(--text-normal); 
     flex-grow: 1; 
-    overflow-y: auto; 
+    overflow-y: visible; /* Content can extend beyond, parent will scroll */
+    display: flex;
+    flex-direction: column;
 }
 .dh-instance-card-content .dh-header {
     display: flex;
@@ -521,6 +573,7 @@
     color: var(--text-normal, #fff); 
     display: inline;
     flex-grow: 1;
+    padding-right: 70px;
 }
 .dh-card-role-text { 
     font-size: var(--font-ui-small, 13px);
@@ -856,7 +909,7 @@
 .dh-add-to-group-button-container {
     text-align: center;
     padding: var(--size-4-2, 8px) 0;
-    margin-top: var(--size-4-3);
+    /* margin-top: var(--size-4-3); */
     border-top: 1px solid var(--background-modifier-border);
 }
 .dh-add-to-group-btn {
@@ -1209,10 +1262,6 @@
     color: var(--text-error);
 }
 
-.dh-add-condition-btn {
-    flex-shrink: 0;
-}
-
 .dh-budget-modal h4 {
     margin-top: var(--size-4-5);
     margin-bottom: var(--size-4-2);
@@ -1432,29 +1481,41 @@
     z-index: 10;
 }
 
-.dh-card-header-controls .dh-icon-button {
-    background-color: rgba(var(--background-modifier-hover-rgb), 0.8);
-    backdrop-filter: blur(4px);
-    color: var(--text-normal);
+.dh-card-header-controls .dh-icon-button,
+.dh-card-header-controls .dh-drag-handle {
+    background-color: rgba(var(--background-primary-rgb), 0.5);
+    backdrop-filter: blur(2px);
+    color: var(--text-muted);
     border-radius: var(--radius-s);
     width: 28px;
     height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.8;
+    opacity: 0.7;
     transition: all 0.2s ease-in-out;
+    border: none;
+    padding: 0;
 }
 
-.dh-card-header-controls .dh-icon-button:hover {
+.dh-card-header-controls .dh-icon-button:hover,
+.dh-card-header-controls .dh-drag-handle:hover {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
     opacity: 1;
 }
 
-/* Ensure the image container allows for the controls */
+.dh-drag-handle {
+    cursor: grab;
+}
+.dh-drag-handle:active {
+    cursor: grabbing;
+}
+
+
+/* Ensure the image container doesn't overlap the controls */
 .dh-card-image-container {
-    padding-top: var(--size-4-4);
+    padding-top: 0;
 }
 
 /* --- Drag and Drop Styles --- */
