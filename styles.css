@@ -497,6 +497,7 @@
 .dh-adversary-instance-card {
     background-color: var(--color-base-25); 
     color: var(--text-normal); 
+    border: var(--background-primary-alt) solid 1px;
     border-radius: var(--radius-m, 8px);
     padding: 0; 
     width: 300px; 
