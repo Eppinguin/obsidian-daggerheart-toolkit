@@ -46,7 +46,7 @@ export interface StatblockData {
     isCustom?: boolean; // Flag for user-created adversaries
 }
 
-export interface CreatureInstance extends StatblockData {
+export interface AdversaryInstance extends StatblockData {
     id: string;
     groupId: string;
     currentHp: number;
@@ -58,8 +58,8 @@ export interface CreatureInstance extends StatblockData {
 export interface SavedEncounter {
     id: string;
     name: string;
-    creatures: CreatureInstance[];
-    creatureGroupOrder: string[];
+    adversaries: AdversaryInstance[];
+    adversaryGroupOrder: string[];
 }
 
 export interface Countdown {

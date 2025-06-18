@@ -1,6 +1,6 @@
 import { App, ItemView, WorkspaceLeaf, Notice, Modal, TextComponent, ButtonComponent, Menu, setIcon, Setting } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
-import { StatblockData, CreatureInstance, SavedEncounter, Countdown, Condition, EncounterBudgetConfig, StatblockFeature } from '../types';
+import { StatblockData, AdversaryInstance, SavedEncounter, Countdown, Condition, EncounterBudgetConfig, StatblockFeature } from '../types';
 import { renderStatblockCard } from './rendering';
 
 
@@ -146,13 +146,13 @@ class CustomConditionModal extends Modal {
 // --- EDIT ADVERSARY MODAL ---
 class EditAdversaryModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
-    creature: CreatureInstance;
-    onSubmit: (updatedCreature: CreatureInstance) => void;
+    adversary: AdversaryInstance;
+    onSubmit: (updatedAdversary: AdversaryInstance) => void;
 
-    constructor(app: App, plugin: DaggerheartStatblockPlugin, creature: CreatureInstance, onSubmit: (updatedCreature: CreatureInstance) => void) {
+    constructor(app: App, plugin: DaggerheartStatblockPlugin, adversary: AdversaryInstance, onSubmit: (updatedAdversary: AdversaryInstance) => void) {
         super(app);
         this.plugin = plugin;
-        this.creature = JSON.parse(JSON.stringify(creature)); // Deep clone to avoid direct mutation
+        this.adversary = JSON.parse(JSON.stringify(adversary)); // Deep clone to avoid direct mutation
         this.onSubmit = onSubmit;
     }
 
@@ -163,7 +163,7 @@ class EditAdversaryModal extends Modal {
         contentEl.addClass('dh-edit-adversary-modal');
 
         const headerEl = contentEl.createDiv({ cls: 'modal-header' });
-        headerEl.createEl("h2", { text: `Edit ${this.creature.name}` });
+        headerEl.createEl("h2", { text: `Edit ${this.adversary.name}` });
 
         const contentBodyEl = contentEl.createDiv({ cls: 'modal-body' });
 
@@ -172,20 +172,20 @@ class EditAdversaryModal extends Modal {
         basicInfoSection.createEl('h3', { text: "Basic Information" });
         const infoGrid = basicInfoSection.createDiv({ cls: 'dh-modal-field-grid' });
 
-        const nameSetting = new Setting(infoGrid).setName("Name").addText(text => text.setValue(this.creature.name).onChange(val => this.creature.name = val));
+        const nameSetting = new Setting(infoGrid).setName("Name").addText(text => text.setValue(this.adversary.name).onChange(val => this.adversary.name = val));
         nameSetting.settingEl.addClass('dh-grid-span-all');
 
-        const imageSetting = new Setting(infoGrid).setName("Image URL").addText(text => text.setValue(this.creature.image || '').onChange(val => this.creature.image = val));
+        const imageSetting = new Setting(infoGrid).setName("Image URL").addText(text => text.setValue(this.adversary.image || '').onChange(val => this.adversary.image = val));
         imageSetting.settingEl.addClass('dh-grid-span-all');
 
-        new Setting(infoGrid).setName("Tier").addText(text => text.setValue(String(this.creature.tier || '')).onChange(val => this.creature.tier = val));
-        new Setting(infoGrid).setName("Type").addText(text => text.setValue(this.creature.type || '').onChange(val => this.creature.type = val));
+        new Setting(infoGrid).setName("Tier").addText(text => text.setValue(String(this.adversary.tier || '')).onChange(val => this.adversary.tier = val));
+        new Setting(infoGrid).setName("Type").addText(text => text.setValue(this.adversary.type || '').onChange(val => this.adversary.type = val));
 
-        const descSetting = new Setting(infoGrid).setName("Description").addTextArea(text => text.setValue(this.creature.description || '').onChange(val => this.creature.description = val));
+        const descSetting = new Setting(infoGrid).setName("Description").addTextArea(text => text.setValue(this.adversary.description || '').onChange(val => this.adversary.description = val));
         descSetting.settingEl.addClass('dh-grid-span-all');
 
-        let motives = Array.isArray(this.creature.motives_tactics) ? this.creature.motives_tactics.join(', ') : this.creature.motives_tactics || '';
-        const motivesSetting = new Setting(infoGrid).setName("Motives & Tactics").setDesc("Comma-separated").addTextArea(text => text.setValue(motives).onChange(val => this.creature.motives_tactics = val.split(',').map(s => s.trim())));
+        let motives = Array.isArray(this.adversary.motives_tactics) ? this.adversary.motives_tactics.join(', ') : this.adversary.motives_tactics || '';
+        const motivesSetting = new Setting(infoGrid).setName("Motives & Tactics").setDesc("Comma-separated").addTextArea(text => text.setValue(motives).onChange(val => this.adversary.motives_tactics = val.split(',').map(s => s.trim())));
         motivesSetting.settingEl.addClass('dh-grid-span-all');
 
 
@@ -193,11 +193,11 @@ class EditAdversaryModal extends Modal {
         const statsSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
         statsSection.createEl('h3', { text: "Statistics" });
         const statsGrid = statsSection.createDiv({ cls: 'dh-modal-field-grid' });
-        new Setting(statsGrid).setName("Difficulty").addText(text => text.setValue(String(this.creature.difficulty || '')).onChange(val => this.creature.difficulty = val));
-        new Setting(statsGrid).setName("Max HP").addText(text => text.setValue(String(this.creature.hp_stress.hp)).onChange(val => this.creature.hp_stress.hp = Number(val) || 0));
-        new Setting(statsGrid).setName("Max Stress").addText(text => text.setValue(String(this.creature.hp_stress.stress)).onChange(val => this.creature.hp_stress.stress = Number(val) || 0));
-        new Setting(statsGrid).setName("Major HP Threshold").addText(text => text.setValue(String(this.creature.hp_stress.major_hp || '')).onChange(val => this.creature.hp_stress.major_hp = Number(val) || null));
-        new Setting(statsGrid).setName("Severe HP Threshold").addText(text => text.setValue(String(this.creature.hp_stress.severe_hp || '')).onChange(val => this.creature.hp_stress.severe_hp = Number(val) || null));
+        new Setting(statsGrid).setName("Difficulty").addText(text => text.setValue(String(this.adversary.difficulty || '')).onChange(val => this.adversary.difficulty = val));
+        new Setting(statsGrid).setName("Max HP").addText(text => text.setValue(String(this.adversary.hp_stress.hp)).onChange(val => this.adversary.hp_stress.hp = Number(val) || 0));
+        new Setting(statsGrid).setName("Max Stress").addText(text => text.setValue(String(this.adversary.hp_stress.stress)).onChange(val => this.adversary.hp_stress.stress = Number(val) || 0));
+        new Setting(statsGrid).setName("Major HP Threshold").addText(text => text.setValue(String(this.adversary.hp_stress.major_hp || '')).onChange(val => this.adversary.hp_stress.major_hp = Number(val) || null));
+        new Setting(statsGrid).setName("Severe HP Threshold").addText(text => text.setValue(String(this.adversary.hp_stress.severe_hp || '')).onChange(val => this.adversary.hp_stress.severe_hp = Number(val) || null));
         // Add an empty div to balance the grid if there's an odd number of items
         if (statsGrid.childElementCount % 2 !== 0) {
             statsGrid.createDiv();
@@ -207,12 +207,12 @@ class EditAdversaryModal extends Modal {
         // --- Attack Section ---
         const attackSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
         attackSection.createEl('h3', { text: "Attack" });
-        if (!this.creature.attack) this.creature.attack = { name: 'Attack', range: '', damage: '', modifier: '0' };
+        if (!this.adversary.attack) this.adversary.attack = { name: 'Attack', range: '', damage: '', modifier: '0' };
         const attackGrid = attackSection.createDiv({ cls: 'dh-modal-field-grid' });
-        new Setting(attackGrid).setName("Attack Name").addText(text => text.setValue(this.creature.attack?.name || '').onChange(val => { if (this.creature.attack) this.creature.attack.name = val; }));
-        new Setting(attackGrid).setName("Range").addText(text => text.setValue(this.creature.attack?.range || '').onChange(val => { if (this.creature.attack) this.creature.attack.range = val; }));
-        new Setting(attackGrid).setName("Damage").addText(text => text.setValue(this.creature.attack?.damage || '').onChange(val => { if (this.creature.attack) this.creature.attack.damage = val; }));
-        new Setting(attackGrid).setName("Modifier").addText(text => text.setValue(String(this.creature.attack?.modifier || '0')).onChange(val => { if (this.creature.attack) this.creature.attack.modifier = val; }));
+        new Setting(attackGrid).setName("Attack Name").addText(text => text.setValue(this.adversary.attack?.name || '').onChange(val => { if (this.adversary.attack) this.adversary.attack.name = val; }));
+        new Setting(attackGrid).setName("Range").addText(text => text.setValue(this.adversary.attack?.range || '').onChange(val => { if (this.adversary.attack) this.adversary.attack.range = val; }));
+        new Setting(attackGrid).setName("Damage").addText(text => text.setValue(this.adversary.attack?.damage || '').onChange(val => { if (this.adversary.attack) this.adversary.attack.damage = val; }));
+        new Setting(attackGrid).setName("Modifier").addText(text => text.setValue(String(this.adversary.attack?.modifier || '0')).onChange(val => { if (this.adversary.attack) this.adversary.attack.modifier = val; }));
 
         // --- Features Section ---
         const featuresSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
@@ -229,8 +229,8 @@ class EditAdversaryModal extends Modal {
             .setButtonText("Save to Compendium")
             .setTooltip("Saves this adversary to your custom JSON file and closes")
             .onClick(async () => {
-                await this.plugin.saveCreatureToUserCompendium(this.creature);
-                this.onSubmit(this.creature);
+                await this.plugin.saveAdversaryToUserCompendium(this.adversary);
+                this.onSubmit(this.adversary);
                 this.close();
             });
 
@@ -239,16 +239,16 @@ class EditAdversaryModal extends Modal {
             .setTooltip("Applies changes to this instance only and closes")
             .setCta()
             .onClick(() => {
-                this.onSubmit(this.creature);
+                this.onSubmit(this.adversary);
                 this.close();
             });
     }
 
     renderFeaturesEditor(container: HTMLElement) {
         container.empty();
-        if (!this.creature.features) this.creature.features = [];
+        if (!this.adversary.features) this.adversary.features = [];
 
-        this.creature.features.forEach((feature, index) => {
+        this.adversary.features.forEach((feature, index) => {
             const featureEl = container.createDiv({ cls: 'dh-feature-editor-item' });
             new Setting(featureEl)
                 .setName(`Feature #${index + 1}`)
@@ -266,8 +266,8 @@ class EditAdversaryModal extends Modal {
                 .setTooltip("Remove Feature")
                 .setClass('dh-feature-remove-btn')
                 .onClick(() => {
-                    if (this.creature.features) {
-                        this.creature.features.splice(index, 1);
+                    if (this.adversary.features) {
+                        this.adversary.features.splice(index, 1);
                         this.renderFeaturesEditor(container);
                     }
                 });
@@ -277,10 +277,10 @@ class EditAdversaryModal extends Modal {
             .setButtonText("Add Feature")
             .setClass('dh-add-feature-btn')
             .onClick(() => {
-                if (!this.creature.features) {
-                    this.creature.features = [];
+                if (!this.adversary.features) {
+                    this.adversary.features = [];
                 }
-                this.creature.features.push({ name: 'New Feature', type: 'Passive', description: '' });
+                this.adversary.features.push({ name: 'New Feature', type: 'Passive', description: '' });
                 this.renderFeaturesEditor(container);
             });
     }
@@ -439,9 +439,9 @@ class ManageEncountersModal extends Modal {
 
 // --- CONSTANTS ---
 const DAGGERHEART_CONDITIONS: Condition[] = [
-    { name: "Hidden", description: "While you’re out of sight from all enemies and they don’t otherwise know your location, you gain the Hidden condition. Any rolls against a Hidden creature have disadvantage. After an adversary moves to where they would see you, you move into their line of sight, or you make an attack, you are no longer Hidden." },
+    { name: "Hidden", description: "While you’re out of sight from all enemies and they don’t otherwise know your location, you gain the Hidden condition. Any rolls against a Hidden adversary have disadvantage. After an adversary moves to where they would see you, you move into their line of sight, or you make an attack, you are no longer Hidden." },
     { name: "Restrained", description: "Restrained characters can’t move, but you can still take actions from their current position." },
-    { name: "Vulnerable", description: "When a creature is Vulnerable, all rolls targeting them have advantage." }
+    { name: "Vulnerable", description: "When a adversary is Vulnerable, all rolls targeting them have advantage." }
 ];
 
 
@@ -450,8 +450,8 @@ export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
 
 export class EncounterBuilderView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
-    compendiumCreatures: StatblockData[] = [];
-    activeEncounterCreatures: CreatureInstance[] = [];
+    compendiumAdversaries: StatblockData[] = [];
+    activeEncounterAdversaries: AdversaryInstance[] = [];
 
     currentEncounterId: string | null = null;
     private uiContainer: HTMLElement | null = null;
@@ -531,7 +531,7 @@ export class EncounterBuilderView extends ItemView {
 
         this.ensureActiveEncounter();
         this.icon = 'swords';
-        this.loadCreaturesForCurrentEncounter();
+        this.loadAdversariesForCurrentEncounter();
         this.drawUI();
         this.leaf.setEphemeralState(this.getState());
     }
@@ -570,7 +570,7 @@ export class EncounterBuilderView extends ItemView {
             }
         }
         this.ensureActiveEncounter();
-        this.loadCreaturesForCurrentEncounter();
+        this.loadAdversariesForCurrentEncounter();
         if (this.uiContainer && this.contentEl.children.length > 0) {
             this.drawUI();
         }
@@ -604,26 +604,26 @@ export class EncounterBuilderView extends ItemView {
         }
     }
 
-    loadCreaturesForCurrentEncounter() {
+    loadAdversariesForCurrentEncounter() {
         if (this.currentEncounterId) {
             const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
-            this.activeEncounterCreatures = encounter ? JSON.parse(JSON.stringify(encounter.creatures)) : [];
+            this.activeEncounterAdversaries = encounter ? JSON.parse(JSON.stringify(encounter.adversaries)) : [];
         } else {
-            this.activeEncounterCreatures = [];
+            this.activeEncounterAdversaries = [];
         }
     }
 
     async loadCompendium() {
-        this.compendiumCreatures = await this.plugin.getCompendiumCreatures();
-        this.compendiumCreatures.sort((a, b) => a.name.localeCompare(b.name));
+        this.compendiumAdversaries = await this.plugin.getCompendiumAdversaries();
+        this.compendiumAdversaries.sort((a, b) => a.name.localeCompare(b.name));
     }
 
     async autoSaveCurrentEncounter() {
         if (this.currentEncounterId) {
             const encounterIndex = this.plugin.settings.savedEncounters.findIndex(e => e.id === this.currentEncounterId);
             if (encounterIndex !== -1) {
-                this.plugin.settings.savedEncounters[encounterIndex].creatures = JSON.parse(JSON.stringify(this.activeEncounterCreatures));
-                // The creatureGroupOrder is saved separately on drop event.
+                this.plugin.settings.savedEncounters[encounterIndex].adversaries = JSON.parse(JSON.stringify(this.activeEncounterAdversaries));
+                // The adversaryGroupOrder is saved separately on drop event.
                 await this.plugin.saveSettings();
                 console.log(`Daggerheart: Encounter "${this.plugin.settings.savedEncounters[encounterIndex].name}" (ID: ${this.currentEncounterId}) autosaved.`);
             }
@@ -687,7 +687,7 @@ export class EncounterBuilderView extends ItemView {
         this.countdownsPopup.style.right = `${parentRect.right - buttonRect.right}px`;
     }
 
-    private redrawCreatureGroup(groupId: string) {
+    private redrawAdversaryGroup(groupId: string) {
         const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
         let groupContainer = encounterArea?.querySelector(`[data-group-id="${groupId}"]`) as HTMLElement;
 
@@ -696,7 +696,7 @@ export class EncounterBuilderView extends ItemView {
             return;
         }
 
-        const instancesInGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
+        const instancesInGroup = this.activeEncounterAdversaries.filter(inst => inst.groupId === groupId);
 
         if (instancesInGroup.length === 0) {
             groupContainer?.remove();
@@ -704,14 +704,14 @@ export class EncounterBuilderView extends ItemView {
         }
 
         if (!groupContainer) {
-            groupContainer = this.drawCreatureGroup(groupId, encounterArea);
+            groupContainer = this.drawAdversaryGroup(groupId, encounterArea);
         }
 
         const contentScroller = groupContainer.querySelector('.dh-instance-card-content');
         const scrollTop = contentScroller?.scrollTop ?? 0;
 
         groupContainer.empty();
-        this.populateCreatureGroupContainer(groupId, groupContainer);
+        this.populateAdversaryGroupContainer(groupId, groupContainer);
 
         const newContentScroller = groupContainer.querySelector('.dh-instance-card-content');
         if (newContentScroller) {
@@ -719,8 +719,8 @@ export class EncounterBuilderView extends ItemView {
         }
     }
 
-    private populateCreatureGroupContainer(groupId: string, containerEl: HTMLElement) {
-        const instancesInGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
+    private populateAdversaryGroupContainer(groupId: string, containerEl: HTMLElement) {
+        const instancesInGroup = this.activeEncounterAdversaries.filter(inst => inst.groupId === groupId);
         if (instancesInGroup.length === 0) return;
 
         instancesInGroup.sort((a, b) => a.id.localeCompare(b.id));
@@ -731,7 +731,7 @@ export class EncounterBuilderView extends ItemView {
             'dh-type-default';
 
         const isGroupMultiple = instancesInGroup.length > 1;
-        const mainCardContainerClasses = ['dh-creature-instance-card', instanceTypeClass];
+        const mainCardContainerClasses = ['dh-adversary-instance-card', instanceTypeClass];
         if (isGroupMultiple) mainCardContainerClasses.push('dh-multiple-instances');
 
         const mainCardContainer = containerEl.createDiv({ cls: mainCardContainerClasses.join(' ') });
@@ -763,12 +763,12 @@ export class EncounterBuilderView extends ItemView {
             true,
             firstInstanceInGroup.displayName,
             (newHp) => {
-                const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
+                const inst = this.activeEncounterAdversaries.find(cr => cr.id === firstInstanceInGroup.id);
                 if (inst) inst.currentHp = newHp;
                 this.autoSaveCurrentEncounter();
             },
             (newStress) => {
-                const inst = this.activeEncounterCreatures.find(cr => cr.id === firstInstanceInGroup.id);
+                const inst = this.activeEncounterAdversaries.find(cr => cr.id === firstInstanceInGroup.id);
                 if (inst) inst.currentStress = newStress;
                 this.autoSaveCurrentEncounter();
             },
@@ -785,9 +785,9 @@ export class EncounterBuilderView extends ItemView {
         });
 
         addToGroupButton.addEventListener('click', () => {
-            const baseCreatureData = this.compendiumCreatures.find(c => c.name === firstInstanceInGroup.name);
-            if (baseCreatureData) {
-                this.createNewInstanceInGroup(baseCreatureData, groupId);
+            const baseAdversaryData = this.compendiumAdversaries.find(c => c.name === firstInstanceInGroup.name);
+            if (baseAdversaryData) {
+                this.createNewInstanceInGroup(baseAdversaryData, groupId);
                 this.autoSaveCurrentEncounter();
                 // Update the encounter budget display
                 const rightSideTrackers = this.uiContainer?.querySelector('.dh-right-side-trackers') as HTMLElement;
@@ -798,9 +798,9 @@ export class EncounterBuilderView extends ItemView {
                         this.drawFearTracker(rightSideTrackers);
                     }
                 }
-                this.redrawCreatureGroup(groupId);
+                this.redrawAdversaryGroup(groupId);
             } else {
-                new Notice(`Could not find creature data for ${firstInstanceInGroup.name}`);
+                new Notice(`Could not find adversary data for ${firstInstanceInGroup.name}`);
             }
         });
 
@@ -812,13 +812,13 @@ export class EncounterBuilderView extends ItemView {
         }
     }
 
-    private drawCreatureGroup(groupId: string, encounterArea: HTMLElement): HTMLElement {
-        const creatureGroupContainer = encounterArea.createDiv({
-            cls: 'dh-creature-group-container',
+    private drawAdversaryGroup(groupId: string, encounterArea: HTMLElement): HTMLElement {
+        const adversaryGroupContainer = encounterArea.createDiv({
+            cls: 'dh-adversary-group-container',
             attr: { 'data-group-id': groupId } // Draggable attribute moved to handle
         });
-        this.populateCreatureGroupContainer(groupId, creatureGroupContainer);
-        return creatureGroupContainer;
+        this.populateAdversaryGroupContainer(groupId, adversaryGroupContainer);
+        return adversaryGroupContainer;
     }
 
     drawUI() {
@@ -863,9 +863,9 @@ export class EncounterBuilderView extends ItemView {
         toggleCompendiumButton.addEventListener("click", () => this.toggleCompendiumVisibility());
 
         const mainInterface = containerWrapper.createDiv({ cls: "dh-encounter-main-interface" });
-        const activeCreaturesPanel = mainInterface.createDiv({ cls: "dh-active-creatures-panel" });
+        const activeAdversariesPanel = mainInterface.createDiv({ cls: "dh-active-adversaries-panel" });
 
-        const encounterArea = activeCreaturesPanel.createDiv({ cls: "dh-encounter-area" });
+        const encounterArea = activeAdversariesPanel.createDiv({ cls: "dh-encounter-area" });
         encounterArea.empty(); // Clear any existing content
 
         // Add Drag and Drop listeners
@@ -874,14 +874,14 @@ export class EncounterBuilderView extends ItemView {
         encounterArea.addEventListener('drop', this.boundHandleDrop);
         encounterArea.addEventListener('dragend', this.boundHandleDragEnd);
 
-        const groupedByGroupId: { [groupId: string]: CreatureInstance[] } = {};
-        this.activeEncounterCreatures.forEach(instance => {
+        const groupedByGroupId: { [groupId: string]: AdversaryInstance[] } = {};
+        this.activeEncounterAdversaries.forEach(instance => {
             if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
             groupedByGroupId[instance.groupId].push(instance);
         });
 
         // Get the order of groups, falling back and syncing if needed
-        const savedOrder = currentEncounter?.creatureGroupOrder || [];
+        const savedOrder = currentEncounter?.adversaryGroupOrder || [];
         const actualGroupIds = Object.keys(groupedByGroupId);
 
         const orderedGroupIds = [...savedOrder.filter(id => actualGroupIds.includes(id))];
@@ -891,20 +891,20 @@ export class EncounterBuilderView extends ItemView {
             }
         });
 
-        if (currentEncounter && JSON.stringify(orderedGroupIds) !== JSON.stringify(currentEncounter.creatureGroupOrder)) {
-            currentEncounter.creatureGroupOrder = orderedGroupIds;
+        if (currentEncounter && JSON.stringify(orderedGroupIds) !== JSON.stringify(currentEncounter.adversaryGroupOrder)) {
+            currentEncounter.adversaryGroupOrder = orderedGroupIds;
         }
 
 
         if (orderedGroupIds.length === 0) {
             if (currentEncounter) {
-                encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add creatures.` });
+                encounterArea.createEl("p", { text: `Encounter "${currentEncounter.name}" is empty. Add adversaries.` });
             } else {
                 encounterArea.createEl("p", { text: "No active encounter or encounter is empty." });
             }
         } else {
             for (const groupId of orderedGroupIds) {
-                this.drawCreatureGroup(groupId, encounterArea);
+                this.drawAdversaryGroup(groupId, encounterArea);
             }
         }
 
@@ -948,7 +948,7 @@ export class EncounterBuilderView extends ItemView {
 
         typeSelect.createEl('option', { text: 'All Types', value: '' });
 
-        const uniqueTypes = new Set(this.compendiumCreatures
+        const uniqueTypes = new Set(this.compendiumAdversaries
             .map(c => c.type)
             .filter((type): type is string => type !== undefined));
 
@@ -1155,40 +1155,40 @@ export class EncounterBuilderView extends ItemView {
 
     renderCompendiumList(listContainer: HTMLElement) {
         listContainer.empty();
-        const filteredCreatures = this.applyFilters(this.compendiumCreatures);
-        if (filteredCreatures.length === 0) {
-            listContainer.createEl("p", { text: this.compendiumSearchTerm ? "No matching creatures found." : "No creatures in compendium. Check settings." });
+        const filteredAdversaries = this.applyFilters(this.compendiumAdversaries);
+        if (filteredAdversaries.length === 0) {
+            listContainer.createEl("p", { text: this.compendiumSearchTerm ? "No matching adversaries found." : "No adversaries in compendium. Check settings." });
         }
         else {
-            filteredCreatures.forEach(creatureData => {
-                const creatureEntry = listContainer.createDiv({ cls: "dh-compendium-entry" });
-                const nameSpan = creatureEntry.createSpan({ text: creatureData.name });
-                if (creatureData.isCustom) {
-                    nameSpan.addClass('dh-custom-creature');
-                    nameSpan.title = `Custom Adversary from ${creatureData.sourceFile}`;
+            filteredAdversaries.forEach(adversaryData => {
+                const adversaryEntry = listContainer.createDiv({ cls: "dh-compendium-entry" });
+                const nameSpan = adversaryEntry.createSpan({ text: adversaryData.name });
+                if (adversaryData.isCustom) {
+                    nameSpan.addClass('dh-custom-adversary');
+                    nameSpan.title = `Custom Adversary from ${adversaryData.sourceFile}`;
                 }
-                const addButton = creatureEntry.createEl("button", { text: "+", title: "Add to active encounter", cls: "dh-add-compendium-btn" });
+                const addButton = adversaryEntry.createEl("button", { text: "+", title: "Add to active encounter", cls: "dh-add-compendium-btn" });
                 addButton.addEventListener("click", () => {
-                    this.addCreatureToActiveEncounter(creatureData);
+                    this.addAdversaryToActiveEncounter(adversaryData);
                 });
             });
         }
     }
 
-    private applyFilters(creatures: StatblockData[]): StatblockData[] {
-        return creatures.filter(creature => {
+    private applyFilters(adversaries: StatblockData[]): StatblockData[] {
+        return adversaries.filter(adversary => {
             const matchesSearch = this.compendiumSearchTerm === "" ||
-                creature.name.toLowerCase().includes(this.compendiumSearchTerm.toLowerCase());
+                adversary.name.toLowerCase().includes(this.compendiumSearchTerm.toLowerCase());
 
             const matchesTier = this.selectedTiers.size === 0 ||
-                (creature.tier !== undefined && (
-                    typeof creature.tier === 'number'
-                        ? this.selectedTiers.has(creature.tier)
-                        : this.selectedTiers.has(Number(creature.tier))
+                (adversary.tier !== undefined && (
+                    typeof adversary.tier === 'number'
+                        ? this.selectedTiers.has(adversary.tier)
+                        : this.selectedTiers.has(Number(adversary.tier))
                 ));
 
             const matchesType = this.selectedTypes.size === 0 ||
-                (creature.type !== undefined && this.selectedTypes.has(creature.type));
+                (adversary.type !== undefined && this.selectedTypes.has(adversary.type));
 
             return matchesSearch && matchesTier && matchesType;
         });
@@ -1233,11 +1233,11 @@ export class EncounterBuilderView extends ItemView {
 
     saveNewEncounter(name: string) {
         const newId = `dh-encounter-${Date.now()}`;
-        const newEncounter: SavedEncounter = { id: newId, name: name, creatures: [], creatureGroupOrder: [] };
+        const newEncounter: SavedEncounter = { id: newId, name: name, adversaries: [], adversaryGroupOrder: [] };
         this.plugin.settings.savedEncounters.push(newEncounter);
         this.plugin.saveSettings();
         this.currentEncounterId = newId;
-        this.loadCreaturesForCurrentEncounter();
+        this.loadAdversariesForCurrentEncounter();
         new Notice(`Encounter "${name}" created and activated.`);
         this.drawUI();
         this.leaf.setEphemeralState(this.getState());
@@ -1266,7 +1266,7 @@ export class EncounterBuilderView extends ItemView {
         const encounterToLoad = this.plugin.settings.savedEncounters.find(e => e.id === encounterId);
         if (encounterToLoad) {
             this.currentEncounterId = encounterToLoad.id;
-            this.loadCreaturesForCurrentEncounter();
+            this.loadAdversariesForCurrentEncounter();
             new Notice(`Encounter "${encounterToLoad.name}" loaded.`);
             this.drawUI();
             this.leaf.setEphemeralState(this.getState());
@@ -1286,7 +1286,7 @@ export class EncounterBuilderView extends ItemView {
         if (this.currentEncounterId === encounterId) {
             this.currentEncounterId = null;
             this.ensureActiveEncounter();
-            this.loadCreaturesForCurrentEncounter();
+            this.loadAdversariesForCurrentEncounter();
         }
         new Notice(`Encounter "${encounterName}" deleted.`);
         this.drawUI();
@@ -1323,7 +1323,7 @@ export class EncounterBuilderView extends ItemView {
 
     private calculateEncounterBudget(): { spent: number, total: number } {
         const config = this.plugin.settings.encounterBudgetConfig;
-        const creatures = this.activeEncounterCreatures;
+        const adversaries = this.activeEncounterAdversaries;
 
         // Calculate spent points
         let spent = 0;
@@ -1332,7 +1332,7 @@ export class EncounterBuilderView extends ItemView {
         let soloCount = 0;
         const minionGroups: { [groupId: string]: number } = {};
 
-        creatures.forEach(c => {
+        adversaries.forEach(c => {
             allGroups.add(c.groupId);
             const typeLower = c.type?.toLowerCase();
             if (typeLower) adversaryTypes.add(typeLower);
@@ -1371,7 +1371,7 @@ export class EncounterBuilderView extends ItemView {
         const hasComplex = adversaryTypes.has('bruiser') || adversaryTypes.has('horde') || adversaryTypes.has('leader') || adversaryTypes.has('solo');
         const groupCount = allGroups.size;
 
-        if (!hasComplex && creatures.length > 0 && groupCount <= 1) {
+        if (!hasComplex && adversaries.length > 0 && groupCount <= 1) {
             total += 1;
         }
 
@@ -1380,7 +1380,7 @@ export class EncounterBuilderView extends ItemView {
 
     // --- DRAG AND DROP HANDLERS ---
     private getHorizontalDragAfterElement(container: HTMLElement, x: number): Element | null {
-        const draggableElements = Array.from(container.querySelectorAll('.dh-creature-group-container:not(.dh-dragging)'));
+        const draggableElements = Array.from(container.querySelectorAll('.dh-adversary-group-container:not(.dh-dragging)'));
 
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
@@ -1397,7 +1397,7 @@ export class EncounterBuilderView extends ItemView {
         const target = e.target as HTMLElement;
         // Only start drag if the target is the drag handle
         if (target.classList.contains('dh-drag-handle')) {
-            const groupContainer = target.closest('.dh-creature-group-container');
+            const groupContainer = target.closest('.dh-adversary-group-container');
             if (groupContainer instanceof HTMLElement) {
                 this.draggedGroupId = groupContainer.getAttribute('data-group-id');
                 if (this.draggedGroupId) {
@@ -1434,13 +1434,13 @@ export class EncounterBuilderView extends ItemView {
         e.preventDefault();
         if (this.draggedGroupId) {
             const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
-            const newOrderedIds = Array.from(encounterArea.querySelectorAll('.dh-creature-group-container'))
+            const newOrderedIds = Array.from(encounterArea.querySelectorAll('.dh-adversary-group-container'))
                 .map(el => el.getAttribute('data-group-id'))
                 .filter((id): id is string => id !== null);
 
             const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
             if (currentEncounter) {
-                currentEncounter.creatureGroupOrder = newOrderedIds;
+                currentEncounter.adversaryGroupOrder = newOrderedIds;
                 this.plugin.saveSettings();
             }
         }
@@ -1462,34 +1462,34 @@ export class EncounterBuilderView extends ItemView {
         const { instanceId } = customEvent.detail;
         if (!instanceId) return;
 
-        const instance = this.activeEncounterCreatures.find(c => c.id === instanceId);
+        const instance = this.activeEncounterAdversaries.find(c => c.id === instanceId);
         if (!instance) return;
 
-        new EditAdversaryModal(this.app, this.plugin, instance, (updatedCreature) => {
+        new EditAdversaryModal(this.app, this.plugin, instance, (updatedAdversary) => {
             const groupId = instance.groupId;
             if (!groupId) return; // Should always have a group ID
 
             // Update all instances in the group with the new base data
-            this.activeEncounterCreatures.forEach(c => {
+            this.activeEncounterAdversaries.forEach(c => {
                 if (c.groupId === groupId) {
-                    c.name = updatedCreature.name;
-                    c.isCustom = updatedCreature.isCustom;
-                    c.sourceFile = updatedCreature.sourceFile;
-                    c.image = updatedCreature.image;
-                    c.tier = updatedCreature.tier;
-                    c.type = updatedCreature.type;
-                    c.description = updatedCreature.description;
-                    c.motives_tactics = JSON.parse(JSON.stringify(updatedCreature.motives_tactics || []));
-                    c.difficulty = updatedCreature.difficulty;
-                    c.hp_stress = JSON.parse(JSON.stringify(updatedCreature.hp_stress));
-                    c.attack = JSON.parse(JSON.stringify(updatedCreature.attack));
-                    c.features = JSON.parse(JSON.stringify(updatedCreature.features || []));
+                    c.name = updatedAdversary.name;
+                    c.isCustom = updatedAdversary.isCustom;
+                    c.sourceFile = updatedAdversary.sourceFile;
+                    c.image = updatedAdversary.image;
+                    c.tier = updatedAdversary.tier;
+                    c.type = updatedAdversary.type;
+                    c.description = updatedAdversary.description;
+                    c.motives_tactics = JSON.parse(JSON.stringify(updatedAdversary.motives_tactics || []));
+                    c.difficulty = updatedAdversary.difficulty;
+                    c.hp_stress = JSON.parse(JSON.stringify(updatedAdversary.hp_stress));
+                    c.attack = JSON.parse(JSON.stringify(updatedAdversary.attack));
+                    c.features = JSON.parse(JSON.stringify(updatedAdversary.features || []));
                 }
             });
 
             this.updateDisplayNamesForGroup(groupId);
             this.autoSaveCurrentEncounter();
-            this.redrawCreatureGroup(groupId);
+            this.redrawAdversaryGroup(groupId);
         }).open();
     }
 
@@ -1527,12 +1527,12 @@ export class EncounterBuilderView extends ItemView {
         const { instanceId, conditionName } = customEvent.detail;
         if (!instanceId || !conditionName) return;
 
-        const instance = this.activeEncounterCreatures.find(c => c.id === instanceId);
+        const instance = this.activeEncounterAdversaries.find(c => c.id === instanceId);
         if (!instance || !instance.conditions) return;
 
         instance.conditions = instance.conditions.filter(c => c.name !== conditionName);
         this.autoSaveCurrentEncounter();
-        this.redrawCreatureGroup(instance.groupId);
+        this.redrawAdversaryGroup(instance.groupId);
     }
 
     handleRemoveInstanceEvent(e: Event) {
@@ -1540,11 +1540,11 @@ export class EncounterBuilderView extends ItemView {
         const { instanceId } = customEvent.detail;
         if (!instanceId) return;
 
-        this.removeCreatureFromActiveEncounter(instanceId);
+        this.removeAdversaryFromActiveEncounter(instanceId);
     }
 
     addConditionToInstance(instanceId: string, condition: Condition) {
-        const instance = this.activeEncounterCreatures.find(c => c.id === instanceId);
+        const instance = this.activeEncounterAdversaries.find(c => c.id === instanceId);
         if (!instance) return;
 
         if (!instance.conditions) {
@@ -1558,10 +1558,10 @@ export class EncounterBuilderView extends ItemView {
 
         instance.conditions.push(condition);
         this.autoSaveCurrentEncounter();
-        this.redrawCreatureGroup(instance.groupId);
+        this.redrawAdversaryGroup(instance.groupId);
     }
 
-    renderAdditionalTrackerRow(instance: CreatureInstance, parentEl: HTMLElement) {
+    renderAdditionalTrackerRow(instance: AdversaryInstance, parentEl: HTMLElement) {
         const trackerRow = parentEl.createDiv({ cls: 'dh-additional-tracker-row' });
 
         const header = trackerRow.createDiv({ cls: 'dh-additional-tracker-header' });
@@ -1600,20 +1600,20 @@ export class EncounterBuilderView extends ItemView {
 
         this.plugin.createInteractiveTrack(trackerRow, 'HP', hpMax, `${instance.id}-hp-add`, instance.currentHp,
             (newHp) => {
-                const inst = this.activeEncounterCreatures.find(c => c.id === instance.id);
+                const inst = this.activeEncounterAdversaries.find(c => c.id === instance.id);
                 if (inst) inst.currentHp = newHp; this.autoSaveCurrentEncounter();
             }
         );
         this.plugin.createInteractiveTrack(trackerRow, 'Stress', stressMax, `${instance.id}-stress-add`, instance.currentStress,
             (newStress) => {
-                const inst = this.activeEncounterCreatures.find(c => c.id === instance.id);
+                const inst = this.activeEncounterAdversaries.find(c => c.id === instance.id);
                 if (inst) inst.currentStress = newStress; this.autoSaveCurrentEncounter();
             }
         );
     }
 
     private updateDisplayNamesForGroup(groupId: string) {
-        const instancesInThisGroup = this.activeEncounterCreatures.filter(inst => inst.groupId === groupId);
+        const instancesInThisGroup = this.activeEncounterAdversaries.filter(inst => inst.groupId === groupId);
         instancesInThisGroup.sort((a, b) => a.id.localeCompare(b.id));
 
         if (instancesInThisGroup.length === 1) {
@@ -1625,7 +1625,7 @@ export class EncounterBuilderView extends ItemView {
         }
     }
 
-    addCreatureToActiveEncounter(baseCreature: StatblockData) {
+    addAdversaryToActiveEncounter(baseAdversary: StatblockData) {
         if (!this.currentEncounterId) {
             new Notice("Error: No active encounter. Please create or load an encounter first.");
             return;
@@ -1633,53 +1633,53 @@ export class EncounterBuilderView extends ItemView {
         const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
         if (!encounter) return;
 
-        const newGroupId = `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-        this.createNewInstanceInGroup(baseCreature, newGroupId);
+        const newGroupId = `${baseAdversary.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+        this.createNewInstanceInGroup(baseAdversary, newGroupId);
 
-        if (!encounter.creatureGroupOrder) encounter.creatureGroupOrder = [];
-        encounter.creatureGroupOrder.push(newGroupId);
+        if (!encounter.adversaryGroupOrder) encounter.adversaryGroupOrder = [];
+        encounter.adversaryGroupOrder.push(newGroupId);
 
         this.autoSaveCurrentEncounter();
         this.drawUI();
     }
 
-    createNewInstanceInGroup(baseCreature: StatblockData, targetGroupId: string) {
-        const newInstance: CreatureInstance = {
-            ...JSON.parse(JSON.stringify(baseCreature)),
-            id: `${baseCreature.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    createNewInstanceInGroup(baseAdversary: StatblockData, targetGroupId: string) {
+        const newInstance: AdversaryInstance = {
+            ...JSON.parse(JSON.stringify(baseAdversary)),
+            id: `${baseAdversary.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             groupId: targetGroupId,
             currentHp: 0,
             currentStress: 0,
             displayName: "",
             conditions: [], // Initialize conditions array
             hp_stress: {
-                hp: Number(baseCreature.hp_stress.hp) || 0,
-                stress: Number(baseCreature.hp_stress.stress) || 0,
-                major_hp: baseCreature.hp_stress.major_hp ? Number(baseCreature.hp_stress.major_hp) : null,
-                severe_hp: baseCreature.hp_stress.severe_hp ? Number(baseCreature.hp_stress.severe_hp) : null,
+                hp: Number(baseAdversary.hp_stress.hp) || 0,
+                stress: Number(baseAdversary.hp_stress.stress) || 0,
+                major_hp: baseAdversary.hp_stress.major_hp ? Number(baseAdversary.hp_stress.major_hp) : null,
+                severe_hp: baseAdversary.hp_stress.severe_hp ? Number(baseAdversary.hp_stress.severe_hp) : null,
             }
         };
-        this.activeEncounterCreatures.push(newInstance);
+        this.activeEncounterAdversaries.push(newInstance);
         this.updateDisplayNamesForGroup(targetGroupId);
     }
 
-    removeCreatureFromActiveEncounter(instanceId: string) {
-        const instanceToRemoveIndex = this.activeEncounterCreatures.findIndex(c => c.id === instanceId);
+    removeAdversaryFromActiveEncounter(instanceId: string) {
+        const instanceToRemoveIndex = this.activeEncounterAdversaries.findIndex(c => c.id === instanceId);
         if (instanceToRemoveIndex === -1) return;
 
-        const removedInstance = this.activeEncounterCreatures[instanceToRemoveIndex];
+        const removedInstance = this.activeEncounterAdversaries[instanceToRemoveIndex];
         const groupId = removedInstance.groupId;
 
-        this.activeEncounterCreatures.splice(instanceToRemoveIndex, 1);
+        this.activeEncounterAdversaries.splice(instanceToRemoveIndex, 1);
 
-        const isGroupEmpty = !this.activeEncounterCreatures.some(inst => inst.groupId === groupId);
+        const isGroupEmpty = !this.activeEncounterAdversaries.some(inst => inst.groupId === groupId);
 
         if (isGroupEmpty) {
             const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
-            if (encounter && encounter.creatureGroupOrder) {
-                const groupIndex = encounter.creatureGroupOrder.indexOf(groupId);
+            if (encounter && encounter.adversaryGroupOrder) {
+                const groupIndex = encounter.adversaryGroupOrder.indexOf(groupId);
                 if (groupIndex > -1) {
-                    encounter.creatureGroupOrder.splice(groupIndex, 1);
+                    encounter.adversaryGroupOrder.splice(groupIndex, 1);
                 }
             }
         }
@@ -1689,10 +1689,10 @@ export class EncounterBuilderView extends ItemView {
         this.drawUI();
     }
 
-    removeCreatureGroupFromActiveEncounter(groupId: string) {
+    removeAdversaryGroupFromActiveEncounter(groupId: string) {
         const groupContainer = this.containerEl.querySelector(`[data-group-id="${groupId}"]`);
         if (groupContainer) {
-            this.activeEncounterCreatures = this.activeEncounterCreatures.filter(c => c.groupId !== groupId);
+            this.activeEncounterAdversaries = this.activeEncounterAdversaries.filter(c => c.groupId !== groupId);
             this.autoSaveCurrentEncounter();
             this.drawUI();
         }

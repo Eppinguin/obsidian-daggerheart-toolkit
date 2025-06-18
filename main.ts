@@ -1,8 +1,8 @@
 import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, TFile } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, CreatureInstance } from './types';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, AdversaryInstance } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/view';
-import { getCompendiumCreatures, saveCreatureToUserCompendium } from './src/parsing';
+import { getCompendiumAdversaries, saveAdversaryToUserCompendium } from './src/parsing';
 import { renderStatblockCard, createInteractiveTrack } from './src/rendering';
 
 export default class DaggerheartStatblockPlugin extends Plugin {
@@ -58,12 +58,12 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
-    getCompendiumCreatures() {
-        return getCompendiumCreatures(this);
+    getCompendiumAdversaries() {
+        return getCompendiumAdversaries(this);
     }
 
-    saveCreatureToUserCompendium(creatureData: StatblockData) {
-        return saveCreatureToUserCompendium(this, creatureData);
+    saveAdversaryToUserCompendium(adversaryData: StatblockData) {
+        return saveAdversaryToUserCompendium(this, adversaryData);
     }
 
     createInteractiveTrack(
@@ -94,9 +94,9 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Compendium Folder')
-            .setDesc('Path to the folder containing your Daggerheart statblock Markdown files (e.g., "System/Daggerheart/Creatures"). Leave empty to disable user compendium.')
+            .setDesc('Path to the folder containing your Daggerheart statblock Markdown files (e.g., "System/Daggerheart/Adversaries"). Leave empty to disable user compendium.')
             .addText((text: TextComponent) => {
-                text.setPlaceholder('Example: Path/To/Creatures')
+                text.setPlaceholder('Example: Path/To/Adversaries')
                     .setValue(this.plugin.settings.compendiumFolder)
                     .onChange(async (value) => {
                         this.plugin.settings.compendiumFolder = value.trim();
@@ -144,7 +144,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Show Description on Instance Cards')
-            .setDesc('If enabled, the full description will be shown on creature cards in the encounter builder.')
+            .setDesc('If enabled, the full description will be shown on adversary cards in the encounter builder.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showDescriptionOnCards)
                 .onChange(async (value) => {
@@ -156,7 +156,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Expand Feature Descriptions by Default')
-            .setDesc('If enabled, feature descriptions will be expanded by default on creature cards.')
+            .setDesc('If enabled, feature descriptions will be expanded by default on adversary cards.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.showFeatureDetailsOnCards)
                 .onChange(async (value) => {

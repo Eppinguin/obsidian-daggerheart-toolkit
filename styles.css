@@ -155,7 +155,7 @@
   height: calc(100% - var(--size-4-3)); /* Account for padding */
 }
 
-.dh-creature-group {
+.dh-adversary-group {
   display: flex;
   flex-direction: column;
   gap: var(--size-4-2);
@@ -165,7 +165,7 @@
   align-items: stretch; /* Stretch items to fill width */
 }
 
-.dh-creature-instance-card {
+.dh-adversary-instance-card {
   flex-shrink: 0;
   background-color: var(--color-base-25); 
   color: var(--text-normal); 
@@ -465,7 +465,7 @@
     background-color: var(--interactive-accent-hover);
 }
 
-.dh-active-creatures-panel { 
+.dh-active-adversaries-panel { 
     display: flex;
     flex-direction: column; 
     flex-grow: 1; 
@@ -497,7 +497,7 @@
     height: calc(100% - var(--size-4-3)); /* Account for padding */
 }
 
-.dh-creature-group-container { 
+.dh-adversary-group-container { 
     display: flex;
     flex-direction: column; 
     flex-shrink: 0;
@@ -506,7 +506,7 @@
 }
 
 
-.dh-creature-instance-card {
+.dh-adversary-instance-card {
     background-color: var(--color-base-25); 
     color: var(--text-normal); 
     border-radius: var(--radius-m, 8px);
@@ -1519,7 +1519,7 @@
 }
 
 /* --- Drag and Drop Styles --- */
-.dh-creature-group-container.dh-dragging {
+.dh-adversary-group-container.dh-dragging {
     opacity: 0.5;
     border: 2px dashed var(--interactive-accent);
     background: var(--background-modifier-hover);

@@ -1,5 +1,5 @@
 import { App, Notice, setIcon } from 'obsidian';
-import { StatblockData, CreatureInstance } from '../types';
+import { StatblockData, AdversaryInstance } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { ENCOUNTER_BUILDER_VIEW_TYPE, EncounterBuilderView } from './view';
 import { group } from 'console';
@@ -234,7 +234,7 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
 
 function renderInstanceStatblock(
     plugin: DaggerheartStatblockPlugin,
-    data: CreatureInstance,
+    data: AdversaryInstance,
     containerEl: HTMLElement,
     displayName: string,
     hpUpdateCallback?: (newHp: number) => void,
@@ -248,7 +248,7 @@ function renderInstanceStatblock(
 
     // Handle image
     if (data.image) {
-        const parentCard = containerEl.closest('.dh-creature-instance-card') || containerEl;
+        const parentCard = containerEl.closest('.dh-adversary-instance-card') || containerEl;
         const imgContainer = parentCard.querySelector('.dh-card-image-container') ||
             parentCard.createDiv({ cls: 'dh-card-image-container', prepend: true });
         imgContainer.empty();
@@ -430,7 +430,7 @@ function addControlButtons(container: HTMLElement, instanceId: string, container
 
 export function renderStatblockCard(
     plugin: DaggerheartStatblockPlugin,
-    data: StatblockData | CreatureInstance,
+    data: StatblockData | AdversaryInstance,
     containerEl: HTMLElement,
     isInstance: boolean = false,
     displayName?: string,
@@ -439,7 +439,7 @@ export function renderStatblockCard(
     groupSize?: number
 ) {
     if (isInstance) {
-        renderInstanceStatblock(plugin, data as CreatureInstance, containerEl, displayName || data.name, hpUpdateCallback, stressUpdateCallback, groupSize);
+        renderInstanceStatblock(plugin, data as AdversaryInstance, containerEl, displayName || data.name, hpUpdateCallback, stressUpdateCallback, groupSize);
     } else {
         renderEditorStatblock(plugin, data, containerEl);
     }

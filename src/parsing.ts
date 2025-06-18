@@ -1,6 +1,6 @@
 import { App, TFile, TFolder, Notice } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, StatblockHpStress, StatblockFeature, StatblockExperience, CreatureInstance } from '../types';
+import { StatblockData, StatblockHpStress, StatblockFeature, StatblockExperience, AdversaryInstance } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 
 const SRD_ADVERSARIES_FILE = "adversaries.json";
@@ -65,7 +65,7 @@ function parseSrdAdversaryData(srd: any): StatblockData | null {
     } catch (e) { console.error("Error parsing SRD data:", srd, e); return null; }
 }
 
-function extractStatblocksFromFile(content: string, filePath: string, creaturesArray: StatblockData[]) {
+function extractStatblocksFromFile(content: string, filePath: string, adversariesArray: StatblockData[]) {
     const codeBlockRegex = /```daggerheart-statblock\s*([\s\S]*?)```/g;
     let match;
     while ((match = codeBlockRegex.exec(content)) !== null) {
@@ -97,14 +97,14 @@ function extractStatblocksFromFile(content: string, filePath: string, creaturesA
                     });
                 }
 
-                creaturesArray.push(statblock);
+                adversariesArray.push(statblock);
             }
         } catch (e: any) { console.warn(`Failed to parse YAML in ${filePath}: ${e.message}.`); }
     }
 }
 
-export async function getCompendiumCreatures(plugin: DaggerheartStatblockPlugin): Promise<StatblockData[]> {
-    const creaturesMap = new Map<string, StatblockData>();
+export async function getCompendiumAdversaries(plugin: DaggerheartStatblockPlugin): Promise<StatblockData[]> {
+    const adversariesMap = new Map<string, StatblockData>();
 
     // 1. Load SRD Adversaries
     if (plugin.settings.useSrdAdversaries) {
@@ -113,10 +113,10 @@ export async function getCompendiumCreatures(plugin: DaggerheartStatblockPlugin)
             if (await plugin.app.vault.adapter.exists(srdFilePath)) {
                 const srdFileContent = await plugin.app.vault.adapter.read(srdFilePath);
                 const cleanedSrdContent = srdFileContent.charCodeAt(0) === 0xFEFF ? srdFileContent.substring(1) : srdFileContent;
-                const srdRawCreatures = JSON.parse(cleanedSrdContent) as any[];
-                srdRawCreatures.forEach(rawAdv => {
+                const srdRawAdversaries = JSON.parse(cleanedSrdContent) as any[];
+                srdRawAdversaries.forEach(rawAdv => {
                     const transformed = parseSrdAdversaryData(rawAdv);
-                    if (transformed) creaturesMap.set(transformed.name.toLowerCase(), transformed);
+                    if (transformed) adversariesMap.set(transformed.name.toLowerCase(), transformed);
                 });
             } else { new Notice(`SRD file (${SRD_ADVERSARIES_FILE}) not found.`); }
         } catch (e: any) { console.error("Error loading SRD:", e); new Notice("Error loading SRD."); }
@@ -128,11 +128,11 @@ export async function getCompendiumCreatures(plugin: DaggerheartStatblockPlugin)
         if (await plugin.app.vault.adapter.exists(userCompendiumPath)) {
             try {
                 const userFileContent = await plugin.app.vault.adapter.read(userCompendiumPath);
-                const userCreatures = JSON.parse(userFileContent) as StatblockData[];
-                userCreatures.forEach(creature => {
-                    creature.isCustom = true;
-                    creature.sourceFile = userCompendiumPath;
-                    creaturesMap.set(creature.name.toLowerCase(), creature);
+                const userAdversaries = JSON.parse(userFileContent) as StatblockData[];
+                userAdversaries.forEach(adversary => {
+                    adversary.isCustom = true;
+                    adversary.sourceFile = userCompendiumPath;
+                    adversariesMap.set(adversary.name.toLowerCase(), adversary);
                 });
             } catch (e: any) {
                 console.error(`Error loading user compendium file \"${userCompendiumPath}\":`, e);
@@ -145,22 +145,22 @@ export async function getCompendiumCreatures(plugin: DaggerheartStatblockPlugin)
     const folderPath = plugin.settings.compendiumFolder;
     if (folderPath) {
         const abstractFileOrFolder = plugin.app.vault.getAbstractFileByPath(folderPath);
-        const mdCreatures: StatblockData[] = [];
+        const mdAdversaries: StatblockData[] = [];
         if (abstractFileOrFolder instanceof TFile && abstractFileOrFolder.extension === 'md') {
-            extractStatblocksFromFile(await plugin.app.vault.cachedRead(abstractFileOrFolder), abstractFileOrFolder.path, mdCreatures);
+            extractStatblocksFromFile(await plugin.app.vault.cachedRead(abstractFileOrFolder), abstractFileOrFolder.path, mdAdversaries);
         } else if (abstractFileOrFolder instanceof TFolder) {
             for (const file of abstractFileOrFolder.children.filter((f): f is TFile => f instanceof TFile && f.extension === 'md')) {
-                extractStatblocksFromFile(await plugin.app.vault.cachedRead(file), file.path, mdCreatures);
+                extractStatblocksFromFile(await plugin.app.vault.cachedRead(file), file.path, mdAdversaries);
             }
         }
-        mdCreatures.forEach(creature => creaturesMap.set(creature.name.toLowerCase(), creature));
+        mdAdversaries.forEach(adversary => adversariesMap.set(adversary.name.toLowerCase(), adversary));
     }
 
-    return Array.from(creaturesMap.values());
+    return Array.from(adversariesMap.values());
 }
 
 
-export async function saveCreatureToUserCompendium(plugin: DaggerheartStatblockPlugin, creatureData: StatblockData): Promise<void> {
+export async function saveAdversaryToUserCompendium(plugin: DaggerheartStatblockPlugin, adversaryData: StatblockData): Promise<void> {
     const userCompendiumFileName = plugin.settings.userCompendiumFile;
     if (!userCompendiumFileName) {
         new Notice("User compendium file path is not set in settings.");
@@ -183,28 +183,28 @@ export async function saveCreatureToUserCompendium(plugin: DaggerheartStatblockP
         compendium = [];
     }
 
-    // Clean the creature data before saving
-    const creatureToSave: Partial<CreatureInstance> = { ...creatureData };
-    delete creatureToSave.id;
-    delete creatureToSave.groupId;
-    delete creatureToSave.currentHp;
-    delete creatureToSave.currentStress;
-    delete creatureToSave.displayName;
-    delete creatureToSave.conditions;
-    creatureToSave.isCustom = true;
-    creatureToSave.sourceFile = filePath;
+    // Clean the adversary data before saving
+    const adversaryToSave: Partial<AdversaryInstance> = { ...adversaryData };
+    delete adversaryToSave.id;
+    delete adversaryToSave.groupId;
+    delete adversaryToSave.currentHp;
+    delete adversaryToSave.currentStress;
+    delete adversaryToSave.displayName;
+    delete adversaryToSave.conditions;
+    adversaryToSave.isCustom = true;
+    adversaryToSave.sourceFile = filePath;
 
 
-    const existingIndex = compendium.findIndex(c => c.name.toLowerCase() === (creatureToSave as StatblockData).name.toLowerCase());
+    const existingIndex = compendium.findIndex(c => c.name.toLowerCase() === (adversaryToSave as StatblockData).name.toLowerCase());
     if (existingIndex !== -1) {
-        compendium[existingIndex] = creatureToSave as StatblockData;
+        compendium[existingIndex] = adversaryToSave as StatblockData;
     } else {
-        compendium.push(creatureToSave as StatblockData);
+        compendium.push(adversaryToSave as StatblockData);
     }
 
     try {
         await plugin.app.vault.adapter.write(filePath, JSON.stringify(compendium, null, 2));
-        new Notice(`"${creatureToSave.name}" saved to your compendium.`);
+        new Notice(`"${adversaryToSave.name}" saved to your compendium.`);
     } catch (e: any) {
         new Notice("Failed to save to user compendium. See console for details.");
         console.error("Error saving to user compendium:", e);
