@@ -253,8 +253,7 @@ class EditAdversaryModal extends Modal {
             new Setting(featureEl)
                 .setName(`Feature #${index + 1}`)
                 .addText(text => text.setPlaceholder("Name").setValue(feature.name).onChange(val => feature.name = val))
-                .addText(text => text.setPlaceholder("Type (e.g. Action)").setValue(feature.type).onChange(val => feature.type = val))
-                .addText(text => text.setPlaceholder("Cost").setValue(String(feature.cost || '')).onChange(val => feature.cost = val));
+                .addText(text => text.setPlaceholder("Type (e.g. Action)").setValue(feature.type).onChange(val => feature.type = val));
 
             const featureDescSetting = new Setting(featureEl)
                 .addTextArea(text => text.setPlaceholder("Description").setValue(feature.description).onChange(val => feature.description = val));

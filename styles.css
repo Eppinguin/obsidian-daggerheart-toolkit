@@ -589,55 +589,112 @@
     letter-spacing: 0.5px;
 }
 
+/* --- Features Section (in-card) --- */
 .dh-instance-card-content .dh-features-list { 
     list-style-type: none; 
     padding-left: 0; 
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
 }
-.dh-instance-card-content .dh-features-list li {
-    font-size: var(--font-smaller, 0.875em); 
-    background-color: var(--background-modifier-hover, rgba(255,255,255,0.04)); 
-    border-left: 3px solid var(--background-modifier-border-hover, #586068); 
-    padding: var(--size-4-1, 5px) var(--size-4-2, 7px); 
-    margin-bottom: var(--size-4-1, 6px); 
+
+.dh-instance-card-content .dh-feature-item {
+    line-height: var(--line-height-normal);
 }
 
 .dh-instance-card-content .dh-feature-header-container { 
     display: flex;
     justify-content: space-between;
     align-items: center;
-    cursor: pointer; 
+    gap: var(--size-4-2);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary-alt);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    border: 1px solid var(--background-modifier-border);
+    transition: all 0.2s ease;
 }
-.dh-instance-card-content .dh-feature-name { 
-    color: var(--text-normal); 
-    font-size: 1em; 
-    flex-grow: 1; 
-} 
-.dh-instance-card-content .dh-feature-name strong { 
-    color: var(--text-strong);
-    font-weight: var(--font-bold); 
-} 
+.dh-instance-card-content .dh-feature-header-container:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+.dh-instance-card-content .dh-feature-header-container.is-expanded {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
+}
+
+
+.dh-instance-card-content .dh-feature-name {
+    flex-grow: 1;
+    font-weight: var(--font-bold);
+}
+
+.dh-feature-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    flex-shrink: 0;
+}
+
+.dh-feature-meta .dh-feature-tag {
+    font-size: var(--font-ui-smaller);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    line-height: 1;
+    font-weight: var(--font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dh-feature-tag-cost {
+    font-weight: var(--font-bold);
+}
+.dh-feature-tag-stress {
+    background-color: var(--color-purple-faint);
+    color: var(--color-purple-strong);
+}
+.dh-feature-tag-fear {
+    background-color: var(--color-cyan-faint);
+    color: var(--color-cyan-strong);
+}
+
+.dh-feature-tag-action {
+    background-color: var(--color-orange-faint);
+    color: var(--color-orange-strong);
+}
+.dh-feature-tag-reaction {
+    background-color: var(--color-blue-faint);
+    color: var(--color-blue-strong);
+}
+.dh-feature-tag-passive {
+    background-color: var(--color-green-faint);
+    color: var(--color-green-strong);
+}
+
+.dh-feature-cost-text {
+    color: var(--text-accent);
+}
 
 .dh-instance-card-content .dh-feature-toggle {
-    font-size: 0.9em;
-    color: var(--text-accent); 
-    margin-left: var(--size-4-2, 8px);
-    cursor: pointer;
-    user-select: none;
-    flex-shrink: 0; 
+    color: var(--text-muted); 
+    transition: transform 0.2s ease;
 }
-.dh-instance-card-content .dh-feature-toggle:hover {
-    color: var(--text-accent-hover);
+.dh-feature-header-container.is-expanded .dh-feature-toggle {
+    transform: rotate(0); /* Explicitly set for transition */
 }
 
+
 .dh-instance-card-content .dh-feature-description {
-    font-size: 1em;
-    padding-left: 0; 
-    border-top: 1px solid var(--background-modifier-border); 
-    padding-top: var(--size-4-1, 6px);
-    margin-top: var(--size-4-1, 5px);
-    line-height: var(--line-height-normal);
-    color: var(--text-normal); 
+    font-size: var(--font-smaller);
+    padding: var(--size-4-3); 
+    color: var(--text-muted); 
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-s) var(--radius-s);
 }
+
 .dh-feature-description-hidden {
     display: none;
 }
@@ -1170,15 +1227,12 @@
 
 /* --- Edit Adversary Modal --- */
 
-.dh-edit-adversary-modal-root {
+.dh-edit-adversary-modal-root .modal-content {
+    /* Allow content to grow and establish a flex context for the body */
     display: flex;
     flex-direction: column;
-}
-
-.dh-edit-adversary-modal-root .modal-content {
-    flex-grow: 1;
-    padding: 0; 
     overflow: hidden;
+    padding: 0;
 }
 
 .dh-edit-adversary-modal {
@@ -1198,6 +1252,7 @@
 }
 
 .dh-edit-adversary-modal .modal-body {
+    /* The body will scroll, not the whole modal content */
     flex-grow: 1;
     overflow-y: auto;
     padding: var(--modal-padding);
@@ -1209,78 +1264,123 @@
 
 .dh-edit-adversary-modal .dh-modal-section h3 {
     margin-top: 0;
-    margin-bottom: var(--size-4-4);
+    margin-bottom: var(--size-4-3);
     font-size: var(--font-ui-large);
     color: var(--text-muted);
     border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: var(--size-4-1);
+    padding-bottom: var(--size-4-2);
     font-weight: 600;
 }
 
+/* Use grid for the main form fields for a clean, responsive layout */
 .dh-modal-field-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: var(--size-4-4) var(--size-4-6);
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--size-4-4);
 }
 
+/* Style each form field (Setting) for a "label on top" design */
 .dh-modal-field-grid .setting-item {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--size-4-1);
+    gap: var(--size-2-1); /* Space between label and input */
     padding: 0;
     border: none;
 }
+
 .dh-modal-field-grid .setting-item-info {
-    width: 100%;
+    margin: 0;
+    padding: 0;
 }
+
+.dh-modal-field-grid .setting-item-name {
+    font-weight: 600; /* Bolder label */
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+}
+
+.dh-modal-field-grid .setting-item-description {
+    font-size: var(--font-ui-smaller);
+    opacity: 0.7;
+    margin-top: -2px; /* Pull it closer to the name */
+}
+
 .dh-modal-field-grid .setting-item-control {
     width: 100%;
 }
+.dh-modal-field-grid .setting-item-control input[type="text"],
+.dh-modal-field-grid .setting-item-control textarea {
+    width: 100%;
+}
+.dh-modal-field-grid .setting-item-control textarea {
+    min-height: 80px;
+    resize: vertical;
+}
 
+/* Class to make a grid item span all columns */
 .dh-grid-span-all {
     grid-column: 1 / -1;
 }
 
-
+/* Features Editor Specifics */
 .dh-features-editor {
     display: flex;
     flex-direction: column;
-    gap: var(--size-4-4);
+    gap: var(--size-4-3);
 }
+
 .dh-feature-editor-item {
     background-color: var(--background-secondary-alt);
     padding: var(--size-4-3);
     border-radius: var(--radius-m);
     border: 1px solid var(--background-modifier-border);
     position: relative;
-    padding-right: 40px; /* Space for the remove button */
 }
+
 .dh-feature-editor-item .setting-item {
-    padding: var(--size-2-2) 0;
-}
-.dh-feature-editor-item .setting-item-control {
-    display: flex;
-    flex-wrap: wrap; /* Allow inputs to wrap on smaller screens */
+    flex-direction: column;
+    align-items: stretch;
     gap: var(--size-4-2);
-    width: 100%;
+    padding: 0 0 var(--size-2-2) 0;
+    border: none;
 }
-.dh-feature-editor-item .setting-item-name {
+
+.dh-feature-editor-item .setting-item-info {
+    margin-bottom: var(--size-2-2);
+}
+
+.dh-feature-editor-item .setting-item-info .setting-item-name {
     font-weight: var(--font-bold);
     color: var(--text-normal);
 }
+
+/* For the side-by-side Name/Type inputs in features */
+.dh-feature-editor-item > .setting-item > .setting-item-control {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+}
+.dh-feature-editor-item > .setting-item > .setting-item-control > input {
+    flex: 1 1 150px; /* Allow growing, shrinking, with a base size */
+}
+
 .dh-feature-remove-btn {
     position: absolute;
-    top: var(--size-4-2);
-    right: var(--size-4-2);
+    top: var(--size-4-1);
+    right: var(--size-4-1);
     background-color: transparent !important;
     border: none !important;
     color: var(--text-faint) !important;
     box-shadow: none !important;
+    padding: var(--size-2-2);
 }
 .dh-feature-remove-btn:hover {
     color: var(--text-error) !important;
+    background-color: var(--background-modifier-hover) !important;
 }
+
+/* Description textarea for features */
 .dh-feature-desc-input {
     width: 100%;
 }
@@ -1307,13 +1407,13 @@
     border: 0;
 }
 
-
 .dh-edit-adversary-modal .modal-footer {
     flex-shrink: 0;
     padding: var(--size-4-3) var(--modal-padding);
     border-top: 1px solid var(--background-modifier-border);
     display: flex;
     justify-content: flex-end;
+    background-color: var(--background-primary);
 }
 
 .dh-edit-adversary-modal .dh-modal-buttons {
@@ -1321,7 +1421,6 @@
     justify-content: flex-end;
     gap: var(--size-4-2);
 }
-
 
 /* --- New Styles for Card Header Controls --- */
 .dh-card-header-controls {

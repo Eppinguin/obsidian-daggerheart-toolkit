@@ -41,34 +41,42 @@ async function rollDice(plugin: DaggerheartStatblockPlugin, diceString: string) 
 }
 
 function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement) {
-    if (!plugin.isDiceRollerEnabled) {
-        containerEl.appendText(text);
-        return;
-    }
-
-    const regex = /(\b\d+d\d+(\s*[+-]\s*\d+)*\b)/gi;
+    const pattern = /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+fear)/gi;
     let lastIndex = 0;
     let match;
 
-    while ((match = regex.exec(text)) !== null) {
+    while ((match = pattern.exec(text)) !== null) {
+        // Append text before the match
         if (match.index > lastIndex) {
             containerEl.appendText(text.substring(lastIndex, match.index));
         }
 
-        const diceString = match[0].replace(/\s/g, '');
-        const rollableSpan = containerEl.createSpan({
-            text: match[0],
-            cls: 'dh-rollable-dice',
-            title: `Click to roll ${diceString}`
-        });
-        rollableSpan.addEventListener('click', (e) => {
-            e.stopPropagation();
-            rollDice(plugin, diceString)
-        });
+        const dicePart = match[1];
+        const costPart = match[2];
 
-        lastIndex = regex.lastIndex;
+        if (dicePart && plugin.isDiceRollerEnabled) {
+            // Handle dice roll
+            const diceString = dicePart.replace(/\s/g, '');
+            containerEl.createSpan({
+                text: dicePart,
+                cls: 'dh-rollable-dice',
+                title: `Click to roll ${diceString}`
+            }).addEventListener('click', (e) => {
+                e.stopPropagation();
+                rollDice(plugin, diceString);
+            });
+        } else if (costPart) {
+            // Handle cost phrase
+            containerEl.createEl('strong', { text: costPart, cls: 'dh-feature-cost-text' });
+        } else {
+            // Fallback for non-rolled dice or other captured parts
+            containerEl.appendText(match[0]);
+        }
+
+        lastIndex = pattern.lastIndex;
     }
 
+    // Append remaining text
     if (lastIndex < text.length) {
         containerEl.appendText(text.substring(lastIndex));
     }
@@ -309,26 +317,51 @@ function renderInstanceStatblock(
 
         data.features.forEach(feature => {
             if (!feature?.name) return;
-            const li = featuresList.createEl('li');
-            const header = li.createDiv({ cls: 'dh-feature-header-container' });
+            const li = featuresList.createEl('li', { cls: 'dh-feature-item' });
 
+            const isExpanded = plugin.settings.showFeatureDetailsOnCards;
+            const header = li.createDiv({
+                cls: `dh-feature-header-container${isExpanded ? ' is-expanded' : ''}`
+            });
+
+            // Left side: Name
             const nameSpan = header.createSpan({ cls: 'dh-feature-name' });
-            nameSpan.innerHTML = `<strong>${feature.name}</strong>${feature.cost ? ` (${feature.cost})` : ''}${feature.type ? ` - ${feature.type}` : ''}`;
+            nameSpan.createEl('strong', { text: feature.name });
 
+            // Right side: Tags and Toggle
+            const metaContainer = header.createDiv({ cls: 'dh-feature-meta' });
+
+            if (feature.parsedCost) {
+                const costTag = metaContainer.createSpan({ text: feature.parsedCost, cls: 'dh-feature-tag dh-feature-tag-cost' });
+                if (feature.parsedCost.includes('S')) {
+                    costTag.addClass('dh-feature-tag-stress');
+                } else if (feature.parsedCost.includes('F')) {
+                    costTag.addClass('dh-feature-tag-fear');
+                }
+            }
+            if (feature.type) {
+                metaContainer.createSpan({ text: feature.type.toUpperCase(), cls: `dh-feature-tag dh-feature-tag-${feature.type.toLowerCase().replace(/\s+/g, '-')}` });
+            }
             if (feature.description) {
-                const toggle = header.createSpan({
-                    cls: 'dh-feature-toggle',
-                    text: plugin.settings.showFeatureDetailsOnCards ? ' [-]' : ' [+]'
-                });
+                const toggle = metaContainer.createSpan({ cls: 'dh-feature-toggle' });
+                setIcon(toggle, isExpanded ? 'chevron-down' : 'chevron-right');
+            }
+
+            // Description
+            if (feature.description) {
                 const descDiv = li.createDiv({
-                    cls: `dh-feature-description${plugin.settings.showFeatureDetailsOnCards ? '' : ' dh-feature-description-hidden'}`
+                    cls: `dh-feature-description ${isExpanded ? '' : 'dh-feature-description-hidden'}`
                 });
                 renderRollableContent(plugin, feature.description, descDiv);
 
-                toggle.addEventListener('click', (e) => {
+                header.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const isHidden = descDiv.classList.toggle('dh-feature-description-hidden');
-                    toggle.setText(isHidden ? ' [+]' : ' [-]');
+                    header.classList.toggle('is-expanded', !isHidden);
+                    const toggleIconEl = header.querySelector('.dh-feature-toggle');
+                    if (toggleIconEl) {
+                        setIcon(toggleIconEl as HTMLElement, isHidden ? 'chevron-right' : 'chevron-down');
+                    }
                 });
             }
         });

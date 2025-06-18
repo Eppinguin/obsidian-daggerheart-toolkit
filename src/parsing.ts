@@ -5,6 +5,25 @@ import DaggerheartStatblockPlugin from '../main';
 
 const SRD_ADVERSARIES_FILE = "adversaries.json";
 
+function parseFeatureCost(description: string): string | undefined {
+    if (!description) return undefined;
+    const desc = description.toLowerCase();
+
+    const stressMatch = desc.match(/(?:mark|suffer)\s+(a|\d+)\s+stress/);
+    if (stressMatch) {
+        const amount = stressMatch[1];
+        return amount === 'a' ? 'S' : `${amount}S`;
+    }
+
+    const fearMatch = desc.match(/spend\s+(a|\d+)\s+fear/);
+    if (fearMatch) {
+        const amount = fearMatch[1];
+        return amount === 'a' ? 'F' : `${amount}F`;
+    }
+
+    return undefined;
+}
+
 function parseSrdAdversaryData(srd: any): StatblockData | null {
     try {
         if (!srd.name || !srd.hp || !srd.stress) return null;
@@ -18,12 +37,20 @@ function parseSrdAdversaryData(srd: any): StatblockData | null {
         if (srd.feats && Array.isArray(srd.feats)) {
             srd.feats.forEach((feat: any) => {
                 if (feat.name && feat.text) {
-                    let featNameFull = feat.name, cost: string | number | undefined, type = "Passive", nameOnly = featNameFull;
+                    let featNameFull = feat.name;
+                    let type = "Passive";
+                    let nameOnly = featNameFull;
+
                     const typeMatch = featNameFull.match(/-\s*(Passive|Action|Reaction(?:[:\s].*)?)$/i);
-                    if (typeMatch) { type = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1).toLowerCase().replace(/:.*/, '').trim(); nameOnly = featNameFull.substring(0, typeMatch.index).trim(); }
-                    const costMatch = nameOnly.match(/\(([^)]+)\)$/);
-                    if (costMatch) { const costStr = costMatch[1]; cost = !isNaN(Number(costStr)) ? Number(costStr) : costStr; nameOnly = nameOnly.substring(0, costMatch.index).trim(); }
-                    features.push({ name: nameOnly.trim(), type, cost, description: feat.text });
+                    if (typeMatch) {
+                        type = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1).toLowerCase().replace(/:.*/, '').trim();
+                        nameOnly = featNameFull.substring(0, typeMatch.index).trim();
+                    }
+
+                    const description = feat.text;
+                    const parsedCost = parseFeatureCost(description);
+
+                    features.push({ name: nameOnly.trim(), type, description, parsedCost });
                 }
             });
         }
@@ -57,6 +84,19 @@ function extractStatblocksFromFile(content: string, filePath: string, creaturesA
                     statblock.experience = expObj;
                 } else if (!statblock.experience) statblock.experience = {};
                 statblock.motives_tactics = typeof statblock.motives_tactics === 'string' ? statblock.motives_tactics.split(',').map(s => s.trim()) : (statblock.motives_tactics || []);
+
+                if (statblock.features && Array.isArray(statblock.features)) {
+                    statblock.features.forEach(feature => {
+                        if (feature.description) {
+                            feature.parsedCost = parseFeatureCost(feature.description);
+                        }
+                        // Remove old cost property if it exists from YAML
+                        if ((feature as any).cost !== undefined) {
+                            delete (feature as any).cost;
+                        }
+                    });
+                }
+
                 creaturesArray.push(statblock);
             }
         } catch (e: any) { console.warn(`Failed to parse YAML in ${filePath}: ${e.message}.`); }

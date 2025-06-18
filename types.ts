@@ -20,7 +20,7 @@ export interface StatblockHpStress {
 export interface StatblockFeature {
     name: string;
     type: string;
-    cost?: string | number | null;
+    parsedCost?: string; // e.g. "S", "2S", "F"
     countdown?: string | null;
     description: string;
 }
@@ -59,7 +59,7 @@ export interface SavedEncounter {
     id: string;
     name: string;
     creatures: CreatureInstance[];
-    creatureGroupOrder: string[]; // <-- ADDED
+    creatureGroupOrder: string[];
 }
 
 export interface Countdown {
