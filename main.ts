@@ -1,11 +1,12 @@
 import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, TFile, Editor, MarkdownView } from 'obsidian';
 import * as YAML from 'js-yaml';
 import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS } from './types';
-import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/views/EncounterBuilderView';
+import { EncounterBuilderView } from './src/views/EncounterBuilderView';
 import { getCompendiumAdversaries, saveAdversaryToUserCompendium } from './src/services/compendium';
 import { renderStatblockCard } from './src/rendering/statblock';
-import { createInteractiveTrack } from './src/rendering/components';
+import { createInteractiveTrack } from './src/rendering/ui-helpers';
 import { AdversaryReferenceModal, EncounterLinkModal } from './src/modals/index';
+import { ENCOUNTER_BUILDER_VIEW_TYPE } from './src/constants';
 
 export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;

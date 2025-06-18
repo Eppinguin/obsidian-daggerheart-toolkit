@@ -15,7 +15,7 @@
         "@types/js-yaml": "^4.0.9",
         "@types/node": "^16.11.7",
         "esbuild": "^0.17.17",
-        "obsidian": "^0.15.0",
+        "obsidian": "latest",
         "tslib": "^2.5.0",
         "typescript": "^5.0.4"
     },

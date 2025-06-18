@@ -1,5 +1,13 @@
-/* --- Editor Statblock Styles --- */
-/* These styles ONLY apply to the statblocks rendered from code blocks in the editor. */
+/* -----------------------------------------------------------------------------
+   1. VARIABLES
+   ----------------------------------------------------------------------------- */
+/* Colors and themes are inherited from Obsidian's CSS variables system */
+
+
+/* -----------------------------------------------------------------------------
+   2. EDITOR STATBLOCK STYLES 
+   Styles that apply to statblocks rendered from code blocks in the editor
+   ----------------------------------------------------------------------------- */
 .dh-editor-statblock {
     background-color: #f3f0e9;
     border: 1px solid #dcdad5;
@@ -12,6 +20,7 @@
     font-size: var(--font-text-size, 16px);
 }
 
+/* Name styling */
 .dh-editor-statblock .dh-name {
     font-size: 1.8em;
     font-weight: 900;
@@ -22,6 +31,7 @@
     line-height: 1.1;
 }
 
+/* Tier and type information */
 .dh-editor-statblock .dh-tier-type {
     font-size: 1.2em;
     font-weight: 600;
@@ -29,12 +39,14 @@
     margin: 0.2em 0 0.8em 0;
 }
 
+/* Description styling */
 .dh-editor-statblock .dh-description {
     font-style: normal;
     margin-bottom: 0.8em;
     color: #333;
 }
 
+/* Motives section */
 .dh-editor-statblock .dh-motives {
     margin-bottom: 0.8em;
 }
@@ -43,6 +55,7 @@
     font-weight: 700;
 }
 
+/* Stats grid layout */
 .dh-editor-statblock .dh-stats-grid {
     display: flex;
     flex-wrap: wrap;
@@ -67,6 +80,7 @@
     margin: 0 0.25em;
 }
 
+/* Features section */
 .dh-editor-statblock .dh-features-title {
     font-size: 1.5em;
     font-weight: 900;
@@ -108,7 +122,11 @@
 }
 
 
-/* --- General Utility and Shared Styles --- */
+/* -----------------------------------------------------------------------------
+   3. GENERAL UTILITY AND SHARED STYLES
+   Common styles used across the plugin
+   ----------------------------------------------------------------------------- */
+/* Error message display */
 .dh-statblock-error {
     background-color: var(--background-modifier-error);
     color: var(--text-error);
@@ -118,6 +136,7 @@
     white-space: pre-wrap;
 }
 
+/* Rollable dice styling */
 .dh-rollable-dice {
     color: var(--interactive-accent);
     cursor: pointer;
@@ -125,59 +144,39 @@
     text-decoration-style: dashed;
     text-underline-offset: 3px;
 }
+
 .dh-rollable-dice:hover {
     color: var(--interactive-accent-hover);
     text-decoration-style: solid;
 }
 
+/* Accessibility helper */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 
-/* --- Encounter Builder UI & View Statblock Styles --- */
+
+/* -----------------------------------------------------------------------------
+   4. ENCOUNTER BUILDER LAYOUT
+   Main layout components for the encounter builder UI
+   ----------------------------------------------------------------------------- */
 .dh-encounter-builder-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden; /* Hide overflow at container level */
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden; /* Hide overflow at container level */
 }
 
 .dh-top-row {
-  flex-shrink: 0;
-}
-
-.dh-encounter-area {
-  display: flex; 
-  flex-wrap: nowrap; 
-  gap: var(--size-4-3, 15px); 
-  align-items: stretch; /* Stretch items to fill height */
-  overflow-x: auto; /* Only horizontal scrolling */
-  overflow-y: hidden; /* Prevent vertical scrolling */
-  padding-bottom: var(--size-4-3); /* Ensure space for scrollbar */
-  flex-grow: 1;
-  height: calc(100% - var(--size-4-3)); /* Account for padding */
-}
-
-.dh-adversary-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-4-2);
-  flex-shrink: 0;
-  width: 280px;
-  /* height: 100%; */
-  align-items: stretch; /* Stretch items to fill width */
-}
-
-.dh-adversary-instance-card {
-  background-color: var(--color-base-25); 
-  color: var(--text-normal); 
-  border-radius: var(--radius-m, 8px);
-  padding: 0; 
-  width: 300px; 
-  box-shadow: var(--shadow-m);
-  display: flex;
-  flex-direction: column;
-  position: relative; 
-  flex-grow: inherit;
-  max-height: 100%;
-  overflow-y: auto;
+    flex-shrink: 0;
 }
 
 .dh-encounter-wrapper {
@@ -198,6 +197,7 @@
     flex-shrink: 0;
     gap: var(--size-4-4);
 }
+
 .dh-title-fear-wrapper {
     display: flex;
     align-items: center;
@@ -205,21 +205,102 @@
     flex-grow: 1;
     min-width: 0;
 }
-.dh-active-encounter-title-clickable { 
-    margin: 0;
-    font-size: var(--font-ui-large, 1.2em);
-    color: var(--interactive-accent, #aaa); 
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    flex-shrink: 1;
-}
-.dh-active-encounter-title-clickable:hover {
-    color: var(--interactive-accent-hover);
+
+.dh-encounter-main-interface {
+    display: flex;
+    flex-grow: 1; 
+    gap: var(--size-4-3, 15px); 
+    overflow: hidden; /* Control scrolling on child elements */
+    padding: var(--size-4-2) var(--size-4-2) var(--size-4-2) 0;
 }
 
+.dh-encounter-area {
+    display: flex; 
+    flex-wrap: nowrap; 
+    gap: var(--size-4-3, 15px); 
+    align-items: stretch; /* Stretch items to fill height */
+    overflow-x: auto; /* Only horizontal scrolling */
+    overflow-y: hidden; /* Prevent vertical scrolling */
+    padding-bottom: var(--size-4-3); /* Ensure space for scrollbar */
+    flex-grow: 1;
+    height: calc(100% - var(--size-4-3)); /* Account for padding */
+}
+
+.dh-encounter-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+
+
+/* -----------------------------------------------------------------------------
+   5. BUTTONS AND CONTROLS
+   General button and control styles used throughout the plugin
+   ----------------------------------------------------------------------------- */
+.dh-icon-button { 
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: var(--size-2-2); 
+    cursor: pointer;
+    border-radius: var(--radius-s);
+}
+
+.dh-icon-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.dh-encounter-controls .dh-icon-button.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.dh-encounter-controls .dh-icon-button.is-active:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+.dh-panel-controls .dh-icon-button { 
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: var(--size-2-1);
+    cursor: pointer;
+    border-radius: var(--radius-s);
+}
+
+.dh-panel-controls .dh-icon-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+/* Add to group button */
+.dh-add-to-group-button-container {
+    text-align: center;
+    padding: var(--size-4-2, 8px) 0;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-add-to-group-btn {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
+    font-size: var(--font-ui-small);
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.dh-add-to-group-btn:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* -----------------------------------------------------------------------------
+   6. TRACKERS
+   Budget, fear, and other tracker styles
+   ----------------------------------------------------------------------------- */
+/* Right side trackers container */
 .dh-right-side-trackers {
     display: flex;
     align-items: center;
@@ -227,6 +308,7 @@
     margin-left: auto; /* Pushes this container to the right */
 }
 
+/* Fear tracker */
 .dh-fear-tracker {
     display: flex;
     align-items: center;
@@ -239,11 +321,13 @@
     font-size: var(--font-ui-small);
     font-weight: var(--font-semibold);
 }
+
 .dh-fear-controls {
     display: flex;
     align-items: center;
     gap: var(--size-4-1);
 }
+
 .dh-fear-btn {
     width: 24px;
     height: 24px;
@@ -253,9 +337,11 @@
     cursor: pointer;
     font-size: 1.1em;
 }
+
 .dh-fear-btn:hover {
     background-color: var(--interactive-hover);
 }
+
 .dh-fear-value {
     min-width: 24px;
     text-align: center;
@@ -263,6 +349,7 @@
     font-size: 1em;
 }
 
+/* Budget tracker */
 .dh-budget-tracker {
     display: flex;
     align-items: center;
@@ -274,6 +361,7 @@
     cursor: pointer;
     border: 1px solid transparent;
 }
+
 .dh-budget-tracker:hover {
     background-color: var(--background-modifier-hover);
     border-color: var(--background-modifier-border);
@@ -297,475 +385,14 @@
     color: var(--text-error);
 }
 
-
-.dh-encounter-controls {
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-1);
-}
-.dh-icon-button { 
-    background-color: transparent;
-    border: none;
-    color: var(--text-muted);
-    padding: var(--size-2-2); 
-    cursor: pointer;
-    border-radius: var(--radius-s);
-}
-.dh-icon-button:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
-}
-.dh-encounter-controls .dh-icon-button.is-active {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-.dh-encounter-controls .dh-icon-button.is-active:hover {
-    background-color: var(--interactive-accent-hover);
-}
-
-
-.dh-encounter-main-interface {
-    display: flex;
-    flex-grow: 1; 
-    gap: var(--size-4-3, 15px); 
-    overflow: hidden; /* We'll control scrolling on a child element */
-    padding: var(--size-4-2) var(--size-4-2) var(--size-4-2) 0;
-}
-
-.dh-compendium-panel {
-    background-color: var(--background-primary, #333); 
-    border: 1px solid var(--background-modifier-border, #444);
-    border-radius: var(--radius-m, 6px);
-    padding: var(--size-4-2, 10px);
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 280px; 
-    min-width: 240px;
-    height: 100%;
-    color: var(--text-normal, #ccc);
-    transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out, border 0.3s ease-in-out, margin 0.3s ease-in-out; 
-    order: 2;
-}
-.dh-compendium-panel.dh-compendium-panel-hidden {
-    flex-basis: 0 !important; 
-    min-width: 0 !important;
-    padding: 0 !important;
-    opacity: 0 !important;
-    overflow: hidden !important; 
-    border: none !important;
-    margin-left: 0 !important; 
-}
-.dh-compendium-panel.dh-compendium-panel-hidden > * {
-    display: none; 
-}
-
-
-.dh-panel-header { 
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--size-4-2, 10px);
-    padding-bottom: var(--size-4-1, 5px);
-    border-bottom: 1px solid var(--background-modifier-border, #555);
-}
-.dh-panel-header h3 {
-    margin: 0;
-    font-size: var(--font-ui-large, 1.2em);
-    color: var(--text-normal, #aaa);
-}
-.dh-panel-controls .dh-icon-button { 
-    background-color: transparent;
-    border: none;
-    color: var(--text-muted);
-    padding: var(--size-2-1);
-    cursor: pointer;
-    border-radius: var(--radius-s);
-}
-.dh-panel-controls .dh-icon-button:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
-}
-
-/* --- Conditions --- */
-.dh-conditions-container {
-    margin-bottom: var(--size-4-2);
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-4-1);
-    align-items: center;
-}
-.dh-additional-tracker-row .dh-conditions-container {
-    padding: var(--size-4-2) 0 0 0;
-}
-.dh-condition-tag {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    padding: var(--size-2-1) var(--size-4-2);
-    border-radius: var(--radius-s);
-    font-size: var(--font-ui-smaller);
-    display: inline-flex;
-    align-items: center;
-    cursor: default;
-}
-.dh-condition-remove {
-    margin-left: var(--size-4-1);
-    cursor: pointer;
-    font-weight: bold;
-    opacity: 0.7;
-}
-.dh-condition-remove:hover {
-    opacity: 1;
-}
-.dh-add-condition-btn {
-    background-color: var(--background-modifier-hover);
-    border: 1px dashed var(--background-modifier-border);
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.dh-add-condition-btn:hover {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-style: solid;
-}
-
-
-.dh-compendium-list { 
-    display: flex; 
-    flex-direction: column; 
-    gap: var(--size-4-1, 5px); 
-    overflow-y: auto;
-    flex: 1;
-    min-height: 0;
-}
-.dh-compendium-entry {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: var(--size-4-2, 8px); background-color: var(--background-secondary, #3a3a44);
-    border-radius: var(--radius-s, 4px); border: 1px solid var(--background-modifier-border, #555);
-    color: var(--text-normal, #ccc);
-}
-.dh-compendium-entry:hover {
-    background-color: var(--background-modifier-hover, #4a4a54);
-}
-.dh-compendium-entry .dh-add-compendium-btn { 
-    padding: var(--size-4-1, 3px) var(--size-4-2, 8px);
-    font-size: var(--font-ui-small, 0.9em);
-    background-color: var(--interactive-accent); 
-    color: var(--text-on-accent);
-    border: none;
-    border-radius: var(--radius-s, 3px);
-}
-.dh-compendium-entry .dh-add-compendium-btn:hover {
-    background-color: var(--interactive-accent-hover);
-}
-
-.dh-active-adversaries-panel { 
-    display: flex;
-    flex-direction: column; 
-    flex-grow: 1; 
-    order: 1; 
-    overflow-y: auto;
-}
-.dh-active-encounter-title-clickable { 
-    margin-top: 0; 
-    font-size: var(--font-ui-large, 1.2em);
-    color: var(--interactive-accent, #aaa); 
-    cursor: pointer;
-    user-select: none;
-    transition: color 0.1s ease-in-out;
-}
-.dh-active-encounter-title-clickable:hover {
-    color: var(--interactive-accent-hover);
-}
-
-
-.dh-encounter-area {
-    display: flex; 
-    flex-wrap: nowrap; 
-    gap: var(--size-4-3, 15px); 
-    align-items: stretch; /* Stretch items to fill height */
-    overflow-x: auto; /* Only horizontal scrolling */
-    overflow-y: hidden; /* Prevent vertical scrolling */
-    padding-bottom: var(--size-4-3); /* Ensure space for scrollbar */
-    flex-grow: 1;
-    height: calc(100% - var(--size-4-3)); /* Account for padding */
-}
-
-.dh-adversary-group-container { 
-    display: flex;
-    flex-direction: column; 
-    flex-shrink: 0;
-    gap: var(--size-4-2); /* Add spacing between cards */
-    align-items: stretch; /* Stretch to fill width */
-}
-
-
-.dh-adversary-instance-card {
-    background-color: var(--color-base-25); 
-    border: var(--background-primary-alt), solid 1px;
-    color: var(--text-normal); 
-    border-radius: var(--radius-m, 8px);
-    padding: 0; 
-    width: 300px; 
-    box-shadow: var(--shadow-m);
-    display: flex;
-    flex-direction: column;
-    position: relative; 
-    flex-grow: inherit;
-    max-height: 100%;
-    overflow-y: auto;
-}
-.dh-remove-instance-btn { 
-    position: absolute;
-    top: var(--size-4-1, 5px); 
-    right: var(--size-4-1, 5px); 
-    background-color: transparent; 
-    color: var(--text-faint); 
-    border: none; 
-    border-radius: var(--radius-s); 
-    width: 20px; 
-    height: 20px; 
-    line-height: 18px; 
-    text-align: center;
-    font-size: var(--font-ui-smaller, 12px); 
-    cursor: pointer;
-    z-index: 10;
-    opacity: 0.6; 
-    transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
-}
-.dh-remove-instance-btn:hover { 
-    background-color: var(--background-modifier-hover); 
-    color: var(--text-normal);
-    opacity: 1;
-}
-
-.dh-instance-card-content { 
-    background-color: var(--background-primary); 
-    border: none; 
-    border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px); 
-    padding: var(--size-4-3, 12px);
-    margin: 0;
-    box-shadow: none;
-    color: var(--text-normal); 
-    flex-grow: 1; 
-    overflow-y: visible; /* Content can extend beyond, parent will scroll */
-    display: flex;
-    flex-direction: column;
-}
-.dh-instance-card-content .dh-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start; /* Changed from center to allow for text wrapping */
-    gap: var(--size-4-2);
-    padding-bottom: var(--size-4-1, 5px); 
-    margin-bottom: 0; 
-    text-align: left;
-}
-.dh-instance-card-content .dh-header .dh-name {
-    font-size: var(--font-ui-medium, 1.15em); 
-    font-weight: var(--font-bold);
-    color: var(--text-normal, #fff); 
-    display: inline;
-    flex-grow: 1;
-    padding-right: 70px;
-    word-break: break-word; /* Allow words to break if they're too long */
-    overflow-wrap: break-word; /* Ensure long words wrap correctly */
-}
-.dh-card-role-text { 
-    font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-semibold, 600);
-    color: var(--text-muted); 
-    text-transform: uppercase;
-    margin-bottom: var(--size-4-2, 10px); 
-    padding: var(--size-4-1, 2px) 0; 
-}
-
-
-.dh-instance-card-content .dh-description {
-    font-style: italic;
-    font-size: var(--font-smaller, 0.875em);
-    margin-top: var(--size-4-1);
-    color: var(--text-muted);
-}
-
-
-.dh-instance-card-content .dh-motives {
-    font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-light, 300);
-    color: var(--text-normal);
-    margin-top: var(--size-4-1);
-    padding-top: var(--size-4-1);
-}
-.dh-instance-card-content .dh-motives strong {
-     font-weight: var(--font-bold, bold); 
-}
-
-.dh-instance-card-content .dh-core-stats-line {
-    font-size: var(--font-ui-medium, 13px); 
-    color: var(--text-normal);
-    display: flex;
-    flex-direction: column; 
-    gap: var(--size-4-1, 5px); 
-    padding: var(--size-4-2, 6px) 0;
-    margin-bottom: var(--size-4-2, 8px);
-}
-.dh-instance-card-content .dh-attack-details-span strong { 
-    color: var(--text-strong, var(--text-normal)); 
-    font-weight: var(--font-bold);
-} 
-
-
-.dh-instance-card-content .dh-experience { 
-    font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-light, 300);
-    color: var(--text-normal);
-    margin-top: var(--size-4-1);
-    padding-top: var(--size-4-1);
-}
-.dh-instance-card-content .dh-experience strong { 
-    font-weight: var(--font-bold, bold); 
-}
-
-
-.dh-instance-features-title { 
-    font-size: var(--font-ui-small, 13px); 
-    font-weight: var(--font-bold, 700);
-    text-align: left;
-    margin-top: var(--size-4-3, 15px); 
-    margin-bottom: var(--size-2-1, 8px); 
-    color: var(--text-muted, #b8c0c8); 
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* --- Features Section (in-card) --- */
-.dh-instance-card-content .dh-features-list { 
-    list-style-type: none; 
-    padding-left: 0; 
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-1);
-}
-
-.dh-instance-card-content .dh-feature-item {
-    line-height: var(--line-height-normal);
-}
-
-.dh-instance-card-content .dh-feature-header-container { 
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--size-4-2);
-    padding: var(--size-4-2);
-    background-color: var(--background-secondary-alt);
-    border-radius: var(--radius-s);
-    cursor: pointer;
-    border: 1px solid var(--background-modifier-border);
-    transition: all 0.2s ease;
-}
-.dh-instance-card-content .dh-feature-header-container:hover {
-    background-color: var(--background-modifier-hover);
-    border-color: var(--background-modifier-border-hover);
-}
-.dh-instance-card-content .dh-feature-header-container.is-expanded {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    border-bottom-color: transparent;
-}
-
-
-.dh-instance-card-content .dh-feature-name {
-    flex-grow: 1;
-    font-weight: var(--font-bold);
-}
-
-.dh-feature-meta {
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-2);
-    flex-shrink: 0;
-}
-
-.dh-feature-meta .dh-feature-tag {
-    font-size: var(--font-ui-smaller);
-    padding: var(--size-2-1) var(--size-2-2);
-    border-radius: var(--radius-s);
-    line-height: 1;
-    font-weight: var(--font-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.dh-feature-tag-cost {
-    font-weight: var(--font-bold);
-}
-.dh-feature-tag-stress {
-    background-color: var(--color-purple-faint);
-    color: var(--color-purple-strong);
-}
-.dh-feature-tag-fear {
-    background-color: var(--color-cyan-faint);
-    color: var(--color-cyan-strong);
-}
-
-.dh-feature-tag-action {
-    background-color: var(--color-orange-faint);
-    color: var(--color-orange-strong);
-}
-.dh-feature-tag-reaction {
-    background-color: var(--color-blue-faint);
-    color: var(--color-blue-strong);
-}
-.dh-feature-tag-passive {
-    background-color: var(--color-green-faint);
-    color: var(--color-green-strong);
-}
-
-.dh-feature-cost-text {
-    color: var(--text-accent);
-}
-
-.dh-instance-card-content .dh-feature-toggle {
-    color: var(--text-muted); 
-    transition: transform 0.2s ease;
-}
-.dh-feature-header-container.is-expanded .dh-feature-toggle {
-    transform: rotate(0); /* Explicitly set for transition */
-}
-
-
-.dh-instance-card-content .dh-feature-description {
-    font-size: var(--font-smaller);
-    padding: var(--size-4-3); 
-    color: var(--text-muted); 
-    background-color: var(--background-secondary-alt);
-    border: 1px solid var(--background-modifier-border);
-    border-top: none;
-    border-radius: 0 0 var(--radius-s) var(--radius-s);
-}
-
-.dh-feature-description-hidden {
-    display: none;
-}
-
-
-.dh-instance-card-content .dh-hp-stress-container {
-    margin-top: var(--size-4-3, 12px);
-    padding-top: var(--size-4-2, 8px);
-    border-top: 1px solid var(--background-modifier-border);
-}
-
+/* Interactive tracks (HP, Stress, etc.) */
 .dh-interactive-track { 
     display: flex !important; 
     align-items: center; 
     margin-bottom: var(--size-4-2, 8px); 
     min-height: 25px; 
 }
+
 .dh-track-label {
     font-weight: var(--font-semibold, bold); 
     margin-right: var(--size-4-1, 5px);
@@ -802,11 +429,21 @@
     align-items: center;
     justify-content: center;
 }
-.dh-track-btn:hover { background-color: var(--interactive-hover); }
-.dh-track-btn:active { background-color: var(--background-modifier-border-focus); transform: translateY(1px); }
 
-.dh-track-btn.dh-track-btn-decrement { padding-bottom: 1px; } 
+.dh-track-btn:hover { 
+    background-color: var(--interactive-hover); 
+}
 
+.dh-track-btn:active { 
+    background-color: var(--background-modifier-border-focus); 
+    transform: translateY(1px); 
+}
+
+.dh-track-btn.dh-track-btn-decrement { 
+    padding-bottom: 1px; 
+} 
+
+/* Pips for tracking HP/Stress */
 .dh-pips-container { 
     display: flex !important; 
     flex-wrap: wrap !important; 
@@ -817,6 +454,7 @@
     flex-grow: 1; 
     gap: var(--size-2-1, 3px); 
 }
+
 .dh-pip {
     width: 13px; 
     height: 13px; 
@@ -827,12 +465,179 @@
     border-radius: var(--radius-s, 3px); 
     flex-shrink: 0; 
 }
+
 .dh-pip-marked { 
     background-color: var(--interactive-accent); 
     border-color: var(--interactive-accent-hover);
 }
 
+/* -----------------------------------------------------------------------------
+   7. ADVERSARY CARDS AND GROUPS
+   Styles for adversary cards and group containers
+   ----------------------------------------------------------------------------- */
+/* Adversary group */
+.dh-adversary-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    flex-shrink: 0;
+    width: 280px;
+    align-items: stretch; /* Stretch items to fill width */
+}
 
+.dh-adversary-group-container { 
+    display: flex;
+    flex-direction: column; 
+    flex-shrink: 0;
+    gap: var(--size-4-2); /* Add spacing between cards */
+    align-items: stretch; /* Stretch to fill width */
+}
+
+/* Adversary cards */
+.dh-adversary-instance-card {
+    background-color: var(--color-base-25); 
+    color: var(--text-normal); 
+    border-radius: var(--radius-m, 8px);
+    padding: 0; 
+    width: 300px; 
+    box-shadow: var(--shadow-m);
+    display: flex;
+    flex-direction: column;
+    position: relative; 
+    flex-grow: inherit;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+.dh-remove-instance-btn { 
+    position: absolute;
+    top: var(--size-4-1, 5px); 
+    right: var(--size-4-1, 5px); 
+    background-color: transparent; 
+    color: var(--text-faint); 
+    border: none; 
+    border-radius: var(--radius-s); 
+    width: 20px; 
+    height: 20px; 
+    line-height: 18px; 
+    text-align: center;
+    font-size: var(--font-ui-smaller, 12px); 
+    cursor: pointer;
+    z-index: 10;
+    opacity: 0.6; 
+    transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.dh-remove-instance-btn:hover { 
+    background-color: var(--background-modifier-hover); 
+    color: var(--text-normal);
+    opacity: 1;
+}
+
+/* Card content */
+.dh-instance-card-content { 
+    background-color: var(--background-primary); 
+    border: none; 
+    border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px); 
+    padding: var(--size-4-3, 12px);
+    margin: 0;
+    box-shadow: none;
+    color: var(--text-normal); 
+    flex-grow: 1; 
+    overflow-y: visible; /* Content can extend beyond, parent will scroll */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Card header */
+.dh-instance-card-content .dh-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* Changed from center to allow for text wrapping */
+    gap: var(--size-4-2);
+    padding-bottom: var(--size-4-1, 5px); 
+    margin-bottom: 0; 
+    text-align: left;
+}
+
+.dh-instance-card-content .dh-header .dh-name {
+    font-size: var(--font-ui-medium, 1.15em); 
+    font-weight: var(--font-bold);
+    color: var(--text-normal, #fff); 
+    display: inline;
+    flex-grow: 1;
+    padding-right: 70px;
+    word-break: break-word; /* Allow words to break if they're too long */
+    overflow-wrap: break-word; /* Ensure long words wrap correctly */
+}
+
+.dh-card-role-text { 
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-muted); 
+    text-transform: uppercase;
+    margin-bottom: var(--size-4-2, 10px); 
+    padding: var(--size-4-1, 2px) 0; 
+}
+
+/* Card description */
+.dh-instance-card-content .dh-description {
+    font-style: italic;
+    font-size: var(--font-smaller, 0.875em);
+    margin-top: var(--size-4-1);
+    color: var(--text-muted);
+}
+
+/* Card motives */
+.dh-instance-card-content .dh-motives {
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-light, 300);
+    color: var(--text-normal);
+    margin-top: var(--size-4-1);
+    padding-top: var(--size-4-1);
+}
+
+.dh-instance-card-content .dh-motives strong {
+     font-weight: var(--font-bold, bold); 
+}
+
+/* Card stats */
+.dh-instance-card-content .dh-core-stats-line {
+    font-size: var(--font-ui-medium, 13px); 
+    color: var(--text-normal);
+    display: flex;
+    flex-direction: column; 
+    gap: var(--size-4-1, 5px); 
+    padding: var(--size-4-2, 6px) 0;
+    margin-bottom: var(--size-4-2, 8px);
+}
+
+.dh-instance-card-content .dh-attack-details-span strong { 
+    color: var(--text-strong, var(--text-normal)); 
+    font-weight: var(--font-bold);
+} 
+
+/* Card experience */
+.dh-instance-card-content .dh-experience { 
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-light, 300);
+    color: var(--text-normal);
+    margin-top: var(--size-4-1);
+    padding-top: var(--size-4-1);
+}
+
+.dh-instance-card-content .dh-experience strong { 
+    font-weight: var(--font-bold, bold); 
+}
+
+/* Card HP and Stress container */
+.dh-instance-card-content .dh-hp-stress-container {
+    margin-top: var(--size-4-3, 12px);
+    padding-top: var(--size-4-2, 8px);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Card image */
 .dh-card-image-container {
     width: 100%;
     height: 120px; 
@@ -841,13 +646,187 @@
     border-radius: var(--radius-m, 8px) var(--radius-m, 8px) 0 0; 
     background-color: var(--color-base-20); 
     position: relative; 
+    padding-top: 0;
 }
+
 .dh-card-image {
     width: 100%;
     height: 100%;
     object-fit: cover; 
 }
 
+/* Card header controls */
+.dh-card-header-controls {
+    position: absolute;
+    top: var(--size-4-2);
+    right: var(--size-4-2);
+    display: flex;
+    gap: var(--size-4-1);
+    z-index: 10;
+}
+
+.dh-card-header-controls .dh-icon-button,
+.dh-card-header-controls .dh-drag-handle {
+    background-color: rgba(var(--background-primary-rgb), 0.5);
+    backdrop-filter: blur(2px);
+    color: var(--text-muted);
+    border-radius: var(--radius-s);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: all 0.2s ease-in-out;
+    border: none;
+    padding: 0;
+}
+
+.dh-card-header-controls .dh-icon-button:hover,
+.dh-card-header-controls .dh-drag-handle:hover {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    opacity: 1;
+}
+
+
+/* -----------------------------------------------------------------------------
+   8. FEATURES SECTION
+   Styles for features in cards
+   ----------------------------------------------------------------------------- */
+.dh-instance-features-title { 
+    font-size: var(--font-ui-small, 13px); 
+    font-weight: var(--font-bold, 700);
+    text-align: left;
+    margin-top: var(--size-4-3, 15px); 
+    margin-bottom: var(--size-2-1, 8px); 
+    color: var(--text-muted, #b8c0c8); 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dh-instance-card-content .dh-features-list { 
+    list-style-type: none; 
+    padding-left: 0; 
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+}
+
+.dh-instance-card-content .dh-feature-item {
+    line-height: var(--line-height-normal);
+}
+
+.dh-instance-card-content .dh-feature-header-container { 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary-alt);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    border: 1px solid var(--background-modifier-border);
+    transition: all 0.2s ease;
+}
+
+.dh-instance-card-content .dh-feature-header-container:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.dh-instance-card-content .dh-feature-header-container.is-expanded {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
+}
+
+.dh-instance-card-content .dh-feature-name {
+    flex-grow: 1;
+    font-weight: var(--font-bold);
+}
+
+.dh-feature-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    flex-shrink: 0;
+}
+
+.dh-feature-meta .dh-feature-tag {
+    font-size: var(--font-ui-smaller);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    line-height: 1;
+    font-weight: var(--font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Feature tags by type */
+.dh-feature-tag-cost {
+    font-weight: var(--font-bold);
+}
+
+.dh-feature-tag-stress {
+    background-color: var(--color-purple-faint);
+    color: var(--color-purple-strong);
+}
+
+.dh-feature-tag-fear {
+    background-color: var(--color-cyan-faint);
+    color: var(--color-cyan-strong);
+}
+
+.dh-feature-tag-action {
+    background-color: var(--color-orange-faint);
+    color: var(--color-orange-strong);
+}
+
+.dh-feature-tag-reaction {
+    background-color: var(--color-blue-faint);
+    color: var(--color-blue-strong);
+}
+
+.dh-feature-tag-passive {
+    background-color: var(--color-green-faint);
+    color: var(--color-green-strong);
+}
+
+.dh-feature-cost-text {
+    color: var(--text-accent);
+}
+
+/* Feature toggle (expand/collapse) */
+.dh-instance-card-content .dh-feature-toggle {
+    color: var(--text-muted); 
+    transition: transform 0.2s ease;
+}
+
+.dh-feature-header-container.is-expanded .dh-feature-toggle {
+    transform: rotate(0); /* Explicitly set for transition */
+}
+
+/* Feature description */
+.dh-instance-card-content .dh-feature-description {
+    font-size: var(--font-smaller);
+    padding: var(--size-4-3); 
+    color: var(--text-muted); 
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-s) var(--radius-s);
+}
+
+.dh-feature-description-hidden {
+    display: none;
+}
+
+
+/* -----------------------------------------------------------------------------
+   9. ADDITIONAL TRACKERS
+   Styles for additional trackers in cards (beyond HP/Stress)
+   ----------------------------------------------------------------------------- */
 .dh-additional-trackers-container {
     margin-top: var(--size-4-2, 8px); 
 }
@@ -860,6 +839,7 @@
     margin-top: var(--size-4-2);
     border-top: 1px solid var(--background-modifier-border);
 }
+
 .dh-additional-tracker-row:last-child {
     margin-bottom: 0; 
 }
@@ -870,7 +850,6 @@
     padding-top: 0;
     border-top: none;
 }
-
 
 .dh-additional-tracker-header {
     display: flex;
@@ -903,101 +882,360 @@
     opacity: 0.6; 
     transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
 }
+
 .dh-remove-additional-btn:hover { 
     color: var(--color-red); 
     opacity: 1;
 }
 
-.dh-add-to-group-button-container {
-    text-align: center;
-    padding: var(--size-4-2, 8px) 0;
-    /* margin-top: var(--size-4-3); */
-    border-top: 1px solid var(--background-modifier-border);
+
+/* -----------------------------------------------------------------------------
+   10. CONDITIONS
+   Styles for condition tags and containers
+   ----------------------------------------------------------------------------- */
+.dh-conditions-container {
+    margin-bottom: var(--size-4-2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1);
+    align-items: center;
 }
-.dh-add-to-group-btn {
+
+.dh-additional-tracker-row .dh-conditions-container {
+    padding: var(--size-4-2) 0 0 0;
+}
+
+.dh-condition-tag {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
-    border: none;
-    border-radius: var(--radius-m);
-    padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
-    font-size: var(--font-ui-small);
-    cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+    display: inline-flex;
+    align-items: center;
+    cursor: default;
 }
-.dh-add-to-group-btn:hover {
+
+.dh-condition-remove {
+    margin-left: var(--size-4-1);
+    cursor: pointer;
+    font-weight: bold;
+    opacity: 0.7;
+}
+
+.dh-condition-remove:hover {
+    opacity: 1;
+}
+
+.dh-add-condition-btn {
+    background-color: var(--background-modifier-hover);
+    border: 1px dashed var(--background-modifier-border);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dh-add-condition-btn:hover {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-style: solid;
+}
+
+/* Condition list in menus */
+.dh-conditions-list-container {
+    padding: 0;
+    margin: var(--size-4-1) 0 var(--size-4-2) 0;
+}
+
+.dh-condition-tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1);
+}
+
+.dh-condition-tag > span {
+    margin-right: var(--size-4-1);
+}
+
+.dh-remove-condition-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    font-size: var(--font-ui-small);
+}
+
+.dh-remove-condition-btn:hover {
+    color: var(--text-error);
+}
+
+/* -----------------------------------------------------------------------------
+   11. COMPENDIUM PANEL
+   Styles for the compendium panel and its contents
+   ----------------------------------------------------------------------------- */
+.dh-compendium-panel {
+    background-color: var(--background-primary, #333); 
+    border: 1px solid var(--background-modifier-border, #444);
+    border-radius: var(--radius-m, 6px);
+    padding: var(--size-4-2, 10px);
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 280px; 
+    min-width: 240px;
+    height: 100%;
+    color: var(--text-normal, #ccc);
+    transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out, border 0.3s ease-in-out, margin 0.3s ease-in-out; 
+    order: 2;
+}
+
+.dh-compendium-panel.dh-compendium-panel-hidden {
+    flex-basis: 0 !important; 
+    min-width: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important; 
+    border: none !important;
+    margin-left: 0 !important; 
+}
+
+.dh-compendium-panel.dh-compendium-panel-hidden > * {
+    display: none; 
+}
+
+.dh-panel-header { 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--size-4-2, 10px);
+    padding-bottom: var(--size-4-1, 5px);
+    border-bottom: 1px solid var(--background-modifier-border, #555);
+}
+
+.dh-panel-header h3 {
+    margin: 0;
+    font-size: var(--font-ui-large, 1.2em);
+    color: var(--text-normal, #aaa);
+}
+
+/* Compendium list and entries */
+.dh-compendium-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: var(--size-4-1, 5px); 
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.dh-compendium-entry {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    padding: var(--size-4-2, 8px); 
+    background-color: var(--background-secondary, #3a3a44);
+    border-radius: var(--radius-s, 4px); 
+    border: 1px solid var(--background-modifier-border, #555);
+    color: var(--text-normal, #ccc);
+}
+
+.dh-compendium-entry:hover {
+    background-color: var(--background-modifier-hover, #4a4a54);
+}
+
+.dh-compendium-entry .dh-add-compendium-btn { 
+    padding: var(--size-4-1, 3px) var(--size-4-2, 8px);
+    font-size: var(--font-ui-small, 0.9em);
+    background-color: var(--interactive-accent); 
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: var(--radius-s, 3px);
+}
+
+.dh-compendium-entry .dh-add-compendium-btn:hover {
     background-color: var(--interactive-accent-hover);
 }
 
+/* Active adversaries panel */
+.dh-active-adversaries-panel { 
+    display: flex;
+    flex-direction: column; 
+    flex-grow: 1; 
+    order: 1; 
+    overflow-y: auto;
+}
 
+.dh-active-encounter-title-clickable { 
+    margin: 0;
+    margin-top: 0; 
+    font-size: var(--font-ui-large, 1.2em);
+    color: var(--interactive-accent, #aaa); 
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    transition: color 0.1s ease-in-out;
+}
+
+.dh-active-encounter-title-clickable:hover {
+    color: var(--interactive-accent-hover);
+}
+
+/* Compendium search */
+.dh-compendium-search {
+    width: calc(100% - var(--size-4-2) * 2); 
+    padding: var(--size-4-2);
+    margin-bottom: var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+}
+
+.dh-compendium-search:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2); 
+}
+
+/* -----------------------------------------------------------------------------
+   12. FILTERS
+   Styles for filter controls in the compendium
+   ----------------------------------------------------------------------------- */
+.dh-filter-controls {
+    display: flex;
+    gap: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    flex-wrap: wrap;
+}
+
+.dh-filter-section {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+
+.dh-filter-label {
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+/* Tier filter buttons */
+.dh-tier-button {
+    padding: var(--size-4-1) var(--size-4-2);
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    min-width: 30px;
+    text-align: center;
+}
+
+.dh-tier-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.dh-tier-button.active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.dh-tier-button.active:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* Type select dropdown */
+.dh-type-select {
+    padding: var(--size-4-1) var(--size-4-2);
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    min-width: 150px;
+}
+
+.dh-type-select:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.dh-type-select:focus {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+    outline: none;
+}
+
+.dh-type-select option {
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    padding: var(--size-4-1);
+}
+
+
+/* -----------------------------------------------------------------------------
+   13. MODALS
+   Styles for various modals used in the plugin
+   ----------------------------------------------------------------------------- */
+/* General modal styles */
 .dh-name-modal .modal-title, 
 .dh-manage-encounters-modal .modal-title { 
     color: var(--text-normal);
     text-align: center; 
 }
+
 .dh-name-modal .setting-item-info,
 .dh-manage-encounters-modal .setting-item-info { 
     color: var(--text-normal);
 }
+
 .dh-modal-input {
     border-color: var(--background-modifier-border-focus);
     background-color: var(--background-primary);
     color: var(--text-normal);
     width: 100%; 
 }
+
 .dh-modal-buttons {
     display: flex;
     justify-content: flex-end;
     margin-top: var(--size-4-4);
     gap: var(--size-4-2);
 }
+
 .dh-modal-buttons button {
     min-width: 80px;
 }
+
 .dh-name-modal .setting-item,
 .dh-manage-encounters-modal .setting-item {
     border: none;
 }
+
 .dh-name-modal .setting-item-control,
 .dh-manage-encounters-modal .setting-item-control {
     width: 100%;
 }
+
 .dh-name-modal .setting-item-control textarea {
     width: 100%;
     min-height: 80px;
-}
-
-
-.dh-manage-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-1);
-    max-height: 60vh; 
-    overflow-y: auto;
-    margin-top: var(--size-4-3); 
-}
-.dh-manage-list-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--size-4-2);
-    background-color: var(--background-secondary);
-    border-radius: var(--radius-s);
-    border: 1px solid var(--background-modifier-border);
-}
-.dh-manage-item-name-container { 
-    flex-grow: 1;
-    margin-right: var(--size-4-2);
-}
-.dh-manage-item-name {
-    color: var(--text-normal);
-}
-.dh-manage-item-input { 
-    width: 100%;
-    padding: var(--size-2-1) var(--size-2-2);
-    border: 1px solid var(--background-modifier-border-focus);
-    background-color: var(--background-primary);
-    color: var(--text-normal);
-    border-radius: var(--radius-s);
 }
 
 .dh-manage-item-buttons {
@@ -1053,98 +1291,10 @@
     color: var(--text-muted);
 }
 
-.dh-compendium-search {
-    width: calc(100% - var(--size-4-2) * 2); 
-    padding: var(--size-4-2);
-    margin-bottom: var(--size-4-3);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
-    background-color: var(--background-primary);
-    color: var(--text-normal);
-}
-.dh-compendium-search:focus {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2); 
-}
-
-/* --- Filter Controls Styling --- */
-.dh-filter-controls {
-    display: flex;
-    gap: var(--size-4-2);
-    margin-bottom: var(--size-4-2);
-    padding: var(--size-4-2);
-    background-color: var(--background-secondary);
-    border-radius: var(--radius-s);
-    flex-wrap: wrap;
-}
-
-.dh-filter-section {
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-1);
-}
-
-.dh-filter-label {
-    font-weight: var(--font-semibold);
-    color: var(--text-muted);
-    font-size: var(--font-ui-small);
-}
-
-.dh-tier-button {
-    padding: var(--size-4-1) var(--size-4-2);
-    background-color: var(--background-modifier-form-field);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: var(--font-ui-small);
-    min-width: 30px;
-    text-align: center;
-}
-
-.dh-tier-button:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
-}
-
-.dh-tier-button.active {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-color: var(--interactive-accent);
-}
-
-.dh-tier-button.active:hover {
-    background-color: var(--interactive-accent-hover);
-}
-
-.dh-type-select {
-    padding: var(--size-4-1) var(--size-4-2);
-    background-color: var(--background-modifier-form-field);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
-    color: var(--text-normal);
-    cursor: pointer;
-    font-size: var(--font-ui-small);
-    min-width: 150px;
-}
-
-.dh-type-select:hover {
-    background-color: var(--background-modifier-hover);
-    border-color: var(--background-modifier-border-hover);
-}
-
-.dh-type-select:focus {
-    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
-    outline: none;
-}
-
-.dh-type-select option {
-    background-color: var(--background-primary);
-    color: var(--text-normal);
-    padding: var(--size-4-1);
-}
-
-/* --- Countdown Popup --- */
+/* -----------------------------------------------------------------------------
+   14. COUNTDOWN POPUP 
+   Styles for the countdown popup and its contents
+   ----------------------------------------------------------------------------- */
 .dh-countdowns-popup {
     position: absolute;
     z-index: 100;
