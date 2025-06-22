@@ -27,6 +27,16 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
             motivesDiv.appendText(motivesText);
         }
     }
+    if (data.impulses) {
+        const impulsesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
+        impulsesDiv.createEl('strong', { text: 'Impulses: ' });
+        impulsesDiv.appendText(data.impulses);
+    }
+    if (data.potential_adversaries) {
+        const paDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
+        paDiv.createEl('strong', { text: 'Potential Adversaries: ' });
+        paDiv.appendText(data.potential_adversaries);
+    }
 
     const statsGrid = statblockContentDiv.createDiv({ cls: 'dh-stats-grid' });
     const statElements: HTMLElement[] = [];
@@ -38,7 +48,7 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
         statElements.push(span);
     }
 
-    if (data.hp_stress) {
+    if (data.hp_stress && data.category === 'adversary') {
         const thresholds = [];
         if (data.hp_stress.major_hp != null) thresholds.push(data.hp_stress.major_hp);
         if (data.hp_stress.severe_hp != null) thresholds.push(data.hp_stress.severe_hp);
@@ -93,7 +103,8 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
     });
 
     if (data.features && data.features.length > 0) {
-        statblockContentDiv.createDiv({ text: 'FEATURES', cls: 'dh-features-title' });
+        const title = data.category === 'environment' ? 'FEATS' : 'FEATURES';
+        statblockContentDiv.createDiv({ text: title, cls: 'dh-features-title' });
 
         const featuresListUl = statblockContentDiv.createEl('ul', { cls: 'dh-features-list' });
         data.features.forEach(feature => {
@@ -141,7 +152,85 @@ async function rollDice(plugin: DaggerheartStatblockPlugin, diceString: string) 
     }
 }
 
-function renderInstanceStatblock(
+function renderEnvironmentInstance(
+    plugin: DaggerheartStatblockPlugin,
+    data: AdversaryInstance,
+    containerEl: HTMLElement,
+) {
+    let statblockContentDiv = containerEl.querySelector('.dh-instance-card-content') ||
+        containerEl.createDiv({ cls: 'dh-instance-card-content' });
+    statblockContentDiv.empty();
+    (statblockContentDiv as HTMLElement).style.userSelect = 'text';
+
+    const headerDiv = statblockContentDiv.createDiv({ cls: 'dh-header' });
+    if (data.name) headerDiv.createSpan({ cls: 'dh-name', text: data.name.toUpperCase() });
+
+    const roleTagText = `${data.tier ? `Tier ${data.tier} ` : ''}${data.type || ''}`.trim();
+    if (roleTagText) {
+        statblockContentDiv.createDiv({ text: roleTagText, cls: 'dh-card-role-text' });
+    }
+
+    if (data.description) {
+        statblockContentDiv.createDiv({ text: data.description, cls: 'dh-description' });
+    }
+
+    if (data.impulses) {
+        const impulsesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
+        impulsesDiv.createEl('strong', { text: 'Impulses: ' });
+        impulsesDiv.appendText(data.impulses);
+    }
+
+    const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
+    if (data.difficulty !== undefined) {
+        coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
+    }
+
+    if (data.potential_adversaries) {
+        const paDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
+        paDiv.createEl('strong', { text: 'Potential Adversaries: ' });
+        paDiv.appendText(data.potential_adversaries);
+    }
+
+    if (data.features?.length) {
+        const featuresDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
+        featuresDiv.createDiv({ text: 'FEATS', cls: 'dh-instance-features-title' });
+        const featuresList = featuresDiv.createEl('ul', { cls: 'dh-features-list' });
+        data.features.forEach(feature => {
+            if (!feature?.name) return;
+            const li = featuresList.createEl('li', { cls: 'dh-feature-item' });
+            const isExpanded = plugin.settings.showFeatureDetailsOnCards;
+            const header = li.createDiv({ cls: `dh-feature-header-container${isExpanded ? ' is-expanded' : ''}` });
+            const nameSpan = header.createSpan({ cls: 'dh-feature-name' });
+            nameSpan.createEl('strong', { text: feature.name });
+            const metaContainer = header.createDiv({ cls: 'dh-feature-meta' });
+            if (feature.parsedCost) {
+                const costTag = metaContainer.createSpan({ text: feature.parsedCost, cls: 'dh-feature-tag dh-feature-tag-cost' });
+                if (feature.parsedCost.includes('S')) costTag.addClass('dh-feature-tag-stress');
+                else if (feature.parsedCost.includes('F')) costTag.addClass('dh-feature-tag-fear');
+            }
+            if (feature.type) {
+                metaContainer.createSpan({ text: feature.type.toUpperCase(), cls: `dh-feature-tag dh-feature-tag-${feature.type.toLowerCase().replace(/\s+/g, '-')}` });
+            }
+            if (feature.description) {
+                const toggle = metaContainer.createSpan({ cls: 'dh-feature-toggle' });
+                setIcon(toggle, isExpanded ? 'chevron-down' : 'chevron-right');
+            }
+            if (feature.description) {
+                const descDiv = li.createDiv({ cls: `dh-feature-description ${isExpanded ? '' : 'dh-feature-description-hidden'}` });
+                renderRollableContent(plugin, feature.description, descDiv);
+                header.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isHidden = descDiv.classList.toggle('dh-feature-description-hidden');
+                    header.classList.toggle('is-expanded', !isHidden);
+                    const toggleIconEl = header.querySelector('.dh-feature-toggle');
+                    if (toggleIconEl) setIcon(toggleIconEl as HTMLElement, isHidden ? 'chevron-right' : 'chevron-down');
+                });
+            }
+        });
+    }
+}
+
+function renderAdversaryInstance(
     plugin: DaggerheartStatblockPlugin,
     data: AdversaryInstance,
     containerEl: HTMLElement,
@@ -272,6 +361,7 @@ function renderInstanceStatblock(
     }
 }
 
+
 function addControlButtons(container: HTMLElement, instanceId: string, containerEl: HTMLElement) {
     const conditionBtn = container.createEl('button', { title: 'Add Condition', cls: 'dh-icon-button dh-add-condition-btn' });
     setIcon(conditionBtn, 'tag');
@@ -292,7 +382,12 @@ export function renderStatblockCard(
     groupSize?: number
 ) {
     if (isInstance) {
-        renderInstanceStatblock(plugin, data as AdversaryInstance, containerEl, displayName || data.name, hpUpdateCallback, stressUpdateCallback, groupSize);
+        const instanceData = data as AdversaryInstance;
+        if (instanceData.category === 'environment') {
+            renderEnvironmentInstance(plugin, instanceData, containerEl);
+        } else {
+            renderAdversaryInstance(plugin, instanceData, containerEl, displayName || data.name, hpUpdateCallback, stressUpdateCallback, groupSize);
+        }
     } else {
         renderEditorStatblock(plugin, data, containerEl);
     }

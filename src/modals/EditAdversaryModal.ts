@@ -25,7 +25,20 @@ export class EditAdversaryModal extends Modal {
 
         const contentBodyEl = contentEl.createDiv({ cls: 'modal-body' });
 
-        const basicInfoSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
+        if (this.adversary.category === 'environment') {
+            this.renderEnvironmentEditor(contentBodyEl);
+        } else {
+            this.renderAdversaryEditor(contentBodyEl);
+        }
+
+        const footerEl = contentEl.createDiv({ cls: 'modal-footer' });
+        const buttonContainer = footerEl.createDiv({ cls: 'dh-modal-buttons' });
+        new ButtonComponent(buttonContainer).setButtonText("Save to Compendium").setTooltip("Saves this item to your custom JSON file and closes").onClick(async () => { await this.plugin.saveItemToUserCompendium(this.adversary); this.onSubmit(this.adversary); this.close(); });
+        new ButtonComponent(buttonContainer).setButtonText("Apply & Close").setTooltip("Applies changes to this instance only and closes").setCta().onClick(() => { this.onSubmit(this.adversary); this.close(); });
+    }
+
+    renderAdversaryEditor(container: HTMLElement) {
+        const basicInfoSection = container.createDiv({ cls: 'dh-modal-section' });
         basicInfoSection.createEl('h3', { text: "Basic Information" });
         const infoGrid = basicInfoSection.createDiv({ cls: 'dh-modal-field-grid' });
         const nameSetting = new Setting(infoGrid).setName("Name").addText(text => text.setValue(this.adversary.name).onChange(val => this.adversary.name = val));
@@ -40,17 +53,19 @@ export class EditAdversaryModal extends Modal {
         const motivesSetting = new Setting(infoGrid).setName("Motives & Tactics").setDesc("Comma-separated").addTextArea(text => text.setValue(motives).onChange(val => this.adversary.motives_tactics = val.split(',').map(s => s.trim())));
         motivesSetting.settingEl.addClass('dh-grid-span-all');
 
-        const statsSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
+        const statsSection = container.createDiv({ cls: 'dh-modal-section' });
         statsSection.createEl('h3', { text: "Statistics" });
         const statsGrid = statsSection.createDiv({ cls: 'dh-modal-field-grid' });
         new Setting(statsGrid).setName("Difficulty").addText(text => text.setValue(String(this.adversary.difficulty || '')).onChange(val => this.adversary.difficulty = val));
-        new Setting(statsGrid).setName("Max HP").addText(text => text.setValue(String(this.adversary.hp_stress.hp)).onChange(val => this.adversary.hp_stress.hp = Number(val) || 0));
-        new Setting(statsGrid).setName("Max Stress").addText(text => text.setValue(String(this.adversary.hp_stress.stress)).onChange(val => this.adversary.hp_stress.stress = Number(val) || 0));
-        new Setting(statsGrid).setName("Major HP Threshold").addText(text => text.setValue(String(this.adversary.hp_stress.major_hp || '')).onChange(val => this.adversary.hp_stress.major_hp = Number(val) || null));
-        new Setting(statsGrid).setName("Severe HP Threshold").addText(text => text.setValue(String(this.adversary.hp_stress.severe_hp || '')).onChange(val => this.adversary.hp_stress.severe_hp = Number(val) || null));
+        if (this.adversary.hp_stress) {
+            new Setting(statsGrid).setName("Max HP").addText(text => text.setValue(String(this.adversary.hp_stress.hp)).onChange(val => { if (this.adversary.hp_stress) this.adversary.hp_stress.hp = Number(val) || 0; }));
+            new Setting(statsGrid).setName("Max Stress").addText(text => text.setValue(String(this.adversary.hp_stress.stress)).onChange(val => { if (this.adversary.hp_stress) this.adversary.hp_stress.stress = Number(val) || 0; }));
+            new Setting(statsGrid).setName("Major HP Threshold").addText(text => text.setValue(String(this.adversary.hp_stress.major_hp || '')).onChange(val => { if (this.adversary.hp_stress) this.adversary.hp_stress.major_hp = Number(val) || null; }));
+            new Setting(statsGrid).setName("Severe HP Threshold").addText(text => text.setValue(String(this.adversary.hp_stress.severe_hp || '')).onChange(val => { if (this.adversary.hp_stress) this.adversary.hp_stress.severe_hp = Number(val) || null; }));
+        }
         if (statsGrid.childElementCount % 2 !== 0) statsGrid.createDiv();
 
-        const attackSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
+        const attackSection = container.createDiv({ cls: 'dh-modal-section' });
         attackSection.createEl('h3', { text: "Attack" });
         if (!this.adversary.attack) this.adversary.attack = { name: 'Attack', range: '', damage: '', modifier: '0' };
         const attackGrid = attackSection.createDiv({ cls: 'dh-modal-field-grid' });
@@ -59,15 +74,42 @@ export class EditAdversaryModal extends Modal {
         new Setting(attackGrid).setName("Damage").addText(text => text.setValue(this.adversary.attack?.damage || '').onChange(val => { if (this.adversary.attack) this.adversary.attack.damage = val; }));
         new Setting(attackGrid).setName("Modifier").addText(text => text.setValue(String(this.adversary.attack?.modifier || '0')).onChange(val => { if (this.adversary.attack) this.adversary.attack.modifier = val; }));
 
-        const featuresSection = contentBodyEl.createDiv({ cls: 'dh-modal-section' });
+        const featuresSection = container.createDiv({ cls: 'dh-modal-section' });
         featuresSection.createEl('h3', { text: "Features" });
         const featuresContainer = featuresSection.createDiv({ cls: 'dh-features-editor' });
         this.renderFeaturesEditor(featuresContainer);
+    }
 
-        const footerEl = contentEl.createDiv({ cls: 'modal-footer' });
-        const buttonContainer = footerEl.createDiv({ cls: 'dh-modal-buttons' });
-        new ButtonComponent(buttonContainer).setButtonText("Save to Compendium").setTooltip("Saves this adversary to your custom JSON file and closes").onClick(async () => { await this.plugin.saveAdversaryToUserCompendium(this.adversary); this.onSubmit(this.adversary); this.close(); });
-        new ButtonComponent(buttonContainer).setButtonText("Apply & Close").setTooltip("Applies changes to this instance only and closes").setCta().onClick(() => { this.onSubmit(this.adversary); this.close(); });
+    renderEnvironmentEditor(container: HTMLElement) {
+        const basicInfoSection = container.createDiv({ cls: 'dh-modal-section' });
+        basicInfoSection.createEl('h3', { text: "Basic Information" });
+        const infoGrid = basicInfoSection.createDiv({ cls: 'dh-modal-field-grid' });
+        const nameSetting = new Setting(infoGrid).setName("Name").addText(text => text.setValue(this.adversary.name).onChange(val => this.adversary.name = val));
+        nameSetting.settingEl.addClass('dh-grid-span-all');
+        new Setting(infoGrid).setName("Tier").addText(text => text.setValue(String(this.adversary.tier || '')).onChange(val => this.adversary.tier = val));
+        new Setting(infoGrid).setName("Type").addText(text => text.setValue(this.adversary.type || '').onChange(val => this.adversary.type = val));
+        const descSetting = new Setting(infoGrid).setName("Description").addTextArea(text => text.setValue(this.adversary.description || '').onChange(val => this.adversary.description = val));
+        descSetting.settingEl.addClass('dh-grid-span-all');
+
+        const envDetailsSection = container.createDiv({ cls: 'dh-modal-section' });
+        envDetailsSection.createEl('h3', { text: "Environment Details" });
+        const detailsGrid = envDetailsSection.createDiv({ cls: 'dh-modal-field-grid' });
+        new Setting(detailsGrid).setName("Difficulty").addText(text => text.setValue(String(this.adversary.difficulty || '')).onChange(val => this.adversary.difficulty = val));
+
+        const impulsesSetting = new Setting(detailsGrid)
+            .setName("Impulses")
+            .addTextArea(text => text.setValue(this.adversary.impulses || '').onChange(val => this.adversary.impulses = val));
+        impulsesSetting.settingEl.addClass('dh-grid-span-all');
+
+        const paSetting = new Setting(detailsGrid)
+            .setName("Potential Adversaries")
+            .addTextArea(text => text.setValue(this.adversary.potential_adversaries || '').onChange(val => this.adversary.potential_adversaries = val));
+        paSetting.settingEl.addClass('dh-grid-span-all');
+
+        const featuresSection = container.createDiv({ cls: 'dh-modal-section' });
+        featuresSection.createEl('h3', { text: "Feats" });
+        const featuresContainer = featuresSection.createDiv({ cls: 'dh-features-editor' });
+        this.renderFeaturesEditor(featuresContainer);
     }
 
     renderFeaturesEditor(container: HTMLElement) {

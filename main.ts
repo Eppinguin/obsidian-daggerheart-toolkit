@@ -1,12 +1,11 @@
-import { App, MarkdownPostProcessorContext, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, TFile, Editor, MarkdownView } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, MarkdownView } from 'obsidian';
 import * as YAML from 'js-yaml';
 import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS } from './types';
-import { EncounterBuilderView } from './src/views/EncounterBuilderView';
-import { getCompendiumAdversaries, saveAdversaryToUserCompendium } from './src/services/compendium';
+import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/views/EncounterBuilderView';
+import { getCompendiumItems, saveItemToUserCompendium } from './src/services/compendium';
 import { renderStatblockCard } from './src/rendering/statblock';
 import { createInteractiveTrack } from './src/rendering/ui-helpers';
 import { AdversaryReferenceModal, EncounterLinkModal } from './src/modals/index';
-import { ENCOUNTER_BUILDER_VIEW_TYPE } from './src/constants';
 
 export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;
@@ -27,11 +26,11 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             console.log('Daggerheart: Dice Roller integration disabled in settings.');
         }
 
-        this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el, ctx) => {
+        this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el) => {
             this.processStatblock(source, el);
         });
 
-        this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el, ctx) => {
+        this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el) => {
             this.processEmbed(source, el);
         });
 
@@ -54,7 +53,18 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 new AdversaryReferenceModal(this.app, this, (adversary) => {
                     const embedCode = `\`\`\`daggerheart-embed\nadversary: ${adversary.name}\n\`\`\``;
                     editor.replaceSelection(embedCode);
-                }).open();
+                }, 'adversary').open();
+            }
+        });
+
+        this.addCommand({
+            id: 'insert-environment-statblock',
+            name: 'Insert Environment Statblock',
+            editorCallback: (editor: Editor, view: MarkdownView) => {
+                new AdversaryReferenceModal(this.app, this, (environment) => {
+                    const embedCode = `\`\`\`daggerheart-embed\nenvironment: ${environment.name}\n\`\`\``;
+                    editor.replaceSelection(embedCode);
+                }, 'environment').open();
             }
         });
 
@@ -95,17 +105,27 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 return acc;
             }, {} as Record<string, string>);
 
-            if (params.adversary) {
-                const adversaries = await this.getCompendiumAdversaries();
-                const adversary = adversaries.find(a => a.name.toLowerCase() === params.adversary.toLowerCase());
+            const items = await this.getCompendiumItems();
+            let itemToRender: StatblockData | undefined;
+            let itemName: string | undefined;
+            let itemType: 'adversary' | 'environment' | 'item' = 'item';
 
-                if (adversary) {
-                    renderStatblockCard(this, adversary, el, false);
-                } else {
-                    el.createEl('div', { text: `Adversary "${params.adversary}" not found in compendium.` });
-                }
+            if (params.adversary) {
+                itemName = params.adversary;
+                itemType = 'adversary';
+                itemToRender = items.find(i => i.name.toLowerCase() === itemName?.toLowerCase() && i.category === 'adversary');
+            } else if (params.environment) {
+                itemName = params.environment;
+                itemType = 'environment';
+                itemToRender = items.find(i => i.name.toLowerCase() === itemName?.toLowerCase() && i.category === 'environment');
+            }
+
+            if (itemToRender) {
+                renderStatblockCard(this, itemToRender, el, false);
+            } else if (itemName) {
+                el.createEl('div', { text: `Could not find ${itemType} "${itemName}" in compendium.` });
             } else {
-                el.createEl('div', { text: 'Invalid embed. Use "adversary: [Adversary Name]".' });
+                el.createEl('div', { text: 'Invalid embed. Use "adversary: [Name]" or "environment: [Name]".' });
             }
         } catch (e: any) {
             console.error('Daggerheart Embed: Error processing embed block.', e);
@@ -113,6 +133,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             errorEl.setText(`Error rendering Daggerheart embed:\n${e.message}`);
         }
     }
+
 
     async activateView(encounterId?: string) {
         this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
@@ -128,12 +149,12 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
-    getCompendiumAdversaries() {
-        return getCompendiumAdversaries(this);
+    getCompendiumItems() {
+        return getCompendiumItems(this);
     }
 
-    saveAdversaryToUserCompendium(adversaryData: StatblockData) {
-        return saveAdversaryToUserCompendium(this, adversaryData);
+    saveItemToUserCompendium(itemData: StatblockData) {
+        return saveItemToUserCompendium(this, itemData);
     }
 
     createInteractiveTrack(
@@ -188,6 +209,21 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
                     if (view instanceof EncounterBuilderView) {
                         await view.loadCompendium(); view.drawUI();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName('Use SRD Environments')
+            .setDesc(`Include the Daggerheart SRD environments from the plugin's "environments.json" file.`)
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.useSrdEnvironments)
+                .onChange(async (value) => {
+                    this.plugin.settings.useSrdEnvironments = value;
+                    await this.plugin.saveSettings();
+                    const view = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE)[0]?.view;
+                    if (view instanceof EncounterBuilderView) {
+                        await view.loadCompendium();
+                        view.drawUI();
                     }
                 }));
 

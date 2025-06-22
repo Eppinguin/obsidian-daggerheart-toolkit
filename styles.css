@@ -1064,6 +1064,11 @@
     background-color: var(--interactive-accent-hover);
 }
 
+.dh-environment-entry .dh-entry-icon {
+    margin-right: var(--size-4-2);
+    color: var(--text-muted);
+}
+
 /* Active adversaries panel */
 .dh-active-adversaries-panel { 
     display: flex;
@@ -1113,24 +1118,26 @@
    ----------------------------------------------------------------------------- */
 .dh-filter-controls {
     display: flex;
+    flex-direction: column;
     gap: var(--size-4-2);
     margin-bottom: var(--size-4-2);
     padding: var(--size-4-2);
     background-color: var(--background-secondary);
     border-radius: var(--radius-s);
-    flex-wrap: wrap;
 }
 
 .dh-filter-section {
     display: flex;
     align-items: center;
     gap: var(--size-4-1);
+    flex-wrap: wrap;
 }
 
 .dh-filter-label {
     font-weight: var(--font-semibold);
     color: var(--text-muted);
     font-size: var(--font-ui-small);
+    min-width: 60px; /* Align labels */
 }
 
 /* Tier filter buttons */
@@ -1170,7 +1177,7 @@
     color: var(--text-normal);
     cursor: pointer;
     font-size: var(--font-ui-small);
-    min-width: 150px;
+    flex-grow: 1;
 }
 
 .dh-type-select:hover {

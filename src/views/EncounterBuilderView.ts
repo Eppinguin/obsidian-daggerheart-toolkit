@@ -17,8 +17,8 @@ export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
 
 export class EncounterBuilderView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
-    compendiumAdversaries: StatblockData[] = [];
-    activeEncounterAdversaries: AdversaryInstance[] = [];
+    compendiumItems: StatblockData[] = [];
+    activeEncounterItems: AdversaryInstance[] = [];
 
     currentEncounterId: string | null = null;
     private uiContainer: HTMLElement | null = null;
@@ -27,6 +27,7 @@ export class EncounterBuilderView extends ItemView {
     private compendiumSearchTerm: string = "";
     private selectedTiers: Set<number> = new Set();
     private selectedTypes: Set<string> = new Set();
+    private compendiumItemCategory: 'all' | 'adversary' | 'environment' = 'all';
 
     private countdownsPopup: HTMLElement | null = null;
     private draggedCountdownId: string | null = null;
@@ -70,7 +71,6 @@ export class EncounterBuilderView extends ItemView {
         this.uiContainer.addClass("dh-encounter-builder-container");
 
         this.registerViewListeners();
-        await this.loadCompendium();
 
         const persistedState = this.leaf.getEphemeralState();
         if (persistedState) {
@@ -78,13 +78,15 @@ export class EncounterBuilderView extends ItemView {
             this.isCompendiumVisible = typeof persistedState.isCompendiumVisible === 'boolean' ? persistedState.isCompendiumVisible : true;
             this.isCountdownsPopupVisible = typeof persistedState.isCountdownsPopupVisible === 'boolean' ? persistedState.isCountdownsPopupVisible : false;
             this.compendiumSearchTerm = typeof persistedState.compendiumSearchTerm === 'string' ? persistedState.compendiumSearchTerm : "";
+            this.compendiumItemCategory = persistedState.compendiumItemCategory || 'all';
             if (Array.isArray(persistedState.selectedTiers)) this.selectedTiers = new Set(persistedState.selectedTiers);
             if (Array.isArray(persistedState.selectedTypes)) this.selectedTypes = new Set(persistedState.selectedTypes);
         }
 
         this.ensureActiveEncounter();
         this.icon = 'swords';
-        this.loadAdversariesForCurrentEncounter();
+        this.loadItemsForCurrentEncounter();
+        await this.loadCompendium();
         this.drawUI();
         this.leaf.setEphemeralState(this.getState());
     }
@@ -108,12 +110,16 @@ export class EncounterBuilderView extends ItemView {
             if (typeof state.isCompendiumVisible === 'boolean') this.isCompendiumVisible = state.isCompendiumVisible;
             if (typeof state.isCountdownsPopupVisible === 'boolean') this.isCountdownsPopupVisible = state.isCountdownsPopupVisible;
             if (typeof state.compendiumSearchTerm === 'string') this.compendiumSearchTerm = state.compendiumSearchTerm;
+            if (typeof state.compendiumItemCategory === 'string') this.compendiumItemCategory = state.compendiumItemCategory;
             if (Array.isArray(state.selectedTiers)) this.selectedTiers = new Set(state.selectedTiers);
             if (Array.isArray(state.selectedTypes)) this.selectedTypes = new Set(state.selectedTypes);
         }
         this.ensureActiveEncounter();
-        this.loadAdversariesForCurrentEncounter();
-        if (this.uiContainer && this.contentEl.children.length > 0) this.drawUI();
+        this.loadItemsForCurrentEncounter();
+        if (this.uiContainer && this.contentEl.children.length > 0) {
+            await this.loadCompendium();
+            this.drawUI();
+        }
         await super.setState(state, result);
         this.app.workspace.requestSaveLayout();
     }
@@ -124,6 +130,7 @@ export class EncounterBuilderView extends ItemView {
             isCompendiumVisible: this.isCompendiumVisible,
             isCountdownsPopupVisible: this.isCountdownsPopupVisible,
             compendiumSearchTerm: this.compendiumSearchTerm,
+            compendiumItemCategory: this.compendiumItemCategory,
             selectedTiers: Array.from(this.selectedTiers),
             selectedTypes: Array.from(this.selectedTypes)
         };
@@ -143,25 +150,26 @@ export class EncounterBuilderView extends ItemView {
         }
     }
 
-    loadAdversariesForCurrentEncounter() {
+    loadItemsForCurrentEncounter() {
         if (this.currentEncounterId) {
             const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
-            this.activeEncounterAdversaries = encounter ? JSON.parse(JSON.stringify(encounter.adversaries)) : [];
+            this.activeEncounterItems = encounter ? JSON.parse(JSON.stringify(encounter.adversaries)) : [];
         } else {
-            this.activeEncounterAdversaries = [];
+            this.activeEncounterItems = [];
         }
     }
 
     async loadCompendium() {
-        this.compendiumAdversaries = await this.plugin.getCompendiumAdversaries();
-        this.compendiumAdversaries.sort((a, b) => a.name.localeCompare(b.name));
+        this.compendiumItems = await this.plugin.getCompendiumItems();
+        this.compendiumItems.sort((a, b) => a.name.localeCompare(b.name));
+        console.log(`Daggerheart View: Loaded ${this.compendiumItems.length} compendium items.`);
     }
 
     async autoSaveCurrentEncounter() {
         if (this.currentEncounterId) {
             const encounterIndex = this.plugin.settings.savedEncounters.findIndex(e => e.id === this.currentEncounterId);
             if (encounterIndex !== -1) {
-                this.plugin.settings.savedEncounters[encounterIndex].adversaries = JSON.parse(JSON.stringify(this.activeEncounterAdversaries));
+                this.plugin.settings.savedEncounters[encounterIndex].adversaries = JSON.parse(JSON.stringify(this.activeEncounterItems));
                 await this.plugin.saveSettings();
             }
         }
@@ -214,25 +222,25 @@ export class EncounterBuilderView extends ItemView {
         this.countdownsPopup.style.right = `${parentRect.right - buttonRect.right}px`;
     }
 
-    private redrawAdversaryGroup(groupId: string) {
+    private redrawItemGroup(groupId: string) {
         const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
         let groupContainer = encounterArea?.querySelector(`[data-group-id="${groupId}"]`) as HTMLElement;
 
         if (!encounterArea) { this.drawUI(); return; }
-        const instancesInGroup = this.activeEncounterAdversaries.filter(inst => inst.groupId === groupId);
+        const instancesInGroup = this.activeEncounterItems.filter(inst => inst.groupId === groupId);
         if (instancesInGroup.length === 0) { groupContainer?.remove(); return; }
-        if (!groupContainer) groupContainer = this.drawAdversaryGroup(groupId, encounterArea);
+        if (!groupContainer) groupContainer = this.drawItemGroup(groupId, encounterArea);
 
         const contentScroller = groupContainer.querySelector('.dh-instance-card-content');
         const scrollTop = contentScroller?.scrollTop ?? 0;
         groupContainer.empty();
-        this.populateAdversaryGroupContainer(groupId, groupContainer);
+        this.populateItemGroupContainer(groupId, groupContainer);
         const newContentScroller = groupContainer.querySelector('.dh-instance-card-content');
         if (newContentScroller) newContentScroller.scrollTop = scrollTop;
     }
 
-    private populateAdversaryGroupContainer(groupId: string, containerEl: HTMLElement) {
-        const instancesInGroup = this.activeEncounterAdversaries.filter(inst => inst.groupId === groupId);
+    private populateItemGroupContainer(groupId: string, containerEl: HTMLElement) {
+        const instancesInGroup = this.activeEncounterItems.filter(inst => inst.groupId === groupId);
         if (instancesInGroup.length === 0) return;
 
         instancesInGroup.sort((a, b) => a.id.localeCompare(b.id));
@@ -246,49 +254,58 @@ export class EncounterBuilderView extends ItemView {
         const headerControls = mainCardContainer.createDiv({ cls: 'dh-card-header-controls' });
         const dragHandle = headerControls.createDiv({ cls: 'dh-drag-handle', attr: { 'draggable': 'true', 'aria-label': 'Drag to reorder' } });
         setIcon(dragHandle, 'grip-vertical');
-        const editButton = headerControls.createEl('button', { title: 'Edit Adversary', cls: 'dh-icon-button' });
+
+        const editButton = headerControls.createEl('button', { title: 'Edit Item', cls: 'dh-icon-button' });
         setIcon(editButton, 'pencil');
         editButton.addEventListener('click', () => {
             this.uiContainer?.dispatchEvent(new CustomEvent('dh-edit-instance', { detail: { instanceId: firstInstanceInGroup.id }, bubbles: true }));
         });
 
+        const deleteGroupButton = headerControls.createEl('button', { title: 'Remove from Encounter', cls: 'dh-icon-button' });
+        setIcon(deleteGroupButton, 'trash');
+        deleteGroupButton.addEventListener('click', () => {
+            this.removeGroupFromEncounter(groupId);
+        });
+
         renderStatblockCard(this.plugin, firstInstanceInGroup, mainCardContainer, true, firstInstanceInGroup.displayName,
-            (newHp) => { const inst = this.activeEncounterAdversaries.find(cr => cr.id === firstInstanceInGroup.id); if (inst) inst.currentHp = newHp; this.autoSaveCurrentEncounter(); },
-            (newStress) => { const inst = this.activeEncounterAdversaries.find(cr => cr.id === firstInstanceInGroup.id); if (inst) inst.currentStress = newStress; this.autoSaveCurrentEncounter(); },
+            (newHp) => { const inst = this.activeEncounterItems.find(cr => cr.id === firstInstanceInGroup.id); if (inst) inst.currentHp = newHp; this.autoSaveCurrentEncounter(); },
+            (newStress) => { const inst = this.activeEncounterItems.find(cr => cr.id === firstInstanceInGroup.id); if (inst) inst.currentStress = newStress; this.autoSaveCurrentEncounter(); },
             instancesInGroup.length
         );
 
-        const addToGroupButtonContainer = mainCardContainer.createDiv({ cls: 'dh-add-to-group-button-container' });
-        const addToGroupButton = addToGroupButtonContainer.createEl('button', { text: '+ Add to Group', title: `Add another ${firstInstanceInGroup.name} to this group`, cls: 'dh-add-to-group-btn' });
-        addToGroupButton.addEventListener('click', () => {
-            const templateAdversary = this.activeEncounterAdversaries.find(c => c.groupId === groupId);
-            if (templateAdversary) {
-                this.createNewInstanceFromTemplate(templateAdversary, groupId);
-                this.autoSaveCurrentEncounter();
-                const rightSideTrackers = this.uiContainer?.querySelector('.dh-right-side-trackers') as HTMLElement;
-                if (rightSideTrackers && this.plugin.settings.enableEncounterBudget) {
-                    rightSideTrackers.empty();
-                    this.drawEncounterBudget(rightSideTrackers);
-                    if (this.plugin.settings.enableFearTracker) this.drawFearTracker(rightSideTrackers);
+        if (firstInstanceInGroup.category === 'adversary') {
+            const addToGroupButtonContainer = mainCardContainer.createDiv({ cls: 'dh-add-to-group-button-container' });
+            const addToGroupButton = addToGroupButtonContainer.createEl('button', { text: '+ Add to Group', title: `Add another ${firstInstanceInGroup.name} to this group`, cls: 'dh-add-to-group-btn' });
+            addToGroupButton.addEventListener('click', () => {
+                const templateAdversary = this.activeEncounterItems.find(c => c.groupId === groupId);
+                if (templateAdversary) {
+                    this.createNewInstanceFromTemplate(templateAdversary, groupId);
+                    this.autoSaveCurrentEncounter();
+                    const rightSideTrackers = this.uiContainer?.querySelector('.dh-right-side-trackers') as HTMLElement;
+                    if (rightSideTrackers && this.plugin.settings.enableEncounterBudget) {
+                        rightSideTrackers.empty();
+                        this.drawEncounterBudget(rightSideTrackers);
+                        if (this.plugin.settings.enableFearTracker) this.drawFearTracker(rightSideTrackers);
+                    }
+                    this.redrawItemGroup(groupId);
+                } else {
+                    new Notice(`Could not find template adversary in group ${groupId}`);
                 }
-                this.redrawAdversaryGroup(groupId);
-            } else {
-                new Notice(`Could not find template adversary in group ${groupId}`);
-            }
-        });
+            });
 
-        const additionalTrackersContainer = mainCardContainer.querySelector('.dh-additional-trackers-container');
-        if (additionalTrackersContainer) {
-            for (const instance of instancesInGroup.slice(1)) {
-                this.renderAdditionalTrackerRow(instance, additionalTrackersContainer as HTMLElement);
+            const additionalTrackersContainer = mainCardContainer.querySelector('.dh-additional-trackers-container');
+            if (additionalTrackersContainer) {
+                for (const instance of instancesInGroup.slice(1)) {
+                    this.renderAdditionalTrackerRow(instance, additionalTrackersContainer as HTMLElement);
+                }
             }
         }
     }
 
-    private drawAdversaryGroup(groupId: string, encounterArea: HTMLElement): HTMLElement {
-        const adversaryGroupContainer = encounterArea.createDiv({ cls: 'dh-adversary-group-container', attr: { 'data-group-id': groupId } });
-        this.populateAdversaryGroupContainer(groupId, adversaryGroupContainer);
-        return adversaryGroupContainer;
+    private drawItemGroup(groupId: string, encounterArea: HTMLElement): HTMLElement {
+        const itemGroupContainer = encounterArea.createDiv({ cls: 'dh-adversary-group-container', attr: { 'data-group-id': groupId } });
+        this.populateItemGroupContainer(groupId, itemGroupContainer);
+        return itemGroupContainer;
     }
 
     drawUI() {
@@ -324,7 +341,7 @@ export class EncounterBuilderView extends ItemView {
         encounterArea.addEventListener('drop', this.boundHandleDrop);
         encounterArea.addEventListener('dragend', this.boundHandleDragEnd);
         const groupedByGroupId: { [groupId: string]: AdversaryInstance[] } = {};
-        this.activeEncounterAdversaries.forEach(instance => {
+        this.activeEncounterItems.forEach(instance => {
             if (!groupedByGroupId[instance.groupId]) groupedByGroupId[instance.groupId] = [];
             groupedByGroupId[instance.groupId].push(instance);
         });
@@ -336,10 +353,10 @@ export class EncounterBuilderView extends ItemView {
             currentEncounter.adversaryGroupOrder = orderedGroupIds;
         }
         if (orderedGroupIds.length === 0) {
-            const emptyText = currentEncounter ? `Encounter "${currentEncounter.name}" is empty. Add adversaries.` : "No active encounter or encounter is empty.";
+            const emptyText = currentEncounter ? `Encounter "${currentEncounter.name}" is empty. Add adversaries or environments.` : "No active encounter or encounter is empty.";
             encounterArea.createEl("p", { text: emptyText });
         } else {
-            for (const groupId of orderedGroupIds) { this.drawAdversaryGroup(groupId, encounterArea); }
+            for (const groupId of orderedGroupIds) { this.drawItemGroup(groupId, encounterArea); }
         }
 
         const compendiumPanel = mainInterface.createDiv({ cls: "dh-compendium-panel" });
@@ -353,19 +370,39 @@ export class EncounterBuilderView extends ItemView {
         const searchInput = compendiumPanel.createEl("input", { type: "text", placeholder: "Search compendium...", cls: "dh-compendium-search", value: this.compendiumSearchTerm });
         searchInput.addEventListener("input", (e) => { this.compendiumSearchTerm = (e.target as HTMLInputElement).value; this.leaf.setEphemeralState(this.getState()); this.renderCompendiumList(compendiumPanel.querySelector(".dh-compendium-list") as HTMLElement); });
         const filterControls = compendiumPanel.createDiv({ cls: 'dh-filter-controls' });
+
+        const categorySection = filterControls.createDiv({ cls: 'dh-filter-section' });
+        categorySection.createSpan({ text: 'Category:', cls: 'dh-filter-label' });
+        const categorySelect = categorySection.createEl('select', { cls: 'dh-type-select' });
+        const categories: Record<string, string> = { 'all': 'All Items', 'adversary': 'Adversaries', 'environment': 'Environments' };
+        for (const [key, value] of Object.entries(categories)) {
+            const option = categorySelect.createEl('option', { text: value, value: key });
+            if (key === this.compendiumItemCategory) option.selected = true;
+        }
+        categorySelect.addEventListener('change', (e) => {
+            this.compendiumItemCategory = (e.target as HTMLSelectElement).value as 'all' | 'adversary' | 'environment';
+            this.leaf.setEphemeralState(this.getState());
+            this.renderCompendiumList(compendiumPanel.querySelector(".dh-compendium-list") as HTMLElement);
+        });
+
         const tierSection = filterControls.createDiv({ cls: 'dh-filter-section' });
         tierSection.createSpan({ text: 'Tier:', cls: 'dh-filter-label' });
         for (let tier = 1; tier <= 4; tier++) {
             const tierBtn = tierSection.createEl('button', { text: tier.toString(), cls: `dh-tier-button${this.selectedTiers.has(tier) ? ' active' : ''}` });
             tierBtn.addEventListener('click', () => this.toggleTier(tier));
         }
+
         const typeSection = filterControls.createDiv({ cls: 'dh-filter-section' });
         typeSection.createSpan({ text: 'Type:', cls: 'dh-filter-label' });
         const typeSelect = typeSection.createEl('select', { cls: 'dh-type-select' }) as HTMLSelectElement;
         typeSelect.createEl('option', { text: 'All Types', value: '' });
-        const uniqueTypes = new Set(this.compendiumAdversaries.map(c => c.type).filter((type): type is string => type !== undefined));
-        Array.from(uniqueTypes).sort().forEach(type => { const option = typeSelect.createEl('option', { text: type, value: type }); option.selected = this.selectedTypes.has(type); });
-        typeSelect.addEventListener('change', (e) => this.updateTypeFilter(e.target instanceof HTMLSelectElement ? [e.target.value] : []));
+        const uniqueTypes = new Set(this.compendiumItems.map(c => c.type).filter((type): type is string => !!type));
+        Array.from(uniqueTypes).sort().forEach(type => {
+            const option = typeSelect.createEl('option', { text: type, value: type });
+            if (this.selectedTypes.has(type)) option.selected = true;
+        });
+        typeSelect.addEventListener('change', (e) => this.updateTypeFilter((e.target as HTMLSelectElement).value));
+
         const compendiumList = compendiumPanel.createDiv({ cls: "dh-compendium-list" });
         this.renderCompendiumList(compendiumList);
         this.updateCountdownsPopup();
@@ -479,29 +516,40 @@ export class EncounterBuilderView extends ItemView {
 
     renderCompendiumList(listContainer: HTMLElement) {
         listContainer.empty();
-        const filteredAdversaries = this.applyFilters(this.compendiumAdversaries);
-        if (filteredAdversaries.length === 0) listContainer.createEl("p", { text: this.compendiumSearchTerm ? "No matching adversaries found." : "No adversaries in compendium. Check settings." });
-        else filteredAdversaries.forEach(adversaryData => {
-            const adversaryEntry = listContainer.createDiv({ cls: "dh-compendium-entry" });
-            const nameSpan = adversaryEntry.createSpan({ text: adversaryData.name });
-            if (adversaryData.isCustom) { nameSpan.addClass('dh-custom-adversary'); nameSpan.title = `Custom Adversary from ${adversaryData.sourceFile}`; }
-            const addButton = adversaryEntry.createEl("button", { text: "+", title: "Add to active encounter", cls: "dh-add-compendium-btn" });
-            addButton.addEventListener("click", () => this.addAdversaryToActiveEncounter(adversaryData));
-        });
+        const filteredItems = this.applyFilters(this.compendiumItems);
+        if (filteredItems.length === 0) {
+            listContainer.createEl("p", { text: "No matching items found. Try adjusting filters or check plugin settings.", cls: "dh-no-items-message" });
+        } else {
+            filteredItems.forEach(itemData => {
+                const itemEntry = listContainer.createDiv({ cls: "dh-compendium-entry" });
+                const nameSpan = itemEntry.createSpan({ text: itemData.name });
+                if (itemData.isCustom) { nameSpan.addClass('dh-custom-adversary'); nameSpan.title = `Custom Item from ${itemData.sourceFile}`; }
+                if (itemData.category === 'environment') {
+                    nameSpan.addClass('dh-environment-entry');
+                    const icon = nameSpan.createSpan({ cls: 'dh-entry-icon' });
+                    setIcon(icon, 'mountain');
+                    nameSpan.title = 'Environment';
+                }
+                const addButton = itemEntry.createEl("button", { text: "+", title: "Add to active encounter", cls: "dh-add-compendium-btn" });
+                addButton.addEventListener("click", () => this.addItemToActiveEncounter(itemData));
+            });
+        }
     }
 
-    private applyFilters(adversaries: StatblockData[]): StatblockData[] {
-        return adversaries.filter(adversary => {
-            const matchesSearch = this.compendiumSearchTerm === "" || adversary.name.toLowerCase().includes(this.compendiumSearchTerm.toLowerCase());
-            const matchesTier = this.selectedTiers.size === 0 || (adversary.tier !== undefined && (typeof adversary.tier === 'number' ? this.selectedTiers.has(adversary.tier) : this.selectedTiers.has(Number(adversary.tier))));
-            const matchesType = this.selectedTypes.size === 0 || (adversary.type !== undefined && this.selectedTypes.has(adversary.type));
-            return matchesSearch && matchesTier && matchesType;
+    private applyFilters(items: StatblockData[]): StatblockData[] {
+        return items.filter(item => {
+            const matchesCategory = this.compendiumItemCategory === 'all' || item.category === this.compendiumItemCategory;
+            const matchesSearch = this.compendiumSearchTerm === "" || item.name.toLowerCase().includes(this.compendiumSearchTerm.toLowerCase());
+            const matchesTier = this.selectedTiers.size === 0 || (item.tier !== undefined && (typeof item.tier === 'number' ? this.selectedTiers.has(item.tier) : this.selectedTiers.has(Number(item.tier))));
+            const matchesType = this.selectedTypes.size === 0 || (item.type !== undefined && this.selectedTypes.has(item.type));
+            return matchesCategory && matchesSearch && matchesTier && matchesType;
         });
     }
 
     private toggleTier(tier: number) {
         if (this.selectedTiers.has(tier)) this.selectedTiers.delete(tier);
         else this.selectedTiers.add(tier);
+        this.leaf.setEphemeralState(this.getState());
         const tierButtons = this.uiContainer?.querySelectorAll('.dh-tier-button');
         if (tierButtons) tierButtons.forEach((btn: Element) => {
             const buttonTier = parseInt(btn.textContent || '0');
@@ -511,8 +559,12 @@ export class EncounterBuilderView extends ItemView {
         this.renderCompendiumList(this.uiContainer?.querySelector(".dh-compendium-list") as HTMLElement);
     }
 
-    private updateTypeFilter(types: string[]) {
-        this.selectedTypes = new Set(types);
+    private updateTypeFilter(type: string) {
+        this.selectedTypes.clear();
+        if (type) {
+            this.selectedTypes.add(type);
+        }
+        this.leaf.setEphemeralState(this.getState());
         this.renderCompendiumList(this.uiContainer?.querySelector(".dh-compendium-list") as HTMLElement);
     }
 
@@ -532,7 +584,7 @@ export class EncounterBuilderView extends ItemView {
         this.plugin.settings.savedEncounters.push(newEncounter);
         this.plugin.saveSettings();
         this.currentEncounterId = newId;
-        this.loadAdversariesForCurrentEncounter();
+        this.loadItemsForCurrentEncounter();
         new Notice(`Encounter "${name}" created and activated.`);
         this.drawUI();
         this.leaf.setEphemeralState(this.getState());
@@ -556,7 +608,7 @@ export class EncounterBuilderView extends ItemView {
         const encounterToLoad = this.plugin.settings.savedEncounters.find(e => e.id === encounterId);
         if (encounterToLoad) {
             this.currentEncounterId = encounterToLoad.id;
-            this.loadAdversariesForCurrentEncounter();
+            this.loadItemsForCurrentEncounter();
             new Notice(`Encounter "${encounterToLoad.name}" loaded.`);
             this.drawUI();
             this.leaf.setEphemeralState(this.getState());
@@ -574,7 +626,7 @@ export class EncounterBuilderView extends ItemView {
         if (this.currentEncounterId === encounterId) {
             this.currentEncounterId = null;
             this.ensureActiveEncounter();
-            this.loadAdversariesForCurrentEncounter();
+            this.loadItemsForCurrentEncounter();
         }
         new Notice(`Encounter "${encounterName}" deleted.`);
         this.drawUI();
@@ -594,7 +646,7 @@ export class EncounterBuilderView extends ItemView {
 
     private calculateEncounterBudget(): { spent: number, total: number } {
         const config = this.plugin.settings.encounterBudgetConfig;
-        const adversaries = this.activeEncounterAdversaries;
+        const adversaries = this.activeEncounterItems.filter(i => i.category === 'adversary');
         let spent = 0;
         const adversaryTypes = new Set<string>();
         const allGroups = new Set<string>();
@@ -678,12 +730,12 @@ export class EncounterBuilderView extends ItemView {
     handleEditInstanceEvent(e: Event) {
         const { instanceId } = (e as CustomEvent).detail;
         if (!instanceId) return;
-        const instance = this.activeEncounterAdversaries.find(c => c.id === instanceId);
+        const instance = this.activeEncounterItems.find(c => c.id === instanceId);
         if (!instance) return;
         new EditAdversaryModal(this.app, this.plugin, instance, (updatedAdversary) => {
             const groupId = instance.groupId;
             if (!groupId) return;
-            this.activeEncounterAdversaries.forEach(c => {
+            this.activeEncounterItems.forEach(c => {
                 if (c.groupId === groupId) {
                     Object.assign(c, {
                         ...updatedAdversary,
@@ -698,7 +750,7 @@ export class EncounterBuilderView extends ItemView {
             });
             this.updateDisplayNamesForGroup(groupId);
             this.autoSaveCurrentEncounter();
-            this.redrawAdversaryGroup(groupId);
+            this.redrawItemGroup(groupId);
         }).open();
     }
 
@@ -716,25 +768,73 @@ export class EncounterBuilderView extends ItemView {
     handleRemoveConditionEvent(e: Event) {
         const { instanceId, conditionName } = (e as CustomEvent).detail;
         if (!instanceId || !conditionName) return;
-        const instance = this.activeEncounterAdversaries.find(c => c.id === instanceId);
+        const instance = this.activeEncounterItems.find(c => c.id === instanceId);
         if (!instance || !instance.conditions) return;
         instance.conditions = instance.conditions.filter(c => c.name !== conditionName);
         this.autoSaveCurrentEncounter();
-        this.redrawAdversaryGroup(instance.groupId);
+        this.redrawItemGroup(instance.groupId);
     }
 
     handleRemoveInstanceEvent(e: Event) {
-        this.removeAdversaryFromActiveEncounter((e as CustomEvent).detail.instanceId);
+        this.removeInstanceFromEncounter((e as CustomEvent).detail.instanceId);
+    }
+
+    removeGroupFromEncounter(groupId: string) {
+        if (!groupId) return;
+
+        const groupName = this.activeEncounterItems.find(i => i.groupId === groupId)?.name || 'Unknown Group';
+
+        this.activeEncounterItems = this.activeEncounterItems.filter(inst => inst.groupId !== groupId);
+
+        const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+        if (encounter?.adversaryGroupOrder) {
+            const groupIndex = encounter.adversaryGroupOrder.indexOf(groupId);
+            if (groupIndex > -1) {
+                encounter.adversaryGroupOrder.splice(groupIndex, 1);
+            }
+        }
+
+        this.autoSaveCurrentEncounter();
+
+        // Remove the group container from the DOM
+        const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
+        if (encounterArea) {
+            const groupContainer = encounterArea.querySelector(`[data-group-id="${groupId}"]`);
+            if (groupContainer) {
+                groupContainer.remove();
+            }
+
+            // If there are no more groups, show the empty message
+            if (this.activeEncounterItems.length === 0) {
+                const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+                const emptyText = currentEncounter ? `Encounter "${currentEncounter.name}" is empty. Add adversaries or environments.` : "No active encounter or encounter is empty.";
+                encounterArea.createEl("p", { text: emptyText });
+            }
+
+            // Update trackers if needed
+            if (this.plugin.settings.enableEncounterBudget) {
+                const rightSideTrackers = this.uiContainer?.querySelector('.dh-right-side-trackers') as HTMLElement;
+                if (rightSideTrackers) {
+                    rightSideTrackers.empty();
+                    this.drawEncounterBudget(rightSideTrackers);
+                    if (this.plugin.settings.enableFearTracker) this.drawFearTracker(rightSideTrackers);
+                }
+            }
+        } else {
+            this.drawUI();
+        }
+
+        new Notice(`Removed ${groupName} group from encounter.`);
     }
 
     addConditionToInstance(instanceId: string, condition: Condition) {
-        const instance = this.activeEncounterAdversaries.find(c => c.id === instanceId);
+        const instance = this.activeEncounterItems.find(c => c.id === instanceId);
         if (!instance) return;
         if (!instance.conditions) instance.conditions = [];
         if (instance.conditions.some(c => c.name.toLowerCase() === condition.name.toLowerCase())) { new Notice(`"${instance.displayName}" already has the "${condition.name}" condition.`); return; }
         instance.conditions.push(condition);
         this.autoSaveCurrentEncounter();
-        this.redrawAdversaryGroup(instance.groupId);
+        this.redrawItemGroup(instance.groupId);
     }
 
     renderAdditionalTrackerRow(instance: AdversaryInstance, parentEl: HTMLElement) {
@@ -754,27 +854,54 @@ export class EncounterBuilderView extends ItemView {
                 removeConditionBtn.addEventListener('click', () => { this.uiContainer?.dispatchEvent(new CustomEvent('dh-remove-condition', { detail: { instanceId: instance.id, conditionName: condition.name }, bubbles: true })); });
             });
         }
-        this.plugin.createInteractiveTrack(trackerRow, 'HP', Number(instance.hp_stress.hp) || 0, `${instance.id}-hp-add`, instance.currentHp, (newHp) => { const inst = this.activeEncounterAdversaries.find(c => c.id === instance.id); if (inst) inst.currentHp = newHp; this.autoSaveCurrentEncounter(); });
-        this.plugin.createInteractiveTrack(trackerRow, 'Stress', Number(instance.hp_stress.stress) || 0, `${instance.id}-stress-add`, instance.currentStress, (newStress) => { const inst = this.activeEncounterAdversaries.find(c => c.id === instance.id); if (inst) inst.currentStress = newStress; this.autoSaveCurrentEncounter(); });
+        if (instance.hp_stress) {
+            this.plugin.createInteractiveTrack(trackerRow, 'HP', Number(instance.hp_stress.hp) || 0, `${instance.id}-hp-add`, instance.currentHp, (newHp) => { const inst = this.activeEncounterItems.find(c => c.id === instance.id); if (inst) inst.currentHp = newHp; this.autoSaveCurrentEncounter(); });
+            this.plugin.createInteractiveTrack(trackerRow, 'Stress', Number(instance.hp_stress.stress) || 0, `${instance.id}-stress-add`, instance.currentStress, (newStress) => { const inst = this.activeEncounterItems.find(c => c.id === instance.id); if (inst) inst.currentStress = newStress; this.autoSaveCurrentEncounter(); });
+        }
     }
 
     private updateDisplayNamesForGroup(groupId: string) {
-        const instancesInThisGroup = this.activeEncounterAdversaries.filter(inst => inst.groupId === groupId);
+        const instancesInThisGroup = this.activeEncounterItems.filter(inst => inst.groupId === groupId);
         instancesInThisGroup.sort((a, b) => a.id.localeCompare(b.id));
         if (instancesInThisGroup.length === 1) instancesInThisGroup[0].displayName = instancesInThisGroup[0].name;
         else instancesInThisGroup.forEach((instance, index) => { instance.displayName = `${instance.name} #${index + 1}`; });
     }
 
-    addAdversaryToActiveEncounter(baseAdversary: StatblockData) {
+    addItemToActiveEncounter(baseItem: StatblockData) {
         if (!this.currentEncounterId) { new Notice("Error: No active encounter. Please create or load an encounter first."); return; }
         const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
         if (!encounter) return;
-        const newGroupId = `${baseAdversary.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-        this.createNewInstanceFromTemplate(baseAdversary, newGroupId);
+        const newGroupId = `${baseItem.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+        this.createNewInstanceFromTemplate(baseItem, newGroupId);
         if (!encounter.adversaryGroupOrder) encounter.adversaryGroupOrder = [];
         encounter.adversaryGroupOrder.push(newGroupId);
         this.autoSaveCurrentEncounter();
-        this.drawUI();
+
+        // Instead of redrawing the entire UI, we need to:
+        // 1. Check if the UI already has encounter items
+        const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
+        if (encounterArea) {
+            // If there were no items previously (there's a message), we need to redraw the UI
+            if (encounterArea.querySelector('p')) {
+                this.drawUI();
+            } else {
+                // Otherwise, just draw the new group
+                this.drawItemGroup(newGroupId, encounterArea);
+
+                // Update trackers if needed
+                if (this.plugin.settings.enableEncounterBudget) {
+                    const rightSideTrackers = this.uiContainer?.querySelector('.dh-right-side-trackers') as HTMLElement;
+                    if (rightSideTrackers) {
+                        rightSideTrackers.empty();
+                        this.drawEncounterBudget(rightSideTrackers);
+                        if (this.plugin.settings.enableFearTracker) this.drawFearTracker(rightSideTrackers);
+                    }
+                }
+            }
+        } else {
+            // If there's no encounter area, we need to draw the UI
+            this.drawUI();
+        }
     }
 
     createNewInstanceFromTemplate(template: StatblockData, targetGroupId: string) {
@@ -782,19 +909,26 @@ export class EncounterBuilderView extends ItemView {
             ...JSON.parse(JSON.stringify(template)),
             id: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             groupId: targetGroupId, currentHp: 0, currentStress: 0, displayName: "", conditions: [],
-            hp_stress: { hp: Number(template.hp_stress.hp) || 0, stress: Number(template.hp_stress.stress) || 0, major_hp: template.hp_stress.major_hp ? Number(template.hp_stress.major_hp) : null, severe_hp: template.hp_stress.severe_hp ? Number(template.hp_stress.severe_hp) : null }
         };
-        this.activeEncounterAdversaries.push(newInstance);
+        if (newInstance.hp_stress) {
+            newInstance.hp_stress = {
+                hp: Number(template.hp_stress.hp) || 0,
+                stress: Number(template.hp_stress.stress) || 0,
+                major_hp: template.hp_stress.major_hp ? Number(template.hp_stress.major_hp) : null,
+                severe_hp: template.hp_stress.severe_hp ? Number(template.hp_stress.severe_hp) : null
+            }
+        }
+        this.activeEncounterItems.push(newInstance);
         this.updateDisplayNamesForGroup(targetGroupId);
     }
 
-    removeAdversaryFromActiveEncounter(instanceId: string) {
-        const instanceToRemoveIndex = this.activeEncounterAdversaries.findIndex(c => c.id === instanceId);
+    removeInstanceFromEncounter(instanceId: string) {
+        const instanceToRemoveIndex = this.activeEncounterItems.findIndex(c => c.id === instanceId);
         if (instanceToRemoveIndex === -1) return;
-        const removedInstance = this.activeEncounterAdversaries[instanceToRemoveIndex];
+        const removedInstance = this.activeEncounterItems[instanceToRemoveIndex];
         const groupId = removedInstance.groupId;
-        this.activeEncounterAdversaries.splice(instanceToRemoveIndex, 1);
-        const isGroupEmpty = !this.activeEncounterAdversaries.some(inst => inst.groupId === groupId);
+        this.activeEncounterItems.splice(instanceToRemoveIndex, 1);
+        const isGroupEmpty = !this.activeEncounterItems.some(inst => inst.groupId === groupId);
         if (isGroupEmpty) {
             const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
             if (encounter?.adversaryGroupOrder) {
@@ -804,7 +938,15 @@ export class EncounterBuilderView extends ItemView {
         }
         this.updateDisplayNamesForGroup(groupId);
         this.autoSaveCurrentEncounter();
-        this.drawUI();
+
+        // Only redraw the specific group instead of the entire UI
+        if (isGroupEmpty) {
+            // If the group is empty, we need to redraw the UI to remove the group container
+            this.drawUI();
+        } else {
+            // Otherwise, just redraw the specific group
+            this.redrawItemGroup(groupId);
+        }
     }
 
     async onClose() {

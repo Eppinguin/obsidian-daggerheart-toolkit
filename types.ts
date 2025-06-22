@@ -32,6 +32,7 @@ export interface Condition {
 
 export interface StatblockData {
     name: string;
+    category: 'adversary' | 'environment';
     image?: string;
     tier?: number | string;
     type?: string;
@@ -40,6 +41,8 @@ export interface StatblockData {
     difficulty?: number | string;
     experience?: StatblockExperience | string;
     motives_tactics?: string[] | string;
+    impulses?: string;
+    potential_adversaries?: string;
     hp_stress: StatblockHpStress;
     features?: StatblockFeature[];
     sourceFile?: string;
@@ -80,7 +83,8 @@ export interface DaggerheartPluginSettings {
     compendiumFolder: string;
     savedEncounters: SavedEncounter[];
     useSrdAdversaries: boolean;
-    userCompendiumFile: string; // New setting for the user's JSON compendium
+    useSrdEnvironments: boolean;
+    userCompendiumFile: string;
     showDescriptionOnCards: boolean;
     showFeatureDetailsOnCards: boolean;
     enableFearTracker: boolean;
@@ -97,6 +101,7 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     compendiumFolder: '',
     savedEncounters: [],
     useSrdAdversaries: true,
+    useSrdEnvironments: true,
     userCompendiumFile: 'User-Adversaries.json',
     showDescriptionOnCards: false,
     showFeatureDetailsOnCards: true,
