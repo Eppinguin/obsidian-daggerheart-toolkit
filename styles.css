@@ -36,19 +36,19 @@
     font-size: var(--font-ui-medium);
     font-weight: var(--font-semibold);
     color: #333;
-    margin: 0.2em 0 0.8em 0;
+    margin: 0.2em 0 0.2em 0;
 }
 
 /* Description styling */
 .dh-editor-statblock .dh-description {
-    font-style: normal;
-    margin-bottom: 0.8em;
+    font-style: italic;
+    margin-bottom: 0.2em;
     color: #333;
 }
 
 /* Motives section */
 .dh-editor-statblock .dh-motives {
-    margin-bottom: 0.8em;
+    margin-bottom: 0.2em;
 }
 
 .dh-editor-statblock .dh-motives strong {
@@ -102,7 +102,7 @@
 .dh-editor-statblock .dh-features-list li {
     background-color: transparent;
     border: none;
-    margin-bottom: 0.7em;
+    margin-bottom: 0.4em;
     line-height: 1.4;
     font-size: var(--font-ui-medium);
     margin-left: 0; 
@@ -147,7 +147,7 @@
 .dh-editor-statblock .dh-features-list li > p > em,
 .dh-editor-statblock .dh-features-list li > p:only-child > em {
    display: block;
-   margin-top: 0.5em;
+   margin-top: 0.3em;
    padding-left: 1em;
 }
 
