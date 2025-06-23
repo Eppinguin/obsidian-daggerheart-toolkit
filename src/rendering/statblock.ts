@@ -1,7 +1,7 @@
 import { Notice, setIcon } from 'obsidian';
 import { StatblockData, AdversaryInstance } from '../../types';
 import DaggerheartStatblockPlugin from '../../main';
-import { createInteractiveTrack, renderRollableContent } from './ui-helpers';
+import { createInteractiveTrack, renderRollableContent, renderMarkdown } from './ui-helpers';
 
 function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: StatblockData, containerEl: HTMLElement) {
     containerEl.empty();
@@ -17,25 +17,31 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
         statblockContentDiv.createDiv({ cls: 'dh-tier-type', text: tierTypeString.trim() });
     }
 
-    if (data.description) statblockContentDiv.createDiv({ cls: 'dh-description', text: data.description });
+    if (data.description) {
+        const descDiv = statblockContentDiv.createDiv({ cls: 'dh-description' });
+        renderMarkdown(plugin, data.description, descDiv);
+    }
 
     if (data.motives_tactics) {
         const motivesText = Array.isArray(data.motives_tactics) ? data.motives_tactics.join(', ') : data.motives_tactics;
         if (motivesText) {
             const motivesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
             motivesDiv.createEl('strong', { text: 'Motives & Tactics: ' });
-            motivesDiv.appendText(motivesText);
+            const motivesContentDiv = motivesDiv.createSpan();
+            renderMarkdown(plugin, motivesText, motivesContentDiv);
         }
     }
     if (data.impulses) {
         const impulsesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
         impulsesDiv.createEl('strong', { text: 'Impulses: ' });
-        impulsesDiv.appendText(data.impulses);
+        const impulsesContentDiv = impulsesDiv.createSpan();
+        renderMarkdown(plugin, data.impulses, impulsesContentDiv);
     }
     if (data.potential_adversaries) {
         const paDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
         paDiv.createEl('strong', { text: 'Potential Adversaries: ' });
-        paDiv.appendText(data.potential_adversaries);
+        const paContentDiv = paDiv.createSpan();
+        renderMarkdown(plugin, data.potential_adversaries, paContentDiv);
     }
 
     const statsGrid = statblockContentDiv.createDiv({ cls: 'dh-stats-grid' });
@@ -103,7 +109,7 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
     });
 
     if (data.features && data.features.length > 0) {
-        const title = data.category === 'environment' ? 'FEATS' : 'FEATURES';
+        const title = 'FEATURES';
         statblockContentDiv.createDiv({ text: title, cls: 'dh-features-title' });
 
         const featuresListUl = statblockContentDiv.createEl('ul', { cls: 'dh-features-list' });
@@ -114,12 +120,17 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
 
             let title = `${feature.name}`;
             if (feature.type) title += ` - ${feature.type}`;
-            p.createEl('strong', { text: `${title}: ` });
+            const strongEl = p.createEl('strong', { text: `${title}: ` });
+            strongEl.style.fontStyle = 'italic';
 
             let description = feature.description || '';
 
             const descSpan = p.createSpan({ cls: 'dh-feature-description' });
-            renderRollableContent(plugin, description, descSpan);
+            if (description.includes('d20') || description.includes('d6') || description.includes('Mark stress') || description.includes('Spend fear')) {
+                renderRollableContent(plugin, description, descSpan);
+            } else {
+                renderMarkdown(plugin, description, descSpan);
+            }
         });
     }
 }
@@ -171,13 +182,15 @@ function renderEnvironmentInstance(
     }
 
     if (data.description) {
-        statblockContentDiv.createDiv({ text: data.description, cls: 'dh-description' });
+        const descDiv = statblockContentDiv.createDiv({ cls: 'dh-description' });
+        renderMarkdown(plugin, data.description, descDiv);
     }
 
     if (data.impulses) {
         const impulsesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
         impulsesDiv.createEl('strong', { text: 'Impulses: ' });
-        impulsesDiv.appendText(data.impulses);
+        const impulsesContentDiv = impulsesDiv.createSpan();
+        renderMarkdown(plugin, data.impulses, impulsesContentDiv);
     }
 
     const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
@@ -188,7 +201,8 @@ function renderEnvironmentInstance(
     if (data.potential_adversaries) {
         const paDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
         paDiv.createEl('strong', { text: 'Potential Adversaries: ' });
-        paDiv.appendText(data.potential_adversaries);
+        const paContentDiv = paDiv.createSpan();
+        renderMarkdown(plugin, data.potential_adversaries, paContentDiv);
     }
 
     if (data.features?.length) {
@@ -261,7 +275,8 @@ function renderAdversaryInstance(
     }
 
     if (data.description && plugin.settings.showDescriptionOnCards) {
-        statblockContentDiv.createDiv({ text: data.description, cls: 'dh-description' });
+        const descDiv = statblockContentDiv.createDiv({ cls: 'dh-description' });
+        renderMarkdown(plugin, data.description, descDiv);
     }
 
     if (data.motives_tactics) {
@@ -269,7 +284,8 @@ function renderAdversaryInstance(
         if (motivesText) {
             const motivesDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
             motivesDiv.createEl('strong', { text: 'Motives & Tactics: ' });
-            motivesDiv.appendText(motivesText);
+            const motivesContentDiv = motivesDiv.createSpan();
+            renderMarkdown(plugin, motivesText, motivesContentDiv);
         }
     }
 

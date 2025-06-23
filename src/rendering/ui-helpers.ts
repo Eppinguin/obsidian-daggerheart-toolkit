@@ -29,6 +29,94 @@ async function rollDice(plugin: DaggerheartStatblockPlugin, diceString: string) 
     }
 }
 
+export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement) {
+    try {
+        // First, handle basic inline formatting (bold, italic)
+        let processedText = text
+            // Handle bold italic (***text***) - must come before bold and italic
+            .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+            // Handle bold (**text**)
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        // Special handling for lists
+        const lines = processedText.split('\n');
+        let inList = false;
+        let listType = '';
+        let listHtml = '';
+        let finalHtml = '';
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+
+            // Handle unordered lists (*, -, +)
+            const unorderedMatch = line.match(/^\s*([\*\-\+])\s+(.*)$/);
+            if (unorderedMatch) {
+                const content = unorderedMatch[2].replace(/\*(.*?)\*/g, '<em>$1</em>'); // Process italic in list items
+                if (!inList || listType !== 'ul') {
+                    // Start a new list or close previous list
+                    if (inList) {
+                        listHtml += `</${listType}>`;
+                    }
+                    listHtml += '<ul style="margin: 0; padding-left: 1.5em; margin-top: 0.2em; margin-bottom: 0.2em;">';
+                    listType = 'ul';
+                    inList = true;
+                }
+
+                listHtml += `<li style="margin: 0; padding: 0;">${content}</li>`;
+                continue;
+            }
+
+            // Handle ordered lists (1., 2., etc.)
+            const orderedMatch = line.match(/^\s*(\d+)\.\s+(.*)$/);
+            if (orderedMatch) {
+                const content = orderedMatch[2].replace(/\*(.*?)\*/g, '<em>$1</em>'); // Process italic in list items
+
+                if (!inList || listType !== 'ol') {
+                    // Start a new list or close previous list
+                    if (inList) {
+                        listHtml += `</${listType}>`;
+                    }
+                    listHtml += '<ol style="margin: 0; padding-left: 1.5em; margin-top: 0.2em; margin-bottom: 0.2em;">';
+                    listType = 'ol';
+                    inList = true;
+                }
+
+                listHtml += `<li style="margin: 0; padding: 0;">${content}</li>`;
+                continue;
+            }
+
+            // Not a list item
+            if (inList) {
+                // End the current list
+                listHtml += `</${listType}>`;
+                finalHtml += listHtml;
+                listHtml = '';
+                inList = false;
+                listType = '';
+            }
+
+            // Process normal line with italic formatting
+            line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+            // Add the line to the final HTML
+            finalHtml += line + (i < lines.length - 1 ? '<br>' : '');
+        }
+
+        // Close any open list
+        if (inList) {
+            listHtml += `</${listType}>`;
+            finalHtml += listHtml;
+        }
+
+        // Set the HTML content
+        containerEl.innerHTML = finalHtml;
+    } catch (error) {
+        console.error("Error formatting markdown:", error);
+        // Fallback to plain text if formatting fails
+        containerEl.appendText(text);
+    }
+}
+
 export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement) {
     const pattern = /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+fear)/gi;
     let lastIndex = 0;
@@ -36,7 +124,10 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
 
     while ((match = pattern.exec(text)) !== null) {
         if (match.index > lastIndex) {
-            containerEl.appendText(text.substring(lastIndex, match.index));
+            // Render the text between matches as markdown
+            const textFragment = text.substring(lastIndex, match.index);
+            const fragmentEl = containerEl.createSpan();
+            renderMarkdown(plugin, textFragment, fragmentEl);
         }
 
         const dicePart = match[1];
@@ -62,7 +153,10 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
     }
 
     if (lastIndex < text.length) {
-        containerEl.appendText(text.substring(lastIndex));
+        // Render any remaining text as markdown
+        const remainingText = text.substring(lastIndex);
+        const remainingEl = containerEl.createSpan();
+        renderMarkdown(plugin, remainingText, remainingEl);
     }
 }
 
