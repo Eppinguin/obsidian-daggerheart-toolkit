@@ -690,6 +690,25 @@
     opacity: 1;
 }
 
+.dh-drag-handle {
+    cursor: grab;
+}
+.dh-drag-handle:active {
+    cursor: grabbing;
+}
+
+
+/* Ensure the image container doesn't overlap the controls */
+.dh-card-image-container {
+    padding-top: 0;
+}
+
+/* --- Drag and Drop Styles --- */
+.dh-adversary-group-container.dh-dragging {
+    opacity: 0.5;
+    border: 2px dashed var(--interactive-accent);
+    background: var(--background-modifier-hover);
+}
 
 /* -----------------------------------------------------------------------------
    8. FEATURES SECTION
@@ -1045,6 +1064,8 @@
     border-radius: var(--radius-s, 4px); 
     border: 1px solid var(--background-modifier-border, #555);
     color: var(--text-normal, #ccc);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
 }
 
 .dh-compendium-entry:hover {
@@ -1631,56 +1652,62 @@
     gap: var(--size-4-2);
 }
 
-/* --- New Styles for Card Header Controls --- */
-.dh-card-header-controls {
-    position: absolute;
-    top: var(--size-4-2);
-    right: var(--size-4-2);
-    display: flex;
-    gap: var(--size-4-1);
-    z-index: 10;
+/* -----------------------------------------------------------------------------
+   15. STATBLOCK PREVIEW POPOVER STYLES
+   Styles for the statblock preview popover
+   ----------------------------------------------------------------------------- */
+/* --- Statblock Preview Popover Styles --- */
+.dh-statblock-preview-popover {
+    position: fixed;
+    z-index: 1000;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    width: 420px;
+    max-width: 90vw;
+    max-height: 85vh;
+    opacity: 0;
+    animation: dh-popover-fade-in 0.2s ease-out forwards;
+    transition: opacity 0.2s ease-out;
+    overflow: hidden;
+    pointer-events: all;
 }
 
-.dh-card-header-controls .dh-icon-button,
-.dh-card-header-controls .dh-drag-handle {
-    background-color: rgba(var(--background-primary-rgb), 0.5);
-    backdrop-filter: blur(2px);
-    color: var(--text-muted);
-    border-radius: var(--radius-s);
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.7;
-    transition: all 0.2s ease-in-out;
+@keyframes dh-popover-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dh-statblock-preview-popover .dh-popover-content {
+    padding: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.dh-statblock-preview-popover .dh-popover-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.dh-statblock-preview-popover .dh-popover-content::-webkit-scrollbar-track {
+    background: var(--scrollbar-bg);
+}
+
+.dh-statblock-preview-popover .dh-popover-content::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg);
+    border-radius: 4px;
+}
+
+/* Make sure the statblock in the popover doesn't have its own scrollbar */
+.dh-statblock-preview-popover .dh-popover-content .dh-editor-statblock {
+    max-width: 100%;
+    box-shadow: none;
     border: none;
     padding: 0;
-}
-
-.dh-card-header-controls .dh-icon-button:hover,
-.dh-card-header-controls .dh-drag-handle:hover {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    opacity: 1;
-}
-
-.dh-drag-handle {
-    cursor: grab;
-}
-.dh-drag-handle:active {
-    cursor: grabbing;
-}
-
-
-/* Ensure the image container doesn't overlap the controls */
-.dh-card-image-container {
-    padding-top: 0;
-}
-
-/* --- Drag and Drop Styles --- */
-.dh-adversary-group-container.dh-dragging {
-    opacity: 0.5;
-    border: 2px dashed var(--interactive-accent);
-    background: var(--background-modifier-hover);
 }

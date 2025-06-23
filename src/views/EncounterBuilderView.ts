@@ -1,4 +1,4 @@
-import { App, ItemView, WorkspaceLeaf, Notice, Menu, setIcon } from 'obsidian';
+import { App, ItemView, WorkspaceLeaf, Notice, Menu, setIcon, Modal } from 'obsidian';
 import DaggerheartStatblockPlugin from '../../main';
 import { StatblockData, AdversaryInstance, SavedEncounter, Countdown, Condition } from '../../types';
 import { renderStatblockCard } from '../rendering/statblock';
@@ -32,6 +32,9 @@ export class EncounterBuilderView extends ItemView {
     private countdownsPopup: HTMLElement | null = null;
     private draggedCountdownId: string | null = null;
     private draggedGroupId: string | null = null;
+
+    // Reference to store the active popover element
+    private activePopover: HTMLElement | null = null;
 
     private boundHandleRequestConditionMenu: (e: Event) => void;
     private boundHandleRemoveConditionEvent: (e: Event) => void;
@@ -522,6 +525,32 @@ export class EncounterBuilderView extends ItemView {
         } else {
             filteredItems.forEach(itemData => {
                 const itemEntry = listContainer.createDiv({ cls: "dh-compendium-entry" });
+
+                // Add click event listener for the popover
+                itemEntry.addEventListener("click", (e) => {
+                    // Don't show the preview if the add button was clicked
+                    if ((e.target as HTMLElement).classList.contains('dh-add-compendium-btn')) {
+                        return;
+                    }
+
+                    // If this item already has an active popover, hide it
+                    if (this.activePopover && (itemEntry as any).hasActivePopover) {
+                        this.hideStatblockPreview();
+                        return;
+                    }
+
+                    // If there's another popover open, hide it first
+                    if (this.activePopover) {
+                        this.hideStatblockPreview();
+                    }
+
+                    // Show the popover for this item
+                    this.showStatblockPreview(itemData, itemEntry);
+
+                    // Mark this item as having an active popover
+                    (itemEntry as any).hasActivePopover = true;
+                });
+
                 const nameSpan = itemEntry.createSpan({ text: itemData.name });
                 if (itemData.isCustom) { nameSpan.addClass('dh-custom-adversary'); nameSpan.title = `Custom Item from ${itemData.sourceFile}`; }
                 if (itemData.category === 'environment') {
@@ -530,8 +559,15 @@ export class EncounterBuilderView extends ItemView {
                     setIcon(icon, 'mountain');
                     nameSpan.title = 'Environment';
                 }
+
                 const addButton = itemEntry.createEl("button", { text: "+", title: "Add to active encounter", cls: "dh-add-compendium-btn" });
-                addButton.addEventListener("click", () => this.addItemToActiveEncounter(itemData));
+                addButton.addEventListener("click", (e) => {
+                    // Close any open popover when adding to encounter
+                    if (this.activePopover) {
+                        this.hideStatblockPreview();
+                    }
+                    this.addItemToActiveEncounter(itemData);
+                });
             });
         }
     }
@@ -961,6 +997,105 @@ export class EncounterBuilderView extends ItemView {
                 encounterArea.removeEventListener('dragover', this.boundHandleDragOver);
                 encounterArea.removeEventListener('drop', this.boundHandleDrop);
                 encounterArea.removeEventListener('dragend', this.boundHandleDragEnd);
+            }
+
+            // Force cleanup of any active popover
+            if (this.activePopover) {
+                document.removeEventListener('click', this.handleDocumentClick);
+                this.activePopover.remove();
+                this.activePopover = null;
+            }
+        }
+    } showStatblockPreview(itemData: StatblockData, targetEl: HTMLElement) {
+        // Remove any existing popover
+        this.hideStatblockPreview();
+
+        // Create a new popover container
+        this.activePopover = document.createElement('div');
+        this.activePopover.classList.add('dh-statblock-preview-popover');
+        document.body.appendChild(this.activePopover);
+
+        // Create a container for the statblock content
+        const contentContainer = this.activePopover.createDiv({ cls: 'dh-popover-content' });
+
+        // Make the content container scrollable
+        contentContainer.style.maxHeight = '80vh';
+        contentContainer.style.overflowY = 'auto';
+
+        // Render the statblock in the popover
+        renderStatblockCard(this.plugin, itemData, contentContainer, false, itemData.name);
+
+        // Position the popover to the left of the target element
+        const targetRect = targetEl.getBoundingClientRect();
+        const compendiumList = targetEl.closest('.dh-compendium-list');
+
+        if (compendiumList) {
+            const compendiumRect = compendiumList.getBoundingClientRect();
+
+            // Calculate the left position (to the left of the compendium entry)
+            let leftPos = compendiumRect.left - 440; // Position to the left with some margin, adjusted for wider popover
+
+            // If positioning to the left would go off-screen, position to the right instead
+            if (leftPos < 10) {
+                leftPos = compendiumRect.right + 10; // Position to the right with some margin
+            }
+
+            this.activePopover.style.left = `${leftPos}px`;
+            this.activePopover.style.top = `${targetRect.top}px`;
+
+            // Ensure popover doesn't go off the top of the screen
+            const popoverRect = this.activePopover.getBoundingClientRect();
+            if (popoverRect.top < 10) {
+                this.activePopover.style.top = '10px';
+            }
+
+            // Ensure popover doesn't go off the bottom of the screen
+            const viewportHeight = window.innerHeight;
+            if (popoverRect.bottom > viewportHeight - 10) {
+                this.activePopover.style.top = `${viewportHeight - popoverRect.height - 10}px`;
+            }
+        }
+
+        // Add a click event listener to the document to close the popover when clicking outside
+        setTimeout(() => {
+            document.addEventListener('click', this.handleDocumentClick);
+        }, 0);
+    }
+
+
+
+    private handleDocumentClick = (e: MouseEvent) => {
+        // Skip if no active popover
+        if (!this.activePopover) return;
+
+        // Check if the click was inside the popover
+        if (this.activePopover.contains(e.target as Node)) {
+            return;
+        }
+
+        // Check if the click was on a compendium entry - we don't close in that case
+        // as the click handler for that entry will handle showing its own popover
+        const clickedOnCompendiumEntry = (e.target as Element)?.closest?.('.dh-compendium-entry');
+        if (clickedOnCompendiumEntry) {
+            return;
+        }
+
+        // If we get here, the click was outside the popover and not on a compendium entry
+        this.hideStatblockPreview();
+    }
+
+    hideStatblockPreview() {
+        if (this.activePopover) {
+            document.removeEventListener('click', this.handleDocumentClick);
+            this.activePopover.remove();
+            this.activePopover = null;
+
+            // Clear the active popover flag from all compendium entries
+            const entries = this.uiContainer?.querySelectorAll('.dh-compendium-entry');
+            if (entries) {
+                entries.forEach(entry => {
+                    (entry as any).hasActivePopover = false;
+                });
             }
         }
     }
