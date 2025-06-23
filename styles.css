@@ -22,8 +22,8 @@
 
 /* Name styling */
 .dh-editor-statblock .dh-name {
-    font-size: 1.8em;
-    font-weight: 900;
+    font-size: 1.5em;
+    font-weight: var(--font-black);
     color: #111;
     text-transform: uppercase;
     margin: 0 0 0.1em 0;
@@ -33,8 +33,8 @@
 
 /* Tier and type information */
 .dh-editor-statblock .dh-tier-type {
-    font-size: 1.2em;
-    font-weight: 600;
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-semibold);
     color: #333;
     margin: 0.2em 0 0.8em 0;
 }
@@ -52,7 +52,7 @@
 }
 
 .dh-editor-statblock .dh-motives strong {
-    font-weight: 700;
+    font-weight: var(--font-bold);
 }
 
 /* Stats grid layout */
@@ -72,7 +72,7 @@
 }
 
 .dh-editor-statblock .dh-stats-grid strong {
-   font-weight: 700;
+   font-weight: var(--font-bold);
 }
 
 .dh-editor-statblock .dh-stat-separator {
@@ -82,8 +82,8 @@
 
 /* Features section */
 .dh-editor-statblock .dh-features-title {
-    font-size: 1.5em;
-    font-weight: 900;
+    font-size: var(--font-ui-larger);
+    font-weight: var(--font-black);
     color: #111;
     text-transform: uppercase;
     padding: 0;
@@ -104,7 +104,7 @@
     border: none;
     margin-bottom: 0.7em;
     line-height: 1.4;
-    font-size: 1em;
+    font-size: var(--font-ui-medium);
     margin-left: 0; 
 }
 
@@ -130,15 +130,8 @@
     padding-left: 0.5em;
 }
 
-/* Ensure text within bullet points is properly aligned */
-.dh-editor-statblock .dh-features-list li ul li p {
-    padding-left: 0;
-    text-indent: 0;
-    margin-left: 0;
-}
-
 .dh-editor-statblock .dh-feature-name {
-   font-weight: 700;
+   font-weight: var(--font-bold);
    display: inline;
 }
 
@@ -146,7 +139,7 @@
    padding: 0;
    margin: 0;
    display: inline;
-   font-size: 1em;
+   font-size: var(--font-ui-medium);
    border: none;
 }
 
@@ -371,7 +364,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 1.1em;
+    font-size: var(--font-ui-medium);
 }
 
 .dh-fear-btn:hover {
@@ -381,8 +374,8 @@
 .dh-fear-value {
     min-width: 24px;
     text-align: center;
-    font-weight: bold;
-    font-size: 1em;
+    font-weight: var(--font-bold);
+    font-size: var(--font-ui-medium);
 }
 
 /* Budget tracker */
@@ -412,8 +405,8 @@
 .dh-budget-value {
     min-width: 24px;
     text-align: center;
-    font-weight: bold;
-    font-size: 1em;
+    font-weight: var(--font-bold);
+    font-size: var(--font-ui-medium);
     color: var(--text-normal);
 }
 
@@ -430,7 +423,7 @@
 }
 
 .dh-track-label {
-    font-weight: var(--font-semibold, bold); 
+    font-weight: var(--font-semibold); 
     margin-right: var(--size-4-1, 5px);
     width: 45px;
     text-align: left; 
@@ -450,7 +443,7 @@
 .dh-track-btn {
     background-color: var(--interactive-normal); 
     color: var(--text-normal);
-    font-weight: var(--font-bold, bold); 
+    font-weight: var(--font-bold); 
     cursor: pointer; 
     border-radius: 50%; 
     width: 22px; 
@@ -610,7 +603,7 @@
 
 .dh-card-role-text { 
     font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-semibold, 600);
+    font-weight: var(--font-semibold);
     color: var(--text-muted); 
     text-transform: uppercase;
     margin-bottom: var(--size-4-2, 10px); 
@@ -628,14 +621,14 @@
 /* Card motives */
 .dh-instance-card-content .dh-motives {
     font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-light, 300);
+    font-weight: var(--font-light);
     color: var(--text-normal);
     margin-top: var(--size-4-1);
     padding-top: var(--size-4-1);
 }
 
 .dh-instance-card-content .dh-motives strong {
-     font-weight: var(--font-bold, bold); 
+     font-weight: var(--font-bold); 
 }
 
 /* Card stats */
@@ -657,14 +650,14 @@
 /* Card experience */
 .dh-instance-card-content .dh-experience { 
     font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-light, 300);
+    font-weight: var(--font-light);
     color: var(--text-normal);
     margin-top: var(--size-4-1);
     padding-top: var(--size-4-1);
 }
 
 .dh-instance-card-content .dh-experience strong { 
-    font-weight: var(--font-bold, bold); 
+    font-weight: var(--font-bold); 
 }
 
 /* Card HP and Stress container */
@@ -752,7 +745,7 @@
    ----------------------------------------------------------------------------- */
 .dh-instance-features-title { 
     font-size: var(--font-ui-small, 13px); 
-    font-weight: var(--font-bold, 700);
+    font-weight: var(--font-bold);
     text-align: left;
     margin-top: var(--size-4-3, 15px); 
     margin-bottom: var(--size-2-1, 8px); 
@@ -916,7 +909,7 @@
 
 .dh-additional-tracker-name {
     font-size: var(--font-ui-medium, 1em);
-    font-weight: var(--font-semibold, bold);
+    font-weight: var(--font-semibold);
     color: var(--text-normal); 
     flex-grow: 1;
 }
@@ -932,7 +925,7 @@
     background:none;
     border: none;
     color: var(--text-faint); 
-    font-size: 1.2em; 
+    font-size: var(--font-ui-larger);
     cursor: pointer;
     padding: 0 var(--size-4-1, 3px);
     opacity: 0.6; 
@@ -975,7 +968,7 @@
 .dh-condition-remove {
     margin-left: var(--size-4-1);
     cursor: pointer;
-    font-weight: bold;
+    font-weight: var(--font-bold);
     opacity: 0.7;
 }
 
@@ -1421,7 +1414,7 @@
 .dh-countdown-btn {
     width: 24px;
     height: 24px;
-    font-size: 1.1em;
+    font-size: var(--font-ui-medium);
 }
 
 .dh-countdown-value {
@@ -1535,7 +1528,7 @@
     color: var(--text-muted);
     border-bottom: 1px solid var(--background-modifier-border);
     padding-bottom: var(--size-4-2);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
 }
 
 /* Use grid for the main form fields for a clean, responsive layout */
@@ -1561,7 +1554,7 @@
 }
 
 .dh-modal-field-grid .setting-item-name {
-    font-weight: 600; /* Bolder label */
+    font-weight: var(--font-semibold); /* Bolder label */
     font-size: var(--font-ui-small);
     color: var(--text-normal);
 }
