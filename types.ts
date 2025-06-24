@@ -95,6 +95,7 @@ export interface DaggerheartPluginSettings {
     useGraphicalDice: boolean;
     enableEncounterBudget: boolean;
     encounterBudgetConfig: EncounterBudgetConfig;
+    isCompendiumVisible: boolean;
 }
 
 export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
@@ -112,6 +113,7 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     enableDiceRoller: false,
     useGraphicalDice: false,
     enableEncounterBudget: false,
+    isCompendiumVisible: true,
     encounterBudgetConfig: {
         playerCount: 4,
         isEasier: false,

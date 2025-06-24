@@ -78,13 +78,17 @@ export class EncounterBuilderView extends ItemView {
         const persistedState = this.leaf.getEphemeralState();
         if (persistedState) {
             if (persistedState.currentEncounterId) this.currentEncounterId = persistedState.currentEncounterId;
-            this.isCompendiumVisible = typeof persistedState.isCompendiumVisible === 'boolean' ? persistedState.isCompendiumVisible : true;
             this.isCountdownsPopupVisible = typeof persistedState.isCountdownsPopupVisible === 'boolean' ? persistedState.isCountdownsPopupVisible : false;
             this.compendiumSearchTerm = typeof persistedState.compendiumSearchTerm === 'string' ? persistedState.compendiumSearchTerm : "";
             this.compendiumItemCategory = persistedState.compendiumItemCategory || 'all';
             if (Array.isArray(persistedState.selectedTiers)) this.selectedTiers = new Set(persistedState.selectedTiers);
             if (Array.isArray(persistedState.selectedTypes)) this.selectedTypes = new Set(persistedState.selectedTypes);
         }
+
+        // Initialize compendium visibility from plugin settings
+        this.isCompendiumVisible = typeof this.plugin.settings.isCompendiumVisible === 'boolean'
+            ? this.plugin.settings.isCompendiumVisible
+            : true;
 
         this.ensureActiveEncounter();
         this.icon = 'swords';
@@ -110,7 +114,10 @@ export class EncounterBuilderView extends ItemView {
                     this.currentEncounterId = null;
                 }
             }
-            if (typeof state.isCompendiumVisible === 'boolean') this.isCompendiumVisible = state.isCompendiumVisible;
+            if (typeof state.isCompendiumVisible === 'boolean') {
+                // Only update the ephemeral state value, not overriding the saved plugin setting
+                this.isCompendiumVisible = this.plugin.settings.isCompendiumVisible;
+            }
             if (typeof state.isCountdownsPopupVisible === 'boolean') this.isCountdownsPopupVisible = state.isCountdownsPopupVisible;
             if (typeof state.compendiumSearchTerm === 'string') this.compendiumSearchTerm = state.compendiumSearchTerm;
             if (typeof state.compendiumItemCategory === 'string') this.compendiumItemCategory = state.compendiumItemCategory;
@@ -197,6 +204,12 @@ export class EncounterBuilderView extends ItemView {
 
     toggleCompendiumVisibility() {
         this.isCompendiumVisible = !this.isCompendiumVisible;
+
+        // Save the state to the plugin settings
+        this.plugin.settings.isCompendiumVisible = this.isCompendiumVisible;
+        this.plugin.saveSettings();
+
+        // Update the ephemeral state
         this.leaf.setEphemeralState(this.getState());
         this.drawUI();
     }
