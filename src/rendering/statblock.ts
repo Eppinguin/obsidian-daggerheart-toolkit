@@ -101,6 +101,25 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
         statElements.push(attackDetailsSpan);
     }
 
+    if (data.experience) {
+        const expSpan = document.createElement('span');
+        expSpan.createEl('strong', { text: 'Experience: ' });
+
+        if (typeof data.experience === 'string') {
+            // If experience is just a string, display it directly
+            expSpan.appendText(data.experience);
+        } else {
+            // If experience is a StatblockExperience object, format it like "Key +Value"
+            const experienceEntries = Object.entries(data.experience);
+            if (experienceEntries.length > 0) {
+                const [key, value] = experienceEntries[0]; // Take first entry as shown in screenshot
+                const formattedValue = value > 0 ? `+${value}` : value.toString();
+                expSpan.appendText(`${key} ${formattedValue}`);
+            }
+        }
+        statElements.push(expSpan);
+    }
+
     statElements.forEach((el, index) => {
         statsGrid.appendChild(el);
         if (index < statElements.length - 1) {
@@ -191,6 +210,25 @@ function renderEnvironmentInstance(
         impulsesDiv.createEl('strong', { text: 'Impulses: ' });
         const impulsesContentDiv = impulsesDiv.createSpan();
         renderMarkdown(plugin, data.impulses, impulsesContentDiv);
+    }
+
+    if (data.experience) {
+        const experienceDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
+        experienceDiv.createEl('strong', { text: 'Experience: ' });
+        const experienceContentDiv = experienceDiv.createSpan();
+
+        if (typeof data.experience === 'string') {
+            renderMarkdown(plugin, data.experience, experienceContentDiv);
+        } else {
+            // Handle StatblockExperience object format
+            const experienceEntries = Object.entries(data.experience);
+            if (experienceEntries.length > 0) {
+                const formattedExperience = experienceEntries
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join(', ');
+                renderMarkdown(plugin, formattedExperience, experienceContentDiv);
+            }
+        }
     }
 
     const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
@@ -289,32 +327,40 @@ function renderAdversaryInstance(
         }
     }
 
+    if (data.experience) {
+        const experienceDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
+        experienceDiv.createEl('strong', { text: 'Experience: ' });
+        const experienceContentDiv = experienceDiv.createSpan();
+
+        if (typeof data.experience === 'string') {
+            renderMarkdown(plugin, data.experience, experienceContentDiv);
+        } else {
+            // Handle StatblockExperience object format
+            const experienceEntries = Object.entries(data.experience);
+            if (experienceEntries.length > 0) {
+                const formattedExperience = experienceEntries
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join(', ');
+                renderMarkdown(plugin, formattedExperience, experienceContentDiv);
+            }
+        }
+    }
+
     const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
     if (data.difficulty !== undefined) {
         coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
     }
 
-    if (data.attack) {
-        const attackSpan = coreStatsLine.createSpan({ cls: 'dh-attack-details-span' });
-        attackSpan.createEl('strong', { text: `${data.attack.name || 'Attack'}:` });
-        attackSpan.appendText(` ${data.attack.range || ''} – `);
-        const damageSpan = attackSpan.createSpan();
-        renderRollableContent(plugin, data.attack.damage || '', damageSpan);
-        attackSpan.appendText(' (ATK ');
-        const modValue = String(data.attack.modifier ?? '0').trim();
-        if (/^[+-]?\d+$/.test(modValue) && plugin.isDiceRollerEnabled) {
-            const diceString = `1d20${modValue === '0' ? '' : modValue.startsWith('+') ? modValue : `+${modValue}`}`;
-            const rollSpan = attackSpan.createSpan({ text: modValue, cls: 'dh-rollable-dice', attr: { title: `Click to roll ${diceString}` } });
-            rollSpan.addEventListener('click', (e) => { e.stopPropagation(); rollDice(plugin, diceString); });
-        } else {
-            attackSpan.appendText(modValue);
-        }
-        attackSpan.appendText(')');
+    if (data.potential_adversaries) {
+        const paDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
+        paDiv.createEl('strong', { text: 'Potential Adversaries: ' });
+        const paContentDiv = paDiv.createSpan();
+        renderMarkdown(plugin, data.potential_adversaries, paContentDiv);
     }
 
     if (data.features?.length) {
         const featuresDiv = statblockContentDiv.createDiv({ cls: 'dh-features-section' });
-        featuresDiv.createDiv({ text: 'FEATURES', cls: 'dh-instance-features-title' });
+        featuresDiv.createDiv({ text: 'FEATS', cls: 'dh-instance-features-title' });
         const featuresList = featuresDiv.createEl('ul', { cls: 'dh-features-list' });
         data.features.forEach(feature => {
             if (!feature?.name) return;
@@ -352,6 +398,30 @@ function renderAdversaryInstance(
 
     if (data.hp_stress) {
         const trackContainer = statblockContentDiv.createDiv({ cls: 'dh-hp-stress-container' });
+
+        // Redesigned Thresholds section
+        if (data.hp_stress.major_hp) {
+            const thresholdsBar = trackContainer.createDiv({ cls: 'dh-threshold-bar' });
+
+            // First segment (Minor)
+            thresholdsBar.createDiv({ cls: 'dh-threshold-segment dh-threshold-minor', text: 'Minor' });
+
+            // First threshold value
+            thresholdsBar.createDiv({ cls: 'dh-threshold-value', text: String(data.hp_stress.major_hp) });
+
+            // Middle segment (Major)
+            thresholdsBar.createDiv({ cls: 'dh-threshold-segment dh-threshold-major', text: 'Major' });
+
+            if (data.hp_stress.severe_hp) {
+                // Second threshold value
+                thresholdsBar.createDiv({ cls: 'dh-threshold-value', text: String(data.hp_stress.severe_hp) });
+
+                // Last segment (Severe)
+                thresholdsBar.createDiv({ cls: 'dh-threshold-segment dh-threshold-severe', text: 'Severe' });
+            }
+        }
+        // END: Redesigned Thresholds section
+
         const row = trackContainer.createDiv({ cls: 'dh-additional-tracker-row' });
         const header = row.createDiv({ cls: 'dh-additional-tracker-header' });
         header.createSpan({ text: data.displayName, cls: 'dh-additional-tracker-name' });

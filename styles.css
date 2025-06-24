@@ -1740,3 +1740,70 @@
     border: none;
     padding: 0;
 }
+
+/* -----------------------------------------------------------------------------
+   16. THRESHOLDS
+   ----------------------------------------------------------------------------- */
+.dh-threshold-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: var(--size-4-3);
+    position: relative;
+}
+
+.dh-threshold-segment {
+    padding: var(--size-2-1) var(--size-4-2);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+    min-width: 60px;
+}
+
+/* First segment styling (Minor) */
+.dh-threshold-segment:first-child {
+    border-top-left-radius: var(--radius-m);
+    border-bottom-left-radius: var(--radius-m);
+    border-right: none;
+}
+
+/* Last segment styling (Severe or Major) */
+.dh-threshold-segment:last-child {
+    border-top-right-radius: var(--radius-m);
+    border-bottom-right-radius: var(--radius-m);
+    border-left: none;
+}
+
+/* Middle segment styling (Major when Severe exists) */
+.dh-threshold-major:not(:last-child) {
+    border-left: none;
+    border-right: none;
+}
+
+/* Threshold value styling */
+.dh-threshold-value {
+    font-weight: var(--font-bold);
+    color: var(--text-normal);
+    font-size: var(--font-ui-medium);
+    background-color: var(--background-primary);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    min-width: 28px;
+    text-align: center;
+    z-index: 1;
+    position: relative;
+    margin: 0 -1px;
+    box-shadow: 0 0 0 2px var(--background-primary);
+}
+
+/* Minor segment additional styling */
+.dh-threshold-minor {
+    padding-right: var(--size-4-3);
+}
