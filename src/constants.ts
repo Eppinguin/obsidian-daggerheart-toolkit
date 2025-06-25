@@ -13,4 +13,5 @@ export const EVENT_REQUEST_CONDITION_MENU = 'dh-request-condition-menu';
 export const EVENT_REMOVE_CONDITION = 'dh-remove-condition';
 export const EVENT_REMOVE_INSTANCE = 'dh-remove-instance';
 export const EVENT_EDIT_INSTANCE = 'dh-edit-instance';
+export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 

@@ -1,86 +1,61 @@
-import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, MarkdownView } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, MarkdownView, TFile, EventRef } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS } from './types';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/views/EncounterBuilderView';
+import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './src/views/CharacterSheetView';
 import { getCompendiumItems, saveItemToUserCompendium } from './src/services/compendium';
+import { CharacterCompendium } from './src/services/characterCompendium';
 import { renderStatblockCard } from './src/rendering/statblock';
 import { createInteractiveTrack } from './src/rendering/ui-helpers';
 import { AdversaryReferenceModal, EncounterLinkModal } from './src/modals/index';
 
+// Declare a custom event for the workspace to allow views to communicate
+declare module "obsidian" {
+    interface Workspace {
+        on(name: 'daggerheart-character-update', callback: () => void, ctx?: any): EventRef;
+        trigger(name: 'daggerheart-character-update'): void;
+    }
+}
+
 export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;
     isDiceRollerEnabled: boolean = false;
+    characterCompendium: CharacterCompendium;
+
+    private characters: Character[] = [];
+    private activeCharacterId: string | null = null;
 
     async onload() {
-        console.log('Loading Daggerheart Statblock Plugin');
+        console.log('Loading Daggerheart Plugin');
         await this.loadSettings();
 
-        this.isDiceRollerEnabled = this.settings.enableDiceRoller && (this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api != null;
-        if (this.settings.enableDiceRoller) {
-            if (this.isDiceRollerEnabled) {
-                console.log('Daggerheart: Dice Roller plugin detected and enabled.');
-            } else {
-                new Notice('Dice Roller plugin not found. Please install it to use dice rolling features.');
-            }
-        } else {
-            console.log('Daggerheart: Dice Roller integration disabled in settings.');
-        }
+        this.characterCompendium = new CharacterCompendium(this);
+        await this.characterCompendium.load();
+        await this.loadCharacters();
 
-        this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el) => {
-            this.processStatblock(source, el);
-        });
+        this.isDiceRollerEnabled = this.settings.enableDiceRoller && !!(this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api;
 
-        this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el) => {
-            this.processEmbed(source, el);
-        });
-
-        this.registerObsidianProtocolHandler("dh-encounter", (params) => {
-            const encounterId = params.id;
-            if (encounterId) {
-                this.activateView(encounterId);
-            } else {
-                new Notice("Could not find encounter ID in the link.");
-            }
-        });
-
+        // Register Views
         this.registerView(ENCOUNTER_BUILDER_VIEW_TYPE, (leaf: WorkspaceLeaf) => new EncounterBuilderView(leaf, this));
-        this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => this.activateView());
-        this.addCommand({ id: 'open-daggerheart-encounter-builder', name: 'Open Encounter Builder', callback: () => this.activateView() });
-        this.addCommand({
-            id: 'insert-adversary-statblock',
-            name: 'Insert Adversary Statblock',
-            editorCallback: (editor: Editor, view: MarkdownView) => {
-                new AdversaryReferenceModal(this.app, this, (adversary) => {
-                    const embedCode = `\`\`\`daggerheart-embed\nadversary: ${adversary.name}\n\`\`\``;
-                    editor.replaceSelection(embedCode);
-                }, 'adversary').open();
-            }
-        });
+        this.registerView(CHARACTER_SHEET_VIEW_TYPE, (leaf: WorkspaceLeaf) => new CharacterSheetView(leaf, this));
 
-        this.addCommand({
-            id: 'insert-environment-statblock',
-            name: 'Insert Environment Statblock',
-            editorCallback: (editor: Editor, view: MarkdownView) => {
-                new AdversaryReferenceModal(this.app, this, (environment) => {
-                    const embedCode = `\`\`\`daggerheart-embed\nenvironment: ${environment.name}\n\`\`\``;
-                    editor.replaceSelection(embedCode);
-                }, 'environment').open();
-            }
-        });
+        // Add Ribbon Icons & Commands
+        this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => this.activateEncounterBuilderView());
+        this.addRibbonIcon('user-round', 'Open Daggerheart Characters', () => this.activateCharacterSheetView());
+        this.addCommand({ id: 'open-daggerheart-encounter-builder', name: 'Open Encounter Builder', callback: () => this.activateEncounterBuilderView() });
+        this.addCommand({ id: 'open-daggerheart-character-sheet', name: 'Open Characters', callback: () => this.activateCharacterSheetView() });
 
-        this.addCommand({
-            id: 'insert-encounter-link',
-            name: 'Insert Encounter Link',
-            editorCallback: (editor: Editor, view: MarkdownView) => {
-                new EncounterLinkModal(this.app, this, (encounter) => {
-                    const linkText = `[${encounter.name}](obsidian://dh-encounter?id=${encounter.id})`;
-                    editor.replaceSelection(linkText);
-                }).open();
-            }
-        });
+        // Register Markdown Processors and related commands
+        this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el) => { this.processStatblock(source, el); });
+        this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el) => { this.processEmbed(source, el); });
+        this.addCommand({ id: 'insert-adversary-statblock', name: 'Insert Adversary Statblock', editorCallback: (editor: Editor) => { new AdversaryReferenceModal(this.app, this, (adversary) => editor.replaceSelection(`\`\`\`daggerheart-embed\nadversary: ${adversary.name}\n\`\`\``), 'adversary').open(); } });
+        this.addCommand({ id: 'insert-environment-statblock', name: 'Insert Environment Statblock', editorCallback: (editor: Editor) => { new AdversaryReferenceModal(this.app, this, (environment) => editor.replaceSelection(`\`\`\`daggerheart-embed\nenvironment: ${environment.name}\n\`\`\``), 'environment').open(); } });
+        this.addCommand({ id: 'insert-encounter-link', name: 'Insert Encounter Link', editorCallback: (editor: Editor) => { new EncounterLinkModal(this.app, this, (encounter) => editor.replaceSelection(`[${encounter.name}](obsidian://dh-encounter?id=${encounter.id})`)).open(); } });
 
         this.addSettingTab(new DaggerheartSettingTab(this.app, this));
     }
+
+    // --- DATA PROCESSING METHODS ---
 
     async processStatblock(source: string, el: HTMLElement) {
         try {
@@ -135,7 +110,70 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
 
-    async activateView(encounterId?: string) {
+    // --- CHARACTER DATA MANAGEMENT ---
+
+    private async loadCharacters() {
+        const path = `${this.manifest.dir}/characters.json`;
+        if (await this.app.vault.adapter.exists(path)) {
+            try {
+                const data = await this.app.vault.adapter.read(path);
+                this.characters = JSON.parse(data);
+                if (this.characters.length > 0 && !this.activeCharacterId) {
+                    this.activeCharacterId = this.characters[0].id;
+                }
+            } catch (e) {
+                console.error("Daggerheart: Error loading characters.json. It might be corrupted.", e);
+                this.characters = [];
+            }
+        } else {
+            this.characters = [];
+        }
+    }
+
+    private async saveCharacters() {
+        const path = `${this.manifest.dir}/characters.json`;
+        await this.app.vault.adapter.write(path, JSON.stringify(this.characters, null, 2));
+    }
+
+    public getCharacters(): Character[] { return this.characters; }
+
+    public getCharacter(id: string): Character | undefined { return this.characters.find(c => c.id === id); }
+
+    public getActiveCharacter(): Character | undefined {
+        if (!this.activeCharacterId) return undefined;
+        return this.characters.find(c => c.id === this.activeCharacterId);
+    }
+
+    public getActiveCharacterId(): string | null { return this.activeCharacterId; }
+
+    public setActiveCharacterId(id: string | null) {
+        this.activeCharacterId = id;
+        this.app.workspace.trigger('daggerheart-character-update');
+    }
+
+    public async updateCharacter(character: Character) {
+        const index = this.characters.findIndex(c => c.id === character.id);
+        if (index > -1) {
+            this.characters[index] = character;
+        } else {
+            this.characters.push(character);
+        }
+        await this.saveCharacters();
+        this.app.workspace.trigger('daggerheart-character-update');
+    }
+
+    public async deleteCharacter(id: string) {
+        this.characters = this.characters.filter(c => c.id !== id);
+        if (this.activeCharacterId === id) {
+            this.activeCharacterId = this.characters.length > 0 ? this.characters[0].id : null;
+        }
+        await this.saveCharacters();
+        this.app.workspace.trigger('daggerheart-character-update');
+    }
+
+    // --- VIEW ACTIVATION ---
+
+    async activateEncounterBuilderView(encounterId?: string) {
         this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
 
         await this.app.workspace.getRightLeaf(false)?.setViewState({
@@ -149,32 +187,69 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
-    getCompendiumItems() {
+    async activateCharacterSheetView() {
+        this.app.workspace.detachLeavesOfType(CHARACTER_SHEET_VIEW_TYPE);
+        const leaf = this.app.workspace.getRightLeaf(false);
+        if (leaf) {
+            await leaf.setViewState({
+                type: CHARACTER_SHEET_VIEW_TYPE,
+                active: true,
+            });
+            this.app.workspace.revealLeaf(leaf);
+        }
+    }
+
+    // --- PUBLIC UTILITY METHODS ---
+
+    public getCompendiumItems() {
         return getCompendiumItems(this);
     }
 
-    saveItemToUserCompendium(itemData: StatblockData) {
+    public saveItemToUserCompendium(itemData: StatblockData) {
         return saveItemToUserCompendium(this, itemData);
     }
 
-    createInteractiveTrack(
-        parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string,
-        currentValue: number, updateCallback: (newValue: number) => void
-    ) {
+    public createInteractiveTrack(parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string, currentValue: number, updateCallback: (newValue: number) => void) {
         createInteractiveTrack(parentEl, label, maxValue, trackIdPrefix, currentValue, updateCallback);
     }
 
+    public async rollDice(diceString: string) {
+        if (!this.settings.enableDiceRoller || !this.isDiceRollerEnabled) {
+            new Notice("Dice Roller integration is not enabled.");
+            return;
+        }
+        const diceRollerPlugin = (this.app as any).plugins.getPlugin("obsidian-dice-roller");
+        if (!diceRollerPlugin || typeof diceRollerPlugin.api?.getRoller !== 'function') {
+            new Notice("Dice Roller plugin API not available.");
+            return;
+        }
+        try {
+            const roller = await diceRollerPlugin.api.getRoller(diceString);
+            await roller.roll({ showDice: this.settings.useGraphicalDice, throw: this.settings.useGraphicalDice });
+            if (!this.settings.useGraphicalDice) {
+                new Notice(`Rolled ${diceString}: ${roller.result}`, 5000);
+            }
+        } catch (e) {
+            console.error("Daggerheart: Error rolling dice:", e);
+            new Notice(`Error rolling dice for "${diceString}".`);
+        }
+    }
+
+    // --- SETTINGS & UNLOADING ---
+
     async loadSettings() { this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()); }
     async saveSettings() { await this.saveData(this.settings); }
+
     onunload() {
-        console.log('Unloading Daggerheart Statblock Plugin');
         this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
+        this.app.workspace.detachLeavesOfType(CHARACTER_SHEET_VIEW_TYPE);
     }
 }
 
 class DaggerheartSettingTab extends PluginSettingTab {
     plugin: DaggerheartStatblockPlugin;
     constructor(app: App, plugin: DaggerheartStatblockPlugin) { super(app, plugin); this.plugin = plugin; }
+
     display(): void {
         const { containerEl } = this;
         containerEl.empty();

@@ -1,0 +1,1964 @@
+{
+  "broadsword": {
+    "_type": "inventoryWeapon",
+    "name": "Broadsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "One-Handed"
+  },
+  "longsword": {
+    "_type": "inventoryWeapon",
+    "name": "Longsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "battleaxe": {
+    "_type": "inventoryWeapon",
+    "name": "Battleaxe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "greatsword": {
+    "_type": "inventoryWeapon",
+    "name": "Greatsword",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Massive:** -1 to Evasion; on a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "mace": {
+    "_type": "inventoryWeapon",
+    "name": "Mace",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "warhammer": {
+    "_type": "inventoryWeapon",
+    "name": "Warhammer",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d12",
+    "damageType": "Physical",
+    "features": [
+      "**Heavy:** -1 to Evasion"
+    ],
+    "burden": "Two-Handed"
+  },
+  "dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "quarterstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Quarterstaff",
+    "trait": "Instinct",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "cutlass": {
+    "_type": "inventoryWeapon",
+    "name": "Cutlass",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "rapier": {
+    "_type": "inventoryWeapon",
+    "name": "Rapier",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Quick:** When you make an attack, you can mark a Stress to target another creature within range."
+    ],
+    "burden": "One-Handed"
+  },
+  "halberd": {
+    "_type": "inventoryWeapon",
+    "name": "Halberd",
+    "trait": "Strength",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "spear": {
+    "_type": "inventoryWeapon",
+    "name": "Spear",
+    "trait": "Finesse",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "shortbow": {
+    "_type": "inventoryWeapon",
+    "name": "Shortbow",
+    "trait": "Agility",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "crossbow": {
+    "_type": "inventoryWeapon",
+    "name": "Crossbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "longbow": {
+    "_type": "inventoryWeapon",
+    "name": "Longbow",
+    "trait": "Agility",
+    "range": "Very Far",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "arcane-gauntlets": {
+    "_type": "inventoryWeapon",
+    "name": "Arcane Gauntlets",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "hallowed-axe": {
+    "_type": "inventoryWeapon",
+    "name": "Hallowed Axe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "glowing-rings": {
+    "_type": "inventoryWeapon",
+    "name": "Glowing Rings",
+    "trait": "Agility",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "hand-runes": {
+    "_type": "inventoryWeapon",
+    "name": "Hand Runes",
+    "trait": "Instinct",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "returning-blade": {
+    "_type": "inventoryWeapon",
+    "name": "Returning Blade",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": [
+      "**Returning:** When this weapon is thrown within its range, it appears in your hand immediately after the attack."
+    ],
+    "burden": "One-Handed"
+  },
+  "shortstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Shortstaff",
+    "trait": "Instinct",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "dualstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Dualstaff",
+    "trait": "Instinct",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "scepter": {
+    "_type": "inventoryWeapon",
+    "name": "Scepter",
+    "trait": "Presence",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Versatile:** This weapon can also be used with these statistics\u2014Presence, Melee, d8."
+    ],
+    "burden": "Two-Handed"
+  },
+  "wand": {
+    "_type": "inventoryWeapon",
+    "name": "Wand",
+    "trait": "Knowledge",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "greatstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Greatstaff",
+    "trait": "Knowledge",
+    "range": "Very Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Powerful:** On a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "improved-broadsword": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Broadsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-longsword": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Longsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "improved-battleaxe": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Battleaxe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "improved-greatsword": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Greatsword",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Massive:** -1 to Evasion; on a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "improved-mace": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Mace",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-warhammer": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Warhammer",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d12",
+    "damageType": "Physical",
+    "features": [
+      "**Heavy:** -1 to Evasion"
+    ],
+    "burden": "Two-Handed"
+  },
+  "improved-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-quarterstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Quarterstaff",
+    "trait": "Instinct",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "improved-cutlass": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Cutlass",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-rapier": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Rapier",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Quick:** When you make an attack, you can mark a Stress to target another creature within range."
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-halberd": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Halberd",
+    "trait": "Strength",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "improved-spear": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Spear",
+    "trait": "Finesse",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "improved-shortbow": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Shortbow",
+    "trait": "Agility",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "improved-crossbow": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Crossbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-longbow": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Longbow",
+    "trait": "Agility",
+    "range": "Very Far",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "gilded-falchion": {
+    "_type": "inventoryWeapon",
+    "name": "Gilded Falchion",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Powerful:** On a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "One-Handed"
+  },
+  "knuckle-blades": {
+    "_type": "inventoryWeapon",
+    "name": "Knuckle Blades",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Brutal:** When you roll the maximum value on a damage die, roll an additional damage die."
+    ],
+    "burden": "One-Handed"
+  },
+  "urok-broadsword": {
+    "_type": "inventoryWeapon",
+    "name": "Urok Broadsword",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Deadly:** When you deal Severe damage, the target must mark an additional HP."
+    ],
+    "burden": "One-Handed"
+  },
+  "bladed-whip": {
+    "_type": "inventoryWeapon",
+    "name": "Bladed Whip",
+    "trait": "Agility",
+    "range": "Very Close",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Quick:** When you make an attack, you can mark a Stress to target another creature within range."
+    ],
+    "burden": "One-Handed"
+  },
+  "steelforged-halberd": {
+    "_type": "inventoryWeapon",
+    "name": "Steelforged Halberd",
+    "trait": "Strength",
+    "range": "Very Close",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Scary:** On a successful attack, the target must mark a Stress."
+    ],
+    "burden": "Two-Handed"
+  },
+  "war-scythe": {
+    "_type": "inventoryWeapon",
+    "name": "War Scythe",
+    "trait": "Finesse",
+    "range": "Very Close",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "Two-Handed"
+  },
+  "blunderbuss": {
+    "_type": "inventoryWeapon",
+    "name": "Blunderbuss",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Reloading:** After you make an attack, roll a d6. On a result of 1, you must mark a Stress to reload this weapon before you can fire it again."
+    ],
+    "burden": "Two-Handed"
+  },
+  "greatbow": {
+    "_type": "inventoryWeapon",
+    "name": "Greatbow",
+    "trait": "Strength",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Powerful:** On a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "finehair-bow": {
+    "_type": "inventoryWeapon",
+    "name": "Finehair Bow",
+    "trait": "Agility",
+    "range": "Very Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "Two-Handed"
+  },
+  "improved-arcane-gauntlets": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Arcane Gauntlets",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "improved-hallowed-axe": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Hallowed Axe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-glowing-rings": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Glowing Rings",
+    "trait": "Agility",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "improved-hand-runes": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Hand Runes",
+    "trait": "Instinct",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-returning-blade": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Returning Blade",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": [
+      "**Returning:** When this weapon is thrown within its range, it appears in your hand immediately after the attack."
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-shortstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Shortstaff",
+    "trait": "Instinct",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-dualstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Dualstaff",
+    "trait": "Instinct",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "improved-scepter": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Scepter",
+    "trait": "Presence",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Versatile:** This weapon can also be used with these statistics\u2014Presence, Melee, d8+3."
+    ],
+    "burden": "Two-Handed"
+  },
+  "improved-wand": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Wand",
+    "trait": "Knowledge",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-greatstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Greatstaff",
+    "trait": "Knowledge",
+    "range": "Very Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Powerful:** On a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "ego-blade": {
+    "_type": "inventoryWeapon",
+    "name": "Ego Blade",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d12",
+    "damageType": "Magical",
+    "features": [
+      "**Pompous:** You must have a Presence of 0 or lower to use this weapon."
+    ],
+    "burden": "One-Handed"
+  },
+  "casting-sword": {
+    "_type": "inventoryWeapon",
+    "name": "Casting Sword",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": [
+      "**Versatile:** This weapon can also be used with these statistics\u2014Knowledge, Far, d6+3."
+    ],
+    "burden": "Two-Handed"
+  },
+  "devouring-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Devouring Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": [
+      "**Scary:** On a successful attack, the target must mark a Stress."
+    ],
+    "burden": "One-Handed"
+  },
+  "hammer-of-exota": {
+    "_type": "inventoryWeapon",
+    "name": "Hammer of Exota",
+    "trait": "Instinct",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": [
+      "**Eruptive:** On a successful attack against a target within Melee range, all other adversaries within Very Close range must succeed on a reaction roll (14) or take half damage."
+    ],
+    "burden": "Two-Handed"
+  },
+  "yutari-bloodbow": {
+    "_type": "inventoryWeapon",
+    "name": "Yutari Bloodbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Brutal:** When you roll the maximum value on a damage die, roll an additional damage die."
+    ],
+    "burden": "Two-Handed"
+  },
+  "elder-bow": {
+    "_type": "inventoryWeapon",
+    "name": "Elder Bow",
+    "trait": "Instinct",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Powerful:** On a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "scepter-of-elias": {
+    "_type": "inventoryWeapon",
+    "name": "Scepter of Elias",
+    "trait": "Presence",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Invigorating:** On a successful attack, roll a d4. On a result of 4, clear a Stress."
+    ],
+    "burden": "One-Handed"
+  },
+  "wand-of-enthrallment": {
+    "_type": "inventoryWeapon",
+    "name": "Wand of Enthrallment",
+    "trait": "Presence",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Persuasive:** Before you make a Presence Roll, you can mark a Stress to gain a +2 bonus to the result."
+    ],
+    "burden": "One-Handed"
+  },
+  "keeper\u2019s-staff": {
+    "_type": "inventoryWeapon",
+    "name": "Keeper\u2019s Staff",
+    "trait": "Knowledge",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "Two-Handed"
+  },
+  "advanced-broadsword": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Broadsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-longsword": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Longsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "advanced-battleaxe": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Battleaxe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "advanced-greatsword": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Greatsword",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Massive:** -1 to Evasion; on a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "advanced-mace": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Mace",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "advanced-warhammer": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Warhammer",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d12",
+    "damageType": "Physical",
+    "features": [
+      "**Heavy:** -1 to Evasion"
+    ],
+    "burden": "Two-Handed"
+  },
+  "advanced-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "advanced-quarterstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Quarterstaff",
+    "trait": "Instinct",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "advanced-cutlass": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Cutlass",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "advanced-rapier": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Rapier",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Quick:** When you make an attack, you can mark a Stress to target another creature within range."
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-halberd": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Halberd",
+    "trait": "Strength",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "advanced-spear": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Spear",
+    "trait": "Finesse",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "advanced-shortbow": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Shortbow",
+    "trait": "Agility",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "advanced-crossbow": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Crossbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "advanced-longbow": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Longbow",
+    "trait": "Agility",
+    "range": "Very Far",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "flickerfly-blade": {
+    "_type": "inventoryWeapon",
+    "name": "Flickerfly Blade",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Sharpening:** Gain a bonus to your damage rolls equal to your Agility."
+    ],
+    "burden": "One-Handed"
+  },
+  "bravesword": {
+    "_type": "inventoryWeapon",
+    "name": "Bravesword",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d12",
+    "damageType": "Physical",
+    "features": [
+      "**Brave:** -1 to Evasion; +3 to Severe damage threshold"
+    ],
+    "burden": "Two-Handed"
+  },
+  "hammer-of-wrath": {
+    "_type": "inventoryWeapon",
+    "name": "Hammer of Wrath",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Devastating:** Before you make an attack roll, you can mark a Stress to use a d20 as your damage die."
+    ],
+    "burden": "Two-Handed"
+  },
+  "labrys-axe": {
+    "_type": "inventoryWeapon",
+    "name": "Labrys Axe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Protective:** +1 to Armor Score"
+    ],
+    "burden": "Two-Handed"
+  },
+  "meridian-cutlass": {
+    "_type": "inventoryWeapon",
+    "name": "Meridian Cutlass",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Dueling:** When there are no other creatures within Close range of the target, gain advantage on your attack roll against them."
+    ],
+    "burden": "One-Handed"
+  },
+  "retractable-saber": {
+    "_type": "inventoryWeapon",
+    "name": "Retractable Saber",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Retractable:** The blade can be hidden in the hilt to avoid detection."
+    ],
+    "burden": "One-Handed"
+  },
+  "double-flail": {
+    "_type": "inventoryWeapon",
+    "name": "Double Flail",
+    "trait": "Agility",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Powerful:** On a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "talon-blades": {
+    "_type": "inventoryWeapon",
+    "name": "Talon Blades",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Brutal:** When you roll the maximum value on a damage die, roll an additional damage die."
+    ],
+    "burden": "Two-Handed"
+  },
+  "black-powder-revolver": {
+    "_type": "inventoryWeapon",
+    "name": "Black Powder Revolver",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Reloading:** After you make an attack, roll a d6. On a result of 1, you must mark a Stress to reload this weapon before you can fire it again."
+    ],
+    "burden": "One-Handed"
+  },
+  "spiked-bow": {
+    "_type": "inventoryWeapon",
+    "name": "Spiked Bow",
+    "trait": "Agility",
+    "range": "Very Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Versatile:** This weapon can also be used with these statistics\u2014Agility, Melee, d10+5."
+    ],
+    "burden": "Two-Handed"
+  },
+  "legendary-broadsword": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Broadsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-longsword": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Longsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "legendary-battleaxe": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Battleaxe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "legendary-greatsword": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Greatsword",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Massive:** -1 to Evasion; on a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "legendary-mace": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Mace",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-warhammer": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Warhammer",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d12",
+    "damageType": "Physical",
+    "features": [
+      "**Heavy:** -1 to Evasion"
+    ],
+    "burden": "Two-Handed"
+  },
+  "legendary-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-quarterstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Quarterstaff",
+    "trait": "Instinct",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "legendary-cutlass": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Cutlass",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-rapier": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Rapier",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Quick:** When you make an attack, you can mark a Stress to target another creature within range."
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-halberd": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Halberd",
+    "trait": "Strength",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "legendary-spear": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Spear",
+    "trait": "Finesse",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "legendary-shortbow": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Shortbow",
+    "trait": "Agility",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "legendary-crossbow": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Crossbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-longbow": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Longbow",
+    "trait": "Agility",
+    "range": "Very Far",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Cumbersome:** -1 to Finesse"
+    ],
+    "burden": "Two-Handed"
+  },
+  "dual--ended-sword": {
+    "_type": "inventoryWeapon",
+    "name": "Dual-Ended Sword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Quick:** When you make an attack, you can mark a Stress to target another creature within range."
+    ],
+    "burden": "Two-Handed"
+  },
+  "impact-gauntlet": {
+    "_type": "inventoryWeapon",
+    "name": "Impact Gauntlet",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Physical",
+    "features": [
+      "**Concussive:** On a successful attack, you can spend a Hope to knock the target back to Far range."
+    ],
+    "burden": "One-Handed"
+  },
+  "sledge-axe": {
+    "_type": "inventoryWeapon",
+    "name": "Sledge Axe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d12",
+    "damageType": "Physical",
+    "features": [
+      "**Destructive:** -1 to Agility; on a successful attack, all adversaries within Very Close range must mark a Stress."
+    ],
+    "burden": "Two-Handed"
+  },
+  "curved-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Curved Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Serrated:** When you roll a 1 on a damage die, it deals 8 damage instead."
+    ],
+    "burden": "One-Handed"
+  },
+  "extended-polearm": {
+    "_type": "inventoryWeapon",
+    "name": "Extended Polearm",
+    "trait": "Finesse",
+    "range": "Very Close",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Long:** This weapon\u2019s attack targets all adversaries in a line within range."
+    ],
+    "burden": "Two-Handed"
+  },
+  "swinging-ropeblade": {
+    "_type": "inventoryWeapon",
+    "name": "Swinging Ropeblade",
+    "trait": "Presence",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Grappling:** On a successful attack, you can spend a Hope to Restrain the target or pull them into Melee range with you."
+    ],
+    "burden": "One-Handed"
+  },
+  "ricochet-axes": {
+    "_type": "inventoryWeapon",
+    "name": "Ricochet Axes",
+    "trait": "Agility",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Bouncing:** Mark 1 or more Stress to hit that many targets in range of the attack."
+    ],
+    "burden": "Two-Handed"
+  },
+  "aantari-bow": {
+    "_type": "inventoryWeapon",
+    "name": "Aantari Bow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "Two-Handed"
+  },
+  "hand-cannon": {
+    "_type": "inventoryWeapon",
+    "name": "Hand Cannon",
+    "trait": "Finesse",
+    "range": "Very Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Reloading:** After you make an attack, roll a d6. On a 1, you must mark a Stress to reload this weapon before you can fire it again."
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-arcane-gauntlets": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Arcane Gauntlets",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "legendary-hallowed-axe": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Hallowed Axe",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-glowing-rings": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Glowing Rings",
+    "trait": "Agility",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-hand-runes": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Hand Runes",
+    "trait": "Instinct",
+    "range": "Very Close",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-returning-blade": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Returning Blade",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": [
+      "**Returning:** When this weapon is thrown within its range, it appears in your hand immediately after the attack."
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-shortstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Shortstaff",
+    "trait": "Instinct",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-dualstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Dualstaff",
+    "trait": "Instinct",
+    "range": "Far",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "Two-Handed"
+  },
+  "legendary-scepter": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Scepter",
+    "trait": "Presence",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Versatile:** This weapon can also be used with these statistics\u2014Presence, Melee, d8+6."
+    ],
+    "burden": "Two-Handed"
+  },
+  "legendary-wand": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Wand",
+    "trait": "Knowledge",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "legendary-greatstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Greatstaff",
+    "trait": "Knowledge",
+    "range": "Very Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Powerful:** On a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "Two-Handed"
+  },
+  "sword-of-light-and-flame": {
+    "_type": "inventoryWeapon",
+    "name": "Sword of Light and Flame",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": [
+      "**Hot:** This weapon cuts through solid material."
+    ],
+    "burden": "Two-Handed"
+  },
+  "siphoning-gauntlets": {
+    "_type": "inventoryWeapon",
+    "name": "Siphoning Gauntlets",
+    "trait": "Presence",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": [
+      "**Lifestealing:** On a successful attack, roll a d6. On a result of 6, clear a Hit Point or clear a Stress."
+    ],
+    "burden": "Two-Handed"
+  },
+  "midas-scythe": {
+    "_type": "inventoryWeapon",
+    "name": "Midas Scythe",
+    "trait": "Knowledge",
+    "range": "Melee",
+    "damageDice": "d10",
+    "damageType": "Magical",
+    "features": [
+      "**Greedy:** Spend a handful of gold to gain a +1 bonus to your Proficiency on a damage roll."
+    ],
+    "burden": "Two-Handed"
+  },
+  "floating-bladeshards": {
+    "_type": "inventoryWeapon",
+    "name": "Floating Bladeshards",
+    "trait": "Instinct",
+    "range": "Close",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": [
+      "**Powerful:** On a successful attack, roll an additional damage die and discard the lowest result."
+    ],
+    "burden": "One-Handed"
+  },
+  "bloodstaff": {
+    "_type": "inventoryWeapon",
+    "name": "Bloodstaff",
+    "trait": "Instinct",
+    "range": "Far",
+    "damageDice": "d20",
+    "damageType": "Magical",
+    "features": [
+      "**Painful:** Each time you make a successful attack, you must mark a Stress."
+    ],
+    "burden": "Two-Handed"
+  },
+  "thistlebow": {
+    "_type": "inventoryWeapon",
+    "name": "Thistlebow",
+    "trait": "Instinct",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Reliable:** +1 to attack rolls"
+    ],
+    "burden": "Two-Handed"
+  },
+  "wand-of-essek": {
+    "_type": "inventoryWeapon",
+    "name": "Wand of Essek",
+    "trait": "Knowledge",
+    "range": "Far",
+    "damageDice": "d8",
+    "damageType": "Magical",
+    "features": [
+      "**Timebending:** You can choose the target of your attack after making your attack roll."
+    ],
+    "burden": "One-Handed"
+  },
+  "magus-revolver": {
+    "_type": "inventoryWeapon",
+    "name": "Magus Revolver",
+    "trait": "Finesse",
+    "range": "Very Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Reloading:** After you make an attack, roll a d6. On a result of 1, you must mark a Stress to reload this weapon before you can fire it again."
+    ],
+    "burden": "One-Handed"
+  },
+  "fusion-gloves": {
+    "_type": "inventoryWeapon",
+    "name": "Fusion Gloves",
+    "trait": "Knowledge",
+    "range": "Very Far",
+    "damageDice": "d6",
+    "damageType": "Magical",
+    "features": [
+      "**Bonded:** Gain a bonus to your damage rolls equal to your level."
+    ],
+    "burden": "Two-Handed"
+  },
+  "shortsword": {
+    "_type": "inventoryWeapon",
+    "name": "Shortsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Paired:** +2 to primary weapon damage to targets within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "round-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Round Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d4",
+    "damageType": "Physical",
+    "features": [
+      "**Protective:** +1 to Armor Score"
+    ],
+    "burden": "One-Handed"
+  },
+  "tower-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Tower Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Barrier:** +2 to Armor Score; -1 to Evasion"
+    ],
+    "burden": "One-Handed"
+  },
+  "small-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Small Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Paired:** +2 to primary weapon damage to targets within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "whip": {
+    "_type": "inventoryWeapon",
+    "name": "Whip",
+    "trait": "Presence",
+    "range": "Very Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Startling:** Mark a Stress to crack the whip and force all adversaries within Melee range back to Close range."
+    ],
+    "burden": "One-Handed"
+  },
+  "grappler": {
+    "_type": "inventoryWeapon",
+    "name": "Grappler",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Hooked:** On a successful attack, you can pull the target into Melee range."
+    ],
+    "burden": "One-Handed"
+  },
+  "hand-crossbow": {
+    "_type": "inventoryWeapon",
+    "name": "Hand Crossbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "improved-shortsword": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Shortsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Paired:** +3 to primary weapon damage to targets within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-round-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Round Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d4",
+    "damageType": "Physical",
+    "features": [
+      "**Protective:** +2 to Armor Score"
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-tower-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Tower Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Barrier:** +3 to Armor Score; -1 to Evasion"
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-small-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Small Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Paired:** +3 to primary weapon damage to targets within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-whip": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Whip",
+    "trait": "Presence",
+    "range": "Very Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Startling:** Mark a Stress to crack the whip and force all adversaries within Melee range back to Close range."
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-grappler": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Grappler",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Hooked:** On a successful attack, you can pull the target into Melee range."
+    ],
+    "burden": "One-Handed"
+  },
+  "improved-hand-crossbow": {
+    "_type": "inventoryWeapon",
+    "name": "Improved Hand Crossbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "spiked-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Spiked Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Double Duty:** +1 to Armor Score; +1 to primary weapon damage within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "parrying-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Parrying Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Parry:** When you are attacked, roll this weapon\u2019s damage dice. If any of the attacker\u2019s damage dice rolled the same value as your dice, the matching results are discarded from the attacker\u2019s damage dice before the damage you take is totaled."
+    ],
+    "burden": "One-Handed"
+  },
+  "returning-axe": {
+    "_type": "inventoryWeapon",
+    "name": "Returning Axe",
+    "trait": "Agility",
+    "range": "Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Returning:** When this weapon is thrown within its range, it appears in your hand immediately after the attack."
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-shortsword": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Shortsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Paired:** +4 to primary weapon damage to targets within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-round-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Round Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d4",
+    "damageType": "Physical",
+    "features": [
+      "**Protective:** +3 to Armor Score"
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-tower-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Tower Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Barrier:** +4 to Armor Score; \u20131 to Evasion"
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-small-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Small Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Paired:** +4 to primary weapon damage to targets within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-whip": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Whip",
+    "trait": "Presence",
+    "range": "Very Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Startling:** Mark a Stress to crack the whip and force all adversaries within Melee range back to Close range."
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-grappler": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Grappler",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Hooked:** On a successful attack, you can pull the target into Melee range."
+    ],
+    "burden": "One-Handed"
+  },
+  "advanced-hand-crossbow": {
+    "_type": "inventoryWeapon",
+    "name": "Advanced Hand Crossbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "buckler": {
+    "_type": "inventoryWeapon",
+    "name": "Buckler",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d4",
+    "damageType": "Physical",
+    "features": [
+      "**Deflecting:** When you are attacked, you can mark an Armor Slot to gain a bonus to your Evasion equal to your Armor Score against the attack."
+    ],
+    "burden": "One-Handed"
+  },
+  "powered-gauntlet": {
+    "_type": "inventoryWeapon",
+    "name": "Powered Gauntlet",
+    "trait": "Knowledge",
+    "range": "Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Charged:** Mark a Stress to gain a +1 bonus to your Proficiency on a primary weapon attack."
+    ],
+    "burden": "One-Handed"
+  },
+  "hand-sling": {
+    "_type": "inventoryWeapon",
+    "name": "Hand Sling",
+    "trait": "Finesse",
+    "range": "Very Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Versatile:** This weapon can also be used with these statistics\u2014Finesse, Close, d8+4."
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-shortsword": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Shortsword",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Paired:** +5 to primary weapon damage to targets within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-round-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Round Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d4",
+    "damageType": "Physical",
+    "features": [
+      "**Protective:** +4 to Armor Score"
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-tower-shield": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Tower Shield",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Barrier:** +5 to Armor Score; \u20131 to Evasion."
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-small-dagger": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Small Dagger",
+    "trait": "Finesse",
+    "range": "Melee",
+    "damageDice": "d8",
+    "damageType": "Physical",
+    "features": [
+      "**Paired:** +5 to primary weapon damage to targets within Melee range"
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-whip": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Whip",
+    "trait": "Presence",
+    "range": "Very Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Startling:** Mark a Stress to crack the whip and force all adversaries within Melee range back to Close range."
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-grappler": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Grappler",
+    "trait": "Finesse",
+    "range": "Close",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Hooked:** On a successful attack, you can pull the target into Melee range."
+    ],
+    "burden": "One-Handed"
+  },
+  "legendary-hand-crossbow": {
+    "_type": "inventoryWeapon",
+    "name": "Legendary Hand Crossbow",
+    "trait": "Finesse",
+    "range": "Far",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": null,
+    "burden": "One-Handed"
+  },
+  "braveshield": {
+    "_type": "inventoryWeapon",
+    "name": "Braveshield",
+    "trait": "Agility",
+    "range": "Melee",
+    "damageDice": "d4",
+    "damageType": "Physical",
+    "features": [
+      "**Sheltering:** When you mark an Armor Slot, it reduces damage for you and all allies within Melee range of you who took the same damage."
+    ],
+    "burden": "One-Handed"
+  },
+  "knuckle-claws": {
+    "_type": "inventoryWeapon",
+    "name": "Knuckle Claws",
+    "trait": "Strength",
+    "range": "Melee",
+    "damageDice": "d6",
+    "damageType": "Physical",
+    "features": [
+      "**Doubled Up:** When you make an attack with your primary weapon, you can deal damage to another target within Melee range."
+    ],
+    "burden": "One-Handed"
+  },
+  "primer-shard": {
+    "_type": "inventoryWeapon",
+    "name": "Primer Shard",
+    "trait": "Instinct",
+    "range": "Very Close",
+    "damageDice": "d4",
+    "damageType": "Physical",
+    "features": [
+      "**Locked On:** On a successful attack, your next attack against the same target with your primary weapon automatically succeeds."
+    ],
+    "burden": "One-Handed"
+  }
+}
