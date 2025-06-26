@@ -88,7 +88,10 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
             const diceString = `1d20${(normalizedModifier === '+0' || normalizedModifier === '0') ? '' : normalizedModifier}`;
             const atkRollable = atkSpan.createSpan({ text: modifierValue, cls: 'dh-rollable-dice' });
             atkRollable.title = `Click to roll ${diceString}`;
-            atkRollable.addEventListener('click', (e) => { e.stopPropagation(); rollDice(plugin, diceString); });
+            atkRollable.addEventListener('click', (e) => {
+                e.stopPropagation();
+                plugin.rollDice(diceString, data.attack?.name || 'Attack');
+            });
         } else {
             atkSpan.appendText(modifierValue);
         }
@@ -151,34 +154,6 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
                 renderMarkdown(plugin, description, descSpan);
             }
         });
-    }
-}
-
-async function rollDice(plugin: DaggerheartStatblockPlugin, diceString: string) {
-    const diceRollerPlugin = (plugin.app as any).plugins.getPlugin("obsidian-dice-roller");
-    if (!diceRollerPlugin) {
-        new Notice("Dice Roller plugin is not enabled. Please install or enable it to roll dice.");
-        return;
-    }
-
-    const DiceRollerAPI = diceRollerPlugin.api;
-    if (!DiceRollerAPI || typeof DiceRollerAPI.getRoller !== 'function') {
-        new Notice("Dice Roller plugin API not available. Please ensure Dice Roller is up to date.");
-        console.error("Daggerheart: Dice Roller plugin is active, but its API is not available or is missing getRoller.");
-        return;
-    }
-
-    try {
-        const roller = await DiceRollerAPI.getRoller(diceString);
-        if (plugin.settings.useGraphicalDice) {
-            await roller.roll({ showDice: true, throw: true });
-        } else {
-            await roller.roll();
-            new Notice(`Rolled ${diceString}: ${roller.result}`, 5000);
-        }
-    } catch (e) {
-        console.error("Daggerheart: Error rolling dice:", e);
-        new Notice(`Error rolling dice for "${diceString}". See console for details.`);
     }
 }
 

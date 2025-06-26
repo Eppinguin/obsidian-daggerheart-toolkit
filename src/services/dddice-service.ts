@@ -141,7 +141,7 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
                     if (isDaggerheartActionRoll && values.length === 2) {
                         const hopeValue = values[0];
                         const fearValue = values[1];
-                        const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Neutral");
+                        const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
                         new Notice(`${context}: Hope [${hopeValue}], Fear [${fearValue}] => ${outcome}`, 7000);
                     } else {
                         new Notice(`${context}: ${rollData.equation} = ${rollData.total_value}`, 7000);
@@ -159,7 +159,7 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
                 if (isDaggerheartActionRoll && values.length === 2) {
                     const hopeValue = values[0];
                     const fearValue = values[1];
-                    const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Neutral");
+                    const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
                     new Notice(`${context}: Hope [${hopeValue}], Fear [${fearValue}] => ${outcome}`, 7000);
                 } else {
                     new Notice(`${context}: ${rollData.equation} = ${total}`, 7000);
