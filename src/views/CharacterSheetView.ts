@@ -166,7 +166,16 @@ export class CharacterSheetView extends ItemView {
     // --- CHARACTER CREATOR WIZARD (Unchanged, so omitting for brevity) ---
     private redrawCreatorStep() { if (!this.stepContainer) return; this.stepContainer.empty(); const steps = [this.drawCreatorStep1_Class.bind(this), this.drawCreatorStep2_Heritage.bind(this), this.drawCreatorStep3_Traits.bind(this), this.drawCreatorStep4_Equipment.bind(this), this.drawCreatorStep5_Background.bind(this), this.drawCreatorStep6_Experiences.bind(this), this.drawCreatorStep7_Domains.bind(this), this.drawCreatorStep8_Connections.bind(this), this.drawCreatorStep9_FinalDetails.bind(this),]; if (this.creatorStep < steps.length) { steps[this.creatorStep](this.stepContainer); } this.backBtn.style.visibility = this.creatorStep === 0 ? 'hidden' : 'visible'; this.nextBtn.textContent = this.creatorStep === steps.length - 1 ? 'Create Character' : 'Next'; }
     private drawCharacterCreator(parent: HTMLElement) { const creatorEl = parent.createDiv({ cls: 'dh-creator-wizard' }); creatorEl.createEl('h2', { text: 'Create New Character' }); this.stepContainer = creatorEl.createDiv(); const navContainer = creatorEl.createDiv({ cls: 'dh-creator-nav' }); this.backBtn = navContainer.createEl('button', { text: 'Back', cls: 'dh-creator-btn' }); this.nextBtn = navContainer.createEl('button', { text: 'Next', cls: 'dh-creator-btn' }); this.backBtn.addEventListener('click', () => { if (this.creatorStep > 0) { this.creatorStep--; this.redrawCreatorStep(); } }); this.nextBtn.addEventListener('click', async () => { const steps = 9; if (this.creatorStep === steps - 1) { await this.finalizeCharacter(this.creatorState); } else if (this.creatorStep < steps - 1) { this.creatorStep++; this.redrawCreatorStep(); } }); this.redrawCreatorStep(); }
-    private drawCreatorStep1_Class(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 1: Choose your Class & Subclass' }); const detailsContainer = parent.createDiv({ cls: 'dh-creator-details' }); const subclassSetting = new Setting(parent); const drawDetails = () => { detailsContainer.empty(); if (!this.creatorState.classId) return; const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId); if (charClass) { detailsContainer.createEl('h4', { text: charClass.name }); renderMarkdown(this.plugin, charClass._narrative.description, detailsContainer.createDiv()); detailsContainer.createEl('p', { text: `Initial HP: ${charClass.initialHitPoints} | Initial Evasion: ${charClass.initialEvasion}` }); if (this.creatorState.subclassId) { const subclass = this.plugin.characterCompendium.getSubclass(this.creatorState.subclassId); if (subclass) { detailsContainer.createEl('h5', { text: `Subclass: ${subclass.name}` }); renderMarkdown(this.plugin, subclass.description, detailsContainer.createDiv()); } } } }; const drawSubclassDropdown = () => { subclassSetting.clear(); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass) { subclassSetting.setName("Subclass").addDropdown(dd => { dd.addOption('', '--- Select ---'); charClass.subclasses.forEach(subRef => { const subclass = this.plugin.characterCompendium.getSubclass(subRef.value); if (subclass) dd.addOption(subclass.id, subclass.name); }); dd.setValue(this.creatorState.subclassId || '').onChange(value => { this.creatorState.subclassId = value; drawDetails(); }); }); } }; new Setting(parent).setName("Class").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.classes.forEach(cls => dd.addOption(cls.id, cls.name)); dd.setValue(this.creatorState.classId || '').onChange(value => { this.creatorState.classId = value; this.creatorState.subclassId = undefined; this.creatorState.backgroundAnswers = []; this.creatorState.connections = []; drawSubclassDropdown(); drawDetails(); }); }); drawSubclassDropdown(); drawDetails(); }
+    private drawCreatorStep1_Class(parent: HTMLElement) {
+        parent.createEl('h3', { text: 'Step 1: Choose your Class & Subclass' }); const detailsContainer = parent.createDiv({ cls: 'dh-creator-details' }); const subclassSetting = new Setting(parent); const drawDetails = () => {
+            detailsContainer.empty(); if (!this.creatorState.classId) return; const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId); if (charClass) {
+                detailsContainer.createEl('h4', { text: charClass.name }); if (charClass._narrative?.description) {
+                    renderMarkdown(this.plugin, charClass._narrative.description, detailsContainer.createDiv());
+                }
+                detailsContainer.createEl('p', { text: `Initial HP: ${charClass.initialHitPoints} | Initial Evasion: ${charClass.initialEvasion}` }); if (this.creatorState.subclassId) { const subclass = this.plugin.characterCompendium.getSubclass(this.creatorState.subclassId); if (subclass) { detailsContainer.createEl('h5', { text: `Subclass: ${subclass.name}` }); renderMarkdown(this.plugin, subclass.description, detailsContainer.createDiv()); } }
+            }
+        }; const drawSubclassDropdown = () => { subclassSetting.clear(); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass) { subclassSetting.setName("Subclass").addDropdown(dd => { dd.addOption('', '--- Select ---'); charClass.subclasses.forEach(subRef => { const subclass = this.plugin.characterCompendium.getSubclass(subRef.value); if (subclass) dd.addOption(subclass.id, subclass.name); }); dd.setValue(this.creatorState.subclassId || '').onChange(value => { this.creatorState.subclassId = value; drawDetails(); }); }); } }; new Setting(parent).setName("Class").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.classes.forEach(cls => dd.addOption(cls.id, cls.name)); dd.setValue(this.creatorState.classId || '').onChange(value => { this.creatorState.classId = value; this.creatorState.subclassId = undefined; this.creatorState.backgroundAnswers = []; this.creatorState.connections = []; drawSubclassDropdown(); drawDetails(); }); }); drawSubclassDropdown(); drawDetails();
+    }
     private drawCreatorStep2_Heritage(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 2: Choose Heritage' }); const ancestryDetails = parent.createDiv({ cls: 'dh-creator-details' }); new Setting(parent).setName("Ancestry").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.ancestries.forEach(anc => dd.addOption(anc.id, anc.name)); dd.setValue(this.creatorState.ancestryId || '').onChange(value => { this.creatorState.ancestryId = value; this.redrawCreatorStep(); }); }); if (this.creatorState.ancestryId) { const ancestry = this.plugin.characterCompendium.getAncestry(this.creatorState.ancestryId); if (ancestry) { ancestryDetails.createEl('h4', { text: ancestry.name }); renderMarkdown(this.plugin, ancestry.description, ancestryDetails.createDiv()); ancestryDetails.createEl('strong', { text: `${ancestry.primaryFeature.name}: ` }).appendText(ancestry.primaryFeature.description); ancestryDetails.createEl('br'); ancestryDetails.createEl('strong', { text: `${ancestry.secondaryFeature.name}: ` }).appendText(ancestry.secondaryFeature.description); } } const communityDetails = parent.createDiv({ cls: 'dh-creator-details' }); new Setting(parent).setName("Community").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.communities.forEach(com => dd.addOption(com.id, com.name)); dd.setValue(this.creatorState.communityId || '').onChange(value => { this.creatorState.communityId = value; this.redrawCreatorStep(); }); }); if (this.creatorState.communityId) { const community = this.plugin.characterCompendium.getCommunity(this.creatorState.communityId); if (community) { communityDetails.createEl('h4', { text: community.name }); renderMarkdown(this.plugin, community.description, communityDetails.createDiv()); communityDetails.createEl('strong', { text: `${community.feature.name}: ` }).appendText(community.feature.description); } } }
     private drawCreatorStep3_Traits(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 3: Assign Traits' }); parent.createEl('p', { text: 'Assign each value (+2, +1, +1, +0, +0, -1) to one of the six traits.' }); const assignedValues = Object.values(this.creatorState.traits || {}); const remainingValues = TRAIT_VALUES.filter(v => { const countInAssigned = assignedValues.filter(av => av === v).length; const countInMaster = TRAIT_VALUES.filter(tv => tv === v).length; return countInAssigned < countInMaster; }); TRAIT_NAMES.forEach(traitName => { new Setting(parent).setName(traitName).addDropdown(dd => { dd.addOption('none', '---'); const currentValue = this.creatorState.traits ? this.creatorState.traits[traitName] : undefined; const options = (currentValue !== undefined && currentValue !== null) ? [...new Set([currentValue, ...remainingValues])].sort((a, b) => b - a) : [...new Set(remainingValues)].sort((a, b) => b - a); options.forEach(val => dd.addOption(String(val), val >= 0 ? `+${val}` : String(val))); dd.setValue(String(currentValue ?? 'none')); dd.onChange(value => { const numValue = value === 'none' ? undefined : parseInt(value); if (this.creatorState.traits) { this.creatorState.traits[traitName] = numValue; } this.redrawCreatorStep(); }); }); }); }
     private drawCreatorStep4_Equipment(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 4: Starting Equipment' }); const weapons = this.plugin.characterCompendium.weapons; const armors = this.plugin.characterCompendium.armors; new Setting(parent).setName('Primary Weapon').addDropdown(dd => { dd.addOption('', '--- Select ---'); weapons.filter(w => w.burden === 'Two-Handed').forEach(w => dd.addOption(w.id, `${w.name} (2-Handed)`)); weapons.filter(w => w.burden === 'One-Handed').forEach(w => dd.addOption(w.id, `${w.name} (1-Handed)`)); dd.setValue(this.creatorState.startingWeaponIds?.[0] || '').onChange(value => { const weapon = weapons.find(w => w.id === value); this.creatorState.startingWeaponIds = weapon ? [value] : []; this.redrawCreatorStep(); }); }); const primaryWeapon = weapons.find(w => w.id === this.creatorState.startingWeaponIds?.[0]); if (primaryWeapon && primaryWeapon.burden === 'One-Handed') { const secondaryWeapons = this.plugin.characterCompendium.weapons.filter(w => w.burden === 'One-Handed'); new Setting(parent).setName('Secondary Weapon').addDropdown(dd => { dd.addOption('', '--- None ---'); secondaryWeapons.forEach(w => dd.addOption(w.id, w.name)); dd.setValue(this.creatorState.startingWeaponIds?.[1] || '').onChange(value => { this.creatorState.startingWeaponIds = value ? [primaryWeapon.id, value] : [primaryWeapon.id]; }); }); } new Setting(parent).setName('Armor').addDropdown(dd => { dd.addOption('', '--- Select ---'); armors.forEach(a => dd.addOption(a.id, a.name)); dd.setValue(this.creatorState.startingArmorId || '').onChange(value => { this.creatorState.startingArmorId = value; }); }); new Setting(parent).setName('Starting Potion').addDropdown(dd => { dd.addOption('health', 'Minor Health Potion').addOption('stamina', 'Minor Stamina Potion').setValue(this.creatorState.potionChoice || 'health').onChange(value => { this.creatorState.potionChoice = value as 'health' | 'stamina'; }); }); }
@@ -175,7 +184,96 @@ export class CharacterSheetView extends ItemView {
     private drawCreatorStep7_Domains(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 7: Choose Domain Cards' }); const classId = this.creatorState.classId; if (!classId) { parent.createEl('p', { text: 'Please select a class in Step 1.' }); return; } const domains = CLASS_DOMAINS[classId]; if (!domains) { parent.createEl('p', { text: 'Class domains not found.' }); return; } parent.createEl('p', { text: `Choose two cards from your class domains: ${domains.join(' & ')}.` }); const domainCards = this.plugin.characterCompendium.features.filter(f => { const metadata = this.getFeatureMetadata(f); return metadata.level === 1 && domains.some(d => d.toLowerCase() === metadata.domain?.toLowerCase()); }); const cardContainer = parent.createDiv({ cls: 'dh-creator-card-grid' }); domainCards.forEach(card => { const cardEl = cardContainer.createDiv({ cls: 'dh-creator-card' }); const label = cardEl.createEl('label'); const checkbox = label.createEl('input', { type: 'checkbox' }); checkbox.checked = this.creatorState.domainCardIds?.includes(card.id) ?? false; checkbox.onchange = () => { if (!this.creatorState.domainCardIds) this.creatorState.domainCardIds = []; if (checkbox.checked) { if (this.creatorState.domainCardIds.length < 2) { this.creatorState.domainCardIds.push(card.id); } else { checkbox.checked = false; new Notice('You can only select two domain cards.'); } } else { this.creatorState.domainCardIds = this.creatorState.domainCardIds.filter(id => id !== card.id); } }; label.createEl('strong', { text: card.name }); renderMarkdown(this.plugin, card.description, label.createDiv()); }); }
     private drawCreatorStep8_Connections(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 8: Create Connections' }); parent.createEl('p', { text: "Use these questions as inspiration to create connections with the other characters at your table. Discuss your answers together and jot down your notes here." }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? '') as CompendiumClassWithNarrative | undefined; if (charClass?._narrative?.connections) { charClass._narrative.connections.forEach((conn, index) => { new Setting(parent).setName(conn.question).addTextArea(text => { text.setValue(this.creatorState.connections?.[index] || '').onChange(value => { if (!this.creatorState.connections) this.creatorState.connections = []; this.creatorState.connections[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see connection questions.' }); } }
     private drawCreatorStep9_FinalDetails(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 9: Final Details & Review' }); if (!this.creatorState.pronouns) this.creatorState.pronouns = { subject: 'they', object: 'them' }; new Setting(parent).setName("Character Name").addText(text => text.setPlaceholder("Elara Meadowlight").setValue(this.creatorState.name || '').onChange(value => this.creatorState.name = value)); new Setting(parent).setName("Subject Pronoun").addText(text => text.setPlaceholder("e.g., she").setValue(this.creatorState.pronouns?.subject || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.subject = value; })); new Setting(parent).setName("Object Pronoun").addText(text => text.setPlaceholder("e.g., her").setValue(this.creatorState.pronouns?.object || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.object = value; })); parent.createEl('hr'); parent.createEl('h4', { text: 'Character Review' }); const reviewEl = parent.createDiv({ cls: 'dh-creator-review' }); const { ancestryId, communityId, classId, subclassId, traits, startingArmorId, startingWeaponIds, domainCardIds } = this.creatorState; const ancestry = this.plugin.characterCompendium.getAncestry(ancestryId ?? ''); const community = this.plugin.characterCompendium.getCommunity(communityId ?? ''); const charClass = this.plugin.characterCompendium.getClass(classId ?? ''); const subclass = this.plugin.characterCompendium.getSubclass(subclassId ?? ''); const armor = this.plugin.characterCompendium.armors.find(a => a.id === startingArmorId); const weapons = startingWeaponIds ? this.plugin.characterCompendium.weapons.filter(w => startingWeaponIds.includes(w.id)) : []; const domains = domainCardIds?.map(id => this.plugin.characterCompendium.getFeature(id)?.name).join(', '); reviewEl.createEl('p').innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`; reviewEl.createEl('p').innerHTML = `<strong>Ancestry:</strong> ${ancestry?.name || 'N/A'}`; reviewEl.createEl('p').innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`; reviewEl.createEl('h5', { text: 'Traits' }); if (traits) { Object.entries(traits).forEach(([key, value]) => { if (value !== undefined) reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>${key}:</strong> ${value >= 0 ? '+' : ''}${value}`; }); } reviewEl.createEl('h5', { text: 'Equipment' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`; reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`; reviewEl.createEl('h5', { text: 'Domain Cards' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A'; }
-    private async finalizeCharacter(partialChar: Partial<CreatorState>) { if (!partialChar.name || !partialChar.classId || !partialChar.subclassId || !partialChar.ancestryId || !partialChar.communityId || !partialChar.startingArmorId || !partialChar.startingWeaponIds || partialChar.startingWeaponIds.length === 0 || !partialChar.traits || !partialChar.domainCardIds || partialChar.domainCardIds.length !== 2) { new Notice("Please complete all required fields on all steps."); return; } const charClass = this.plugin.characterCompendium.getClass(partialChar.classId) as CompendiumClassWithNarrative | undefined; const ancestry = this.plugin.characterCompendium.getAncestry(partialChar.ancestryId); const community = this.plugin.characterCompendium.getCommunity(partialChar.communityId); const armor = this.plugin.characterCompendium.armors.find(a => a.id === partialChar.startingArmorId); if (!charClass || !ancestry || !community || !armor) { new Notice("Compendium data missing. Cannot create character."); return; } const finalTraits: { [key in keyof Character['traits']]: Trait } = {} as any; for (const key of TRAIT_NAMES) { finalTraits[key] = { _type: 'trait', value: partialChar.traits[key] ?? 0, locked: false }; } const standardInventory: InventoryItem[] = [{ _type: 'item', id: 'torch', name: 'Torch', instanceId: uuidv4() }, { _type: 'item', id: 'rope', name: '50ft of Rope', instanceId: uuidv4() },]; if (partialChar.potionChoice === 'health') { standardInventory.push({ _type: 'item', id: 'minor-health-potion', name: 'Minor Health Potion', instanceId: uuidv4() }); } else { standardInventory.push({ _type: 'item', id: 'minor-stamina-potion', name: 'Minor Stamina Potion', instanceId: uuidv4() }); } const startingWeapons = partialChar.startingWeaponIds.map(id => ({ ...this.plugin.characterCompendium.weapons.find(w => w.id === id) as WeaponItem, instanceId: uuidv4() })); const startingArmor = { ...armor, instanceId: uuidv4() }; const fullChar: Character = { id: uuidv4(), 'dg-character': true, _type: 'character', name: partialChar.name, level: 1, pronouns: { ...partialChar.pronouns, _type: 'pronouns' } as Character['pronouns'], ancestryId: ancestry.id, communityId: community.id, classId: charClass.id, subclassId: partialChar.subclassId, evasion: charClass.initialEvasion, traits: finalTraits, hitPoints: { _type: 'dynamicResource', max: charClass.initialHitPoints, current: charClass.initialHitPoints }, stress: { _type: 'dynamicResource', max: 6, current: 6 }, hope: { _type: 'dynamicResource', max: 6, current: 2 }, armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: startingArmor.baseScore }, damageThresholds: { _type: 'damageThresholds', major: startingArmor.baseThresholds.major + 1, severe: startingArmor.baseThresholds.severe + 1 }, gold: { _type: 'gold', handfuls: 1, bags: 0, chests: 0 }, experiences: (partialChar.experiences || []).map(exp => ({ ...exp, id: uuidv4(), value: 2, _type: 'experience' })), features: (partialChar.domainCardIds || []).map(id => this.plugin.characterCompendium.getFeature(id)).filter(f => f) as Feature[], inventory: [...standardInventory, ...charClass.initialInventory.map(i => ({ ...i, instanceId: uuidv4() })), ...startingWeapons, startingArmor,], equippedArmorId: startingArmor.instanceId, equippedWeaponIds: startingWeapons.map(w => w.instanceId), background: charClass._narrative?.backgrounds.map((bg, i) => ({ question: bg.question, answer: partialChar.backgroundAnswers?.[i] || '' })), connections: charClass._narrative?.connections.map((c, i) => ({ question: c.question, answer: partialChar.connections?.[i] || '' })), }; await this.plugin.updateCharacter(fullChar); this.plugin.setActiveCharacterId(fullChar.id); }
+    private async finalizeCharacter(partialChar: Partial<CreatorState>) {
+        if (!partialChar.name || !partialChar.classId || !partialChar.subclassId || !partialChar.ancestryId || !partialChar.communityId || !partialChar.startingArmorId || !partialChar.startingWeaponIds || partialChar.startingWeaponIds.length === 0 || !partialChar.traits || !partialChar.domainCardIds || partialChar.domainCardIds.length !== 2) {
+            new Notice("Please complete all required fields on all steps.");
+            return;
+        }
+        const charClass = this.plugin.characterCompendium.getClass(partialChar.classId) as CompendiumClassWithNarrative | undefined;
+        const ancestry = this.plugin.characterCompendium.getAncestry(partialChar.ancestryId);
+        const community = this.plugin.characterCompendium.getCommunity(partialChar.communityId);
+        const armor = this.plugin.characterCompendium.armors.find(a => a.id === partialChar.startingArmorId);
+
+        if (!charClass || !ancestry || !community || !armor) {
+            new Notice("Compendium data missing. Cannot create character.");
+            return;
+        }
+
+        const finalTraits: { [key in keyof Character['traits']]: Trait } = {} as any;
+        for (const key of TRAIT_NAMES) {
+            finalTraits[key] = { _type: 'trait', value: partialChar.traits[key] ?? 0, locked: false };
+        }
+
+        const standardInventory: InventoryItem[] = [
+            { _type: 'item', id: 'torch', name: 'Torch', instanceId: uuidv4() },
+            { _type: 'item', id: 'rope', name: '50ft of Rope', instanceId: uuidv4() },
+        ];
+
+        if (partialChar.potionChoice === 'health') {
+            standardInventory.push({ _type: 'item', id: 'minor-health-potion', name: 'Minor Health Potion', instanceId: uuidv4() });
+        } else {
+            standardInventory.push({ _type: 'item', id: 'minor-stamina-potion', name: 'Minor Stamina Potion', instanceId: uuidv4() });
+        }
+
+        const startingWeapons = partialChar.startingWeaponIds.map(id => ({
+            ...this.plugin.characterCompendium.weapons.find(w => w.id === id) as WeaponItem,
+            instanceId: uuidv4()
+        }));
+        const startingArmor = { ...armor, instanceId: uuidv4() };
+
+        const fullChar: Character = {
+            id: uuidv4(),
+            'dg-character': true,
+            _type: 'character',
+            name: partialChar.name,
+            level: 1,
+            pronouns: { ...partialChar.pronouns, _type: 'pronouns' } as Character['pronouns'],
+            ancestryId: ancestry.id,
+            communityId: community.id,
+            classId: charClass.id,
+            subclassId: partialChar.subclassId,
+            evasion: charClass.initialEvasion,
+            traits: finalTraits,
+            hitPoints: { _type: 'dynamicResource', max: charClass.initialHitPoints, current: 0 },
+            stress: { _type: 'dynamicResource', max: 6, current: 0 },
+            hope: { _type: 'dynamicResource', max: 6, current: 2 },
+            armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: 0 },
+            damageThresholds: {
+                _type: 'damageThresholds',
+                major: startingArmor.baseThresholds.major + 1,
+                severe: startingArmor.baseThresholds.severe + 1
+            },
+            gold: { _type: 'gold', handfuls: 1, bags: 0, chests: 0 },
+            experiences: (partialChar.experiences || []).map(exp => ({
+                ...exp,
+                id: uuidv4(),
+                value: 2,
+                _type: 'experience'
+            })),
+            features: (partialChar.domainCardIds || [])
+                .map(id => this.plugin.characterCompendium.getFeature(id))
+                .filter(f => f) as Feature[],
+            inventory: [
+                ...standardInventory,
+                ...charClass.initialInventory.map(i => ({ ...i, instanceId: uuidv4() })),
+                ...startingWeapons,
+                startingArmor,
+            ],
+            equippedArmorId: startingArmor.instanceId,
+            equippedWeaponIds: startingWeapons.map(w => w.instanceId),
+            background: charClass._narrative?.backgrounds.map((bg, i) => ({
+                question: bg.question,
+                answer: partialChar.backgroundAnswers?.[i] || ''
+            })),
+            connections: charClass._narrative?.connections.map((c, i) => ({
+                question: c.question,
+                answer: partialChar.connections?.[i] || ''
+            })),
+        };
+
+        await this.plugin.updateCharacter(fullChar);
+        this.plugin.setActiveCharacterId(fullChar.id);
+    }
 
     // --- CHARACTER SHEET RENDERER (REBUILT) ---
     private drawCharacterSheet(parent: HTMLElement, data: Character) {
@@ -255,7 +353,7 @@ export class CharacterSheetView extends ItemView {
         // Draw Armor Slots
         const armorSlotsContainer = parent.createDiv({ cls: 'dh-armor-slots' });
         armorSlotsContainer.createEl('span', { text: 'Armor Slots' });
-        // Use createInteractiveTrack for armor slots
+        // Use createInteractiveTrack for armor slots - starts empty
         this.plugin.createInteractiveTrack(armorSlotsContainer, '', data.armorSlots.max, data.id + '-armor', data.armorSlots.current, (v) => {
             data.armorSlots.current = v;
             this.plugin.updateCharacter(data);
@@ -294,7 +392,7 @@ export class CharacterSheetView extends ItemView {
         severe.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 3 HP` });
 
 
-        // HP and Stress Tracks
+        // HP and Stress Tracks - these should start empty (0)
         if (data.hitPoints) this.plugin.createInteractiveTrack(container, 'HP', data.hitPoints.max, data.id + '-hp', data.hitPoints.current, (v) => { data.hitPoints.current = v; this.plugin.updateCharacter(data); });
         if (data.stress) this.plugin.createInteractiveTrack(container, 'Stress', data.stress.max, data.id + '-stress', data.stress.current, (v) => { data.stress.current = v; this.plugin.updateCharacter(data); });
     }
