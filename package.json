@@ -21,6 +21,7 @@
         "typescript": "^5.0.4"
     },
     "dependencies": {
+        "dddice-js": "0.19.34-974",
         "js-yaml": "^4.1.0"
     }
 }

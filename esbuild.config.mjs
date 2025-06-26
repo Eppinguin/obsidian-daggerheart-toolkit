@@ -8,7 +8,7 @@ const commonConfig = {
     bundle: true,
     external: ['obsidian'],
     format: 'cjs',
-    target: 'es2016',
+    target: 'es2018',
     outfile: 'main.js',
     logLevel: 'info',
     sourcemap: isProduction ? false : 'inline',

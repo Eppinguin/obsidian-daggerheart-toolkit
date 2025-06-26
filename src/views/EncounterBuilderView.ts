@@ -982,7 +982,9 @@ export class EncounterBuilderView extends ItemView {
             const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
             if (encounter?.adversaryGroupOrder) {
                 const groupIndex = encounter.adversaryGroupOrder.indexOf(groupId);
-                if (groupIndex > -1) encounter.adversaryGroupOrder.splice(groupIndex, 1);
+                if (groupIndex > -1) {
+                    encounter.adversaryGroupOrder.splice(groupIndex, 1);
+                }
             }
         }
         this.updateDisplayNamesForGroup(groupId);

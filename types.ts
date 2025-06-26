@@ -1,3 +1,5 @@
+import type { ITheme } from 'dddice-js';
+
 // --- STATBLOCK & ENCOUNTER TYPES ---
 export interface StatblockAttack { name: string; range: string; damage: string; modifier: string | number; }
 export interface StatblockExperience { [key: string]: number; }
@@ -79,6 +81,75 @@ export interface Experience { _type: 'experience'; id: string; name: string; val
 export type InventoryItem = (ArmorItem | WeaponItem | GenericItem) & { instanceId: string };
 
 // --- PLUGIN SETTINGS ---
+export interface DddiceRoom {
+    slug: string;
+    name: string;
+}
+
+export interface DddiceSettings {
+    apiKey: string;
+    room: string | null;
+    theme: string | null;
+    hopeTheme: string | null;
+    fearTheme: string | null;
+    renderInObsidian: boolean;
+    rooms: DddiceRoom[];
+    themes: ITheme[];
+}
+
 export interface EncounterBudgetConfig { playerCount: number; isEasier: boolean; isHarder: boolean; isDamageBoosted: boolean; useLowerTier: boolean; }
-export interface DaggerheartPluginSettings { compendiumFolder: string; savedEncounters: SavedEncounter[]; useSrdAdversaries: boolean; useSrdEnvironments: boolean; userCompendiumFile: string; showDescriptionOnCards: boolean; showFeatureDetailsOnCards: boolean; enableFearTracker: boolean; fearCounter: number; enableCountdownTracker: boolean; countdowns: Countdown[]; enableDiceRoller: boolean; useGraphicalDice: boolean; enableEncounterBudget: boolean; encounterBudgetConfig: EncounterBudgetConfig; isCompendiumVisible: boolean; }
-export const DEFAULT_SETTINGS: DaggerheartPluginSettings = { compendiumFolder: '', savedEncounters: [], useSrdAdversaries: true, useSrdEnvironments: true, userCompendiumFile: 'User-Adversaries.json', showDescriptionOnCards: false, showFeatureDetailsOnCards: true, enableFearTracker: false, fearCounter: 0, enableCountdownTracker: true, countdowns: [], enableDiceRoller: false, useGraphicalDice: false, enableEncounterBudget: false, isCompendiumVisible: true, encounterBudgetConfig: { playerCount: 4, isEasier: false, isHarder: false, isDamageBoosted: false, useLowerTier: false, }, };
+
+export interface DaggerheartPluginSettings {
+    compendiumFolder: string;
+    savedEncounters: SavedEncounter[];
+    useSrdAdversaries: boolean;
+    useSrdEnvironments: boolean;
+    userCompendiumFile: string;
+    showDescriptionOnCards: boolean;
+    showFeatureDetailsOnCards: boolean;
+    enableFearTracker: boolean;
+    fearCounter: number;
+    enableCountdownTracker: boolean;
+    countdowns: Countdown[];
+    enableEncounterBudget: boolean;
+    encounterBudgetConfig: EncounterBudgetConfig;
+    isCompendiumVisible: boolean;
+
+    // Dice Rolling Settings
+    diceProvider: 'dice-roller' | 'dddice';
+    enableDiceRoller: boolean;
+    useGraphicalDice: boolean;
+    dddice: DddiceSettings;
+}
+
+export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
+    compendiumFolder: '',
+    savedEncounters: [],
+    useSrdAdversaries: true,
+    useSrdEnvironments: true,
+    userCompendiumFile: 'User-Adversaries.json',
+    showDescriptionOnCards: false,
+    showFeatureDetailsOnCards: true,
+    enableFearTracker: false,
+    fearCounter: 0,
+    enableCountdownTracker: true,
+    countdowns: [],
+    enableEncounterBudget: false,
+    isCompendiumVisible: true,
+    encounterBudgetConfig: { playerCount: 4, isEasier: false, isHarder: false, isDamageBoosted: false, useLowerTier: false },
+
+    // Dice Rolling Settings
+    diceProvider: 'dice-roller',
+    enableDiceRoller: false,
+    useGraphicalDice: false,
+    dddice: {
+        apiKey: '',
+        room: null,
+        theme: null,
+        hopeTheme: null,
+        fearTheme: null,
+        renderInObsidian: true,
+        rooms: [],
+        themes: [],
+    },
+};
