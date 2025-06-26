@@ -53,6 +53,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     private dddiceInstance: ThreeDDice | undefined;
     private dddiceCanvas: HTMLCanvasElement | null = null;
+    private boundDddiceClear: (() => void) | null = null;
 
     private characters: Character[] = [];
     private activeCharacterId: string | null = null;
@@ -249,12 +250,15 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             this.dddiceInstance = new ThreeDDice().initialize(this.dddiceCanvas, dddice.apiKey, undefined, 'Daggerheart-Obsidian');
             this.dddiceInstance.connect(dddice.room);
             this.dddiceInstance.start();
-            // Clear dice on any click when the roll is finished
-            document.body.addEventListener('click', () => {
+
+            this.boundDddiceClear = () => {
                 if (this.dddiceInstance && !this.dddiceInstance.isDiceThrowing) {
                     this.dddiceInstance.clear();
                 }
-            });
+            };
+
+            document.body.addEventListener('click', this.boundDddiceClear);
+
             console.log("dddice renderer initialized.");
         } catch (e) {
             console.error("Failed to initialize dddice renderer:", e);
@@ -271,6 +275,10 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             this.dddiceInstance = undefined;
         }
         if (this.dddiceCanvas) {
+            if (this.boundDddiceClear) {
+                document.body.removeEventListener('click', this.boundDddiceClear);
+                this.boundDddiceClear = null;
+            }
             this.dddiceCanvas.remove();
             this.dddiceCanvas = null;
         }
@@ -300,7 +308,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             }
             const diceRollerPlugin = (this.app as any).plugins.getPlugin("obsidian-dice-roller");
             if (!diceRollerPlugin || typeof diceRollerPlugin.api?.getRoller !== 'function') {
-                new Notice("Dice Roller plugin API not available or plugin is disabled.", { type: 'error' });
+                new Notice("Dice Roller plugin API not available or plugin is disabled.", 4000);
                 return;
             }
             try {
@@ -352,7 +360,6 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
     renderCompendiumSettings(containerEl: HTMLElement) {
         containerEl.createEl('h3', { text: 'Compendium Settings' });
-        // Compendium settings remain the same
         new Setting(containerEl)
             .setName('Compendium Folder')
             .setDesc('Path to the folder containing your Daggerheart statblock Markdown files (e.g., "System/Daggerheart/Adversaries"). Leave empty to disable user compendium.')
@@ -405,7 +412,6 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
     renderEncounterViewSettings(containerEl: HTMLElement) {
         containerEl.createEl('h3', { text: 'Encounter View Settings' });
-        // Encounter settings remain the same
         new Setting(containerEl)
             .setName('Show Description on Instance Cards')
             .setDesc('If enabled, the full description will be shown on adversary cards in the encounter builder.')
@@ -416,8 +422,6 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.triggerEncounterBuilderUpdate(true);
                 }));
-
-        // ... other encounter settings
     }
 
     renderIntegrationSettings(containerEl: HTMLElement) {
@@ -474,7 +478,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                         });
                 })
                 .then(setting => {
-                    if (!isPluginAvailable) {
+                    if (setting.controlEl.parentElement && !isPluginAvailable) {
                         setting.controlEl.parentElement.addClass('setting-disabled');
                     }
                 });
@@ -486,7 +490,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
             .setName('dddice API Key')
             .setDesc(createFragment((frag) => {
                 frag.appendText('Your dddice.com API key. Get one from your ');
-                frag.createEl('a', { href: 'https://dddice.com/account/developer', text: 'account page', target: '_blank' });
+                frag.createEl('a', { text: 'account page', attr: { href: 'https://dddice.com/account/developer', target: '_blank' } });
                 frag.appendText('.');
             }))
             .addText(text => text
@@ -526,7 +530,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                         new Notice("Successfully connected to dddice!");
                     } catch (e) {
-                        new Notice("Failed to connect to dddice. Check API key and console.", { type: 'error' });
+                        new Notice("Failed to connect to dddice. Check API key and console.", 4000);
                         console.error(e);
                     } finally {
                         this.isDddiceConnecting = false;
@@ -534,7 +538,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     }
                 }));
 
-        const isConnected = this.plugin.settings.dddice.apiKey && this.plugin.settings.dddice.rooms.length > 0;
+        const isConnected = this.plugin.settings.dddice.apiKey && this.plugin.settings.dddice.themes.length > 0;
         if (isConnected) {
             new Setting(containerEl)
                 .setName('Render dice in Obsidian')
@@ -552,7 +556,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 .addDropdown(dropdown => {
                     dropdown.addOption('', 'Select a room...');
                     this.plugin.settings.dddice.rooms.forEach(room => dropdown.addOption(room.slug, room.name));
-                    dropdown.setValue(this.plugin.settings.dddice.room)
+                    dropdown.setValue(this.plugin.settings.dddice.room || '')
                         .onChange(async (value) => {
                             this.plugin.settings.dddice.room = value;
                             await this.plugin.saveSettings();
@@ -577,7 +581,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
             const previewUrl = getThemePreviewUrl(selectedTheme);
             if (previewUrl) {
                 card.createEl('img', {
-                    attr: { src: previewUrl },
+                    attr: { src: previewUrl, alt: selectedTheme.name || 'Theme preview' },
                     cls: 'dh-theme-preview'
                 });
             } else {
@@ -648,7 +652,7 @@ class ThemeSelectionModal extends Modal {
             const previewUrl = getThemePreviewUrl(theme);
             if (previewUrl) {
                 card.createEl('img', {
-                    attr: { src: previewUrl, alt: theme.name },
+                    attr: { src: previewUrl, alt: theme.name || 'Theme preview' },
                     cls: 'dh-theme-preview'
                 });
             } else {
