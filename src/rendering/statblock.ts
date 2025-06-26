@@ -327,6 +327,28 @@ function renderAdversaryInstance(
         }
     }
 
+    const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
+    if (data.difficulty !== undefined) {
+        coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
+    }
+    if (data.attack) {
+        const attackSpan = coreStatsLine.createSpan({ cls: 'dh-attack-details-span' });
+        attackSpan.createEl('strong', { text: `${data.attack.name || 'Attack'}:` });
+        attackSpan.appendText(` ${data.attack.range || ''} – `);
+        const damageSpan = attackSpan.createSpan();
+        renderRollableContent(plugin, data.attack.damage || '', damageSpan);
+        attackSpan.appendText(' (ATK ');
+        const modValue = String(data.attack.modifier ?? '0').trim();
+        if (/^[+-]?\d+$/.test(modValue) && plugin.isDiceRollerEnabled) {
+            const diceString = `1d20${modValue === '0' ? '' : modValue.startsWith('+') ? modValue : `+${modValue}`}`;
+            const rollSpan = attackSpan.createSpan({ text: modValue, cls: 'dh-rollable-dice', attr: { title: `Click to roll ${diceString}` } });
+            rollSpan.addEventListener('click', (e) => { e.stopPropagation(); rollDice(plugin, diceString); });
+        } else {
+            attackSpan.appendText(modValue);
+        }
+        attackSpan.appendText(')');
+    }
+
     if (data.experience) {
         const experienceDiv = statblockContentDiv.createDiv({ cls: 'dh-motives' });
         experienceDiv.createEl('strong', { text: 'Experience: ' });
@@ -344,11 +366,6 @@ function renderAdversaryInstance(
                 renderMarkdown(plugin, formattedExperience, experienceContentDiv);
             }
         }
-    }
-
-    const coreStatsLine = statblockContentDiv.createDiv({ cls: 'dh-core-stats-line' });
-    if (data.difficulty !== undefined) {
-        coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
     }
 
     if (data.potential_adversaries) {
