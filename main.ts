@@ -10,6 +10,7 @@ import { renderRollableContent, createInteractiveTrack } from './src/rendering/u
 import { AdversaryReferenceModal, EncounterLinkModal } from './src/modals/index';
 import * as dddice from './src/services/dddice-service';
 import { ITheme, ThreeDDice } from 'dddice-js';
+import { displayRollNotice } from './src/services/dice-helpers';
 
 
 // Declare a custom event for the workspace to allow views to communicate
@@ -298,9 +299,9 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         createInteractiveTrack(parentEl, label, maxValue, trackIdPrefix, currentValue, updateCallback);
     }
 
-    public async rollDice(diceString: string, context: string) {
+    public async rollDice(diceString: string, context: string, traitName?: string) {
         if (this.settings.diceProvider === 'dddice') {
-            await dddice.rollWithDddice(this.settings.dddice, diceString, context, this.dddiceInstance);
+            await dddice.rollWithDddice(this.settings.dddice, diceString, context, this.dddiceInstance, traitName);
         } else {
             if (!this.settings.enableDiceRoller || !this.isDiceRollerEnabled) {
                 new Notice("Dice Roller integration is not enabled in plugin settings.");
@@ -315,7 +316,55 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 const roller = await diceRollerPlugin.api.getRoller(diceString);
                 await roller.roll({ showDice: this.settings.useGraphicalDice, throw: this.settings.useGraphicalDice });
                 if (!this.settings.useGraphicalDice) {
-                    new Notice(`Rolled for ${context}: ${roller.result}`, 5000);
+                    // Use our standardized display function
+                    const isDaggerheartActionRoll = diceString.toLowerCase().startsWith("1d12+1d12");
+
+                    if (isDaggerheartActionRoll) {
+                        // Parse the roll result for Hope/Fear dice
+                        const match = roller.result.match(/^(\d+)\s*\+\s*(\d+)(?:\s*\+\s*(.+))?$/);
+                        if (match) {
+                            const hopeValue = parseInt(match[1]);
+                            const fearValue = parseInt(match[2]);
+                            const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
+
+                            // Format the result like dddice does
+                            let resultDisplay = `${hopeValue}[Hope]+${fearValue}[Fear]`;
+
+                            // Check if there are additional components (advantage/disadvantage/modifiers)
+                            if (match[3]) {
+                                const advantage = match[3].match(/(\d+)/);
+                                if (diceString.includes('+1d6') && advantage) {
+                                    resultDisplay += `+${advantage[1]}[Advantage]`;
+                                } else if (diceString.includes('-1d6') && advantage) {
+                                    resultDisplay += `-${advantage[1]}[Disadvantage]`;
+                                } else if (traitName) {
+                                    // Add trait modifier with trait name
+                                    resultDisplay += `+${match[3]}[${traitName}]`;
+                                } else {
+                                    resultDisplay += `+${match[3]}`;
+                                }
+                            }
+
+                            // Get the total by parsing the number after the = sign
+                            const total = roller.result.replace(/\s/g, '').split('=')[1];
+
+                            displayRollNotice(context, resultDisplay, total, outcome);
+                        } else {
+                            // Fallback for unexpected formats
+                            displayRollNotice(context, roller.result, roller.result.replace(/\s/g, '').split('=').pop() || '');
+                        }
+                    } else {
+                        // For non-Daggerheart rolls, use our standardized display function
+                        const resultParts = roller.result.split('=');
+                        if (resultParts.length > 1) {
+                            const equation = resultParts[0].trim();
+                            const total = resultParts[1].trim();
+                            displayRollNotice(context, equation, total);
+                        } else {
+                            // Fallback for unexpected formats
+                            displayRollNotice(context, roller.result, roller.result.replace(/\s/g, '').split('=').pop() || '');
+                        }
+                    }
                 }
             } catch (e) {
                 console.error("Daggerheart: Error rolling dice with Dice Roller:", e);

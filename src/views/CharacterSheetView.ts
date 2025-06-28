@@ -6,6 +6,7 @@ import {
 } from '../../types';
 import { DAGGERHEART_CONDITIONS } from '../constants';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
+import { handleAdvantageDisadvantage, formatTraitModifier } from '../services/dice-helpers';
 
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
@@ -74,6 +75,11 @@ export class CharacterSheetView extends ItemView {
 
     draw() {
         const container = this.containerEl.children[1];
+
+        // --- FIX: Preserve scroll position ---
+        const mainContent = container.querySelector('.dh-cs-main');
+        const scrollPosition = mainContent ? mainContent.scrollTop : 0;
+
         container.empty();
         const main = container.createDiv({ cls: 'dh-cs-main' });
         this.drawTopBar(main);
@@ -83,6 +89,9 @@ export class CharacterSheetView extends ItemView {
         } else {
             this.drawCharacterCreator(main);
         }
+
+        // --- FIX: Restore scroll position ---
+        main.scrollTop = scrollPosition;
     }
 
     private drawTopBar(parent: HTMLElement) {
@@ -462,7 +471,30 @@ export class CharacterSheetView extends ItemView {
                 skillsList.createDiv({ text: skill });
             });
             if (!trait.locked) {
-                box.addEventListener('click', () => this.plugin.rollDice(`1d12+1d12`, `Trait: ${name}`));
+                box.title = `Click to roll ${name}. Hold Shift for Advantage or Alt for Disadvantage.`;
+                box.addEventListener('click', (event) => {
+                    // Base dice formula
+                    let baseDiceString = `1d12+1d12`;  // Keep the base duality dice separate
+
+                    // Format trait modifier properly using our helper function
+                    const modifierString = formatTraitModifier(trait.value);
+
+                    // Handle advantage/disadvantage using our helper function
+                    let rollTitle = `${name} Roll`;
+                    const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
+                        event,
+                        baseDiceString,
+                        rollTitle
+                    );
+
+                    // Place dice components in this order: base dice, advantage/disadvantage, modifier
+                    console.log(`Rolling trait: ${name}, Base: ${baseDiceString}, Final: ${diceString}${modifierString}`);
+                    this.plugin.rollDice(
+                        `${diceString}${modifierString}`,
+                        newRollTitle,
+                        name
+                    );
+                });
             }
         });
     }
@@ -496,10 +528,32 @@ export class CharacterSheetView extends ItemView {
         const trait = character.traits[traitName];
         if (trait) {
             const rollBox = right.createDiv({ cls: 'dh-weapon-roll-box' });
-            rollBox.createDiv({ text: `${trait.value >= 0 ? '+' : ''}${trait.value}` });
+            const traitValue = trait.value;
+            const traitDisplay = `${traitValue >= 0 ? '+' : ''}${traitValue}`;
+            rollBox.createDiv({ text: traitDisplay });
             rollBox.createDiv({ text: traitName });
-            rollBox.addEventListener('click', () => {
-                this.plugin.rollDice(`1d12+1d12`, `${weapon.name} Attack with ${traitName}`);
+            let rollTitle = `${weapon.name} Attack`;
+            rollBox.addEventListener('click', (event) => {
+                // Base dice formula
+                let baseDiceString = `1d12+1d12`;  // Keep the base duality dice separate
+
+                // Format trait modifier properly using our helper function
+                const modifierString = formatTraitModifier(traitValue);
+
+                // Handle advantage/disadvantage using our helper function
+                const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
+                    event,
+                    baseDiceString,
+                    rollTitle
+                );
+
+                // Place dice components in this order: base dice, advantage/disadvantage, modifier
+                console.log(`Rolling weapon: ${weapon.name}, Base: ${baseDiceString}, Final: ${diceString}${modifierString}`);
+                this.plugin.rollDice(
+                    `${diceString}${modifierString}`,
+                    newRollTitle,
+                    traitName
+                );
             });
         }
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
@@ -815,8 +869,11 @@ export class CharacterSheetView extends ItemView {
     private createFeatureCard(parent: HTMLElement, feature: CompendiumFeature | DomainCard, character: Character) {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
         const metadata = this.getFeatureMetadata(feature as DomainCard);
+
+        // --- Header ---
         const header = card.createDiv({ cls: 'dh-feature-card-header' });
         header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
+
         const metaHeader = header.createDiv({ cls: 'dh-feature-card-meta-header' });
         if (metadata.domain) {
             metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.domain });
@@ -824,26 +881,62 @@ export class CharacterSheetView extends ItemView {
         if (metadata.type) {
             metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.type });
         }
+        if (metadata.level) {
+            metaHeader.createSpan({ cls: 'dh-feature-card-type', text: `Level ${metadata.level}` });
+        }
+
+        // --- Body ---
         const body = card.createDiv({ cls: 'dh-feature-card-body' });
         renderRollableContent(this.plugin, feature.description, body, feature.name);
+
+        // --- Footer & Spellcasting Button ---
         const footer = card.createDiv({ cls: 'dh-feature-card-footer' });
-        const createFooterBox = (label: string, value: string | number | undefined) => {
-            if (value === undefined) return;
-            const box = footer.createDiv({ cls: 'dh-feature-card-box' });
-            box.createDiv({ cls: 'value', text: String(value) });
-            box.createDiv({ cls: 'label', text: label });
-        };
-        if (metadata.level) { createFooterBox('Level', metadata.level); }
-        if (metadata.recallCost !== undefined) { createFooterBox('Recall', metadata.recallCost); }
+
+        // Check for spellcasting roll
+        if (feature.description.toLowerCase().includes('make a spellcast roll')) {
+            const subclass = this.plugin.characterCompendium.getSubclass(character.subclassId);
+            const spellcastingTraitName = subclass?.spellcast_trait as keyof Character['traits'] | undefined;
+
+            if (spellcastingTraitName) {
+                const traitValue = character.traits[spellcastingTraitName]?.value ?? 0;
+                // Create a styled box instead of a plain button
+                const rollBox = footer.createDiv({ cls: 'dh-spellcast-box' });
+                rollBox.createDiv({ text: `${traitValue >= 0 ? '+' : ''}${traitValue}` });
+                rollBox.createDiv({ text: spellcastingTraitName });
+                rollBox.title = `Click to make a Spellcast roll with ${spellcastingTraitName}`;
+
+                rollBox.addEventListener('click', (event) => {
+                    // Base dice formula
+                    let baseDiceString = `1d12+1d12`;  // Keep the base duality dice separate
+
+                    // Format trait modifier properly using our helper function
+                    const modifierString = formatTraitModifier(traitValue);
+
+                    // Handle advantage/disadvantage using our helper function
+                    let rollTitle = `${feature.name} Spellcast`;
+                    const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
+                        event,
+                        baseDiceString,
+                        rollTitle
+                    );
+
+                    console.log(`Rolling spellcast: ${feature.name}, Base: ${baseDiceString}, Final: ${diceString}${modifierString}`);
+                    this.plugin.rollDice(
+                        `${diceString}${modifierString}`,
+                        newRollTitle,
+                        spellcastingTraitName
+                    );
+                });
+            }
+        }
     }
 
-    private getFeatureMetadata(feature: DomainCard): { level?: number; domain?: string; type?: string; recallCost?: number } {
-        const metadata: { level?: number; domain?: string; type?: string; recallCost?: number } = {};
+    private getFeatureMetadata(feature: DomainCard): { level?: number; domain?: string; type?: string; } {
+        const metadata: { level?: number; domain?: string; type?: string; } = {};
         if (feature && feature._type === 'domainCard') {
             metadata.level = feature.level;
             metadata.domain = feature.domain;
             metadata.type = feature.type;
-            metadata.recallCost = feature.recallCost;
         }
         return metadata;
     }
@@ -1617,7 +1710,6 @@ class CharacterManagerModal extends Modal {
             level: parseInt(newAbility.level),
             domain: newAbility.domain,
             type: newAbility.type,
-            recallCost: parseInt(newAbility.recall)
         };
 
         this.tempCharacter.features[featureIndex] = newFeature;
@@ -1630,13 +1722,12 @@ class CharacterManagerModal extends Modal {
         this.updateButtonState();
     }
 
-    private getFeatureMetadata(feature: DomainCard): { level?: number; domain?: string; type?: string; recallCost?: number } {
-        const metadata: { level?: number; domain?: string; type?: string; recallCost?: number } = {};
+    private getFeatureMetadata(feature: DomainCard): { level?: number; domain?: string; type?: string; } {
+        const metadata: { level?: number; domain?: string; type?: string; } = {};
         if (feature && feature._type === 'domainCard') {
             metadata.level = feature.level;
             metadata.domain = feature.domain;
             metadata.type = feature.type;
-            metadata.recallCost = feature.recallCost;
         }
         return metadata;
     }

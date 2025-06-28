@@ -2711,74 +2711,134 @@
     color: var(--dh-sheet-text-muted);
 }
 
+/* --- [REWORKED] Feature Card Styles --- */
 .dh-feature-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
     gap: var(--size-4-3);
 }
+
 .dh-feature-card {
-    background-color: var(--dh-sheet-purple);
-    color: var(--dh-sheet-text);
+    background-color: var(--dh-sheet-bg);
+    border: 1px solid var(--dh-sheet-border);
     border-radius: var(--radius-m);
-    border: 1px solid #a16eeb;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    transition: all 0.2s ease-in-out;
 }
+
+.dh-feature-card:hover {
+    border-color: var(--dh-sheet-accent);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+}
+
 .dh-feature-card-header {
-    background-color: rgba(0,0,0,0.2);
     padding: var(--size-4-2) var(--size-4-3);
+    border-bottom: 1px solid var(--dh-sheet-border);
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    border-bottom: 1px solid #a16eeb;
-    flex-wrap: wrap;
+    align-items: flex-start;
     gap: var(--size-4-2);
+    flex-wrap: wrap;
 }
+
 .dh-feature-card-title {
-    font-weight: bold;
+    font-size: var(--font-ui-large);
+    font-weight: 700;
+    color: var(--dh-sheet-accent);
     text-transform: uppercase;
     flex-grow: 1;
 }
+
 .dh-feature-card-meta-header {
     display: flex;
     gap: var(--size-4-2);
-    flex-shrink: 0;
+    flex-shrink: 0; /* Prevent tags from shrinking on smaller card sizes */
 }
+
 .dh-feature-card-type {
-    font-size: var(--font-ui-small);
+    font-size: var(--font-ui-smaller);
     font-weight: 500;
-    color: rgba(255,255,255,0.7);
-    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--dh-sheet-text-muted);
+    background-color: var(--dh-sheet-bg-alt); /* Use alternate bg for tags */
     padding: var(--size-2-1) var(--size-2-2);
+    border: 1px solid var(--dh-sheet-border);
     border-radius: var(--radius-s);
     text-transform: uppercase;
 }
+
 .dh-feature-card-body {
     padding: var(--size-4-3);
-    flex-grow: 1;
+    flex-grow: 1; /* Allows body to take up available space */
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
 }
+.dh-feature-card-body .dh-rollable-dice {
+    color: var(--dh-sheet-accent);
+}
+.dh-feature-card-body .dh-feature-cost-text {
+    color: var(--dh-sheet-accent);
+    font-weight: bold;
+}
+
 .dh-feature-card-footer {
-    padding: var(--size-4-2) var(--size-4-3);
-    border-top: 1px solid #a16eeb;
-    background-color: rgba(0,0,0,0.2);
+    border-top: 1px solid var(--dh-sheet-border);
+    background-color: var(--dh-sheet-bg-alt);
     display: flex;
+    justify-content: flex-end; /* Align stat boxes to the right */
+    padding: var(--size-4-2);
     gap: var(--size-4-2);
 }
-.dh-feature-card-box {
-    background-color: rgba(0,0,0,0.3);
-    border: 1px solid var(--dh-sheet-border);
-    padding: var(--size-2-2) var(--size-4-2);
+
+.dh-spellcast-box {
+    width: 70px;
+    height: 60px;
+    border: 1px solid var(--dh-sheet-accent-dark);
     border-radius: var(--radius-s);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+    transition: all 0.2s ease;
+}
+
+.dh-spellcast-box:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px var(--dh-sheet-accent-glow);
+}
+
+.dh-spellcast-box div:first-child {
+    font-size: 1.4em;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.dh-spellcast-box div:last-child {
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.dh-feature-card-box {
     text-align: center;
 }
+
 .dh-feature-card-box .value {
     font-weight: bold;
-    font-size: 1.1em;
+    font-size: 1.2em;
+    color: var(--dh-sheet-text);
 }
+
 .dh-feature-card-box .label {
     font-size: var(--font-ui-smaller);
     text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
 }
+
 /* Details Tab */
 .dh-details-section {
     margin-bottom: var(--size-4-5);

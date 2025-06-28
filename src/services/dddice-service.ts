@@ -1,6 +1,7 @@
 import { ThreeDDiceAPI, IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, ThreeDDice, IApiResponse, IRoll } from 'dddice-js';
 import { Notice } from 'obsidian';
 import { DddiceSettings } from 'types';
+import { displayRollNotice } from './dice-helpers';
 
 /**
  * Initializes the dddice API with the provided key for data fetching.
@@ -103,25 +104,83 @@ function parseGenericDiceString(notation: string): IDiceRoll[] {
  * @param diceString The dice string to roll (e.g., "1d12+1d12" or "2d6").
  * @param context A string describing the context of the roll.
  * @param dddiceInstance An optional instance of the ThreeDDice renderer.
+ * @param traitName An optional name of the trait being used for the roll (e.g., "Strength").
  */
-export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString: string, context: string, dddiceInstance?: ThreeDDice) {
+export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString: string, context: string, dddiceInstance?: ThreeDDice, traitName?: string) {
     const { apiKey, room, theme, hopeTheme, fearTheme, renderInObsidian } = dddiceSettings;
     if (!apiKey || !room || !theme || !hopeTheme || !fearTheme) {
         new Notice("dddice is not fully configured. Please set API Key, Room, and all dice themes in the plugin settings.");
         return;
     }
 
-    const isDaggerheartActionRoll = (diceString.toLowerCase().match(/d12/g) || []).length === 2 && !/[dD][^1]/.test(diceString) && !/[dD]1[^2]/.test(diceString);
+    const isDaggerheartActionRoll = diceString.toLowerCase().startsWith("1d12+1d12");
+
+    const modifierMatch = isDaggerheartActionRoll ?
+        diceString.match(/1d12\+1d12((?:[+-]\d+)*)(?:[+-]1d6)?/i) : null;
+
+    let disadvantageValue: number | null = null;
 
     let dicePayload: IDiceRoll[];
     const rollOptions: IDiceRollOptions = { room, label: context };
 
     if (isDaggerheartActionRoll) {
+        // First, create the hope and fear dice
         dicePayload = [
             { type: 'd12', theme: hopeTheme || undefined, label: 'Hope' },
             { type: 'd12', theme: fearTheme || undefined, label: 'Fear' }
         ];
+
+        // Check for advantage or disadvantage dice - add these next
+        if (diceString.includes('+1d6')) {
+            dicePayload.push({ type: 'd6', theme: theme || undefined, label: 'Advantage' });
+        } else if (diceString.includes('-1d6')) {
+            // For disadvantage, generate a random number between 1-6 and add it as a negative modifier
+            const randomD6Value = Math.floor(Math.random() * 6) + 1;
+            disadvantageValue = randomD6Value;
+            dicePayload.push({
+                type: 'mod',
+                value: -randomD6Value,  // Negative modifier to simulate disadvantage
+                label: 'Disadvantage (d6)'
+            });
+        }
+
+        // Now handle trait modifiers - should be at the end of the string
+        // Look for modifiers that aren't part of dice specifications
+        console.log("Dice string for modifier parsing:", diceString);
+        const modifiers = [];
+
+        // Use a more robust approach to extract modifiers
+        // First check if there's a modifier at the end of the string
+        const endModifierMatch = diceString.match(/([+-]\d+)$/);
+        if (endModifierMatch) {
+            modifiers.push(endModifierMatch[1]);
+        }
+
+        // Also look for modifiers between dice components
+        const otherModifierMatches = diceString.match(/(?:(?:\d*d\d+)|(?:\d+))([+-]\d+)(?=[+-])/g);
+        if (otherModifierMatches) {
+            otherModifierMatches.forEach(match => {
+                const modMatch = match.match(/([+-]\d+)$/);
+                if (modMatch) {
+                    modifiers.push(modMatch[1]);
+                }
+            });
+        }
+
+        console.log("Detected modifiers:", modifiers);
+
+        modifiers.forEach(mod => {
+            const value = parseInt(mod, 10);
+            if (!isNaN(value)) {
+                dicePayload.push({
+                    type: 'mod',
+                    value: value,
+                    label: traitName ? `${traitName} Modifier` : 'Trait Modifier'
+                });
+            }
+        });
     } else {
+        // Handle regular rolls as before
         const parsedDice = parseGenericDiceString(diceString);
         if (parsedDice.length === 0) {
             new Notice(`Invalid dice string for dddice: "${diceString}"`);
@@ -132,42 +191,111 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
 
     try {
         if (renderInObsidian && dddiceInstance) {
+            // Handle rolls with rendering enabled
             const rollPromise = dddiceInstance.roll(dicePayload, rollOptions);
             rollPromise.then((result: IApiResponse<'roll', IRoll>) => {
                 if (result?.data) {
-                    const rollData = result.data;
-                    // Using explicit types for the map function
-                    const values = rollData.values.map((v: { value: number }) => v.value);
-                    if (isDaggerheartActionRoll && values.length === 2) {
-                        const hopeValue = values[0];
-                        const fearValue = values[1];
-                        const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
-                        new Notice(`${context}: Hope [${hopeValue}], Fear [${fearValue}] => ${outcome}`, 7000);
-                    } else {
-                        new Notice(`${context}: ${rollData.equation} = ${rollData.total_value}`, 7000);
-                    }
+                    handleRollResult(result.data, context, isDaggerheartActionRoll, diceString, modifierMatch, disadvantageValue, traitName);
                 }
             });
         } else {
-            const dddiceApi = initializeDddiceApi(apiKey);
-            const roll = await dddiceApi.roll.create([dicePayload], rollOptions);
-            if (roll.data?.[0]) {
-                const rollData = roll.data[0];
-                // Using explicit types for the map function
-                const values = rollData.values.map((v: { value: number }) => v.value);
-                const total = rollData.total_value;
-                if (isDaggerheartActionRoll && values.length === 2) {
-                    const hopeValue = values[0];
-                    const fearValue = values[1];
-                    const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
-                    new Notice(`${context}: Hope [${hopeValue}], Fear [${fearValue}] => ${outcome}`, 7000);
-                } else {
-                    new Notice(`${context}: ${rollData.equation} = ${total}`, 7000);
+            // Handle rolls without rendering
+            let dddiceApi: ThreeDDiceAPI;
+
+            if (dddiceInstance?.api) {
+                // Use the existing API instance if available
+                dddiceApi = dddiceInstance.api;
+            } else {
+                // Create a new API instance if needed
+                dddiceApi = initializeDddiceApi(apiKey);
+
+                // Connect to the room if not already connected
+                if (room) {
+                    dddiceApi.connect(room);
                 }
+            }
+            const roll = await dddiceApi.roll.create(dicePayload, rollOptions);
+
+            if (roll.data) {
+                handleRollResult(roll.data, context, isDaggerheartActionRoll, diceString, modifierMatch, disadvantageValue, traitName);
             }
         }
     } catch (e: any) {
         new Notice('Failed to roll with dddice. Check settings and console.');
         console.error("dddice Roll Error:", e.response?.data?.data?.message ?? e.message, e);
+    }
+}
+
+/**
+ * Helper function to handle the roll result and display the appropriate notification.
+ */
+function handleRollResult(
+    rollData: IRoll,
+    context: string,
+    isDaggerheartActionRoll: boolean,
+    diceString: string,
+    modifierMatch: RegExpMatchArray | null,
+    disadvantageValue: number | null,
+    traitName?: string
+) {
+    // Using explicit types for the map function
+    const values = rollData.values.map((v: { value: number }) => v.value);
+
+    if (isDaggerheartActionRoll && values.length >= 2) {
+        const hopeValue = values[0];
+        const fearValue = values[1];
+
+        // Get total with all modifiers and ensure it's a string
+        const totalWithModifiers = String(rollData.total_value);
+
+        // Determine outcome based on Hope vs Fear comparison
+        const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
+
+        // Prepare a detailed message that includes modifiers and advantage/disadvantage
+        let resultDisplay = `${hopeValue}[Hope]+${fearValue}[Fear]`;
+
+        // Add advantage/disadvantage information
+        if (diceString.includes('+1d6') && values.length > 2) {
+            const advantageDie = values[2]; // The advantage die should be the third value
+            resultDisplay += `+${advantageDie}[Advantage]`;
+        } else if (diceString.includes('-1d6') && disadvantageValue !== null) {
+            // For disadvantage, use the stored random value we generated
+            resultDisplay += `-${disadvantageValue}[Disadvantage]`;
+        }
+
+        // Add trait modifier if present
+        // Find any trait modifiers in the roll values
+        const traitModifiers = [];
+        for (let i = (diceString.includes('+1d6') ? 3 : 2); i < values.length; i++) {
+            traitModifiers.push(values[i]);
+        }
+
+        console.log("Trait Modifiers from values:", traitModifiers);
+
+        // Display any trait modifiers that were found - but combine them into a single value
+        if (traitModifiers.length > 0) {
+            const totalTraitMod = traitModifiers.reduce((sum, mod) => sum + mod, 0);
+            // Only show the trait modifier if it's not zero
+            if (totalTraitMod !== 0) {
+                const sign = totalTraitMod > 0 ? '+' : '';
+                resultDisplay += `${sign}${totalTraitMod}[${traitName || 'Trait'}]`;
+            }
+        }
+
+        // Use the standardized display function
+        displayRollNotice(context, resultDisplay, totalWithModifiers, outcome);
+    } else {
+        // For non-Daggerheart rolls, use the simpler format
+        try {
+            // Ensure both values are strings to avoid type issues
+            const equationStr = String(rollData.equation || '');
+            const totalStr = String(rollData.total_value || '0');
+
+            displayRollNotice(context, equationStr, totalStr);
+        } catch (e) {
+            // Fallback in case of any conversion errors
+            new Notice(`${context}: Roll completed`, 5000);
+            console.error("Error formatting dice result:", e);
+        }
     }
 }

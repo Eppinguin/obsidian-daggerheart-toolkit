@@ -25,7 +25,7 @@ export interface JsonConsumable { roll: string; name: string; description: strin
 
 // --- PROCESSED/APPLICATION-LEVEL TYPES ---
 export interface CompendiumFeature { name: string; description: string; }
-export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; recallCost: number; description: string; }
+export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; description: string; }
 
 // Base Item types with _type property
 export type ArmorItem = JsonArmor & { _type: 'armor'; };

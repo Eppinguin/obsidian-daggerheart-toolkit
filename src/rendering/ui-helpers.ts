@@ -112,7 +112,10 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
             }).addEventListener('click', (e) => {
                 e.stopPropagation();
                 // Pass the context of the roll to the main dice rolling function
-                plugin.rollDice(diceString, context);
+                // Extract trait name from context if possible (e.g., "Weapon Attack with Strength")
+                const traitMatch = context.match(/with\s+(\w+)(?:\s|$)/i);
+                const traitName = traitMatch ? traitMatch[1] : undefined;
+                plugin.rollDice(diceString, context, traitName);
             });
         } else if (costPart) {
             containerEl.createEl('strong', { text: costPart, cls: 'dh-feature-cost-text' });

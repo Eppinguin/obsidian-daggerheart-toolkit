@@ -78,7 +78,6 @@ export class CharacterCompendium {
             level: parseInt(ability.level),
             domain: ability.domain,
             type: ability.type,
-            recallCost: parseInt(ability.recall),
             description: ability.text
         }
     }
