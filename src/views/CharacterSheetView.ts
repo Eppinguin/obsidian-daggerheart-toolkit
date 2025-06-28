@@ -522,7 +522,7 @@ export class CharacterSheetView extends ItemView {
         left.createDiv({ cls: 'dh-weapon-type', text: `${weapon.burden} - ${weapon.range}` });
         const feature = (weapon.features || [])[0];
         const featureEl = left.createDiv({ cls: 'dh-weapon-feature' });
-        renderRollableContent(this.plugin, feature?.description || 'No feature.', featureEl, `${weapon.name}: ${feature?.name || 'Attack'}`);
+        renderRollableContent(this.plugin, feature?.description || 'No feature.', featureEl, `${weapon.name}: ${feature?.name || 'Attack'}`, true);
         const right = body.createDiv({ cls: 'dh-weapon-card-right' });
         const traitName = weapon.trait as keyof Character['traits'];
         const trait = character.traits[traitName];
@@ -887,7 +887,7 @@ export class CharacterSheetView extends ItemView {
 
         // --- Body ---
         const body = card.createDiv({ cls: 'dh-feature-card-body' });
-        renderRollableContent(this.plugin, feature.description, body, feature.name);
+        renderRollableContent(this.plugin, feature.description, body, feature.name, true);
 
         // --- Footer & Spellcasting Button ---
         const footer = card.createDiv({ cls: 'dh-feature-card-footer' });

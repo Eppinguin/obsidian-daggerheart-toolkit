@@ -929,6 +929,18 @@
     color: var(--text-accent);
 }
 
+/* Only apply cursor and visual cues to clickable costs */
+.dh-clickable-cost {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    transition: color 0.2s ease;
+}
+
+.dh-clickable-cost:hover {
+    color: var(--text-accent-hover);
+    text-decoration: underline;
+}
+
 /* Feature toggle (expand/collapse) */
 .dh-instance-card-content .dh-feature-toggle {
     color: var(--text-muted); 
