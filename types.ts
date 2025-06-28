@@ -71,6 +71,7 @@ export interface Character {
     equippedWeaponIds: string[];
     background?: { question: string; answer: string; }[];
     connections?: { question: string; answer: string; }[];
+    conditions: Condition[];
 }
 
 export interface Trait { _type: 'trait'; value: number; locked: boolean; }

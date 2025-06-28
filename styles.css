@@ -1059,25 +1059,6 @@
     opacity: 1;
 }
 
-.dh-add-condition-btn {
-    background-color: var(--background-modifier-hover);
-    border: 1px dashed var(--background-modifier-border);
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dh-add-condition-btn:hover {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-style: solid;
-}
-
 /* Condition list in menus */
 .dh-conditions-list-container {
     padding: 0;
@@ -1088,6 +1069,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--size-4-1);
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+}
+
+.dh-condition-tags-list .dh-empty-text {
+    color: var(--text-faint);
+    font-style: italic;
 }
 
 .dh-condition-tag > span {
@@ -1107,6 +1096,35 @@
 
 .dh-remove-condition-btn:hover {
     color: var(--text-error);
+}
+
+/* --- Condition Modal --- */
+.dh-predefined-conditions-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: var(--size-4-4);
+}
+
+.dh-condition-card {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dh-condition-card:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-condition-card > p {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    margin-top: var(--size-4-1);
 }
 
 /* -----------------------------------------------------------------------------
@@ -1431,6 +1449,70 @@
 .menu.context-menu .menu-item-icon { 
     color: var(--text-muted);
 }
+
+/* -----------------------------------------------------------------------------
+   13.5 CHARACTER CREATOR WIZARD
+   ----------------------------------------------------------------------------- */
+.dh-creator-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--size-4-4);
+}
+
+.dh-creator-btn {
+    min-width: 120px;
+}
+
+.dh-creator-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: var(--size-4-3);
+    margin-top: var(--size-4-3);
+}
+
+.dh-creator-card {
+    border: 2px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: var(--background-secondary);
+    display: flex;
+    flex-direction: column;
+}
+
+.dh-creator-card:hover {
+    border-color: var(--interactive-accent-hover);
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-creator-card.is-selected {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--interactive-accent), 0 0 10px var(--dh-sheet-accent-glow, rgba(229, 179, 42, 0.4));
+    background-color: var(--background-secondary-alt);
+}
+
+.dh-creator-card > strong {
+    display: block;
+    margin-bottom: var(--size-4-2);
+    font-size: var(--font-ui-large);
+}
+
+.dh-creator-card > div:not(.dh-creator-card-meta) {
+    flex-grow: 1;
+}
+
+.dh-creator-card-meta {
+    margin-top: var(--size-4-3);
+    padding-top: var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
 
 /* -----------------------------------------------------------------------------
    14. COUNTDOWN POPUP 
@@ -2263,6 +2345,17 @@
     display: flex;
     gap: var(--size-4-3);
 }
+
+.dh-conditions-box.is-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-conditions-box.is-clickable:hover {
+    background-color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent);
+}
+
 .dh-conditions-box, .dh-level-box {
     flex-grow: 1;
     background-color: var(--dh-sheet-bg-alt);
@@ -2481,15 +2574,27 @@
     justify-content: space-between;
     align-items: baseline;
     border-bottom: 1px solid #a16eeb;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
 }
 .dh-feature-card-title {
     font-weight: bold;
     text-transform: uppercase;
+    flex-grow: 1;
+}
+.dh-feature-card-meta-header {
+    display: flex;
+    gap: var(--size-4-2);
+    flex-shrink: 0;
 }
 .dh-feature-card-type {
     font-size: var(--font-ui-small);
     font-weight: 500;
     color: rgba(255,255,255,0.7);
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    text-transform: uppercase;
 }
 .dh-feature-card-body {
     padding: var(--size-4-3);

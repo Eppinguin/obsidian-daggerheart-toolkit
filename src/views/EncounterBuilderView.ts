@@ -6,12 +6,8 @@ import {
     EncounterBudgetModal, CustomConditionModal, EditAdversaryModal,
     NameEncounterModal, ManageEncountersModal
 } from '../modals/index';
+import { DAGGERHEART_CONDITIONS } from 'src/constants';
 
-const DAGGERHEART_CONDITIONS: Condition[] = [
-    { name: "Hidden", description: "While you’re out of sight from all enemies and they don’t otherwise know your location, you gain the Hidden condition. Any rolls against a Hidden adversary have disadvantage. After an adversary moves to where they would see you, you move into their line of sight, or you make an attack, you are no longer Hidden." },
-    { name: "Restrained", description: "Restrained characters can’t move, but you can still take actions from their current position." },
-    { name: "Vulnerable", description: "When a adversary is Vulnerable, all rolls targeting them have advantage." }
-];
 
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
 

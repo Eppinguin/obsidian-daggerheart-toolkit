@@ -1,10 +1,11 @@
-import { ItemView, WorkspaceLeaf, Notice, setIcon, Modal, App, Setting, TextComponent, ExtraButtonComponent } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, setIcon, Modal, App, Setting, TextComponent, ExtraButtonComponent, Menu } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
     Character, CompendiumAncestry, CompendiumClass, CompendiumCommunity, Trait,
-    InventoryItem, Experience, Feature, CompendiumFeature, ArmorItem, WeaponItem, GenericItem, CompendiumItem, CompendiumSubclass, DomainCard
+    InventoryItem, Experience, Feature, CompendiumFeature, ArmorItem, WeaponItem, GenericItem, CompendiumItem, CompendiumSubclass, DomainCard, Condition
 } from '../../types';
+import { DAGGERHEART_CONDITIONS } from '../constants';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
 
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
@@ -163,9 +164,9 @@ export class CharacterSheetView extends ItemView {
         });
     }
 
-    // --- CHARACTER CREATOR WIZARD (Unchanged, so omitting for brevity) ---
+    // --- CHARACTER CREATOR WIZARD (Omitted for brevity) ---
     private redrawCreatorStep() { if (!this.stepContainer) return; this.stepContainer.empty(); const steps = [this.drawCreatorStep1_Class.bind(this), this.drawCreatorStep2_Heritage.bind(this), this.drawCreatorStep3_Traits.bind(this), this.drawCreatorStep4_Equipment.bind(this), this.drawCreatorStep5_Background.bind(this), this.drawCreatorStep6_Experiences.bind(this), this.drawCreatorStep7_Domains.bind(this), this.drawCreatorStep8_Connections.bind(this), this.drawCreatorStep9_FinalDetails.bind(this),]; if (this.creatorStep < steps.length) { steps[this.creatorStep](this.stepContainer); } this.backBtn.style.visibility = this.creatorStep === 0 ? 'hidden' : 'visible'; this.nextBtn.textContent = this.creatorStep === steps.length - 1 ? 'Create Character' : 'Next'; }
-    private drawCharacterCreator(parent: HTMLElement) { const creatorEl = parent.createDiv({ cls: 'dh-creator-wizard' }); creatorEl.createEl('h2', { text: 'Create New Character' }); this.stepContainer = creatorEl.createDiv(); const navContainer = creatorEl.createDiv({ cls: 'dh-creator-nav' }); this.backBtn = navContainer.createEl('button', { text: 'Back', cls: 'dh-creator-btn' }); this.nextBtn = navContainer.createEl('button', { text: 'Next', cls: 'dh-creator-btn' }); this.backBtn.addEventListener('click', () => { if (this.creatorStep > 0) { this.creatorStep--; this.redrawCreatorStep(); } }); this.nextBtn.addEventListener('click', async () => { const steps = 9; if (this.creatorStep === steps - 1) { await this.finalizeCharacter(this.creatorState); } else if (this.creatorStep < steps - 1) { this.creatorStep++; this.redrawCreatorStep(); } }); this.redrawCreatorStep(); }
+    private drawCharacterCreator(parent: HTMLElement) { const creatorEl = parent.createDiv({ cls: 'dh-creator-wizard' }); creatorEl.createEl('h2', { text: 'Create New Character' }); this.stepContainer = creatorEl.createDiv(); const navContainer = creatorEl.createDiv({ cls: 'dh-creator-nav' }); this.backBtn = navContainer.createEl('button', { text: 'Back', cls: 'dh-creator-btn' }); this.nextBtn = navContainer.createEl('button', { text: 'Next', cls: 'dh-creator-btn mod-cta' }); this.backBtn.addEventListener('click', () => { if (this.creatorStep > 0) { this.creatorStep--; this.redrawCreatorStep(); } }); this.nextBtn.addEventListener('click', async () => { const steps = 9; if (this.creatorStep === steps - 1) { await this.finalizeCharacter(this.creatorState); } else if (this.creatorStep < steps - 1) { this.creatorStep++; this.redrawCreatorStep(); } }); this.redrawCreatorStep(); }
     private drawCreatorStep1_Class(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 1: Choose your Class & Subclass' }); const detailsContainer = parent.createDiv({ cls: 'dh-creator-details' }); const subclassSetting = new Setting(parent); const drawDetails = () => {
             detailsContainer.empty(); if (!this.creatorState.classId) return; const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId); if (charClass) {
@@ -181,7 +182,65 @@ export class CharacterSheetView extends ItemView {
     private drawCreatorStep4_Equipment(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 4: Starting Equipment' }); const weapons = this.plugin.characterCompendium.weapons; const armors = this.plugin.characterCompendium.armors; new Setting(parent).setName('Primary Weapon').addDropdown(dd => { dd.addOption('', '--- Select ---'); weapons.filter(w => w.burden === 'Two-Handed').forEach(w => dd.addOption(w.id, `${w.name} (2-Handed)`)); weapons.filter(w => w.burden === 'One-Handed').forEach(w => dd.addOption(w.id, `${w.name} (1-Handed)`)); dd.setValue(this.creatorState.startingWeaponIds?.[0] || '').onChange(value => { const weapon = weapons.find(w => w.id === value); this.creatorState.startingWeaponIds = weapon ? [value] : []; this.redrawCreatorStep(); }); }); const primaryWeapon = weapons.find(w => w.id === this.creatorState.startingWeaponIds?.[0]); if (primaryWeapon && primaryWeapon.burden === 'One-Handed') { const secondaryWeapons = this.plugin.characterCompendium.weapons.filter(w => w.burden === 'One-Handed'); new Setting(parent).setName('Secondary Weapon').addDropdown(dd => { dd.addOption('', '--- None ---'); secondaryWeapons.forEach(w => dd.addOption(w.id, w.name)); dd.setValue(this.creatorState.startingWeaponIds?.[1] || '').onChange(value => { this.creatorState.startingWeaponIds = value ? [primaryWeapon.id, value] : [primaryWeapon.id]; }); }); } new Setting(parent).setName('Armor').addDropdown(dd => { dd.addOption('', '--- Select ---'); armors.forEach(a => dd.addOption(a.id, a.name)); dd.setValue(this.creatorState.startingArmorId || '').onChange(value => { this.creatorState.startingArmorId = value; }); }); new Setting(parent).setName('Starting Potion').addDropdown(dd => { dd.addOption('health', 'Minor Health Potion').addOption('stamina', 'Minor Stamina Potion').setValue(this.creatorState.potionChoice || 'health').onChange(value => { this.creatorState.potionChoice = value as 'health' | 'stamina'; }); }); }
     private drawCreatorStep5_Background(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 5: Background Questions' }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? '') as CompendiumClassWithNarrative | undefined; if (charClass?._narrative?.backgrounds) { charClass._narrative.backgrounds.forEach((bg, index) => { new Setting(parent).setName(bg.question).addTextArea(text => { text.setValue(this.creatorState.backgroundAnswers?.[index] || '').onChange(value => { if (!this.creatorState.backgroundAnswers) this.creatorState.backgroundAnswers = []; this.creatorState.backgroundAnswers[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see background questions.' }); } }
     private drawCreatorStep6_Experiences(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 6: Create Experiences' }); parent.createEl('p', { text: 'Create two experiences for your character. These represent skills or defining moments from their past. They both start with a +2 modifier.' }); if (!this.creatorState.experiences) this.creatorState.experiences = [{ name: '', description: '' }, { name: '', description: '' }]; this.creatorState.experiences.forEach((exp, index) => { parent.createEl('h5', { text: `Experience ${index + 1}` }); new Setting(parent).setName('Name').addText(text => text.setPlaceholder('e.g., Survivor, Master of Disguise').setValue(exp.name).onChange(value => exp.name = value)); }); }
-    private drawCreatorStep7_Domains(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 7: Choose Domain Cards' }); const classId = this.creatorState.classId; if (!classId) { parent.createEl('p', { text: 'Please select a class in Step 1.' }); return; } const domains = CLASS_DOMAINS[classId]; if (!domains) { parent.createEl('p', { text: 'Class domains not found.' }); return; } parent.createEl('p', { text: `Choose two cards from your class domains: ${domains.join(' & ')}.` }); const domainCards = this.plugin.characterCompendium.features.filter(f => { const metadata = this.getFeatureMetadata(f); return metadata.level === 1 && domains.some(d => d.toLowerCase() === metadata.domain?.toLowerCase()); }); const cardContainer = parent.createDiv({ cls: 'dh-creator-card-grid' }); domainCards.forEach(card => { const cardEl = cardContainer.createDiv({ cls: 'dh-creator-card' }); const label = cardEl.createEl('label'); const checkbox = label.createEl('input', { type: 'checkbox' }); checkbox.checked = this.creatorState.domainCardIds?.includes(card.id) ?? false; checkbox.onchange = () => { if (!this.creatorState.domainCardIds) this.creatorState.domainCardIds = []; if (checkbox.checked) { if (this.creatorState.domainCardIds.length < 2) { this.creatorState.domainCardIds.push(card.id); } else { checkbox.checked = false; new Notice('You can only select two domain cards.'); } } else { this.creatorState.domainCardIds = this.creatorState.domainCardIds.filter(id => id !== card.id); } }; label.createEl('strong', { text: card.name }); renderMarkdown(this.plugin, card.description, label.createDiv()); }); }
+    private drawCreatorStep7_Domains(parent: HTMLElement) {
+        parent.createEl('h3', { text: 'Step 7: Choose Domain Cards' });
+        const classId = this.creatorState.classId;
+        if (!classId) {
+            parent.createEl('p', { text: 'Please select a class in Step 1.' });
+            return;
+        }
+        const domains = CLASS_DOMAINS[classId];
+        if (!domains) {
+            parent.createEl('p', { text: 'Class domains not found.' });
+            return;
+        }
+        parent.createEl('p', { text: `Choose two cards from your class domains: ${domains.join(' & ')}.` });
+
+        const domainCards = this.plugin.characterCompendium.features.filter(f => {
+            const metadata = this.getFeatureMetadata(f);
+            return metadata.level === 1 && domains.some(d => d.toLowerCase() === metadata.domain?.toLowerCase());
+        });
+
+        const cardContainer = parent.createDiv({ cls: 'dh-creator-card-grid' });
+        domainCards.forEach(card => {
+            const cardEl = cardContainer.createDiv({ cls: 'dh-creator-card' });
+            if (this.creatorState.domainCardIds?.includes(card.id)) {
+                cardEl.addClass('is-selected');
+            }
+
+            cardEl.addEventListener('click', () => {
+                if (!this.creatorState.domainCardIds) {
+                    this.creatorState.domainCardIds = [];
+                }
+
+                const isSelected = this.creatorState.domainCardIds.includes(card.id);
+
+                if (isSelected) {
+                    this.creatorState.domainCardIds = this.creatorState.domainCardIds.filter(id => id !== card.id);
+                    cardEl.removeClass('is-selected');
+                } else {
+                    if (this.creatorState.domainCardIds.length < 2) {
+                        this.creatorState.domainCardIds.push(card.id);
+                        cardEl.addClass('is-selected');
+                    } else {
+                        new Notice('You can only select two domain cards.');
+                    }
+                }
+            });
+
+            cardEl.createEl('strong', { text: card.name });
+            renderMarkdown(this.plugin, card.description, cardEl.createDiv());
+
+            const metadata = this.getFeatureMetadata(card as Feature);
+            const footer = cardEl.createDiv({ cls: 'dh-creator-card-meta' });
+            if (metadata.domain) {
+                footer.createSpan({ text: `Domain: ${metadata.domain}` });
+            }
+            if (metadata.level) {
+                footer.createSpan({ text: `Level: ${metadata.level}` });
+            }
+        });
+    }
     private drawCreatorStep8_Connections(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 8: Create Connections' }); parent.createEl('p', { text: "Use these questions as inspiration to create connections with the other characters at your table. Discuss your answers together and jot down your notes here." }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? '') as CompendiumClassWithNarrative | undefined; if (charClass?._narrative?.connections) { charClass._narrative.connections.forEach((conn, index) => { new Setting(parent).setName(conn.question).addTextArea(text => { text.setValue(this.creatorState.connections?.[index] || '').onChange(value => { if (!this.creatorState.connections) this.creatorState.connections = []; this.creatorState.connections[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see connection questions.' }); } }
     private drawCreatorStep9_FinalDetails(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 9: Final Details & Review' }); if (!this.creatorState.pronouns) this.creatorState.pronouns = { subject: 'they', object: 'them' }; new Setting(parent).setName("Character Name").addText(text => text.setPlaceholder("Elara Meadowlight").setValue(this.creatorState.name || '').onChange(value => this.creatorState.name = value)); new Setting(parent).setName("Subject Pronoun").addText(text => text.setPlaceholder("e.g., she").setValue(this.creatorState.pronouns?.subject || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.subject = value; })); new Setting(parent).setName("Object Pronoun").addText(text => text.setPlaceholder("e.g., her").setValue(this.creatorState.pronouns?.object || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.object = value; })); parent.createEl('hr'); parent.createEl('h4', { text: 'Character Review' }); const reviewEl = parent.createDiv({ cls: 'dh-creator-review' }); const { ancestryId, communityId, classId, subclassId, traits, startingArmorId, startingWeaponIds, domainCardIds } = this.creatorState; const ancestry = this.plugin.characterCompendium.getAncestry(ancestryId ?? ''); const community = this.plugin.characterCompendium.getCommunity(communityId ?? ''); const charClass = this.plugin.characterCompendium.getClass(classId ?? ''); const subclass = this.plugin.characterCompendium.getSubclass(subclassId ?? ''); const armor = this.plugin.characterCompendium.armors.find(a => a.id === startingArmorId); const weapons = startingWeaponIds ? this.plugin.characterCompendium.weapons.filter(w => startingWeaponIds.includes(w.id)) : []; const domains = domainCardIds?.map(id => this.plugin.characterCompendium.getFeature(id)?.name).join(', '); reviewEl.createEl('p').innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`; reviewEl.createEl('p').innerHTML = `<strong>Ancestry:</strong> ${ancestry?.name || 'N/A'}`; reviewEl.createEl('p').innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`; reviewEl.createEl('h5', { text: 'Traits' }); if (traits) { Object.entries(traits).forEach(([key, value]) => { if (value !== undefined) reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>${key}:</strong> ${value >= 0 ? '+' : ''}${value}`; }); } reviewEl.createEl('h5', { text: 'Equipment' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`; reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`; reviewEl.createEl('h5', { text: 'Domain Cards' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A'; }
     private async finalizeCharacter(partialChar: Partial<CreatorState>) {
@@ -269,6 +328,7 @@ export class CharacterSheetView extends ItemView {
                 question: c.question,
                 answer: partialChar.connections?.[i] || ''
             })),
+            conditions: [], // Initialize conditions array
         };
 
         await this.plugin.updateCharacter(fullChar);
@@ -286,7 +346,6 @@ export class CharacterSheetView extends ItemView {
         this.drawCenterColumn(mainGrid, data);
         this.drawRightColumn(mainGrid, data);
 
-        // Add a section for detailed lists (Inventory, Abilities) below the main grid
         this.drawManager(sheet, data);
     }
 
@@ -331,7 +390,6 @@ export class CharacterSheetView extends ItemView {
     private drawPrimaryDefenses(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-primary-defenses' });
 
-        // Calculate Evasion
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId) as ArmorItem | undefined;
         let armorEvasionMod = 0;
         if (equippedArmor?.features?.some(f => f.toLowerCase().includes('heavy'))) {
@@ -339,21 +397,16 @@ export class CharacterSheetView extends ItemView {
         }
         const finalEvasion = data.evasion + armorEvasionMod;
 
-        // Draw Evasion
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
         evasionBox.createEl('span', { text: 'Evasion', cls: 'dh-stat-label' });
 
-        // Draw Armor
         const armorBox = container.createDiv({ cls: 'dh-stat-hex' });
-        const currentArmor = data.armorSlots.max - data.armorSlots.current;
         armorBox.createEl('span', { text: String(data.armorSlots.max), cls: 'dh-stat-value' });
         armorBox.createEl('span', { text: 'Armor', cls: 'dh-stat-label' });
 
-        // Draw Armor Slots
         const armorSlotsContainer = parent.createDiv({ cls: 'dh-armor-slots' });
         armorSlotsContainer.createEl('span', { text: 'Armor Slots' });
-        // Use createInteractiveTrack for armor slots - starts empty
         this.plugin.createInteractiveTrack(armorSlotsContainer, '', data.armorSlots.max, data.id + '-armor', data.armorSlots.current, (v) => {
             data.armorSlots.current = v;
             this.plugin.updateCharacter(data);
@@ -366,7 +419,6 @@ export class CharacterSheetView extends ItemView {
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Hit Points & Stress' });
 
-        // Damage Thresholds
         const thresholdsBox = container.createDiv({ cls: 'dh-thresholds-box' });
         let finalMajorThreshold = data.damageThresholds.major;
         let finalSevereThreshold = data.damageThresholds.severe;
@@ -391,8 +443,6 @@ export class CharacterSheetView extends ItemView {
         severe.createEl('span', { cls: 'dh-threshold-value', text: String(finalSevereThreshold) });
         severe.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 3 HP` });
 
-
-        // HP and Stress Tracks - these should start empty (0)
         if (data.hitPoints) this.plugin.createInteractiveTrack(container, 'HP', data.hitPoints.max, data.id + '-hp', data.hitPoints.current, (v) => { data.hitPoints.current = v; this.plugin.updateCharacter(data); });
         if (data.stress) this.plugin.createInteractiveTrack(container, 'Stress', data.stress.max, data.id + '-stress', data.stress.current, (v) => { data.stress.current = v; this.plugin.updateCharacter(data); });
     }
@@ -481,14 +531,43 @@ export class CharacterSheetView extends ItemView {
     private drawVitals(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-vitals' });
 
-        const conditions = container.createDiv({ cls: 'dh-conditions-box' });
-        conditions.createEl('h4', { text: 'Conditions' });
-        conditions.createDiv({ text: 'No Active Conditions' }); // Placeholder
+        this.drawConditions(container, data);
 
         const level = container.createDiv({ cls: 'dh-level-box' });
         level.createEl('h4', { text: 'Level' });
         level.createDiv({ cls: 'dh-level-value', text: String(data.level) });
     }
+
+    private drawConditions(parent: HTMLElement, data: Character) {
+        const conditionsBox = parent.createDiv({ cls: 'dh-conditions-box is-clickable' });
+        conditionsBox.createEl('h4', { text: 'Conditions' });
+
+        const tagsContainer = conditionsBox.createDiv({ cls: 'dh-condition-tags-list' });
+
+        if (data.conditions && data.conditions.length > 0) {
+            data.conditions.forEach(condition => {
+                const tag = tagsContainer.createDiv({ cls: 'dh-condition-tag' });
+                tag.createSpan({ text: condition.name });
+                tag.ariaLabel = condition.description || condition.name;
+                const removeBtn = tag.createEl('button', { cls: 'dh-remove-condition-btn' });
+                setIcon(removeBtn, 'x');
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    data.conditions = data.conditions.filter(c => c.name !== condition.name);
+                    this.plugin.updateCharacter(data);
+                });
+            });
+        } else {
+            tagsContainer.createDiv({ text: 'Add a condition...', cls: 'dh-empty-text' });
+        }
+
+        conditionsBox.addEventListener('click', () => {
+            new ConditionModal(this.app, data, (updatedCharacter) => {
+                this.plugin.updateCharacter(updatedCharacter);
+            }).open();
+        });
+    }
+
 
     private drawExperiences(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-experiences' });
@@ -542,13 +621,11 @@ export class CharacterSheetView extends ItemView {
         });
 
         const list = parent.createDiv({ cls: 'dh-inventory-list' });
-        // Header
         const header = list.createDiv({ cls: 'dh-inventory-item is-header' });
         header.createDiv({ text: 'Name' });
         header.createDiv({ text: 'Description' });
         header.createDiv({ text: 'Active' });
 
-        // Items
         character.inventory.forEach(item => {
             const row = list.createDiv({ cls: 'dh-inventory-item' });
             const isEquipped = item.instanceId === character.equippedArmorId || (character.equippedWeaponIds && character.equippedWeaponIds.includes(item.instanceId));
@@ -572,7 +649,6 @@ export class CharacterSheetView extends ItemView {
     private drawGoldTracker(parent: HTMLElement, data: Character) {
         const box = parent.createDiv({ cls: 'dh-gold-tracker' });
         box.addEventListener('click', () => new GoldModal(this.app, data, () => this.plugin.updateCharacter(data)).open());
-        // This is a simplified display. Logic can be expanded.
         box.createEl('span').setText(`Gold: ${data.gold.chests}C, ${data.gold.bags}B, ${data.gold.handfuls}H`);
     }
 
@@ -628,25 +704,32 @@ export class CharacterSheetView extends ItemView {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
         const metadata = this.getFeatureMetadata(feature as Feature);
 
-        // Header
         const header = card.createDiv({ cls: 'dh-feature-card-header' });
         header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
+        const metaHeader = header.createDiv({ cls: 'dh-feature-card-meta-header' });
+        if (metadata.domain) {
+            metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.domain });
+        }
         if (metadata.type) {
-            header.createDiv({ cls: 'dh-feature-card-type', text: metadata.type });
+            metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.type });
         }
 
-        // Body
         const body = card.createDiv({ cls: 'dh-feature-card-body' });
         renderRollableContent(this.plugin, feature.description, body, feature.name);
 
-        // Footer - this is highly specific and would need data mapping
         const footer = card.createDiv({ cls: 'dh-feature-card-footer' });
+        const createFooterBox = (label: string, value: string | number | undefined) => {
+            if (value === undefined) return;
+            const box = footer.createDiv({ cls: 'dh-feature-card-box' });
+            box.createDiv({ cls: 'value', text: String(value) });
+            box.createDiv({ cls: 'label', text: label });
+        };
 
-        // Example of parsing a cost from notes
-        if (metadata.recallCost) {
-            const costBox = footer.createDiv({ cls: 'dh-feature-card-box' });
-            costBox.createDiv({ cls: 'value', text: String(metadata.recallCost) });
-            costBox.createDiv({ cls: 'label', text: 'Hope' });
+        if (metadata.level) {
+            createFooterBox('Level', metadata.level);
+        }
+        if (metadata.recallCost !== undefined) {
+            createFooterBox('Recall', metadata.recallCost);
         }
     }
 
@@ -656,6 +739,81 @@ export class CharacterSheetView extends ItemView {
 }
 
 // --- MODALS ---
+class ConditionModal extends Modal {
+    character: Character;
+    onSave: (character: Character) => void;
+
+    constructor(app: App, character: Character, onSave: (character: Character) => void) {
+        super(app);
+        this.character = character;
+        this.onSave = onSave;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h2', { text: 'Add Condition' });
+
+        // Predefined conditions
+        contentEl.createEl('h3', { text: 'Select Condition' });
+        const predefinedContainer = contentEl.createDiv({ cls: 'dh-predefined-conditions-container' });
+        DAGGERHEART_CONDITIONS.forEach(condition => {
+            const isApplied = this.character.conditions?.some(c => c.name === condition.name);
+            if (!isApplied) {
+                const card = predefinedContainer.createDiv({ cls: 'dh-condition-card' });
+                card.createEl('strong', { text: condition.name });
+                card.createEl('p', { text: condition.description });
+                card.addEventListener('click', () => {
+                    if (!this.character.conditions) {
+                        this.character.conditions = [];
+                    }
+                    this.character.conditions.push(condition);
+                    this.onSave(this.character);
+                    this.close();
+                });
+            }
+        });
+
+        // Custom condition
+        contentEl.createEl('h3', { text: 'Add Custom Condition' });
+        let customName = '';
+        let customDesc = '';
+
+        new Setting(contentEl)
+            .setName('Name')
+            .addText(text => text.onChange(value => customName = value.trim()));
+
+        new Setting(contentEl)
+            .setName('Description (Optional)')
+            .addTextArea(text => text.onChange(value => customDesc = value.trim()));
+
+        new Setting(contentEl)
+            .addButton(button => button
+                .setButtonText('Add Custom')
+                .setCta()
+                .onClick(() => {
+                    if (customName) {
+                        if (!this.character.conditions) {
+                            this.character.conditions = [];
+                        }
+                        if (this.character.conditions.some(c => c.name.toLowerCase() === customName.toLowerCase())) {
+                            new Notice(`Condition "${customName}" already exists.`);
+                            return;
+                        }
+                        this.character.conditions.push({ name: customName, description: customDesc });
+                        this.onSave(this.character);
+                        this.close();
+                    } else {
+                        new Notice('Please provide a name for the custom condition.');
+                    }
+                }));
+    }
+
+    onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
+    }
+}
 class GoldModal extends Modal { character: Character; onSave: () => void; constructor(app: App, character: Character, onSave: () => void) { super(app); this.character = character; this.onSave = onSave; } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: "Update Wealth" }); let { handfuls, bags, chests } = this.character.gold; new Setting(contentEl).setName("Chests").addText(text => text.setValue(String(chests)).onChange(v => chests = parseInt(v) || 0)); new Setting(contentEl).setName("Bags").addText(text => text.setValue(String(bags)).onChange(v => bags = parseInt(v) || 0)); new Setting(contentEl).setName("Handfuls").addText(text => text.setValue(String(handfuls)).onChange(v => handfuls = parseInt(v) || 0)); new Setting(contentEl).addButton(btn => btn.setButtonText("Save").setCta().onClick(() => { bags += Math.floor(handfuls / 10); handfuls %= 10; chests += Math.floor(bags / 10); bags %= 10; this.character.gold = { _type: 'gold', handfuls, bags, chests }; this.onSave(); this.close(); })); } onClose() { this.contentEl.empty(); } }
 class ExperienceModal extends Modal { experience: Experience | null; onSave: (result: Experience) => void; onDelete?: () => void; result: Experience; constructor(app: App, experience: Experience | null, onSave: (result: Experience) => void, onDelete?: () => void) { super(app); this.experience = experience; this.onSave = onSave; this.onDelete = onDelete; this.result = experience ? { ...experience } : { _type: 'experience', id: uuidv4(), name: '', value: 2, description: '' }; } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: this.experience ? "Edit Experience" : "Add Experience" }); new Setting(contentEl).setName("Name").addText(text => text.setValue(this.result.name).onChange(v => this.result.name = v)); new Setting(contentEl).setName("Value").addText(text => text.setValue(String(this.result.value)).onChange(v => this.result.value = parseInt(v) || 0)); new Setting(contentEl).setName("Description").addTextArea(text => text.setValue(this.result.description || '').onChange(v => this.result.description = v)); const buttons = new Setting(contentEl); if (this.onDelete) { buttons.addButton(btn => btn.setButtonText("Delete").setWarning().onClick(() => { if (confirm("Are you sure?")) { if (this.onDelete) this.onDelete(); this.close(); } })); } buttons.addButton(btn => btn.setButtonText("Save").setCta().onClick(() => { if (!this.result.name) { new Notice("Name is required."); return; } this.onSave(this.result); this.close(); })); } onClose() { this.contentEl.empty(); } }
 class AddItemModal extends Modal { plugin: DaggerheartStatblockPlugin; onSelect: (item: CompendiumItem) => void; private searchInput: TextComponent; constructor(app: App, plugin: DaggerheartStatblockPlugin, onSelect: (item: CompendiumItem) => void) { super(app); this.plugin = plugin; this.onSelect = onSelect; this.modalEl.addClass('dh-modal'); } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: "Add Item from Compendium" }); const searchContainer = contentEl.createDiv({ cls: 'search-container' }); this.searchInput = new TextComponent(searchContainer).setPlaceholder("Search items..."); const listEl = contentEl.createDiv({ cls: 'dh-modal-list' }); this.renderList(listEl, ''); this.searchInput.onChange(value => this.renderList(listEl, value)); } renderList(container: HTMLElement, filter: string) { container.empty(); const allItems = this.plugin.characterCompendium.getAllItems(); const filtered = allItems.filter(item => item.name.toLowerCase().includes(filter.toLowerCase())); if (filtered.length === 0) { container.createEl('p', { text: 'No items match your search.' }); return; } filtered.forEach(item => { const itemEl = container.createDiv({ cls: 'dh-modal-list-item' }); itemEl.style.marginBottom = "10px"; itemEl.style.padding = "10px"; itemEl.style.border = "1px solid var(--background-modifier-border)"; itemEl.style.borderRadius = "5px"; itemEl.style.cursor = "pointer"; itemEl.addEventListener('mouseenter', () => { itemEl.style.backgroundColor = "var(--background-modifier-hover)"; }); itemEl.addEventListener('mouseleave', () => { itemEl.style.backgroundColor = ""; }); itemEl.createEl('h4', { text: item.name }); const typeText = item._type === 'weapon' ? 'Weapon' : item._type === 'armor' ? 'Armor' : 'Item'; const typeBadge = itemEl.createDiv({ cls: 'dh-item-badge', text: typeText }); typeBadge.style.display = "inline-block"; typeBadge.style.padding = "2px 8px"; typeBadge.style.margin = "5px 0"; typeBadge.style.borderRadius = "10px"; typeBadge.style.fontSize = "smaller"; typeBadge.style.backgroundColor = "var(--background-modifier-border)"; if (item.description) { itemEl.createEl('p', { text: item.description || '', attr: { style: "margin-top: 5px; font-size: 0.9em; color: var(--text-muted);" } }); } itemEl.addEventListener('click', () => { this.onSelect(item); this.close(); }); }); } onClose() { this.contentEl.empty(); } }
@@ -665,10 +823,7 @@ class CharacterManagerModal extends Modal {
     character: Character;
     onSave: (character: Character) => void;
 
-    // Local state for edits
     private tempCharacter: Character;
-
-    // For feature replacement
     private selectedCurrentFeatureId: string | null = null;
     private selectedNewFeatureId: string | null = null;
     private replaceBtn: HTMLButtonElement;
@@ -679,14 +834,13 @@ class CharacterManagerModal extends Modal {
         super(app);
         this.plugin = plugin;
         this.character = character;
-        // Deep copy character to avoid modifying original data until save
         this.tempCharacter = JSON.parse(JSON.stringify(character));
         this.onSave = onSave;
         this.modalEl.addClass('dh-character-manager-modal');
     }
 
     onOpen() {
-        this.contentEl.empty(); // Clear previous content
+        this.contentEl.empty();
         const { contentEl } = this;
         contentEl.createEl("h1", { text: `Manage ${this.character.name}` });
 
@@ -801,7 +955,7 @@ class CharacterManagerModal extends Modal {
         const redrawExperiences = () => {
             experiencesContainer.empty();
             this.tempCharacter.experiences.forEach((exp, index) => {
-                const setting = new Setting(experiencesContainer)
+                new Setting(experiencesContainer)
                     .setName(`Experience ${index + 1}`)
                     .addText(text => text
                         .setPlaceholder('Name')
@@ -941,12 +1095,10 @@ class CharacterManagerModal extends Modal {
             return;
         }
 
-        // Update the temporary character state
         this.tempCharacter.features[featureIndex] = newFeature;
 
         new Notice(`Replaced feature with ${newFeature.name}. Save to apply changes.`);
 
-        // Reset selection and redraw the lists to reflect the change
         this.selectedCurrentFeatureId = null;
         this.selectedNewFeatureId = null;
         this.redrawFeatureLists();
