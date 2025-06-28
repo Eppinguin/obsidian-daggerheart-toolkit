@@ -10,7 +10,7 @@ import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
 
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
-type ManagerTab = 'abilities' | 'inventory' | 'details'; // Abilities is now the default
+type ManagerTab = 'abilities' | 'inventory' | 'details';
 const TRAIT_VALUES = [2, 1, 1, 0, 0, -1];
 const TRAIT_NAMES: (keyof Character['traits'])[] = ['Strength', 'Agility', 'Finesse', 'Instinct', 'Presence', 'Knowledge'];
 const TRAIT_SKILLS: { [key in keyof Character['traits']]: string[] } = {
@@ -22,8 +22,6 @@ const TRAIT_SKILLS: { [key in keyof Character['traits']]: string[] } = {
     Knowledge: ['Recall', 'Analyze', 'Comprehend']
 };
 
-
-// Extend CompendiumClass for this view's purposes to include narrative and inventory data from JSON
 type CompendiumClassWithNarrative = CompendiumClass & {
     initialInventory: (WeaponItem | ArmorItem | GenericItem)[];
     _narrative?: {
@@ -32,7 +30,6 @@ type CompendiumClassWithNarrative = CompendiumClass & {
     };
 };
 
-// Type for the character creator state, expanded to include all creation steps
 type CreatorState = {
     name: string;
     pronouns: { subject: string; object: string; };
@@ -64,9 +61,8 @@ const CLASS_DOMAINS: { [key: string]: string[] } = {
 
 export class CharacterSheetView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
-    private activeManagerTab: ManagerTab = 'abilities'; // Default tab is now 'abilities'
+    private activeManagerTab: ManagerTab = 'abilities';
 
-    // State for the character creator wizard
     private creatorState: Partial<CreatorState> = {
         traits: {},
         domainCardIds: [],
@@ -78,7 +74,6 @@ export class CharacterSheetView extends ItemView {
     };
     private creatorStep: number = 0;
 
-    // UI elements for the creator
     private stepContainer: HTMLElement;
     private backBtn: HTMLButtonElement;
     private nextBtn: HTMLButtonElement;
@@ -102,7 +97,7 @@ export class CharacterSheetView extends ItemView {
         const container = this.containerEl.children[1];
         container.empty();
         const main = container.createDiv({ cls: 'dh-cs-main' });
-        this.drawTopBar(main); // Changed from drawHeader
+        this.drawTopBar(main);
         const activeChar = this.plugin.getActiveCharacter();
         if (activeChar) {
             this.drawCharacterSheet(main, activeChar);
@@ -264,21 +259,22 @@ export class CharacterSheetView extends ItemView {
         }
 
         const standardInventory: InventoryItem[] = [
-            { _type: 'item', id: 'torch', name: 'Torch', instanceId: uuidv4() },
-            { _type: 'item', id: 'rope', name: '50ft of Rope', instanceId: uuidv4() },
+            { _type: 'item', id: 'torch', name: 'Torch', instanceId: uuidv4(), quantity: 1 },
+            { _type: 'item', id: 'rope', name: '50ft of Rope', instanceId: uuidv4(), quantity: 1 },
         ];
 
         if (partialChar.potionChoice === 'health') {
-            standardInventory.push({ _type: 'item', id: 'minor-health-potion', name: 'Minor Health Potion', instanceId: uuidv4() });
+            standardInventory.push({ _type: 'item', id: 'minor-health-potion', name: 'Minor Health Potion', instanceId: uuidv4(), quantity: 1 });
         } else {
-            standardInventory.push({ _type: 'item', id: 'minor-stamina-potion', name: 'Minor Stamina Potion', instanceId: uuidv4() });
+            standardInventory.push({ _type: 'item', id: 'minor-stamina-potion', name: 'Minor Stamina Potion', instanceId: uuidv4(), quantity: 1 });
         }
 
         const startingWeapons = partialChar.startingWeaponIds.map(id => ({
             ...this.plugin.characterCompendium.weapons.find(w => w.id === id) as WeaponItem,
-            instanceId: uuidv4()
+            instanceId: uuidv4(),
+            quantity: 1,
         }));
-        const startingArmor = { ...armor, instanceId: uuidv4() };
+        const startingArmor = { ...armor, instanceId: uuidv4(), quantity: 1 };
 
         const fullChar: Character = {
             id: uuidv4(),
@@ -314,7 +310,7 @@ export class CharacterSheetView extends ItemView {
                 .filter(f => f) as Feature[],
             inventory: [
                 ...standardInventory,
-                ...charClass.initialInventory.map(i => ({ ...i, instanceId: uuidv4() })),
+                ...charClass.initialInventory.map(i => ({ ...i, instanceId: uuidv4(), quantity: 1 })),
                 ...startingWeapons,
                 startingArmor,
             ],
@@ -328,24 +324,20 @@ export class CharacterSheetView extends ItemView {
                 question: c.question,
                 answer: partialChar.connections?.[i] || ''
             })),
-            conditions: [], // Initialize conditions array
+            conditions: [],
         };
 
         await this.plugin.updateCharacter(fullChar);
         this.plugin.setActiveCharacterId(fullChar.id);
     }
 
-    // --- CHARACTER SHEET RENDERER (REBUILT) ---
     private drawCharacterSheet(parent: HTMLElement, data: Character) {
         const sheet = parent.createDiv({ cls: 'dh-sheet' });
-
         this.drawSheetHeader(sheet, data);
-
         const mainGrid = sheet.createDiv({ cls: 'dh-sheet-grid' });
         this.drawLeftColumn(mainGrid, data);
         this.drawCenterColumn(mainGrid, data);
         this.drawRightColumn(mainGrid, data);
-
         this.drawManager(sheet, data);
     }
 
@@ -353,16 +345,13 @@ export class CharacterSheetView extends ItemView {
         const charClass = this.plugin.characterCompendium.getClass(data.classId);
         const subClass = this.plugin.characterCompendium.getSubclass(data.subclassId);
         const ancestry = this.plugin.characterCompendium.getAncestry(data.ancestryId);
-
         const header = parent.createDiv({ cls: 'dh-sheet-header' });
-
         const left = header.createDiv({ cls: 'dh-header-left' });
         const avatar = left.createDiv({ cls: 'dh-avatar' });
         setIcon(avatar, 'user-round');
         const nameplate = left.createDiv({ cls: 'dh-nameplate' });
         nameplate.createEl('h1', { text: data.name || "Unnamed Character" });
         nameplate.createEl('p', { text: `${ancestry?.name || 'N/A'} ${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})` });
-
         const right = header.createDiv({ cls: 'dh-header-right' });
         const classDomains = CLASS_DOMAINS[data.classId] || [];
         right.createDiv({ cls: 'dh-domain-placeholder', text: classDomains.join(' & ') });
@@ -389,22 +378,18 @@ export class CharacterSheetView extends ItemView {
 
     private drawPrimaryDefenses(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-primary-defenses' });
-
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId) as ArmorItem | undefined;
         let armorEvasionMod = 0;
         if (equippedArmor?.features?.some(f => f.toLowerCase().includes('heavy'))) {
             armorEvasionMod = equippedArmor.features.some(f => f.toLowerCase().includes('very heavy')) ? -2 : -1;
         }
         const finalEvasion = data.evasion + armorEvasionMod;
-
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
         evasionBox.createEl('span', { text: 'Evasion', cls: 'dh-stat-label' });
-
         const armorBox = container.createDiv({ cls: 'dh-stat-hex' });
         armorBox.createEl('span', { text: String(data.armorSlots.max), cls: 'dh-stat-value' });
         armorBox.createEl('span', { text: 'Armor', cls: 'dh-stat-label' });
-
         const armorSlotsContainer = parent.createDiv({ cls: 'dh-armor-slots' });
         armorSlotsContainer.createEl('span', { text: 'Armor Slots' });
         this.plugin.createInteractiveTrack(armorSlotsContainer, '', data.armorSlots.max, data.id + '-armor', data.armorSlots.current, (v) => {
@@ -415,10 +400,8 @@ export class CharacterSheetView extends ItemView {
 
     private drawDamageAndResources(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-damage-and-resources' });
-
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Hit Points & Stress' });
-
         const thresholdsBox = container.createDiv({ cls: 'dh-thresholds-box' });
         let finalMajorThreshold = data.damageThresholds.major;
         let finalSevereThreshold = data.damageThresholds.severe;
@@ -430,7 +413,6 @@ export class CharacterSheetView extends ItemView {
             finalMajorThreshold = equippedArmor.baseThresholds.major + data.level;
             finalSevereThreshold = equippedArmor.baseThresholds.severe + data.level;
         }
-
         const minor = thresholdsBox.createDiv();
         minor.createEl('span', { cls: 'dh-threshold-label', text: 'Minor Damage' });
         minor.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 1 HP` });
@@ -442,7 +424,6 @@ export class CharacterSheetView extends ItemView {
         severe.createEl('span', { cls: 'dh-threshold-label', text: 'Severe Damage' });
         severe.createEl('span', { cls: 'dh-threshold-value', text: String(finalSevereThreshold) });
         severe.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 3 HP` });
-
         if (data.hitPoints) this.plugin.createInteractiveTrack(container, 'HP', data.hitPoints.max, data.id + '-hp', data.hitPoints.current, (v) => { data.hitPoints.current = v; this.plugin.updateCharacter(data); });
         if (data.stress) this.plugin.createInteractiveTrack(container, 'Stress', data.stress.max, data.id + '-stress', data.stress.current, (v) => { data.stress.current = v; this.plugin.updateCharacter(data); });
     }
@@ -454,12 +435,10 @@ export class CharacterSheetView extends ItemView {
             const box = container.createDiv({ cls: `dh-trait-box-large ${trait.locked ? 'locked' : ''}` });
             box.createDiv({ cls: 'dh-trait-value-large', text: `${trait.value >= 0 ? '+' : ''}${trait.value}` });
             box.createDiv({ cls: 'dh-trait-name-large', text: name });
-
             const skillsList = box.createDiv({ cls: 'dh-trait-skills' });
             (TRAIT_SKILLS[key] || []).forEach(skill => {
                 skillsList.createDiv({ text: skill });
             });
-
             if (!trait.locked) {
                 box.addEventListener('click', () => this.plugin.rollDice(`1d12+1d12`, `Trait: ${name}`));
             }
@@ -470,12 +449,9 @@ export class CharacterSheetView extends ItemView {
         const container = parent.createDiv({ cls: 'dh-active-weapons' });
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Active Weapons' });
-
         const equippedWeapons = data.inventory.filter(i => data.equippedWeaponIds && data.equippedWeaponIds.includes(i.instanceId)) as WeaponItem[];
-
         if (equippedWeapons.length === 0) {
-            const card = container.createDiv({ cls: 'dh-weapon-card' });
-            card.createDiv({ text: 'No weapons equipped.', cls: 'dh-empty-text' });
+            container.createDiv({ cls: 'dh-weapon-card' }).createDiv({ text: 'No weapons equipped.', cls: 'dh-empty-text' });
         } else {
             equippedWeapons.forEach((weapon, index) => {
                 this.createWeaponCard(container, weapon, index === 0 ? 'Primary' : 'Secondary', data);
@@ -486,17 +462,13 @@ export class CharacterSheetView extends ItemView {
     private createWeaponCard(parent: HTMLElement, weapon: WeaponItem, type: 'Primary' | 'Secondary', character: Character) {
         const card = parent.createDiv({ cls: 'dh-weapon-card' });
         card.createEl('h4', { text: type });
-
         const body = card.createDiv({ cls: 'dh-weapon-card-body' });
         const left = body.createDiv();
         left.createDiv({ cls: 'dh-weapon-name', text: weapon.name });
         left.createDiv({ cls: 'dh-weapon-type', text: `${weapon.burden} - ${weapon.range}` });
-
         const feature = (weapon.features || [])[0];
         const featureEl = left.createDiv({ cls: 'dh-weapon-feature' });
         renderRollableContent(this.plugin, feature || 'No feature.', featureEl, `${weapon.name}: ${feature || 'Attack'}`);
-
-
         const right = body.createDiv({ cls: 'dh-weapon-card-right' });
         const traitName = weapon.trait as keyof Character['traits'];
         const trait = character.traits[traitName];
@@ -510,14 +482,7 @@ export class CharacterSheetView extends ItemView {
         }
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
         let proficiency = 1;
-        if (character.level >= 8) {
-            proficiency = 4;
-        } else if (character.level >= 5) {
-            proficiency = 3;
-        } else if (character.level >= 2) {
-            proficiency = 2;
-        }
-
+        if (character.level >= 8) { proficiency = 4; } else if (character.level >= 5) { proficiency = 3; } else if (character.level >= 2) { proficiency = 2; }
         const damageFormula = `${proficiency}${weapon.damageDice}`;
         damageBox.createDiv({ text: weapon.damageDice });
         damageBox.createDiv({ text: weapon.damageType });
@@ -525,14 +490,11 @@ export class CharacterSheetView extends ItemView {
         damageBox.addEventListener('click', () => {
             this.plugin.rollDice(damageFormula, `${weapon.name} Damage`);
         });
-
     }
 
     private drawVitals(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-vitals' });
-
         this.drawConditions(container, data);
-
         const level = container.createDiv({ cls: 'dh-level-box' });
         level.createEl('h4', { text: 'Level' });
         level.createDiv({ cls: 'dh-level-value', text: String(data.level) });
@@ -568,12 +530,10 @@ export class CharacterSheetView extends ItemView {
         });
     }
 
-
     private drawExperiences(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-experiences' });
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Experience' });
-
         (data.experiences || []).forEach(exp => {
             const card = this.createExperienceCard(container, exp.name, `+${exp.value}`, true);
             card.addEventListener('click', () => new ExperienceModal(this.app, exp, (updatedExp) => {
@@ -587,14 +547,12 @@ export class CharacterSheetView extends ItemView {
         });
     }
 
-    // --- MANAGER UI (REWORKED) ---
     private drawManager(parent: HTMLElement, data: Character) {
         const managerContainer = parent.createDiv({ cls: 'dh-manager-container' });
         const tabs = managerContainer.createDiv({ cls: 'dh-manager-tabs' });
         this.createManagerTab(tabs, 'abilities', 'Effects & Features');
         this.createManagerTab(tabs, 'inventory', 'Equipment');
         this.createManagerTab(tabs, 'details', 'Details');
-
         const content = managerContainer.createDiv({ cls: 'dh-manager-content' });
         switch (this.activeManagerTab) {
             case 'abilities': this.drawAbilitiesManager(content, data); break;
@@ -609,42 +567,150 @@ export class CharacterSheetView extends ItemView {
         tab.addEventListener('click', () => { this.activeManagerTab = id; this.draw(); });
     }
 
+    private equipItem(character: Character, item: InventoryItem, redraw: boolean = true) {
+        if (item._type === 'armor') {
+            character.equippedArmorId = item.instanceId;
+            const armor = item as ArmorItem;
+            character.armorSlots.max = armor.baseScore;
+            character.damageThresholds = { _type: 'damageThresholds', major: armor.baseThresholds.major + character.level, severe: armor.baseThresholds.severe + character.level };
+        } else if (item._type === 'weapon') {
+            const weapon = item as WeaponItem;
+            if (weapon.burden === 'Two-Handed') {
+                character.equippedWeaponIds = [item.instanceId];
+            } else {
+                const equippedWeapons = character.inventory.filter(i => character.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as WeaponItem[];
+                const twoHandedEquipped = equippedWeapons.find(w => w.burden === 'Two-Handed');
+                if (twoHandedEquipped) {
+                    character.equippedWeaponIds = [item.instanceId];
+                } else if (equippedWeapons.length < 2) {
+                    character.equippedWeaponIds.push(item.instanceId);
+                } else {
+                    new Notice("You already have two one-handed weapons equipped. Unequip one first.");
+                    return;
+                }
+            }
+        }
+        if (redraw) {
+            this.plugin.updateCharacter(character);
+        }
+    }
+
+    private unequipItem(character: Character, item: InventoryItem, redraw: boolean = true) {
+        if (item._type === 'armor' && character.equippedArmorId === item.instanceId) {
+            character.equippedArmorId = null;
+            character.armorSlots.max = 0;
+            character.damageThresholds = { _type: 'damageThresholds', major: character.level, severe: character.level * 2 };
+        } else if (item._type === 'weapon') {
+            character.equippedWeaponIds = character.equippedWeaponIds.filter(id => id !== item.instanceId);
+        }
+        if (redraw) {
+            this.plugin.updateCharacter(character);
+        }
+    }
+
     private drawInventoryManager(parent: HTMLElement, character: Character) {
         const topBar = parent.createDiv({ cls: 'dh-inventory-topbar' });
         this.drawGoldTracker(topBar, character);
-        const manageBtn = topBar.createEl('button', { text: 'Manage Equipment' });
-        manageBtn.addEventListener('click', () => {
-            new AddItemModal(this.app, this.plugin, (item) => {
-                character.inventory.push({ ...item, instanceId: uuidv4() });
-                this.plugin.updateCharacter(character);
-            }).open();
-        });
+        const buttonGroup = topBar.createDiv({ cls: 'dh-inventory-buttons' });
+
+        buttonGroup.createEl('button', { text: 'Add Item' })
+            .addEventListener('click', () => {
+                new AddItemModal(this.app, this.plugin, character, (item) => {
+                    if (!character.inventory) character.inventory = [];
+                    character.inventory.push({ ...item, instanceId: uuidv4(), quantity: 1 });
+                    this.plugin.updateCharacter(character);
+                }).open();
+            });
 
         const list = parent.createDiv({ cls: 'dh-inventory-list' });
-        const header = list.createDiv({ cls: 'dh-inventory-item is-header' });
-        header.createDiv({ text: 'Name' });
-        header.createDiv({ text: 'Description' });
-        header.createDiv({ text: 'Active' });
 
+        const header = list.createDiv({ cls: 'dh-inventory-item is-header' });
+        header.createDiv({ text: 'Item' });
+        header.createDiv({ text: 'Qty' });
+        header.createDiv({ text: 'Details' });
+        header.createDiv({ text: 'Actions', cls: 'dh-actions-header' });
+
+        if (!character.inventory) character.inventory = [];
         character.inventory.forEach(item => {
             const row = list.createDiv({ cls: 'dh-inventory-item' });
-            const isEquipped = item.instanceId === character.equippedArmorId || (character.equippedWeaponIds && character.equippedWeaponIds.includes(item.instanceId));
 
-            row.createDiv({ text: item.name, cls: 'dh-inventory-item-name' });
+            const nameCell = row.createDiv({ cls: 'dh-inventory-item-name' });
+            const isEquipped = (item._type === 'armor' && item.instanceId === character.equippedArmorId) ||
+                (item._type === 'weapon' && character.equippedWeaponIds.includes(item.instanceId));
 
-            let desc = '';
-            if (item._type === 'weapon') desc = `${(item as WeaponItem).damageDice} ${(item as WeaponItem).damageType} - ${(item as WeaponItem).burden}`;
-            else if (item._type === 'armor') desc = `${(item as ArmorItem).baseScore} Armor`;
-            else if (item.description) desc = item.description;
-            row.createDiv({ text: desc, cls: 'dh-inventory-item-desc' });
+            if (isEquipped) {
+                setIcon(nameCell, item._type === 'armor' ? 'shield-check' : 'swords');
+                nameCell.addClass('is-equipped');
+            }
+            nameCell.createSpan({ text: item.name });
+            if (item.description) {
+                nameCell.ariaLabel = item.description;
+            }
 
-            const checkboxCell = row.createDiv({ cls: 'dh-inventory-item-active' });
-            const checkbox = checkboxCell.createEl('input', { type: 'checkbox' });
-            checkbox.checked = isEquipped;
-            checkbox.addEventListener('click', () => new ItemActionModal(this.app, item, character, () => this.plugin.updateCharacter(character)).open());
 
+            const qtyCell = row.createDiv({ cls: 'dh-inventory-item-qty' });
+            if (item._type === 'item') {
+                const downBtn = qtyCell.createEl('button', { text: '-' });
+                downBtn.addEventListener('click', () => {
+                    item.quantity = Math.max(1, (item.quantity || 1) - 1);
+                    this.plugin.updateCharacter(character);
+                });
+                qtyCell.createSpan({ text: String(item.quantity || 1) });
+                const upBtn = qtyCell.createEl('button', { text: '+' });
+                upBtn.addEventListener('click', () => {
+                    item.quantity = (item.quantity || 1) + 1;
+                    this.plugin.updateCharacter(character);
+                });
+            } else {
+                qtyCell.setText('1');
+            }
+
+            let details = '';
+            if (item._type === 'weapon') {
+                const weapon = item as WeaponItem;
+                details = `${weapon.damageDice || ''} ${weapon.damageType || ''}, ${weapon.range || ''}, ${weapon.burden || ''}`;
+            } else if (item._type === 'armor') {
+                const armor = item as ArmorItem;
+                details = `${armor.baseScore || 0} Armor, Thresh: ${armor.baseThresholds?.major || 0}/${armor.baseThresholds?.severe || 0}`;
+            } else if (item.description) {
+                details = item.description.substring(0, 30) + (item.description.length > 30 ? '...' : '');
+            }
+            row.createDiv({ text: details, cls: 'dh-inventory-item-details' });
+
+
+            const actionsCell = row.createDiv({ cls: 'dh-inventory-item-actions' });
+            if (item._type === 'armor' || item._type === 'weapon') {
+                const equipBtn = actionsCell.createEl('button');
+                setIcon(equipBtn, isEquipped ? 'check-square' : 'square');
+                equipBtn.ariaLabel = isEquipped ? 'Unequip' : 'Equip';
+                equipBtn.addEventListener('click', () => {
+                    if (isEquipped) {
+                        this.unequipItem(character, item);
+                    } else {
+                        this.equipItem(character, item);
+                    }
+                });
+            }
+
+            const editBtn = actionsCell.createEl('button');
+            setIcon(editBtn, 'pencil');
+            editBtn.ariaLabel = "Edit Item";
+            editBtn.addEventListener('click', () => {
+                new ItemEditModal(this.app, this.plugin, character, item, (updatedItem) => {
+                    const index = character.inventory.findIndex(i => i.instanceId === updatedItem.instanceId);
+                    if (index > -1) {
+                        character.inventory[index] = updatedItem;
+                        this.plugin.updateCharacter(character);
+                    }
+                }, () => {
+                    character.inventory = character.inventory.filter(i => i.instanceId !== item.instanceId);
+                    this.unequipItem(character, item, false); // Unequip without redrawing
+                    this.plugin.updateCharacter(character);
+                }).open();
+            });
         });
     }
+
 
     private drawGoldTracker(parent: HTMLElement, data: Character) {
         const box = parent.createDiv({ cls: 'dh-gold-tracker' });
@@ -654,11 +720,9 @@ export class CharacterSheetView extends ItemView {
 
     private drawAbilitiesManager(parent: HTMLElement, data: Character) {
         this.drawFeatureSection(parent, 'Domain & Class Features', data.features, data);
-
         const charClass = this.plugin.characterCompendium.getClass(data.classId);
         const ancestry = this.plugin.characterCompendium.getAncestry(data.ancestryId);
         const community = this.plugin.characterCompendium.getCommunity(data.communityId);
-
         if (ancestry) this.drawFeatureSection(parent, 'Heritage Features', [ancestry.primaryFeature, ancestry.secondaryFeature], data);
         if (community) this.drawFeatureSection(parent, 'Community Features', [community.feature], data);
         if (charClass) this.drawFeatureSection(parent, 'Core Class Features', [...(charClass?.features || []), charClass?.hopeFeature], data);
@@ -692,9 +756,7 @@ export class CharacterSheetView extends ItemView {
         const section = parent.createDiv({ cls: 'dh-card-section' });
         const header = section.createDiv({ cls: 'dh-section-header-bar' });
         header.createEl('h3', { text: title });
-
         const grid = section.createDiv({ cls: 'dh-feature-grid' });
-
         features.forEach(feat => {
             if (feat) this.createFeatureCard(grid, feat, character);
         });
@@ -703,7 +765,6 @@ export class CharacterSheetView extends ItemView {
     private createFeatureCard(parent: HTMLElement, feature: Feature | CompendiumFeature, character: Character) {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
         const metadata = this.getFeatureMetadata(feature as Feature);
-
         const header = card.createDiv({ cls: 'dh-feature-card-header' });
         header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
         const metaHeader = header.createDiv({ cls: 'dh-feature-card-meta-header' });
@@ -713,10 +774,8 @@ export class CharacterSheetView extends ItemView {
         if (metadata.type) {
             metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.type });
         }
-
         const body = card.createDiv({ cls: 'dh-feature-card-body' });
         renderRollableContent(this.plugin, feature.description, body, feature.name);
-
         const footer = card.createDiv({ cls: 'dh-feature-card-footer' });
         const createFooterBox = (label: string, value: string | number | undefined) => {
             if (value === undefined) return;
@@ -724,18 +783,11 @@ export class CharacterSheetView extends ItemView {
             box.createDiv({ cls: 'value', text: String(value) });
             box.createDiv({ cls: 'label', text: label });
         };
-
-        if (metadata.level) {
-            createFooterBox('Level', metadata.level);
-        }
-        if (metadata.recallCost !== undefined) {
-            createFooterBox('Recall', metadata.recallCost);
-        }
+        if (metadata.level) { createFooterBox('Level', metadata.level); }
+        if (metadata.recallCost !== undefined) { createFooterBox('Recall', metadata.recallCost); }
     }
 
-
     private getFeatureMetadata(feature: Feature | DomainCard): { level?: number; domain?: string; type?: string; recallCost?: number } { const metadata: { level?: number; domain?: string; type?: string; recallCost?: number } = {}; if ('notes' in feature && feature.notes && Array.isArray(feature.notes)) { feature.notes.forEach(note => { const lowerNote = note.toLowerCase(); if (lowerNote.startsWith('level:')) { const level = parseInt(note.split(':')[1]?.trim()); if (!isNaN(level)) metadata.level = level; } else if (lowerNote.startsWith('domain:')) { metadata.domain = note.split(':')[1]?.trim(); } else if (lowerNote.startsWith('type:')) { metadata.type = note.split(':')[1]?.trim(); } else if (lowerNote.startsWith('recall cost:')) { const cost = parseInt(note.split(':')[1]?.trim()); if (!isNaN(cost)) metadata.recallCost = cost; } }); } else if ('level' in feature) { const card = feature as DomainCard; metadata.level = card.level; metadata.domain = card.domain; metadata.type = card.type; metadata.recallCost = card.recallCost; } return metadata; }
-
 }
 
 // --- MODALS ---
@@ -753,8 +805,6 @@ class ConditionModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.createEl('h2', { text: 'Add Condition' });
-
-        // Predefined conditions
         contentEl.createEl('h3', { text: 'Select Condition' });
         const predefinedContainer = contentEl.createDiv({ cls: 'dh-predefined-conditions-container' });
         DAGGERHEART_CONDITIONS.forEach(condition => {
@@ -773,20 +823,15 @@ class ConditionModal extends Modal {
                 });
             }
         });
-
-        // Custom condition
         contentEl.createEl('h3', { text: 'Add Custom Condition' });
         let customName = '';
         let customDesc = '';
-
         new Setting(contentEl)
             .setName('Name')
             .addText(text => text.onChange(value => customName = value.trim()));
-
         new Setting(contentEl)
             .setName('Description (Optional)')
             .addTextArea(text => text.onChange(value => customDesc = value.trim()));
-
         new Setting(contentEl)
             .addButton(button => button
                 .setButtonText('Add Custom')
@@ -816,8 +861,182 @@ class ConditionModal extends Modal {
 }
 class GoldModal extends Modal { character: Character; onSave: () => void; constructor(app: App, character: Character, onSave: () => void) { super(app); this.character = character; this.onSave = onSave; } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: "Update Wealth" }); let { handfuls, bags, chests } = this.character.gold; new Setting(contentEl).setName("Chests").addText(text => text.setValue(String(chests)).onChange(v => chests = parseInt(v) || 0)); new Setting(contentEl).setName("Bags").addText(text => text.setValue(String(bags)).onChange(v => bags = parseInt(v) || 0)); new Setting(contentEl).setName("Handfuls").addText(text => text.setValue(String(handfuls)).onChange(v => handfuls = parseInt(v) || 0)); new Setting(contentEl).addButton(btn => btn.setButtonText("Save").setCta().onClick(() => { bags += Math.floor(handfuls / 10); handfuls %= 10; chests += Math.floor(bags / 10); bags %= 10; this.character.gold = { _type: 'gold', handfuls, bags, chests }; this.onSave(); this.close(); })); } onClose() { this.contentEl.empty(); } }
 class ExperienceModal extends Modal { experience: Experience | null; onSave: (result: Experience) => void; onDelete?: () => void; result: Experience; constructor(app: App, experience: Experience | null, onSave: (result: Experience) => void, onDelete?: () => void) { super(app); this.experience = experience; this.onSave = onSave; this.onDelete = onDelete; this.result = experience ? { ...experience } : { _type: 'experience', id: uuidv4(), name: '', value: 2, description: '' }; } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: this.experience ? "Edit Experience" : "Add Experience" }); new Setting(contentEl).setName("Name").addText(text => text.setValue(this.result.name).onChange(v => this.result.name = v)); new Setting(contentEl).setName("Value").addText(text => text.setValue(String(this.result.value)).onChange(v => this.result.value = parseInt(v) || 0)); new Setting(contentEl).setName("Description").addTextArea(text => text.setValue(this.result.description || '').onChange(v => this.result.description = v)); const buttons = new Setting(contentEl); if (this.onDelete) { buttons.addButton(btn => btn.setButtonText("Delete").setWarning().onClick(() => { if (confirm("Are you sure?")) { if (this.onDelete) this.onDelete(); this.close(); } })); } buttons.addButton(btn => btn.setButtonText("Save").setCta().onClick(() => { if (!this.result.name) { new Notice("Name is required."); return; } this.onSave(this.result); this.close(); })); } onClose() { this.contentEl.empty(); } }
-class AddItemModal extends Modal { plugin: DaggerheartStatblockPlugin; onSelect: (item: CompendiumItem) => void; private searchInput: TextComponent; constructor(app: App, plugin: DaggerheartStatblockPlugin, onSelect: (item: CompendiumItem) => void) { super(app); this.plugin = plugin; this.onSelect = onSelect; this.modalEl.addClass('dh-modal'); } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: "Add Item from Compendium" }); const searchContainer = contentEl.createDiv({ cls: 'search-container' }); this.searchInput = new TextComponent(searchContainer).setPlaceholder("Search items..."); const listEl = contentEl.createDiv({ cls: 'dh-modal-list' }); this.renderList(listEl, ''); this.searchInput.onChange(value => this.renderList(listEl, value)); } renderList(container: HTMLElement, filter: string) { container.empty(); const allItems = this.plugin.characterCompendium.getAllItems(); const filtered = allItems.filter(item => item.name.toLowerCase().includes(filter.toLowerCase())); if (filtered.length === 0) { container.createEl('p', { text: 'No items match your search.' }); return; } filtered.forEach(item => { const itemEl = container.createDiv({ cls: 'dh-modal-list-item' }); itemEl.style.marginBottom = "10px"; itemEl.style.padding = "10px"; itemEl.style.border = "1px solid var(--background-modifier-border)"; itemEl.style.borderRadius = "5px"; itemEl.style.cursor = "pointer"; itemEl.addEventListener('mouseenter', () => { itemEl.style.backgroundColor = "var(--background-modifier-hover)"; }); itemEl.addEventListener('mouseleave', () => { itemEl.style.backgroundColor = ""; }); itemEl.createEl('h4', { text: item.name }); const typeText = item._type === 'weapon' ? 'Weapon' : item._type === 'armor' ? 'Armor' : 'Item'; const typeBadge = itemEl.createDiv({ cls: 'dh-item-badge', text: typeText }); typeBadge.style.display = "inline-block"; typeBadge.style.padding = "2px 8px"; typeBadge.style.margin = "5px 0"; typeBadge.style.borderRadius = "10px"; typeBadge.style.fontSize = "smaller"; typeBadge.style.backgroundColor = "var(--background-modifier-border)"; if (item.description) { itemEl.createEl('p', { text: item.description || '', attr: { style: "margin-top: 5px; font-size: 0.9em; color: var(--text-muted);" } }); } itemEl.addEventListener('click', () => { this.onSelect(item); this.close(); }); }); } onClose() { this.contentEl.empty(); } }
+class ItemEditModal extends Modal {
+    plugin: DaggerheartStatblockPlugin;
+    character: Character;
+    item: InventoryItem | null;
+    onSave: (item: InventoryItem) => void;
+    onDelete?: () => void;
+    private tempItem: Partial<InventoryItem>;
+    private typeSpecificContainer: HTMLElement;
 
+    constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, item: InventoryItem | null, onSave: (item: InventoryItem) => void, onDelete?: () => void) {
+        super(app);
+        this.plugin = plugin;
+        this.character = character;
+        this.item = item;
+        this.onSave = onSave;
+        this.onDelete = onDelete;
+        this.tempItem = item ? { ...item } : { instanceId: uuidv4(), name: '', _type: 'item', quantity: 1 };
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h2', { text: this.item ? `Edit ${this.item.name}` : 'Add Custom Item' });
+
+        new Setting(contentEl).setName('Name').addText(text => {
+            text.setValue(this.tempItem.name || '').onChange(val => this.tempItem.name = val);
+        });
+
+        new Setting(contentEl).setName('Quantity').addText(text => {
+            text.setValue(String(this.tempItem.quantity || 1)).onChange(val => {
+                const num = parseInt(val);
+                this.tempItem.quantity = isNaN(num) ? 1 : num;
+            });
+        });
+
+        new Setting(contentEl).setName('Description').addTextArea(text => {
+            text.setValue(this.tempItem.description || '').onChange(val => this.tempItem.description = val);
+        });
+
+        new Setting(contentEl).setName('Item Type').addDropdown(dd => {
+            dd.addOption('item', 'Generic Item')
+                .addOption('weapon', 'Weapon')
+                .addOption('armor', 'Armor')
+                .setValue(this.tempItem._type)
+                .onChange(val => {
+                    this.tempItem._type = val as 'item' | 'weapon' | 'armor';
+                    this.renderTypeSpecificSettings();
+                });
+        });
+
+        this.typeSpecificContainer = contentEl.createDiv();
+        this.renderTypeSpecificSettings();
+
+        const footer = new Setting(contentEl);
+        if (this.onDelete) {
+            footer.addButton(btn => btn.setButtonText('Delete').setWarning().onClick(() => {
+                if (confirm('Are you sure you want to delete this item?')) {
+                    this.onDelete();
+                    this.close();
+                }
+            }));
+        }
+        footer.addButton(btn => btn.setButtonText('Save').setCta().onClick(() => {
+            if (!this.tempItem.name) {
+                new Notice("Item name is required.");
+                return;
+            }
+            this.onSave(this.tempItem as InventoryItem);
+            this.close();
+        }));
+    }
+
+    renderTypeSpecificSettings() {
+        this.typeSpecificContainer.empty();
+        const item = this.tempItem as Partial<WeaponItem> & Partial<ArmorItem>;
+
+        if (this.tempItem._type === 'weapon') {
+            new Setting(this.typeSpecificContainer).setName('Damage Dice').addText(text => text.setValue(item.damageDice || '').onChange(val => item.damageDice = val));
+            new Setting(this.typeSpecificContainer).setName('Damage Type').addText(text => text.setValue(item.damageType || 'phy').onChange(val => item.damageType = val));
+            new Setting(this.typeSpecificContainer).setName('Trait').addDropdown(dd => { TRAIT_NAMES.forEach(t => dd.addOption(t, t)); dd.setValue(item.trait || 'Strength').onChange(val => item.trait = val as keyof Character['traits']); });
+            new Setting(this.typeSpecificContainer).setName('Burden').addDropdown(dd => { dd.addOption('One-Handed', 'One-Handed').addOption('Two-Handed', 'Two-Handed').setValue(item.burden || 'One-Handed').onChange(val => item.burden = val as 'One-Handed' | 'Two-Handed'); });
+            new Setting(this.typeSpecificContainer).setName('Range').addText(text => text.setValue(item.range || 'Melee').onChange(val => item.range = val));
+        } else if (this.tempItem._type === 'armor') {
+            new Setting(this.typeSpecificContainer).setName('Armor Score').addText(text => text.setValue(String(item.baseScore || 0)).onChange(val => item.baseScore = parseInt(val) || 0));
+            new Setting(this.typeSpecificContainer).setName('Major Threshold').addText(text => { text.setValue(String(item.baseThresholds?.major || 0)).onChange(val => { if (!item.baseThresholds) item.baseThresholds = { major: 0, severe: 0 }; item.baseThresholds.major = parseInt(val) || 0; }); });
+            new Setting(this.typeSpecificContainer).setName('Severe Threshold').addText(text => { text.setValue(String(item.baseThresholds?.severe || 0)).onChange(val => { if (!item.baseThresholds) item.baseThresholds = { major: 0, severe: 0 }; item.baseThresholds.severe = parseInt(val) || 0; }); });
+        }
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+class AddItemModal extends Modal {
+    plugin: DaggerheartStatblockPlugin;
+    character: Character;
+    onAdd: (item: CompendiumItem) => void;
+
+    private searchInput: TextComponent;
+    private typeFilter: string = 'all';
+    private listEl: HTMLElement;
+
+    constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, onAdd: (item: CompendiumItem) => void) {
+        super(app);
+        this.plugin = plugin;
+        this.character = character;
+        this.onAdd = onAdd;
+        this.modalEl.addClass('dh-add-item-modal');
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl("h2", { text: "Add Item" });
+
+        const topBar = contentEl.createDiv({ cls: 'dh-modal-topbar' });
+        const searchContainer = topBar.createDiv({ cls: 'search-container' });
+        this.searchInput = new TextComponent(searchContainer).setPlaceholder("Search compendium...");
+        this.searchInput.onChange(() => this.renderList());
+
+        const filterContainer = topBar.createDiv({ cls: 'filter-container' });
+        const typeSelect = new Setting(filterContainer).addDropdown(dd => {
+            dd.addOption('all', 'All Types');
+            dd.addOption('weapon', 'Weapons');
+            dd.addOption('armor', 'Armor');
+            dd.addOption('item', 'Items');
+            dd.setValue(this.typeFilter);
+            dd.onChange(value => {
+                this.typeFilter = value;
+                this.renderList();
+            });
+        });
+        typeSelect.nameEl.remove();
+
+        topBar.createEl('button', { text: 'Add Custom Item' }).addEventListener('click', () => {
+            this.close();
+            new ItemEditModal(this.app, this.plugin, this.character, null, (newItem) => {
+                this.onAdd(newItem);
+            }).open();
+        });
+
+
+        this.listEl = contentEl.createDiv({ cls: 'dh-modal-list' });
+        this.renderList();
+    }
+
+    renderList() {
+        this.listEl.empty();
+        const searchTerm = this.searchInput.getValue().toLowerCase();
+        const allItems = this.plugin.characterCompendium.getAllItems();
+
+        const filtered = allItems.filter(item => {
+            const nameMatch = item.name.toLowerCase().includes(searchTerm);
+            const typeMatch = this.typeFilter === 'all' || item._type === this.typeFilter;
+            return nameMatch && typeMatch;
+        });
+
+        if (filtered.length === 0) {
+            this.listEl.createEl('p', { text: 'No items match your search.' });
+            return;
+        }
+
+        filtered.forEach(item => {
+            const itemEl = this.listEl.createDiv({ cls: 'dh-modal-list-item' });
+            itemEl.createEl('h4', { text: item.name });
+            itemEl.createEl('p', { text: item.description || '', cls: 'dh-item-description' });
+            itemEl.addEventListener('click', () => {
+                this.onAdd(item);
+                this.close();
+            });
+        });
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
 class CharacterManagerModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     character: Character;
@@ -964,7 +1183,7 @@ class CharacterManagerModal extends Modal {
                     .addText(text => text
                         .setPlaceholder('Value')
                         .setValue(String(exp.value))
-                        .onChange(value => exp.value = parseInt(value) || 0))
+                        .onChange(value => exp.value = parseInt(v) || 0))
                     .addExtraButton(btn => btn
                         .setIcon('trash')
                         .setTooltip('Remove Experience')
@@ -1107,7 +1326,7 @@ class CharacterManagerModal extends Modal {
 
     private getFeatureMetadata(feature: Feature | DomainCard): { level?: number; domain?: string; type?: string; recallCost?: number } { const metadata: { level?: number; domain?: string; type?: string; recallCost?: number } = {}; if ('notes' in feature && feature.notes && Array.isArray(feature.notes)) { feature.notes.forEach(note => { const lowerNote = note.toLowerCase(); if (lowerNote.startsWith('level:')) { const level = parseInt(note.split(':')[1]?.trim()); if (!isNaN(level)) metadata.level = level; } else if (lowerNote.startsWith('domain:')) { metadata.domain = note.split(':')[1]?.trim(); } else if (lowerNote.startsWith('type:')) { metadata.type = note.split(':')[1]?.trim(); } else if (lowerNote.startsWith('recall cost:')) { const cost = parseInt(note.split(':')[1]?.trim()); if (!isNaN(cost)) metadata.recallCost = cost; } }); } else if ('level' in feature) { const card = feature as DomainCard; metadata.level = card.level; metadata.domain = card.domain; metadata.type = card.type; metadata.recallCost = card.recallCost; } return metadata; }
 
-    onClose() { this.contentEl.empty(); }
+    onClose() {
+        this.contentEl.empty();
+    }
 }
-
-class ItemActionModal extends Modal { item: InventoryItem; character: Character; onUpdate: () => void; constructor(app: App, item: InventoryItem, character: Character, onUpdate: () => void) { super(app); this.item = item; this.character = character; this.onUpdate = onUpdate; } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: this.item.name }); if (this.item._type === 'armor' || this.item._type === 'weapon') { const isEquipped = this.character.equippedArmorId === this.item.instanceId || this.character.equippedWeaponIds.includes(this.item.instanceId); if (isEquipped) { new Setting(contentEl).addButton(btn => btn.setButtonText("Unequip").onClick(() => this.unequipItem())); } else { new Setting(contentEl).addButton(btn => btn.setButtonText("Equip").onClick(() => this.equipItem())); } } new Setting(contentEl).addButton(btn => btn.setButtonText("Drop").setWarning().onClick(() => { if (confirm("Are you sure you want to drop this item?")) { this.character.inventory = this.character.inventory.filter(i => i.instanceId !== this.item.instanceId); this.unequipItem(); this.onUpdate(); this.close(); } })); } equipItem() { if (this.item._type === 'armor') { this.character.equippedArmorId = this.item.instanceId; const armor = this.item as ArmorItem; this.character.armorSlots = { _type: 'dynamicResource', max: armor.baseScore, current: armor.baseScore }; this.character.damageThresholds = { _type: 'damageThresholds', major: armor.baseThresholds.major + this.character.level, severe: armor.baseThresholds.severe + this.character.level }; } else if (this.item._type === 'weapon') { const weapon = this.item as WeaponItem; if (weapon.burden === 'Two-Handed') { this.character.equippedWeaponIds = [this.item.instanceId]; } else { const equippedWeapons = this.character.inventory.filter(i => this.character.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as WeaponItem[]; const twoHandedEquipped = equippedWeapons.find(w => w.burden === 'Two-Handed'); if (twoHandedEquipped) { this.character.equippedWeaponIds = [this.item.instanceId]; } else if (equippedWeapons.length < 2) { this.character.equippedWeaponIds.push(this.item.instanceId); } else { new Notice("You already have two one-handed weapons equipped. Unequip one first."); this.close(); return; } } } this.onUpdate(); this.close(); } unequipItem() { if (this.item._type === 'armor' && this.character.equippedArmorId === this.item.instanceId) { this.character.equippedArmorId = null; this.character.armorSlots = { _type: 'dynamicResource', max: 0, current: 0 }; this.character.damageThresholds = { _type: 'damageThresholds', major: this.character.level, severe: this.character.level * 2 }; } else if (this.item._type === 'weapon') { this.character.equippedWeaponIds = this.character.equippedWeaponIds.filter(id => id !== this.item.instanceId); } this.onUpdate(); this.close(); } onClose() { this.contentEl.empty(); } }

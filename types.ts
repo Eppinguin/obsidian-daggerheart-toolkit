@@ -79,7 +79,7 @@ export interface DynamicResource { _type: 'dynamicResource'; max: number; curren
 export interface DamageThresholds { _type: 'damageThresholds'; major: number; severe: number; }
 export interface Gold { _type: 'gold'; handfuls: number; bags: number; chests: number; }
 export interface Experience { _type: 'experience'; id: string; name: string; value: number; description: string | null; }
-export type InventoryItem = (ArmorItem | WeaponItem | GenericItem) & { instanceId: string };
+export type InventoryItem = (ArmorItem | WeaponItem | GenericItem) & { instanceId: string; quantity: number; };
 
 // --- PLUGIN SETTINGS ---
 export interface DddiceRoom {

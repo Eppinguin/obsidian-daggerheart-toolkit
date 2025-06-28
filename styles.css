@@ -2484,6 +2484,12 @@
     flex-wrap: wrap;
     gap: var(--size-4-3);
 }
+
+.dh-inventory-buttons {
+    display: flex;
+    gap: var(--size-4-2);
+}
+
 .dh-gold-tracker {
     background-color: var(--dh-sheet-bg);
     padding: var(--size-4-2) var(--size-4-3);
@@ -2504,9 +2510,9 @@
 }
 .dh-inventory-item {
     display: grid;
-    grid-template-columns: 1fr 1fr 80px;
+    grid-template-columns: 1.5fr 0.5fr 2fr 1fr;
     gap: var(--size-4-3);
-    padding: var(--size-4-3);
+    padding: var(--size-4-2);
     border-bottom: 1px solid var(--dh-sheet-border);
     align-items: center;
 }
@@ -2521,18 +2527,51 @@
 }
 .dh-inventory-item-name {
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
 }
-.dh-inventory-item-desc {
-    color: var(--dh-sheet-text-muted);
-    font-size: var(--font-ui-small);
+.dh-inventory-item-name.is-equipped {
+    color: var(--dh-sheet-accent);
 }
-.dh-inventory-item-active {
-    text-align: center;
+.dh-inventory-item-name .svg-icon {
+    flex-shrink: 0;
 }
-.dh-inventory-item-active input {
+.dh-inventory-item-qty {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    justify-content: center;
+}
+.dh-inventory-item-qty button {
     width: 20px;
     height: 20px;
+    padding: 0;
+    line-height: 20px;
 }
+.dh-inventory-item-details {
+    color: var(--dh-sheet-text-muted);
+    font-size: var(--font-ui-small);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dh-inventory-item-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--size-4-1);
+}
+.dh-inventory-item-actions button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--size-2-1);
+}
+.dh-inventory-item-actions button:hover {
+    color: var(--interactive-accent-hover);
+}
+
 
 /* Features Tab */
 .dh-card-section {
@@ -2753,4 +2792,13 @@
     .dh-replace-feature-container {
         grid-template-columns: 1fr;
     }
+}
+
+.dh-conditions-box.is-clickable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dh-conditions-box.is-clickable:hover {
+    background-color: var(--background-modifier-hover);
 }
