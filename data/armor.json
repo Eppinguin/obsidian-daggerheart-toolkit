@@ -1,470 +1,266 @@
-{
-  "gambeson-armor": {
-    "_type": "inventoryArmor",
+﻿[
+  {
     "name": "Gambeson Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 5,
-      "severe": 11
-    },
-    "baseScore": 3,
-    "features": [
-      "**Flexible:** +1 to Evasion"
-    ]
+    "tier": "1",
+    "base_thresholds": "5 / 11",
+    "base_score": "3",
+    "feat_name": "Flexible",
+    "feat_text": "+1 to Evasion"
   },
-  "leather-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Leather Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 6,
-      "severe": 13
-    },
-    "baseScore": 3,
-    "features": null
+    "tier": "1",
+    "base_thresholds": "6 / 13",
+    "base_score": "3"
   },
-  "chainmail-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Chainmail Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 7,
-      "severe": 15
-    },
-    "baseScore": 4,
-    "features": [
-      "**Heavy:** -1 to Evasion"
-    ]
+    "tier": "1",
+    "base_thresholds": "7 / 15",
+    "base_score": "4",
+    "feat_name": "Heavy",
+    "feat_text": "-1 to Evasion"
   },
-  "full-plate-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Full Plate Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 8,
-      "severe": 17
-    },
-    "baseScore": 4,
-    "features": [
-      "**Very Heavy:** -2 to Evasion; -1 to Agility"
-    ]
+    "tier": "1",
+    "base_thresholds": "8 / 17",
+    "base_score": "4",
+    "feat_name": "Very Heavy",
+    "feat_text": "-2 to Evasion; -1 to Agility"
   },
-  "improved-gambeson-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Improved Gambeson Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 7,
-      "severe": 16
-    },
-    "baseScore": 4,
-    "features": [
-      "**Flexible:** +1 to Evasion"
-    ]
+    "tier": "2",
+    "base_thresholds": "7 / 16",
+    "base_score": "4",
+    "feat_name": "Flexible",
+    "feat_text": "+1 to Evasion"
   },
-  "improved-leather-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Improved Leather Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 9,
-      "severe": 20
-    },
-    "baseScore": 4,
-    "features": null
+    "tier": "2",
+    "base_thresholds": "9 / 20",
+    "base_score": "4"
   },
-  "improved-chainmail-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Improved Chainmail Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 11,
-      "severe": 24
-    },
-    "baseScore": 5,
-    "features": [
-      "**Heavy:** -1 to Evasion"
-    ]
+    "tier": "2",
+    "base_thresholds": "11 / 24",
+    "base_score": "5",
+    "feat_name": "Heavy",
+    "feat_text": "-1 to Evasion"
   },
-  "improved-full-plate-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Improved Full Plate Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 13,
-      "severe": 28
-    },
-    "baseScore": 5,
-    "features": [
-      "**Very Heavy:** -2 to Evasion; -1 to Agility"
-    ]
+    "tier": "2",
+    "base_thresholds": "13 / 28",
+    "base_score": "5",
+    "feat_name": "Very Heavy",
+    "feat_text": "-2 to Evasion; -1 to Agility"
   },
-  "elundrian-chain-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Elundrian Chain Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 9,
-      "severe": 21
-    },
-    "baseScore": 4,
-    "features": [
-      "**Warded:** You reduce incoming magic damage by your Armor Score before applying it to your damage thresholds."
-    ]
+    "tier": "2",
+    "base_thresholds": "9 / 21",
+    "base_score": "4",
+    "feat_name": "Warded",
+    "feat_text": "You reduce incoming magic damage by your Armor Score before applying it to your damage thresholds."
   },
-  "harrowbone-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Harrowbone Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 9,
-      "severe": 21
-    },
-    "baseScore": 4,
-    "features": [
-      "**Resilient:** Before you mark your last Armor Slot, roll a d6. On a result of 6, reduce the severity by one threshold without marking an Armor Slot."
-    ]
+    "tier": "2",
+    "base_thresholds": "9 / 21",
+    "base_score": "4",
+    "feat_name": "Resilient",
+    "feat_text": "Before you mark your last Armor Slot, roll a d6. On a result of 6, reduce the severity by one threshold without marking an Armor Slot."
   },
-  "irontree-breastplate-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Irontree Breastplate Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 9,
-      "severe": 20
-    },
-    "baseScore": 4,
-    "features": [
-      "**Reinforced:** When you mark your last Armor Slot, increase your damage thresholds by +2 until you clear at least 1 Armor Slot."
-    ]
+    "tier": "2",
+    "base_thresholds": "9 / 20",
+    "base_score": "4",
+    "feat_name": "Reinforced",
+    "feat_text": "When you mark your last Armor Slot, increase your damage thresholds by +2 until you clear at least 1 Armor Slot."
   },
-  "runetan-floating-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Runetan Floating Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 9,
-      "severe": 20
-    },
-    "baseScore": 4,
-    "features": [
-      "**Shifting:** When you are targeted for an attack, you can mark an Armor Slot to give the attack roll against you disadvantage."
-    ]
+    "tier": "2",
+    "base_thresholds": "9 / 20",
+    "base_score": "4",
+    "feat_name": "Shifting",
+    "feat_text": "When you are targeted for an attack, you can mark an Armor Slot to give the attack roll against you disadvantage."
   },
-  "tyris-soft-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Tyris Soft Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 8,
-      "severe": 18
-    },
-    "baseScore": 5,
-    "features": [
-      "**Quiet:** You gain a +2 bonus to rolls you make to move silently."
-    ]
+    "tier": "2",
+    "base_thresholds": "8 / 18",
+    "base_score": "5",
+    "feat_name": "Quiet",
+    "feat_text": "You gain a +2 bonus to rolls you make to move silently."
   },
-  "rosewild-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Rosewild Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 11,
-      "severe": 23
-    },
-    "baseScore": 5,
-    "features": [
-      "**Hopeful:** When you would spend a Hope, you can mark an Armor Slot instead."
-    ]
+    "tier": "2",
+    "base_thresholds": "11 / 23",
+    "base_score": "5",
+    "feat_name": "Hopeful",
+    "feat_text": "When you would spend a Hope, you can mark an Armor Slot instead."
   },
-  "advanced-gambeson-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Advanced Gambeson Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 9,
-      "severe": 23
-    },
-    "baseScore": 5,
-    "features": [
-      "**Flexible:** +1 to Evasion"
-    ]
+    "tier": "3",
+    "base_thresholds": "9 / 23",
+    "base_score": "5",
+    "feat_name": "Flexible",
+    "feat_text": "+1 to Evasion"
   },
-  "advanced-leather-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Advanced Leather Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 11,
-      "severe": 27
-    },
-    "baseScore": 5,
-    "features": null
+    "tier": "3",
+    "base_thresholds": "11 / 27",
+    "base_score": "5"
   },
-  "advanced-chainmail-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Advanced Chainmail Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 13,
-      "severe": 31
-    },
-    "baseScore": 6,
-    "features": [
-      "**Heavy:** -1 to Evasion"
-    ]
+    "tier": "3",
+    "base_thresholds": "13 / 31",
+    "base_score": "6",
+    "feat_name": "Heavy",
+    "feat_text": "-1 to Evasion"
   },
-  "advanced-full-plate-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Advanced Full Plate Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 15,
-      "severe": 35
-    },
-    "baseScore": 6,
-    "features": [
-      "**Very Heavy:** -2 to Evasion; -1 to Agility"
-    ]
+    "tier": "3",
+    "base_thresholds": "15 / 35",
+    "base_score": "6",
+    "feat_name": "Very Heavy",
+    "feat_text": "-2 to Evasion; -1 to Agility"
   },
-  "bellamie-fine-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Bellamie Fine Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 11,
-      "severe": 27
-    },
-    "baseScore": 5,
-    "features": [
-      "**Gilded:** +1 to Presence"
-    ]
+    "tier": "3",
+    "base_thresholds": "11 / 27",
+    "base_score": "5",
+    "feat_name": "Gilded",
+    "feat_text": "+1 to Presence"
   },
-  "dragonscale-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Dragonscale Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 11,
-      "severe": 27
-    },
-    "baseScore": 5,
-    "features": [
-      "**Impenetrable:** Once per short rest, when you would mark your last Hit Point, you can instead mark a Stress."
-    ]
+    "tier": "3",
+    "base_thresholds": "11 / 27",
+    "base_score": "5",
+    "feat_name": "Impenetrable",
+    "feat_text": "Once per short rest, when you would mark your last Hit Point, you can instead mark a Stress."
   },
-  "spiked-plate-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Spiked Plate Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 10,
-      "severe": 25
-    },
-    "baseScore": 5,
-    "features": [
-      "**Sharp:** On a successful attack against a target within Melee range, add a d4 to the damage roll."
-    ]
+    "tier": "3",
+    "base_thresholds": "10 / 25",
+    "base_score": "5",
+    "feat_name": "Sharp",
+    "feat_text": "On a successful attack against a target within Melee range, add a d4 to the damage roll."
   },
-  "bladefare-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Bladefare Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 16,
-      "severe": 39
-    },
-    "baseScore": 6,
-    "features": [
-      "**Physical:** You can\u2019t mark an Armor Slot to reduce magic damage."
-    ]
+    "tier": "3",
+    "base_thresholds": "16 / 39",
+    "base_score": "6",
+    "feat_name": "Physical",
+    "feat_text": "You can’t mark an Armor Slot to reduce magic damage."
   },
-  "monett\u2019s-cloak": {
-    "_type": "inventoryArmor",
-    "name": "Monett\u2019s Cloak",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 16,
-      "severe": 39
-    },
-    "baseScore": 6,
-    "features": [
-      "**Magic:** You can\u2019t mark an Armor Slot to reduce physical damage."
-    ]
+  {
+    "name": "Monett’s Cloak",
+    "tier": "3",
+    "base_thresholds": "16 / 39",
+    "base_score": "6",
+    "feat_name": "Magic",
+    "feat_text": "You can’t mark an Armor Slot to reduce physical damage."
   },
-  "runes-of-fortification": {
-    "_type": "inventoryArmor",
+  {
     "name": "Runes of Fortification",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 17,
-      "severe": 43
-    },
-    "baseScore": 6,
-    "features": [
-      "**Painful:** Each time you mark an Armor Slot, you must mark a Stress."
-    ]
+    "tier": "3",
+    "base_thresholds": "17 / 43",
+    "base_score": "6",
+    "feat_name": "Painful",
+    "feat_text": "Each time you mark an Armor Slot, you must mark a Stress."
   },
-  "legendary-gambeson-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Legendary Gambeson Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 11,
-      "severe": 32
-    },
-    "baseScore": 6,
-    "features": [
-      "**Flexible:** +1 to Evasion"
-    ]
+    "tier": "4",
+    "base_thresholds": "11 / 32",
+    "base_score": "6",
+    "feat_name": "Flexible",
+    "feat_text": "+1 to Evasion"
   },
-  "legendary-leather-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Legendary Leather Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 13,
-      "severe": 36
-    },
-    "baseScore": 6,
-    "features": null
+    "tier": "4",
+    "base_thresholds": "13 / 36",
+    "base_score": "6"
   },
-  "legendary-chainmail-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Legendary Chainmail Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 15,
-      "severe": 40
-    },
-    "baseScore": 7,
-    "features": [
-      "**Heavy:** -1 to Evasion"
-    ]
+    "tier": "4",
+    "base_thresholds": "15 / 40",
+    "base_score": "7",
+    "feat_name": "Heavy",
+    "feat_text": "-1 to Evasion"
   },
-  "legendary-full-plate-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Legendary Full Plate Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 17,
-      "severe": 44
-    },
-    "baseScore": 7,
-    "features": [
-      "**Very Heavy:** -2 to Evasion; -1 to Agility"
-    ]
+    "tier": "4",
+    "base_thresholds": "17 / 44",
+    "base_score": "7",
+    "feat_name": "Very Heavy",
+    "feat_text": "-2 to Evasion; -1 to Agility"
   },
-  "dunamis-silkchain": {
-    "_type": "inventoryArmor",
+  {
     "name": "Dunamis Silkchain",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 13,
-      "severe": 36
-    },
-    "baseScore": 7,
-    "features": [
-      "**Timeslowing:** Mark an Armor Slot to roll a d4 and add its result as a bonus to your Evasion against an incoming attack."
-    ]
+    "tier": "4",
+    "base_thresholds": "13 / 36",
+    "base_score": "7",
+    "feat_name": "Timeslowing",
+    "feat_text": "Mark an Armor Slot to roll a d4 and add its result as a bonus to your Evasion against an incoming attack."
   },
-  "channeling-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Channeling Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 13,
-      "severe": 36
-    },
-    "baseScore": 5,
-    "features": [
-      "**Channeling:** +1 to Spellcast Rolls"
-    ]
+    "tier": "4",
+    "base_thresholds": "13 / 36",
+    "base_score": "5",
+    "feat_name": "Channeling",
+    "feat_text": "+1 to Spellcast Rolls"
   },
-  "emberwoven-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Emberwoven Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 13,
-      "severe": 36
-    },
-    "baseScore": 6,
-    "features": [
-      "**Burning:** When an adversary attacks you within Melee range, they mark a Stress."
-    ]
+    "tier": "4",
+    "base_thresholds": "13 / 36",
+    "base_score": "6",
+    "feat_name": "Burning",
+    "feat_text": "When an adversary attacks you within Melee range, they mark a Stress."
   },
-  "full-fortified-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Full Fortified Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 15,
-      "severe": 40
-    },
-    "baseScore": 4,
-    "features": [
-      "**Fortified:** When you mark an Armor Slot, you reduce the severity of an attack by two thresholds instead of one."
-    ]
+    "tier": "4",
+    "base_thresholds": "15 / 40",
+    "base_score": "4",
+    "feat_name": "Fortified",
+    "feat_text": "When you mark an Armor Slot, you reduce the severity of an attack by two thresholds instead of one."
   },
-  "veritas-opal-armor": {
-    "_type": "inventoryArmor",
+  {
     "name": "Veritas Opal Armor",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 13,
-      "severe": 36
-    },
-    "baseScore": 6,
-    "features": [
-      "**Truthseeking:** This armor glows when another creature within Close range tells a lie."
-    ]
+    "tier": "4",
+    "base_thresholds": "13 / 36",
+    "base_score": "6",
+    "feat_name": "Truthseeking",
+    "feat_text": "This armor glows when another creature within Close range tells a lie."
   },
-  "savior-chainmail": {
-    "_type": "inventoryArmor",
+  {
     "name": "Savior Chainmail",
-    "description": null,
-    "baseThresholds": {
-      "_type": "damageThresholds",
-      "major": 18,
-      "severe": 48
-    },
-    "baseScore": 8,
-    "features": [
-      "**Difficult:** -1 to all character traits and Evasion"
-    ]
+    "tier": "4",
+    "base_thresholds": "18 / 48",
+    "base_score": "8",
+    "feat_name": "Difficult",
+    "feat_text": "-1 to all character traits and Evasion"
   }
-}
+]

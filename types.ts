@@ -11,38 +11,32 @@ export interface AdversaryInstance extends StatblockData { id: string; groupId: 
 export interface SavedEncounter { id: string; name: string; adversaries: AdversaryInstance[]; adversaryGroupOrder: string[]; }
 export interface Countdown { id: string; name: string; value: number; }
 
-// --- COMPENDIUM DATA TYPES ---
-export interface CompendiumFeature { name: string; description: string; }
-export interface CompendiumAncestry { _type: 'ancestry'; id: string; name: string; description: string; primaryFeature: CompendiumFeature; secondaryFeature: CompendiumFeature; }
-export interface CompendiumCommunity { _type: 'community'; id: string; name: string; description: string; feature: CompendiumFeature; }
-export interface CompendiumSubclass { _type: 'subclass'; id: string; name: string; description: string; spellTrait: string | null; foundationFeatures: CompendiumFeature[]; specializationFeatures: CompendiumFeature[]; masteryFeatures: CompendiumFeature[]; }
+// --- RAW COMPENDIUM JSON TYPES ---
+export interface JsonFeat { name: string; text: string; }
+export interface JsonAncestry { name: string; description: string; feats: JsonFeat[]; }
+export interface JsonCommunity { name: string; description: string; note: string; feats: JsonFeat[]; }
+export interface JsonSubclass { name: string; description: string; spellcast_trait?: string; foundations: JsonFeat[]; specializations: JsonFeat[]; masteries: JsonFeat[]; }
+export interface JsonClass { name: string; description: string; domain_1: string; domain_2: string; evasion: string; hp: string; items: string; hope_feat_name: string; hope_feat_text: string; subclass_1: string; subclass_2: string; class_feats: JsonFeat[]; backgrounds: { question: string; }[]; connections: { question: string; }[]; }
+export interface JsonAbility { name: string; level: string; domain: string; type: string; recall: string; text: string; }
+export interface JsonArmor { name: string; tier: string; base_thresholds: string; base_score: string; feat_name?: string; feat_text?: string; }
+export interface JsonWeapon { name: string; primary_or_secondary: string; tier: string; physical_or_magical: string; trait: string; range: string; damage: string; burden: string; feat_name?: string; feat_text?: string; }
+export interface JsonItem { roll?: string; name: string; description: string; }
+export interface JsonConsumable { roll: string; name: string; description: string; }
 
-export interface CompendiumClass {
-    _type: 'class';
-    id: string;
-    name: string;
-    description: string;
-    domains: string[];
-    initialEvasion: number;
-    initialHitPoints: number;
-    hopeFeature: CompendiumFeature;
-    features: CompendiumFeature[];
-    subclasses: { _type: 'reference', _key: 'role/subclass', value: string }[];
-    initialInventory: (ArmorItem | WeaponItem | GenericItem)[];
-    _narrative?: {
-        description: string;
-        backgrounds: { question: string }[];
-        connections: { question: string }[];
-    };
-}
+// --- PROCESSED/APPLICATION-LEVEL TYPES ---
+export interface CompendiumFeature { name: string; description: string; }
 export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; recallCost: number; description: string; }
-export interface Feature { _type: 'feature'; id: string; name: string; description: string; notes: string[]; modifiers: any | null; }
-export interface ArmorItem { _type: 'armor'; id: string; name: string; description?: string; baseThresholds: { major: number; severe: number; }; baseScore: number; features?: string[]; tier: number; }
-export interface WeaponItem { _type: 'weapon'; id: string; name: string; description?: string; trait: string; range: string; damageDice: string; damageType: string; features?: string[]; burden: 'One-Handed' | 'Two-Handed'; tier: number; }
-export interface GenericItem { _type: 'item'; id: string; name: string; description?: string; }
-export type CompendiumItem = ArmorItem | WeaponItem | GenericItem;
+
+// Base Item types with _type property
+export type ArmorItem = JsonArmor & { _type: 'armor'; };
+export type WeaponItem = JsonWeapon & { _type: 'weapon'; };
+export type GenericItem = JsonItem & { _type: 'item'; };
+export type ConsumableItem = JsonConsumable & { _type: 'consumable'; };
+
+export type CompendiumItem = ArmorItem | WeaponItem | GenericItem | ConsumableItem;
 
 // --- CHARACTER DATA MODEL ---
+// This model should store data in a processed, ready-to-use format (e.g., numbers instead of strings)
 export interface Character {
     id: string;
     'dg-character': boolean;
@@ -65,7 +59,7 @@ export interface Character {
     damageThresholds: DamageThresholds;
     gold: Gold;
     experiences: Experience[];
-    features: (Feature | DomainCard)[];
+    features: (DomainCard)[];
     inventory: InventoryItem[];
     equippedArmorId: string | null;
     equippedWeaponIds: string[];
@@ -79,7 +73,37 @@ export interface DynamicResource { _type: 'dynamicResource'; max: number; curren
 export interface DamageThresholds { _type: 'damageThresholds'; major: number; severe: number; }
 export interface Gold { _type: 'gold'; handfuls: number; bags: number; chests: number; }
 export interface Experience { _type: 'experience'; id: string; name: string; value: number; description: string | null; }
-export type InventoryItem = (ArmorItem | WeaponItem | GenericItem) & { instanceId: string; quantity: number; };
+
+// InventoryItem on the Character Sheet is the processed version of a CompendiumItem
+export type InventoryItem = {
+    instanceId: string;
+    quantity: number;
+    name: string;
+    description?: string;
+} & ({
+    _type: 'armor';
+    baseThresholds: { major: number; severe: number; };
+    baseScore: number;
+    features?: CompendiumFeature[];
+    tier: number;
+} | {
+    _type: 'weapon';
+    primaryOrSecondary: 'Primary' | 'Secondary';
+    trait: string;
+    range: string;
+    damage: string;
+    damageDice: string;
+    damageType: string;
+    features?: CompendiumFeature[];
+    burden: 'One-Handed' | 'Two-Handed';
+    tier: number;
+} | {
+    _type: 'item';
+} | {
+    _type: 'consumable';
+    roll: string;
+});
+
 
 // --- PLUGIN SETTINGS ---
 export interface DddiceRoom {

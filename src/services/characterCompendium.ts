@@ -1,7 +1,6 @@
 import DaggerheartStatblockPlugin from "main";
 import {
-    CompendiumAncestry, CompendiumClass, CompendiumCommunity, Feature,
-    ArmorItem, WeaponItem, GenericItem, CompendiumItem, CompendiumSubclass
+    JsonAncestry, JsonClass, JsonCommunity, JsonSubclass, JsonArmor, JsonWeapon, JsonItem, JsonAbility, JsonConsumable, CompendiumItem, DomainCard
 } from "types";
 
 const DATA_PATH = "data";
@@ -9,14 +8,16 @@ const DATA_PATH = "data";
 export class CharacterCompendium {
     private plugin: DaggerheartStatblockPlugin;
 
-    public ancestries: CompendiumAncestry[] = [];
-    public communities: CompendiumCommunity[] = [];
-    public classes: CompendiumClass[] = [];
-    public subclasses: CompendiumSubclass[] = [];
-    public features: Feature[] = [];
-    public armors: ArmorItem[] = [];
-    public weapons: WeaponItem[] = [];
-    public items: GenericItem[] = [];
+    // Store data in its raw JSON format
+    public ancestries: JsonAncestry[] = [];
+    public communities: JsonCommunity[] = [];
+    public classes: JsonClass[] = [];
+    public subclasses: JsonSubclass[] = [];
+    public abilities: JsonAbility[] = [];
+    public armors: CompendiumItem[] = [];
+    public weapons: CompendiumItem[] = [];
+    public items: CompendiumItem[] = [];
+    public consumables: CompendiumItem[] = [];
 
     constructor(plugin: DaggerheartStatblockPlugin) {
         this.plugin = plugin;
@@ -25,31 +26,31 @@ export class CharacterCompendium {
     async load() {
         console.log("Daggerheart | Loading Character Compendium...");
 
-        // Load all compendium files and transform them from objects to arrays
-        this.ancestries = await this.loadAndTransformData<CompendiumAncestry>('ancestries.json');
-        this.communities = await this.loadAndTransformData<CompendiumCommunity>('communities.json');
-        this.classes = await this.loadAndTransformData<CompendiumClass>('classes.json');
-        this.subclasses = await this.loadAndTransformData<CompendiumSubclass>('subclasses.json');
-        this.features = await this.loadAndTransformData<Feature>('features.json');
-        this.armors = (await this.loadAndTransformData<ArmorItem>('armor.json')).map(armor => ({ ...armor, tier: armor.tier || 1 }));
-        this.weapons = (await this.loadAndTransformData<WeaponItem>('weapon.json')).map(weapon => ({ ...weapon, tier: weapon.tier || 1 }));
-        this.items = await this.loadAndTransformData<GenericItem>('items.json');
+        // Load data without transforming it, only adding _type for items.
+        this.ancestries = await this.loadFile<JsonAncestry>('ancestries.json');
+        this.communities = await this.loadFile<JsonCommunity>('communities.json');
+        this.classes = await this.loadFile<JsonClass>('classes.json');
+        this.subclasses = await this.loadFile<JsonSubclass>('subclasses.json');
+        this.abilities = await this.loadFile<JsonAbility>('abilities.json');
+
+        this.armors = (await this.loadFile<JsonArmor>('armor.json')).map(a => ({ ...a, _type: 'armor' }));
+        this.weapons = (await this.loadFile<JsonWeapon>('weapons.json')).map(w => ({ ...w, _type: 'weapon' }));
+        this.items = (await this.loadFile<JsonItem>('items.json')).map(i => ({ ...i, _type: 'item' }));
+        this.consumables = (await this.loadFile<JsonConsumable>('consumables.json')).map(i => ({ ...i, _type: 'consumable' }));
 
         console.log("Daggerheart | Character Compendium loaded successfully.");
     }
 
-    private async loadAndTransformData<T extends { id?: string }>(fileName: string): Promise<T[]> {
+    private async loadFile<T>(fileName: string): Promise<T[]> {
         const filePath = `${this.plugin.manifest.dir}/${DATA_PATH}/${fileName}`;
         try {
             if (await this.plugin.app.vault.adapter.exists(filePath)) {
-                const content = await this.plugin.app.vault.adapter.read(filePath);
-                const dataObject = JSON.parse(content) as { [key: string]: Omit<T, 'id'> };
-
-                // Transform the object of objects into an array of objects
-                return Object.entries(dataObject).map(([id, value]) => ({
-                    id,
-                    ...value,
-                } as T));
+                let content = await this.plugin.app.vault.adapter.read(filePath);
+                // Remove BOM if it exists, which causes JSON parsing errors.
+                if (content.charCodeAt(0) === 0xFEFF) {
+                    content = content.slice(1);
+                }
+                return JSON.parse(content) as T[];
             } else {
                 console.error(`Daggerheart | Compendium file not found: ${filePath}`);
                 return [];
@@ -60,17 +61,34 @@ export class CharacterCompendium {
         }
     }
 
-    public getClass(id: string): CompendiumClass | undefined { return this.classes.find(c => c.id === id); }
-    public getSubclass(id: string): CompendiumSubclass | undefined { return this.subclasses.find(s => s.id === id); }
-    public getAncestry(id: string): CompendiumAncestry | undefined { return this.ancestries.find(a => a.id === id); }
-    public getCommunity(id: string): CompendiumCommunity | undefined { return this.communities.find(c => c.id === id); }
-    public getFeature(id: string): Feature | undefined { return this.features.find(f => f.id === id); }
+    // Getters now return the raw JSON types
+    public getClass(name: string): JsonClass | undefined { return this.classes.find(c => c.name === name); }
+    public getSubclass(name: string): JsonSubclass | undefined { return this.subclasses.find(s => s.name === name); }
+    public getAncestry(name: string): JsonAncestry | undefined { return this.ancestries.find(a => a.name === name); }
+    public getCommunity(name: string): JsonCommunity | undefined { return this.communities.find(c => c.name === name); }
+
+    // This method still needs to process the data for use in the character sheet
+    public getAbility(name: string): DomainCard | undefined {
+        const ability = this.abilities.find(a => a.name === name);
+        if (!ability) return undefined;
+        return {
+            _type: 'domainCard',
+            id: ability.name,
+            name: ability.name,
+            level: parseInt(ability.level),
+            domain: ability.domain,
+            type: ability.type,
+            recallCost: parseInt(ability.recall),
+            description: ability.text
+        }
+    }
 
     public getAllItems(): CompendiumItem[] {
         return [
-            ...this.armors.map(i => ({ ...i, _type: 'armor' }) as ArmorItem),
-            ...this.weapons.map(i => ({ ...i, _type: 'weapon' }) as WeaponItem),
-            ...this.items.map(i => ({ ...i, _type: 'item' }) as GenericItem),
+            ...this.armors,
+            ...this.weapons,
+            ...this.items,
+            ...this.consumables,
         ];
     }
 }

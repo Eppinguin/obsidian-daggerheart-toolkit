@@ -3,6 +3,7 @@ import * as YAML from 'js-yaml';
 import { StatblockData, StatblockHpStress, StatblockFeature, StatblockExperience, AdversaryInstance } from '../../types';
 import DaggerheartStatblockPlugin from '../../main';
 
+const DATA_PATH = "data";
 const SRD_ADVERSARIES_FILE = "adversaries.json";
 const SRD_ENVIRONMENTS_FILE = "environments.json";
 
@@ -163,7 +164,7 @@ export async function getCompendiumItems(plugin: DaggerheartStatblockPlugin): Pr
     // 1. Load SRD Adversaries
     if (plugin.settings.useSrdAdversaries) {
         try {
-            const srdFilePath = `${plugin.manifest.dir}/${SRD_ADVERSARIES_FILE}`;
+            const srdFilePath = `${plugin.manifest.dir}/${DATA_PATH}/${SRD_ADVERSARIES_FILE}`;
             if (await plugin.app.vault.adapter.exists(srdFilePath)) {
                 const srdFileContent = await plugin.app.vault.adapter.read(srdFilePath);
                 const cleanedSrdContent = srdFileContent.charCodeAt(0) === 0xFEFF ? srdFileContent.substring(1) : srdFileContent;
@@ -185,7 +186,7 @@ export async function getCompendiumItems(plugin: DaggerheartStatblockPlugin): Pr
     // 2. Load SRD Environments
     if (plugin.settings.useSrdEnvironments) {
         try {
-            const srdFilePath = `${plugin.manifest.dir}/${SRD_ENVIRONMENTS_FILE}`;
+            const srdFilePath = `${plugin.manifest.dir}/${DATA_PATH}/${SRD_ENVIRONMENTS_FILE}`;
             if (await plugin.app.vault.adapter.exists(srdFilePath)) {
                 const srdFileContent = await plugin.app.vault.adapter.read(srdFilePath);
                 const cleanedSrdContent = srdFileContent.charCodeAt(0) === 0xFEFF ? srdFileContent.substring(1) : srdFileContent;
@@ -210,7 +211,7 @@ export async function getCompendiumItems(plugin: DaggerheartStatblockPlugin): Pr
 
     // 3. Load User Compendium (JSON)
     if (plugin.settings.userCompendiumFile) {
-        const userCompendiumPath = `${plugin.manifest.dir}/${plugin.settings.userCompendiumFile}`;
+        const userCompendiumPath = `${plugin.manifest.dir}/${DATA_PATH}/${plugin.settings.userCompendiumFile}`;
         if (await plugin.app.vault.adapter.exists(userCompendiumPath)) {
             try {
                 const userFileContent = await plugin.app.vault.adapter.read(userCompendiumPath);
@@ -257,7 +258,7 @@ export async function saveItemToUserCompendium(plugin: DaggerheartStatblockPlugi
         new Notice("User compendium file path is not set in settings.");
         return;
     }
-    const filePath = `${plugin.manifest.dir}/${userCompendiumFileName}`;
+    const filePath = `${plugin.manifest.dir}/${DATA_PATH}/${userCompendiumFileName}`;
 
     let compendium: StatblockData[] = [];
     try {

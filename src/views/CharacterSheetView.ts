@@ -1,9 +1,8 @@
-import { ItemView, WorkspaceLeaf, Notice, setIcon, Modal, App, Setting, TextComponent, ExtraButtonComponent, Menu } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, setIcon, Modal, App, Setting, TextComponent, ExtraButtonComponent, Menu, MenuItem } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
-    Character, CompendiumAncestry, CompendiumClass, CompendiumCommunity, Trait,
-    InventoryItem, Experience, Feature, CompendiumFeature, ArmorItem, WeaponItem, GenericItem, CompendiumItem, CompendiumSubclass, DomainCard, Condition
+    Character, Trait, InventoryItem, Experience, CompendiumFeature, CompendiumItem, DomainCard, Condition, JsonClass, JsonSubclass, JsonAncestry, JsonCommunity, ArmorItem, WeaponItem
 } from '../../types';
 import { DAGGERHEART_CONDITIONS } from '../constants';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
@@ -22,14 +21,6 @@ const TRAIT_SKILLS: { [key in keyof Character['traits']]: string[] } = {
     Knowledge: ['Recall', 'Analyze', 'Comprehend']
 };
 
-type CompendiumClassWithNarrative = CompendiumClass & {
-    initialInventory: (WeaponItem | ArmorItem | GenericItem)[];
-    _narrative?: {
-        backgrounds: { question: string }[];
-        connections: { question: string }[];
-    };
-};
-
 type CreatorState = {
     name: string;
     pronouns: { subject: string; object: string; };
@@ -45,18 +36,6 @@ type CreatorState = {
     domainCardIds: string[];
     potionChoice: 'health' | 'stamina';
     connections: string[];
-};
-
-const CLASS_DOMAINS: { [key: string]: string[] } = {
-    bard: ['Grace', 'Codex'],
-    druid: ['Arcana', 'Sage'],
-    guardian: ['Blade', 'Valor'],
-    ranger: ['Bone', 'Sage'],
-    rogue: ['Grace', 'Midnight'],
-    seraph: ['Splendor', 'Valor'],
-    sorcerer: ['Arcana', 'Midnight'],
-    warrior: ['Blade', 'Bone'],
-    wizard: ['Codex', 'Splendor'],
 };
 
 export class CharacterSheetView extends ItemView {
@@ -139,13 +118,14 @@ export class CharacterSheetView extends ItemView {
             const deleteBtn = right.createEl('button', { cls: 'clickable-icon' });
             setIcon(deleteBtn, 'trash');
             deleteBtn.ariaLabel = "Delete Character";
-            deleteBtn.addEventListener('click', async () => {
-                new Notice('To delete a character, please confirm in the upcoming dialog.');
-                setTimeout(async () => {
-                    if (confirm(`Are you sure you want to delete ${activeChar.name}? This cannot be undone.`)) {
+            deleteBtn.addEventListener('click', () => {
+                new ConfirmationModal(
+                    this.app,
+                    `Are you sure you want to delete ${activeChar.name}? This cannot be undone.`,
+                    async () => {
                         await this.plugin.deleteCharacter(activeChar.id);
                     }
-                }, 100);
+                ).open();
             });
         }
 
@@ -165,17 +145,17 @@ export class CharacterSheetView extends ItemView {
     private drawCreatorStep1_Class(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 1: Choose your Class & Subclass' }); const detailsContainer = parent.createDiv({ cls: 'dh-creator-details' }); const subclassSetting = new Setting(parent); const drawDetails = () => {
             detailsContainer.empty(); if (!this.creatorState.classId) return; const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId); if (charClass) {
-                detailsContainer.createEl('h4', { text: charClass.name }); if (charClass._narrative?.description) {
-                    renderMarkdown(this.plugin, charClass._narrative.description, detailsContainer.createDiv());
+                detailsContainer.createEl('h4', { text: charClass.name }); if (charClass.description) {
+                    renderMarkdown(this.plugin, charClass.description, detailsContainer.createDiv());
                 }
-                detailsContainer.createEl('p', { text: `Initial HP: ${charClass.initialHitPoints} | Initial Evasion: ${charClass.initialEvasion}` }); if (this.creatorState.subclassId) { const subclass = this.plugin.characterCompendium.getSubclass(this.creatorState.subclassId); if (subclass) { detailsContainer.createEl('h5', { text: `Subclass: ${subclass.name}` }); renderMarkdown(this.plugin, subclass.description, detailsContainer.createDiv()); } }
+                detailsContainer.createEl('p', { text: `Initial HP: ${charClass.hp} | Initial Evasion: ${charClass.evasion}` }); if (this.creatorState.subclassId) { const subclass = this.plugin.characterCompendium.getSubclass(this.creatorState.subclassId); if (subclass) { detailsContainer.createEl('h5', { text: `Subclass: ${subclass.name}` }); renderMarkdown(this.plugin, subclass.description, detailsContainer.createDiv()); } }
             }
-        }; const drawSubclassDropdown = () => { subclassSetting.clear(); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass) { subclassSetting.setName("Subclass").addDropdown(dd => { dd.addOption('', '--- Select ---'); charClass.subclasses.forEach(subRef => { const subclass = this.plugin.characterCompendium.getSubclass(subRef.value); if (subclass) dd.addOption(subclass.id, subclass.name); }); dd.setValue(this.creatorState.subclassId || '').onChange(value => { this.creatorState.subclassId = value; drawDetails(); }); }); } }; new Setting(parent).setName("Class").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.classes.forEach(cls => dd.addOption(cls.id, cls.name)); dd.setValue(this.creatorState.classId || '').onChange(value => { this.creatorState.classId = value; this.creatorState.subclassId = undefined; this.creatorState.backgroundAnswers = []; this.creatorState.connections = []; drawSubclassDropdown(); drawDetails(); }); }); drawSubclassDropdown(); drawDetails();
+        }; const drawSubclassDropdown = () => { subclassSetting.clear(); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass) { const subclasses = [this.plugin.characterCompendium.getSubclass(charClass.subclass_1), this.plugin.characterCompendium.getSubclass(charClass.subclass_2)].filter(s => s); subclassSetting.setName("Subclass").addDropdown(dd => { dd.addOption('', '--- Select ---'); subclasses.forEach(subclass => { if (subclass) dd.addOption(subclass.name, subclass.name); }); dd.setValue(this.creatorState.subclassId || '').onChange(value => { this.creatorState.subclassId = value; drawDetails(); }); }); } }; new Setting(parent).setName("Class").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.classes.forEach(cls => dd.addOption(cls.name, cls.name)); dd.setValue(this.creatorState.classId || '').onChange(value => { this.creatorState.classId = value; this.creatorState.subclassId = undefined; this.creatorState.backgroundAnswers = []; this.creatorState.connections = []; drawSubclassDropdown(); drawDetails(); }); }); drawSubclassDropdown(); drawDetails();
     }
-    private drawCreatorStep2_Heritage(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 2: Choose Heritage' }); const ancestryDetails = parent.createDiv({ cls: 'dh-creator-details' }); new Setting(parent).setName("Ancestry").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.ancestries.forEach(anc => dd.addOption(anc.id, anc.name)); dd.setValue(this.creatorState.ancestryId || '').onChange(value => { this.creatorState.ancestryId = value; this.redrawCreatorStep(); }); }); if (this.creatorState.ancestryId) { const ancestry = this.plugin.characterCompendium.getAncestry(this.creatorState.ancestryId); if (ancestry) { ancestryDetails.createEl('h4', { text: ancestry.name }); renderMarkdown(this.plugin, ancestry.description, ancestryDetails.createDiv()); ancestryDetails.createEl('strong', { text: `${ancestry.primaryFeature.name}: ` }).appendText(ancestry.primaryFeature.description); ancestryDetails.createEl('br'); ancestryDetails.createEl('strong', { text: `${ancestry.secondaryFeature.name}: ` }).appendText(ancestry.secondaryFeature.description); } } const communityDetails = parent.createDiv({ cls: 'dh-creator-details' }); new Setting(parent).setName("Community").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.communities.forEach(com => dd.addOption(com.id, com.name)); dd.setValue(this.creatorState.communityId || '').onChange(value => { this.creatorState.communityId = value; this.redrawCreatorStep(); }); }); if (this.creatorState.communityId) { const community = this.plugin.characterCompendium.getCommunity(this.creatorState.communityId); if (community) { communityDetails.createEl('h4', { text: community.name }); renderMarkdown(this.plugin, community.description, communityDetails.createDiv()); communityDetails.createEl('strong', { text: `${community.feature.name}: ` }).appendText(community.feature.description); } } }
+    private drawCreatorStep2_Heritage(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 2: Choose Heritage' }); const ancestryDetails = parent.createDiv({ cls: 'dh-creator-details' }); new Setting(parent).setName("Ancestry").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.ancestries.forEach(anc => dd.addOption(anc.name, anc.name)); dd.setValue(this.creatorState.ancestryId || '').onChange(value => { this.creatorState.ancestryId = value; this.redrawCreatorStep(); }); }); if (this.creatorState.ancestryId) { const ancestry = this.plugin.characterCompendium.getAncestry(this.creatorState.ancestryId); if (ancestry) { ancestryDetails.createEl('h4', { text: ancestry.name }); renderMarkdown(this.plugin, ancestry.description, ancestryDetails.createDiv()); ancestry.feats.forEach(feat => { ancestryDetails.createEl('strong', { text: `${feat.name}: ` }).appendText(feat.text) }); } } const communityDetails = parent.createDiv({ cls: 'dh-creator-details' }); new Setting(parent).setName("Community").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.communities.forEach(com => dd.addOption(com.name, com.name)); dd.setValue(this.creatorState.communityId || '').onChange(value => { this.creatorState.communityId = value; this.redrawCreatorStep(); }); }); if (this.creatorState.communityId) { const community = this.plugin.characterCompendium.getCommunity(this.creatorState.communityId); if (community) { communityDetails.createEl('h4', { text: community.name }); renderMarkdown(this.plugin, community.description, communityDetails.createDiv()); community.feats.forEach(feat => { communityDetails.createEl('strong', { text: `${feat.name}: ` }).appendText(feat.text) }); } } }
     private drawCreatorStep3_Traits(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 3: Assign Traits' }); parent.createEl('p', { text: 'Assign each value (+2, +1, +1, +0, +0, -1) to one of the six traits.' }); const assignedValues = Object.values(this.creatorState.traits || {}); const remainingValues = TRAIT_VALUES.filter(v => { const countInAssigned = assignedValues.filter(av => av === v).length; const countInMaster = TRAIT_VALUES.filter(tv => tv === v).length; return countInAssigned < countInMaster; }); TRAIT_NAMES.forEach(traitName => { new Setting(parent).setName(traitName).addDropdown(dd => { dd.addOption('none', '---'); const currentValue = this.creatorState.traits ? this.creatorState.traits[traitName] : undefined; const options = (currentValue !== undefined && currentValue !== null) ? [...new Set([currentValue, ...remainingValues])].sort((a, b) => b - a) : [...new Set(remainingValues)].sort((a, b) => b - a); options.forEach(val => dd.addOption(String(val), val >= 0 ? `+${val}` : String(val))); dd.setValue(String(currentValue ?? 'none')); dd.onChange(value => { const numValue = value === 'none' ? undefined : parseInt(value); if (this.creatorState.traits) { this.creatorState.traits[traitName] = numValue; } this.redrawCreatorStep(); }); }); }); }
-    private drawCreatorStep4_Equipment(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 4: Starting Equipment' }); const weapons = this.plugin.characterCompendium.weapons; const armors = this.plugin.characterCompendium.armors; new Setting(parent).setName('Primary Weapon').addDropdown(dd => { dd.addOption('', '--- Select ---'); weapons.filter(w => w.burden === 'Two-Handed').forEach(w => dd.addOption(w.id, `${w.name} (2-Handed)`)); weapons.filter(w => w.burden === 'One-Handed').forEach(w => dd.addOption(w.id, `${w.name} (1-Handed)`)); dd.setValue(this.creatorState.startingWeaponIds?.[0] || '').onChange(value => { const weapon = weapons.find(w => w.id === value); this.creatorState.startingWeaponIds = weapon ? [value] : []; this.redrawCreatorStep(); }); }); const primaryWeapon = weapons.find(w => w.id === this.creatorState.startingWeaponIds?.[0]); if (primaryWeapon && primaryWeapon.burden === 'One-Handed') { const secondaryWeapons = this.plugin.characterCompendium.weapons.filter(w => w.burden === 'One-Handed'); new Setting(parent).setName('Secondary Weapon').addDropdown(dd => { dd.addOption('', '--- None ---'); secondaryWeapons.forEach(w => dd.addOption(w.id, w.name)); dd.setValue(this.creatorState.startingWeaponIds?.[1] || '').onChange(value => { this.creatorState.startingWeaponIds = value ? [primaryWeapon.id, value] : [primaryWeapon.id]; }); }); } new Setting(parent).setName('Armor').addDropdown(dd => { dd.addOption('', '--- Select ---'); armors.forEach(a => dd.addOption(a.id, a.name)); dd.setValue(this.creatorState.startingArmorId || '').onChange(value => { this.creatorState.startingArmorId = value; }); }); new Setting(parent).setName('Starting Potion').addDropdown(dd => { dd.addOption('health', 'Minor Health Potion').addOption('stamina', 'Minor Stamina Potion').setValue(this.creatorState.potionChoice || 'health').onChange(value => { this.creatorState.potionChoice = value as 'health' | 'stamina'; }); }); }
-    private drawCreatorStep5_Background(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 5: Background Questions' }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? '') as CompendiumClassWithNarrative | undefined; if (charClass?._narrative?.backgrounds) { charClass._narrative.backgrounds.forEach((bg, index) => { new Setting(parent).setName(bg.question).addTextArea(text => { text.setValue(this.creatorState.backgroundAnswers?.[index] || '').onChange(value => { if (!this.creatorState.backgroundAnswers) this.creatorState.backgroundAnswers = []; this.creatorState.backgroundAnswers[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see background questions.' }); } }
+    private drawCreatorStep4_Equipment(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 4: Starting Equipment' }); const weapons = this.plugin.characterCompendium.weapons.filter(w => (w as WeaponItem).tier === '1') as WeaponItem[]; const armors = this.plugin.characterCompendium.armors.filter(a => (a as ArmorItem).tier === '1') as ArmorItem[]; new Setting(parent).setName('Primary Weapon').addDropdown(dd => { dd.addOption('', '--- Select ---'); weapons.filter(w => w.burden === 'Two-Handed').forEach(w => dd.addOption(w.name, `${w.name} (2-Handed)`)); weapons.filter(w => w.burden === 'One-Handed').forEach(w => dd.addOption(w.name, `${w.name} (1-Handed)`)); dd.setValue(this.creatorState.startingWeaponIds?.[0] || '').onChange(value => { const weapon = weapons.find(w => w.name === value); this.creatorState.startingWeaponIds = weapon ? [value] : []; this.redrawCreatorStep(); }); }); const primaryWeapon = weapons.find(w => w.name === this.creatorState.startingWeaponIds?.[0]); if (primaryWeapon && primaryWeapon.burden === 'One-Handed') { const secondaryWeapons = this.plugin.characterCompendium.weapons.filter(w => (w as WeaponItem).burden === 'One-Handed' && (w as WeaponItem).tier === '1') as WeaponItem[]; new Setting(parent).setName('Secondary Weapon').addDropdown(dd => { dd.addOption('', '--- None ---'); secondaryWeapons.forEach(w => dd.addOption(w.name, w.name)); dd.setValue(this.creatorState.startingWeaponIds?.[1] || '').onChange(value => { this.creatorState.startingWeaponIds = value ? [primaryWeapon.name, value] : [primaryWeapon.name]; }); }); } new Setting(parent).setName('Armor').addDropdown(dd => { dd.addOption('', '--- Select ---'); armors.forEach(a => dd.addOption(a.name, a.name)); dd.setValue(this.creatorState.startingArmorId || '').onChange(value => { this.creatorState.startingArmorId = value; }); }); new Setting(parent).setName('Starting Potion').addDropdown(dd => { dd.addOption('health', 'Minor Health Potion').addOption('stamina', 'Minor Stamina Potion').setValue(this.creatorState.potionChoice || 'health').onChange(value => { this.creatorState.potionChoice = value as 'health' | 'stamina'; }); }); }
+    private drawCreatorStep5_Background(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 5: Background Questions' }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass?.backgrounds) { charClass.backgrounds.forEach((bg, index) => { new Setting(parent).setName(bg.question).addTextArea(text => { text.setValue(this.creatorState.backgroundAnswers?.[index] || '').onChange(value => { if (!this.creatorState.backgroundAnswers) this.creatorState.backgroundAnswers = []; this.creatorState.backgroundAnswers[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see background questions.' }); } }
     private drawCreatorStep6_Experiences(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 6: Create Experiences' }); parent.createEl('p', { text: 'Create two experiences for your character. These represent skills or defining moments from their past. They both start with a +2 modifier.' }); if (!this.creatorState.experiences) this.creatorState.experiences = [{ name: '', description: '' }, { name: '', description: '' }]; this.creatorState.experiences.forEach((exp, index) => { parent.createEl('h5', { text: `Experience ${index + 1}` }); new Setting(parent).setName('Name').addText(text => text.setPlaceholder('e.g., Survivor, Master of Disguise').setValue(exp.name).onChange(value => exp.name = value)); }); }
     private drawCreatorStep7_Domains(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 7: Choose Domain Cards' });
@@ -184,22 +164,17 @@ export class CharacterSheetView extends ItemView {
             parent.createEl('p', { text: 'Please select a class in Step 1.' });
             return;
         }
-        const domains = CLASS_DOMAINS[classId];
-        if (!domains) {
-            parent.createEl('p', { text: 'Class domains not found.' });
-            return;
-        }
+        const charClass = this.plugin.characterCompendium.getClass(classId);
+        if (!charClass) return;
+        const domains = [charClass.domain_1, charClass.domain_2];
         parent.createEl('p', { text: `Choose two cards from your class domains: ${domains.join(' & ')}.` });
 
-        const domainCards = this.plugin.characterCompendium.features.filter(f => {
-            const metadata = this.getFeatureMetadata(f);
-            return metadata.level === 1 && domains.some(d => d.toLowerCase() === metadata.domain?.toLowerCase());
-        });
+        const domainCards = this.plugin.characterCompendium.abilities.filter(f => f.level === '1' && domains.some(d => d.toLowerCase() === f.domain?.toLowerCase()));
 
         const cardContainer = parent.createDiv({ cls: 'dh-creator-card-grid' });
         domainCards.forEach(card => {
             const cardEl = cardContainer.createDiv({ cls: 'dh-creator-card' });
-            if (this.creatorState.domainCardIds?.includes(card.id)) {
+            if (this.creatorState.domainCardIds?.includes(card.name)) {
                 cardEl.addClass('is-selected');
             }
 
@@ -208,14 +183,14 @@ export class CharacterSheetView extends ItemView {
                     this.creatorState.domainCardIds = [];
                 }
 
-                const isSelected = this.creatorState.domainCardIds.includes(card.id);
+                const isSelected = this.creatorState.domainCardIds.includes(card.name);
 
                 if (isSelected) {
-                    this.creatorState.domainCardIds = this.creatorState.domainCardIds.filter(id => id !== card.id);
+                    this.creatorState.domainCardIds = this.creatorState.domainCardIds.filter(id => id !== card.name);
                     cardEl.removeClass('is-selected');
                 } else {
                     if (this.creatorState.domainCardIds.length < 2) {
-                        this.creatorState.domainCardIds.push(card.id);
+                        this.creatorState.domainCardIds.push(card.name);
                         cardEl.addClass('is-selected');
                     } else {
                         new Notice('You can only select two domain cards.');
@@ -224,31 +199,35 @@ export class CharacterSheetView extends ItemView {
             });
 
             cardEl.createEl('strong', { text: card.name });
-            renderMarkdown(this.plugin, card.description, cardEl.createDiv());
+            renderMarkdown(this.plugin, card.text, cardEl.createDiv());
 
-            const metadata = this.getFeatureMetadata(card as Feature);
             const footer = cardEl.createDiv({ cls: 'dh-creator-card-meta' });
-            if (metadata.domain) {
-                footer.createSpan({ text: `Domain: ${metadata.domain}` });
+            if (card.domain) {
+                footer.createSpan({ text: `Domain: ${card.domain}` });
             }
-            if (metadata.level) {
-                footer.createSpan({ text: `Level: ${metadata.level}` });
+            if (card.level) {
+                footer.createSpan({ text: `Level: ${card.level}` });
             }
         });
     }
-    private drawCreatorStep8_Connections(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 8: Create Connections' }); parent.createEl('p', { text: "Use these questions as inspiration to create connections with the other characters at your table. Discuss your answers together and jot down your notes here." }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? '') as CompendiumClassWithNarrative | undefined; if (charClass?._narrative?.connections) { charClass._narrative.connections.forEach((conn, index) => { new Setting(parent).setName(conn.question).addTextArea(text => { text.setValue(this.creatorState.connections?.[index] || '').onChange(value => { if (!this.creatorState.connections) this.creatorState.connections = []; this.creatorState.connections[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see connection questions.' }); } }
-    private drawCreatorStep9_FinalDetails(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 9: Final Details & Review' }); if (!this.creatorState.pronouns) this.creatorState.pronouns = { subject: 'they', object: 'them' }; new Setting(parent).setName("Character Name").addText(text => text.setPlaceholder("Elara Meadowlight").setValue(this.creatorState.name || '').onChange(value => this.creatorState.name = value)); new Setting(parent).setName("Subject Pronoun").addText(text => text.setPlaceholder("e.g., she").setValue(this.creatorState.pronouns?.subject || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.subject = value; })); new Setting(parent).setName("Object Pronoun").addText(text => text.setPlaceholder("e.g., her").setValue(this.creatorState.pronouns?.object || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.object = value; })); parent.createEl('hr'); parent.createEl('h4', { text: 'Character Review' }); const reviewEl = parent.createDiv({ cls: 'dh-creator-review' }); const { ancestryId, communityId, classId, subclassId, traits, startingArmorId, startingWeaponIds, domainCardIds } = this.creatorState; const ancestry = this.plugin.characterCompendium.getAncestry(ancestryId ?? ''); const community = this.plugin.characterCompendium.getCommunity(communityId ?? ''); const charClass = this.plugin.characterCompendium.getClass(classId ?? ''); const subclass = this.plugin.characterCompendium.getSubclass(subclassId ?? ''); const armor = this.plugin.characterCompendium.armors.find(a => a.id === startingArmorId); const weapons = startingWeaponIds ? this.plugin.characterCompendium.weapons.filter(w => startingWeaponIds.includes(w.id)) : []; const domains = domainCardIds?.map(id => this.plugin.characterCompendium.getFeature(id)?.name).join(', '); reviewEl.createEl('p').innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`; reviewEl.createEl('p').innerHTML = `<strong>Ancestry:</strong> ${ancestry?.name || 'N/A'}`; reviewEl.createEl('p').innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`; reviewEl.createEl('h5', { text: 'Traits' }); if (traits) { Object.entries(traits).forEach(([key, value]) => { if (value !== undefined) reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>${key}:</strong> ${value >= 0 ? '+' : ''}${value}`; }); } reviewEl.createEl('h5', { text: 'Equipment' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`; reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`; reviewEl.createEl('h5', { text: 'Domain Cards' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A'; }
+    private drawCreatorStep8_Connections(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 8: Create Connections' }); parent.createEl('p', { text: "Use these questions as inspiration to create connections with the other characters at your table. Discuss your answers together and jot down your notes here." }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass?.connections) { charClass.connections.forEach((conn, index) => { new Setting(parent).setName(conn.question).addTextArea(text => { text.setValue(this.creatorState.connections?.[index] || '').onChange(value => { if (!this.creatorState.connections) this.creatorState.connections = []; this.creatorState.connections[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see connection questions.' }); } }
+    private drawCreatorStep9_FinalDetails(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 9: Final Details & Review' }); if (!this.creatorState.pronouns) this.creatorState.pronouns = { subject: 'they', object: 'them' }; new Setting(parent).setName("Character Name").addText(text => text.setPlaceholder("Elara Meadowlight").setValue(this.creatorState.name || '').onChange(value => this.creatorState.name = value)); new Setting(parent).setName("Subject Pronoun").addText(text => text.setPlaceholder("e.g., she").setValue(this.creatorState.pronouns?.subject || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.subject = value; })); new Setting(parent).setName("Object Pronoun").addText(text => text.setPlaceholder("e.g., her").setValue(this.creatorState.pronouns?.object || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.object = value; })); parent.createEl('hr'); parent.createEl('h4', { text: 'Character Review' }); const reviewEl = parent.createDiv({ cls: 'dh-creator-review' }); const { ancestryId, communityId, classId, subclassId, traits, startingArmorId, startingWeaponIds, domainCardIds } = this.creatorState; const ancestry = this.plugin.characterCompendium.getAncestry(ancestryId ?? ''); const community = this.plugin.characterCompendium.getCommunity(communityId ?? ''); const charClass = this.plugin.characterCompendium.getClass(classId ?? ''); const subclass = this.plugin.characterCompendium.getSubclass(subclassId ?? ''); const armor = this.plugin.characterCompendium.armors.find(a => a.name === startingArmorId) as ArmorItem | undefined; const weapons = startingWeaponIds ? (this.plugin.characterCompendium.weapons.filter(w => startingWeaponIds.includes(w.name)) as WeaponItem[]) : []; const domains = domainCardIds?.join(', '); reviewEl.createEl('p').innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`; reviewEl.createEl('p').innerHTML = `<strong>Ancestry:</strong> ${ancestry?.name || 'N/A'}`; reviewEl.createEl('p').innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`; reviewEl.createEl('h5', { text: 'Traits' }); if (traits) { Object.entries(traits).forEach(([key, value]) => { if (value !== undefined) reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>${key}:</strong> ${value >= 0 ? '+' : ''}${value}`; }); } reviewEl.createEl('h5', { text: 'Equipment' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`; reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`; reviewEl.createEl('h5', { text: 'Domain Cards' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A'; }
     private async finalizeCharacter(partialChar: Partial<CreatorState>) {
         if (!partialChar.name || !partialChar.classId || !partialChar.subclassId || !partialChar.ancestryId || !partialChar.communityId || !partialChar.startingArmorId || !partialChar.startingWeaponIds || partialChar.startingWeaponIds.length === 0 || !partialChar.traits || !partialChar.domainCardIds || partialChar.domainCardIds.length !== 2) {
             new Notice("Please complete all required fields on all steps.");
             return;
         }
-        const charClass = this.plugin.characterCompendium.getClass(partialChar.classId) as CompendiumClassWithNarrative | undefined;
+
+        const charClass = this.plugin.characterCompendium.getClass(partialChar.classId);
         const ancestry = this.plugin.characterCompendium.getAncestry(partialChar.ancestryId);
         const community = this.plugin.characterCompendium.getCommunity(partialChar.communityId);
-        const armor = this.plugin.characterCompendium.armors.find(a => a.id === partialChar.startingArmorId);
+        const subclass = this.plugin.characterCompendium.getSubclass(partialChar.subclassId);
+        const rawArmor = this.plugin.characterCompendium.armors.find(a => a.name === partialChar.startingArmorId) as ArmorItem | undefined;
+        const rawWeapons = partialChar.startingWeaponIds
+            .map(name => this.plugin.characterCompendium.weapons.find(w => w.name === name))
+            .filter(w => w) as WeaponItem[];
 
-        if (!charClass || !ancestry || !community || !armor) {
+        if (!charClass || !ancestry || !community || !rawArmor || !subclass || rawWeapons.length === 0) {
             new Notice("Compendium data missing. Cannot create character.");
             return;
         }
@@ -258,23 +237,64 @@ export class CharacterSheetView extends ItemView {
             finalTraits[key] = { _type: 'trait', value: partialChar.traits[key] ?? 0, locked: false };
         }
 
+        const [majorStr, severeStr] = rawArmor.base_thresholds.split(' / ');
+        const startingArmor: InventoryItem = {
+            _type: 'armor',
+            instanceId: uuidv4(),
+            quantity: 1,
+            name: rawArmor.name,
+            tier: parseInt(rawArmor.tier),
+            baseScore: parseInt(rawArmor.base_score),
+            baseThresholds: { major: parseInt(majorStr), severe: parseInt(severeStr) },
+            features: rawArmor.feat_name ? [{ name: rawArmor.feat_name, description: rawArmor.feat_text || '' }] : [],
+            description: rawArmor.feat_text || '',
+        };
+
         const standardInventory: InventoryItem[] = [
-            { _type: 'item', id: 'torch', name: 'Torch', instanceId: uuidv4(), quantity: 1 },
-            { _type: 'item', id: 'rope', name: '50ft of Rope', instanceId: uuidv4(), quantity: 1 },
+            { _type: 'item', name: 'Torch', instanceId: uuidv4(), quantity: 1 },
+            { _type: 'item', name: '50ft of Rope', instanceId: uuidv4(), quantity: 1 },
         ];
 
         if (partialChar.potionChoice === 'health') {
-            standardInventory.push({ _type: 'item', id: 'minor-health-potion', name: 'Minor Health Potion', instanceId: uuidv4(), quantity: 1 });
+            standardInventory.push({ _type: 'item', name: 'Minor Health Potion', instanceId: uuidv4(), quantity: 1 });
         } else {
-            standardInventory.push({ _type: 'item', id: 'minor-stamina-potion', name: 'Minor Stamina Potion', instanceId: uuidv4(), quantity: 1 });
+            standardInventory.push({ _type: 'item', name: 'Minor Stamina Potion', instanceId: uuidv4(), quantity: 1 });
         }
 
-        const startingWeapons = partialChar.startingWeaponIds.map(id => ({
-            ...this.plugin.characterCompendium.weapons.find(w => w.id === id) as WeaponItem,
+        const startingWeapons: InventoryItem[] = rawWeapons
+            .map(w => {
+                const [damageDice, damageType] = w.damage.split(' ');
+                return ({
+                    _type: 'weapon',
+                    instanceId: uuidv4(),
+                    quantity: 1,
+                    name: w.name,
+                    tier: parseInt(w.tier),
+                    primaryOrSecondary: w.primary_or_secondary as 'Primary' | 'Secondary',
+                    trait: w.trait,
+                    range: w.range,
+                    damage: w.damage,
+                    damageDice: damageDice,
+                    damageType: damageType,
+                    burden: w.burden as 'One-Handed' | 'Two-Handed',
+                    features: w.feat_name ? [{ name: w.feat_name, description: w.feat_text || '' }] : [],
+                    description: w.feat_text || '',
+                });
+            });
+
+        const initialInventory: InventoryItem[] = (charClass.items || "").split(', ').map(itemName => ({
+            _type: 'item' as 'item',
+            name: itemName.trim(),
             instanceId: uuidv4(),
-            quantity: 1,
+            quantity: 1
         }));
-        const startingArmor = { ...armor, instanceId: uuidv4(), quantity: 1 };
+
+        const finalFeatures: (DomainCard)[] = (partialChar.domainCardIds || [])
+            .map(id => this.plugin.characterCompendium.getAbility(id))
+            .filter(f => f) as DomainCard[];
+
+        const finalEvasion = parseInt(charClass.evasion);
+        const finalHp = parseInt(charClass.hp);
 
         const fullChar: Character = {
             id: uuidv4(),
@@ -283,16 +303,16 @@ export class CharacterSheetView extends ItemView {
             name: partialChar.name,
             level: 1,
             pronouns: { ...partialChar.pronouns, _type: 'pronouns' } as Character['pronouns'],
-            ancestryId: ancestry.id,
-            communityId: community.id,
-            classId: charClass.id,
-            subclassId: partialChar.subclassId,
-            evasion: charClass.initialEvasion,
+            ancestryId: ancestry.name,
+            communityId: community.name,
+            classId: charClass.name,
+            subclassId: subclass.name,
+            evasion: finalEvasion,
             traits: finalTraits,
-            hitPoints: { _type: 'dynamicResource', max: charClass.initialHitPoints, current: 0 },
+            hitPoints: { _type: 'dynamicResource', max: finalHp, current: finalHp },
             stress: { _type: 'dynamicResource', max: 6, current: 0 },
             hope: { _type: 'dynamicResource', max: 6, current: 2 },
-            armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: 0 },
+            armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: startingArmor.baseScore },
             damageThresholds: {
                 _type: 'damageThresholds',
                 major: startingArmor.baseThresholds.major + 1,
@@ -305,22 +325,20 @@ export class CharacterSheetView extends ItemView {
                 value: 2,
                 _type: 'experience'
             })),
-            features: (partialChar.domainCardIds || [])
-                .map(id => this.plugin.characterCompendium.getFeature(id))
-                .filter(f => f) as Feature[],
+            features: finalFeatures,
             inventory: [
                 ...standardInventory,
-                ...charClass.initialInventory.map(i => ({ ...i, instanceId: uuidv4(), quantity: 1 })),
+                ...initialInventory,
                 ...startingWeapons,
                 startingArmor,
             ],
             equippedArmorId: startingArmor.instanceId,
             equippedWeaponIds: startingWeapons.map(w => w.instanceId),
-            background: charClass._narrative?.backgrounds.map((bg, i) => ({
+            background: charClass.backgrounds.map((bg, i) => ({
                 question: bg.question,
                 answer: partialChar.backgroundAnswers?.[i] || ''
             })),
-            connections: charClass._narrative?.connections.map((c, i) => ({
+            connections: charClass.connections.map((c, i) => ({
                 question: c.question,
                 answer: partialChar.connections?.[i] || ''
             })),
@@ -353,8 +371,10 @@ export class CharacterSheetView extends ItemView {
         nameplate.createEl('h1', { text: data.name || "Unnamed Character" });
         nameplate.createEl('p', { text: `${ancestry?.name || 'N/A'} ${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})` });
         const right = header.createDiv({ cls: 'dh-header-right' });
-        const classDomains = CLASS_DOMAINS[data.classId] || [];
-        right.createDiv({ cls: 'dh-domain-placeholder', text: classDomains.join(' & ') });
+        if (charClass) {
+            const classDomains = [charClass.domain_1, charClass.domain_2];
+            right.createDiv({ cls: 'dh-domain-placeholder', text: classDomains.join(' & ') });
+        }
     }
 
     private drawLeftColumn(parent: HTMLElement, data: Character) {
@@ -378,10 +398,10 @@ export class CharacterSheetView extends ItemView {
 
     private drawPrimaryDefenses(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-primary-defenses' });
-        const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId) as ArmorItem | undefined;
+        const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
         let armorEvasionMod = 0;
-        if (equippedArmor?.features?.some(f => f.toLowerCase().includes('heavy'))) {
-            armorEvasionMod = equippedArmor.features.some(f => f.toLowerCase().includes('very heavy')) ? -2 : -1;
+        if (equippedArmor?.features?.some(f => f.name.toLowerCase().includes('heavy'))) {
+            armorEvasionMod = equippedArmor.features.some(f => f.name.toLowerCase().includes('very heavy')) ? -2 : -1;
         }
         const finalEvasion = data.evasion + armorEvasionMod;
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
@@ -405,7 +425,9 @@ export class CharacterSheetView extends ItemView {
         const thresholdsBox = container.createDiv({ cls: 'dh-thresholds-box' });
         let finalMajorThreshold = data.damageThresholds.major;
         let finalSevereThreshold = data.damageThresholds.severe;
-        const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId) as ArmorItem | undefined;
+
+        const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
+
         if (!equippedArmor) {
             finalMajorThreshold = data.level;
             finalSevereThreshold = data.level * 2;
@@ -449,7 +471,7 @@ export class CharacterSheetView extends ItemView {
         const container = parent.createDiv({ cls: 'dh-active-weapons' });
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Active Weapons' });
-        const equippedWeapons = data.inventory.filter(i => data.equippedWeaponIds && data.equippedWeaponIds.includes(i.instanceId)) as WeaponItem[];
+        const equippedWeapons = data.inventory.filter(i => data.equippedWeaponIds && data.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as (InventoryItem & { _type: 'weapon' })[];
         if (equippedWeapons.length === 0) {
             container.createDiv({ cls: 'dh-weapon-card' }).createDiv({ text: 'No weapons equipped.', cls: 'dh-empty-text' });
         } else {
@@ -459,7 +481,7 @@ export class CharacterSheetView extends ItemView {
         }
     }
 
-    private createWeaponCard(parent: HTMLElement, weapon: WeaponItem, type: 'Primary' | 'Secondary', character: Character) {
+    private createWeaponCard(parent: HTMLElement, weapon: InventoryItem & { _type: 'weapon' }, type: 'Primary' | 'Secondary', character: Character) {
         const card = parent.createDiv({ cls: 'dh-weapon-card' });
         card.createEl('h4', { text: type });
         const body = card.createDiv({ cls: 'dh-weapon-card-body' });
@@ -468,7 +490,7 @@ export class CharacterSheetView extends ItemView {
         left.createDiv({ cls: 'dh-weapon-type', text: `${weapon.burden} - ${weapon.range}` });
         const feature = (weapon.features || [])[0];
         const featureEl = left.createDiv({ cls: 'dh-weapon-feature' });
-        renderRollableContent(this.plugin, feature || 'No feature.', featureEl, `${weapon.name}: ${feature || 'Attack'}`);
+        renderRollableContent(this.plugin, feature?.description || 'No feature.', featureEl, `${weapon.name}: ${feature?.name || 'Attack'}`);
         const right = body.createDiv({ cls: 'dh-weapon-card-right' });
         const traitName = weapon.trait as keyof Character['traits'];
         const trait = character.traits[traitName];
@@ -570,15 +592,14 @@ export class CharacterSheetView extends ItemView {
     private equipItem(character: Character, item: InventoryItem, redraw: boolean = true) {
         if (item._type === 'armor') {
             character.equippedArmorId = item.instanceId;
-            const armor = item as ArmorItem;
-            character.armorSlots.max = armor.baseScore;
-            character.damageThresholds = { _type: 'damageThresholds', major: armor.baseThresholds.major + character.level, severe: armor.baseThresholds.severe + character.level };
+            character.armorSlots.max = item.baseScore;
+            character.damageThresholds = { _type: 'damageThresholds', major: item.baseThresholds.major + character.level, severe: item.baseThresholds.severe + character.level };
         } else if (item._type === 'weapon') {
-            const weapon = item as WeaponItem;
+            const weapon = item as InventoryItem & { _type: 'weapon' };
             if (weapon.burden === 'Two-Handed') {
                 character.equippedWeaponIds = [item.instanceId];
             } else {
-                const equippedWeapons = character.inventory.filter(i => character.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as WeaponItem[];
+                const equippedWeapons = character.inventory.filter(i => character.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as (InventoryItem & { _type: 'weapon' })[];
                 const twoHandedEquipped = equippedWeapons.find(w => w.burden === 'Two-Handed');
                 if (twoHandedEquipped) {
                     character.equippedWeaponIds = [item.instanceId];
@@ -617,8 +638,35 @@ export class CharacterSheetView extends ItemView {
             .addEventListener('click', () => {
                 new AddItemModal(this.app, this.plugin, character, (item) => {
                     if (!character.inventory) character.inventory = [];
-                    character.inventory.push({ ...item, instanceId: uuidv4(), quantity: 1 });
+                    // Process the raw compendium item into a character inventory item
+                    let newItem: InventoryItem;
+                    if (item._type === 'armor') {
+                        const [major, severe] = item.base_thresholds.split(' / ').map(s => parseInt(s.trim()));
+                        newItem = {
+                            _type: 'armor', instanceId: uuidv4(), quantity: 1, name: item.name, description: item.feat_text,
+                            tier: parseInt(item.tier), baseScore: parseInt(item.base_score), baseThresholds: { major, severe },
+                            features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : []
+                        };
+                    } else if (item._type === 'weapon') {
+                        const [damageDice, damageType] = item.damage.split(' ');
+                        newItem = {
+                            _type: 'weapon', instanceId: uuidv4(), quantity: 1, name: item.name, description: item.feat_text,
+                            tier: parseInt(item.tier), burden: item.burden as 'One-Handed' | 'Two-Handed', range: item.range,
+                            trait: item.trait, primaryOrSecondary: item.primary_or_secondary as 'Primary' | 'Secondary',
+                            damage: item.damage, damageDice, damageType,
+                            features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : []
+                        };
+                    } else {
+                        newItem = { ...item, instanceId: uuidv4(), quantity: 1 };
+                    }
+                    character.inventory.push(newItem);
                     this.plugin.updateCharacter(character);
+                }, () => {
+                    new ItemEditModal(this.app, this.plugin, character, null, (newItem) => {
+                        if (!character.inventory) character.inventory = [];
+                        character.inventory.push(newItem);
+                        this.plugin.updateCharacter(character);
+                    }).open();
                 }).open();
             });
 
@@ -647,7 +695,6 @@ export class CharacterSheetView extends ItemView {
                 nameCell.ariaLabel = item.description;
             }
 
-
             const qtyCell = row.createDiv({ cls: 'dh-inventory-item-qty' });
             if (item._type === 'item') {
                 const downBtn = qtyCell.createEl('button', { text: '-' });
@@ -667,16 +714,13 @@ export class CharacterSheetView extends ItemView {
 
             let details = '';
             if (item._type === 'weapon') {
-                const weapon = item as WeaponItem;
-                details = `${weapon.damageDice || ''} ${weapon.damageType || ''}, ${weapon.range || ''}, ${weapon.burden || ''}`;
+                details = `${item.damage || ''}, ${item.range || ''}, ${item.burden || ''}`;
             } else if (item._type === 'armor') {
-                const armor = item as ArmorItem;
-                details = `${armor.baseScore || 0} Armor, Thresh: ${armor.baseThresholds?.major || 0}/${armor.baseThresholds?.severe || 0}`;
+                details = `${item.baseScore || 0} Armor, Thresh: ${item.baseThresholds?.major || 0}/${item.baseThresholds?.severe || 0}`;
             } else if (item.description) {
                 details = item.description.substring(0, 30) + (item.description.length > 30 ? '...' : '');
             }
             row.createDiv({ text: details, cls: 'dh-inventory-item-details' });
-
 
             const actionsCell = row.createDiv({ cls: 'dh-inventory-item-actions' });
             if (item._type === 'armor' || item._type === 'weapon') {
@@ -719,13 +763,19 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawAbilitiesManager(parent: HTMLElement, data: Character) {
-        this.drawFeatureSection(parent, 'Domain & Class Features', data.features, data);
         const charClass = this.plugin.characterCompendium.getClass(data.classId);
         const ancestry = this.plugin.characterCompendium.getAncestry(data.ancestryId);
         const community = this.plugin.characterCompendium.getCommunity(data.communityId);
-        if (ancestry) this.drawFeatureSection(parent, 'Heritage Features', [ancestry.primaryFeature, ancestry.secondaryFeature], data);
-        if (community) this.drawFeatureSection(parent, 'Community Features', [community.feature], data);
-        if (charClass) this.drawFeatureSection(parent, 'Core Class Features', [...(charClass?.features || []), charClass?.hopeFeature], data);
+
+        const hopeFeat: CompendiumFeature = charClass ? { name: charClass.hope_feat_name, description: charClass.hope_feat_text } : { name: '', description: '' };
+        const classFeats: CompendiumFeature[] = charClass ? charClass.class_feats.map(f => ({ name: f.name, description: f.text })) : [];
+        const ancestryFeats: CompendiumFeature[] = ancestry ? ancestry.feats.map(f => ({ name: f.name, description: f.text })) : [];
+        const communityFeats: CompendiumFeature[] = community ? community.feats.map(f => ({ name: f.name, description: f.text })) : [];
+
+        this.drawFeatureSection(parent, 'Domain & Class Features', data.features, data);
+        if (ancestry) this.drawFeatureSection(parent, 'Heritage Features', ancestryFeats, data);
+        if (community) this.drawFeatureSection(parent, 'Community Features', communityFeats, data);
+        if (charClass) this.drawFeatureSection(parent, 'Core Class Features', [...classFeats, hopeFeat], data);
     }
 
     private drawDetailsManager(parent: HTMLElement, data: Character) {
@@ -751,7 +801,7 @@ export class CharacterSheetView extends ItemView {
 
     private createExperienceCard(parent: HTMLElement, title: string, subtext: string, isInteractive: boolean = false) { const card = parent.createDiv({ cls: `dh-experience-card ${isInteractive ? 'is-interactive' : ''}` }); card.createDiv({ cls: 'dh-card-title', text: title }); if (subtext) card.createSpan({ cls: 'dh-experience-value', text: subtext }); return card; }
 
-    private drawFeatureSection(parent: HTMLElement, title: string, features: (Feature | CompendiumFeature | undefined)[], character: Character) {
+    private drawFeatureSection(parent: HTMLElement, title: string, features: (CompendiumFeature | DomainCard | undefined)[], character: Character) {
         if (!features.some(f => f)) return;
         const section = parent.createDiv({ cls: 'dh-card-section' });
         const header = section.createDiv({ cls: 'dh-section-header-bar' });
@@ -762,9 +812,9 @@ export class CharacterSheetView extends ItemView {
         });
     }
 
-    private createFeatureCard(parent: HTMLElement, feature: Feature | CompendiumFeature, character: Character) {
+    private createFeatureCard(parent: HTMLElement, feature: CompendiumFeature | DomainCard, character: Character) {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
-        const metadata = this.getFeatureMetadata(feature as Feature);
+        const metadata = this.getFeatureMetadata(feature as DomainCard);
         const header = card.createDiv({ cls: 'dh-feature-card-header' });
         header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
         const metaHeader = header.createDiv({ cls: 'dh-feature-card-meta-header' });
@@ -787,10 +837,41 @@ export class CharacterSheetView extends ItemView {
         if (metadata.recallCost !== undefined) { createFooterBox('Recall', metadata.recallCost); }
     }
 
-    private getFeatureMetadata(feature: Feature | DomainCard): { level?: number; domain?: string; type?: string; recallCost?: number } { const metadata: { level?: number; domain?: string; type?: string; recallCost?: number } = {}; if ('notes' in feature && feature.notes && Array.isArray(feature.notes)) { feature.notes.forEach(note => { const lowerNote = note.toLowerCase(); if (lowerNote.startsWith('level:')) { const level = parseInt(note.split(':')[1]?.trim()); if (!isNaN(level)) metadata.level = level; } else if (lowerNote.startsWith('domain:')) { metadata.domain = note.split(':')[1]?.trim(); } else if (lowerNote.startsWith('type:')) { metadata.type = note.split(':')[1]?.trim(); } else if (lowerNote.startsWith('recall cost:')) { const cost = parseInt(note.split(':')[1]?.trim()); if (!isNaN(cost)) metadata.recallCost = cost; } }); } else if ('level' in feature) { const card = feature as DomainCard; metadata.level = card.level; metadata.domain = card.domain; metadata.type = card.type; metadata.recallCost = card.recallCost; } return metadata; }
+    private getFeatureMetadata(feature: DomainCard): { level?: number; domain?: string; type?: string; recallCost?: number } {
+        const metadata: { level?: number; domain?: string; type?: string; recallCost?: number } = {};
+        if (feature && feature._type === 'domainCard') {
+            metadata.level = feature.level;
+            metadata.domain = feature.domain;
+            metadata.type = feature.type;
+            metadata.recallCost = feature.recallCost;
+        }
+        return metadata;
+    }
 }
 
 // --- MODALS ---
+class ConfirmationModal extends Modal {
+    constructor(app: App, private message: string, private onConfirm: () => void) {
+        super(app);
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl("h2", { text: "Are you sure?" });
+        contentEl.createEl("p", { text: this.message });
+        const buttonContainer = contentEl.createDiv({ cls: "modal-button-container" });
+        buttonContainer.createEl("button", { text: "Cancel" }).addEventListener("click", () => this.close());
+        const confirmButton = buttonContainer.createEl("button", { text: "Confirm", cls: "mod-warning" });
+        confirmButton.addEventListener("click", () => {
+            this.onConfirm();
+            this.close();
+        });
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
 class ConditionModal extends Modal {
     character: Character;
     onSave: (character: Character) => void;
@@ -860,7 +941,22 @@ class ConditionModal extends Modal {
     }
 }
 class GoldModal extends Modal { character: Character; onSave: () => void; constructor(app: App, character: Character, onSave: () => void) { super(app); this.character = character; this.onSave = onSave; } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: "Update Wealth" }); let { handfuls, bags, chests } = this.character.gold; new Setting(contentEl).setName("Chests").addText(text => text.setValue(String(chests)).onChange(v => chests = parseInt(v) || 0)); new Setting(contentEl).setName("Bags").addText(text => text.setValue(String(bags)).onChange(v => bags = parseInt(v) || 0)); new Setting(contentEl).setName("Handfuls").addText(text => text.setValue(String(handfuls)).onChange(v => handfuls = parseInt(v) || 0)); new Setting(contentEl).addButton(btn => btn.setButtonText("Save").setCta().onClick(() => { bags += Math.floor(handfuls / 10); handfuls %= 10; chests += Math.floor(bags / 10); bags %= 10; this.character.gold = { _type: 'gold', handfuls, bags, chests }; this.onSave(); this.close(); })); } onClose() { this.contentEl.empty(); } }
-class ExperienceModal extends Modal { experience: Experience | null; onSave: (result: Experience) => void; onDelete?: () => void; result: Experience; constructor(app: App, experience: Experience | null, onSave: (result: Experience) => void, onDelete?: () => void) { super(app); this.experience = experience; this.onSave = onSave; this.onDelete = onDelete; this.result = experience ? { ...experience } : { _type: 'experience', id: uuidv4(), name: '', value: 2, description: '' }; } onOpen() { const { contentEl } = this; contentEl.createEl("h2", { text: this.experience ? "Edit Experience" : "Add Experience" }); new Setting(contentEl).setName("Name").addText(text => text.setValue(this.result.name).onChange(v => this.result.name = v)); new Setting(contentEl).setName("Value").addText(text => text.setValue(String(this.result.value)).onChange(v => this.result.value = parseInt(v) || 0)); new Setting(contentEl).setName("Description").addTextArea(text => text.setValue(this.result.description || '').onChange(v => this.result.description = v)); const buttons = new Setting(contentEl); if (this.onDelete) { buttons.addButton(btn => btn.setButtonText("Delete").setWarning().onClick(() => { if (confirm("Are you sure?")) { if (this.onDelete) this.onDelete(); this.close(); } })); } buttons.addButton(btn => btn.setButtonText("Save").setCta().onClick(() => { if (!this.result.name) { new Notice("Name is required."); return; } this.onSave(this.result); this.close(); })); } onClose() { this.contentEl.empty(); } }
+class ExperienceModal extends Modal {
+    experience: Experience | null; onSave: (result: Experience) => void; onDelete?: () => void; result: Experience; constructor(app: App, experience: Experience | null, onSave: (result: Experience) => void, onDelete?: () => void) { super(app); this.experience = experience; this.onSave = onSave; this.onDelete = onDelete; this.result = experience ? { ...experience } : { _type: 'experience', id: uuidv4(), name: '', value: 2, description: '' }; } onOpen() {
+        const { contentEl } = this; contentEl.createEl("h2", { text: this.experience ? "Edit Experience" : "Add Experience" }); new Setting(contentEl).setName("Name").addText(text => text.setValue(this.result.name).onChange(v => this.result.name = v)); new Setting(contentEl).setName("Value").addText(text => text.setValue(String(this.result.value)).onChange(v => this.result.value = parseInt(v) || 0)); new Setting(contentEl).setName("Description").addTextArea(text => text.setValue(this.result.description || '').onChange(v => this.result.description = v)); const buttons = new Setting(contentEl);
+        if (this.onDelete) {
+            buttons.addButton(btn => btn.setButtonText("Delete").setWarning().onClick(() => {
+                new ConfirmationModal(this.app, "Are you sure you want to delete this experience?", () => {
+                    if (this.onDelete) {
+                        this.onDelete();
+                    }
+                    this.close();
+                }).open();
+            }));
+        }
+        buttons.addButton(btn => btn.setButtonText("Save").setCta().onClick(() => { if (!this.result.name) { new Notice("Name is required."); return; } this.onSave(this.result); this.close(); }));
+    } onClose() { this.contentEl.empty(); }
+}
 class ItemEditModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     character: Character;
@@ -904,7 +1000,7 @@ class ItemEditModal extends Modal {
             dd.addOption('item', 'Generic Item')
                 .addOption('weapon', 'Weapon')
                 .addOption('armor', 'Armor')
-                .setValue(this.tempItem._type)
+                .setValue(this.tempItem._type || 'item')
                 .onChange(val => {
                     this.tempItem._type = val as 'item' | 'weapon' | 'armor';
                     this.renderTypeSpecificSettings();
@@ -917,16 +1013,23 @@ class ItemEditModal extends Modal {
         const footer = new Setting(contentEl);
         if (this.onDelete) {
             footer.addButton(btn => btn.setButtonText('Delete').setWarning().onClick(() => {
-                if (confirm('Are you sure you want to delete this item?')) {
-                    this.onDelete();
+                new ConfirmationModal(this.app, 'Are you sure you want to delete this item?', () => {
+                    if (this.onDelete) {
+                        this.onDelete();
+                    }
                     this.close();
-                }
+                }).open();
             }));
         }
         footer.addButton(btn => btn.setButtonText('Save').setCta().onClick(() => {
             if (!this.tempItem.name) {
                 new Notice("Item name is required.");
                 return;
+            }
+            // Ensure data is consistent before saving
+            if (this.tempItem._type === 'weapon') {
+                const weapon = this.tempItem as InventoryItem & { _type: 'weapon' };
+                weapon.damage = `${weapon.damageDice} ${weapon.damageType}`;
             }
             this.onSave(this.tempItem as InventoryItem);
             this.close();
@@ -935,18 +1038,19 @@ class ItemEditModal extends Modal {
 
     renderTypeSpecificSettings() {
         this.typeSpecificContainer.empty();
-        const item = this.tempItem as Partial<WeaponItem> & Partial<ArmorItem>;
 
         if (this.tempItem._type === 'weapon') {
-            new Setting(this.typeSpecificContainer).setName('Damage Dice').addText(text => text.setValue(item.damageDice || '').onChange(val => item.damageDice = val));
-            new Setting(this.typeSpecificContainer).setName('Damage Type').addText(text => text.setValue(item.damageType || 'phy').onChange(val => item.damageType = val));
-            new Setting(this.typeSpecificContainer).setName('Trait').addDropdown(dd => { TRAIT_NAMES.forEach(t => dd.addOption(t, t)); dd.setValue(item.trait || 'Strength').onChange(val => item.trait = val as keyof Character['traits']); });
-            new Setting(this.typeSpecificContainer).setName('Burden').addDropdown(dd => { dd.addOption('One-Handed', 'One-Handed').addOption('Two-Handed', 'Two-Handed').setValue(item.burden || 'One-Handed').onChange(val => item.burden = val as 'One-Handed' | 'Two-Handed'); });
-            new Setting(this.typeSpecificContainer).setName('Range').addText(text => text.setValue(item.range || 'Melee').onChange(val => item.range = val));
+            const weapon = this.tempItem as InventoryItem & { _type: 'weapon' };
+            new Setting(this.typeSpecificContainer).setName('Damage Dice').addText(text => text.setValue(weapon.damageDice || '').onChange(val => weapon.damageDice = val));
+            new Setting(this.typeSpecificContainer).setName('Damage Type').addText(text => text.setValue(weapon.damageType || 'phy').onChange(val => weapon.damageType = val));
+            new Setting(this.typeSpecificContainer).setName('Trait').addDropdown(dd => { TRAIT_NAMES.forEach(t => dd.addOption(t, t)); dd.setValue(weapon.trait || 'Strength').onChange(val => weapon.trait = val as keyof Character['traits']); });
+            new Setting(this.typeSpecificContainer).setName('Burden').addDropdown(dd => { dd.addOption('One-Handed', 'One-Handed').addOption('Two-Handed', 'Two-Handed').setValue(weapon.burden || 'One-Handed').onChange(val => weapon.burden = val as 'One-Handed' | 'Two-Handed'); });
+            new Setting(this.typeSpecificContainer).setName('Range').addText(text => text.setValue(weapon.range || 'Melee').onChange(val => weapon.range = val));
         } else if (this.tempItem._type === 'armor') {
-            new Setting(this.typeSpecificContainer).setName('Armor Score').addText(text => text.setValue(String(item.baseScore || 0)).onChange(val => item.baseScore = parseInt(val) || 0));
-            new Setting(this.typeSpecificContainer).setName('Major Threshold').addText(text => { text.setValue(String(item.baseThresholds?.major || 0)).onChange(val => { if (!item.baseThresholds) item.baseThresholds = { major: 0, severe: 0 }; item.baseThresholds.major = parseInt(val) || 0; }); });
-            new Setting(this.typeSpecificContainer).setName('Severe Threshold').addText(text => { text.setValue(String(item.baseThresholds?.severe || 0)).onChange(val => { if (!item.baseThresholds) item.baseThresholds = { major: 0, severe: 0 }; item.baseThresholds.severe = parseInt(val) || 0; }); });
+            const armor = this.tempItem as InventoryItem & { _type: 'armor' };
+            new Setting(this.typeSpecificContainer).setName('Armor Score').addText(text => text.setValue(String(armor.baseScore || 0)).onChange(val => armor.baseScore = parseInt(val) || 0));
+            new Setting(this.typeSpecificContainer).setName('Major Threshold').addText(text => { text.setValue(String(armor.baseThresholds?.major || 0)).onChange(val => { if (!armor.baseThresholds) armor.baseThresholds = { major: 0, severe: 0 }; armor.baseThresholds.major = parseInt(val) || 0; }); });
+            new Setting(this.typeSpecificContainer).setName('Severe Threshold').addText(text => { text.setValue(String(armor.baseThresholds?.severe || 0)).onChange(val => { if (!armor.baseThresholds) armor.baseThresholds = { major: 0, severe: 0 }; armor.baseThresholds.severe = parseInt(val) || 0; }); });
         }
     }
 
@@ -954,67 +1058,215 @@ class ItemEditModal extends Modal {
         this.contentEl.empty();
     }
 }
+
 class AddItemModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     character: Character;
     onAdd: (item: CompendiumItem) => void;
+    onCustom: () => void;
 
     private searchInput: TextComponent;
-    private typeFilter: string = 'all';
+    private activeFiltersContainer: HTMLElement;
     private listEl: HTMLElement;
 
-    constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, onAdd: (item: CompendiumItem) => void) {
+    // Filter state
+    private searchTerm: string = '';
+    private selectedCategories: Set<string> = new Set();
+    private selectedTiers: Set<number> = new Set();
+    private selectedBurdens: Set<string> = new Set();
+    private selectedTraits: Set<string> = new Set();
+    private selectedSlots: Set<string> = new Set();
+
+    // Available filter options
+    private availableTiers: number[] = [];
+    private availableTraits: string[] = [];
+
+    constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, onAdd: (item: CompendiumItem) => void, onCustom: () => void) {
         super(app);
         this.plugin = plugin;
         this.character = character;
         this.onAdd = onAdd;
+        this.onCustom = onCustom;
         this.modalEl.addClass('dh-add-item-modal');
+
+        // Pre-calculate available filter options
+        const allItems = this.plugin.characterCompendium.getAllItems();
+        const tiers = new Set<number>();
+        const traits = new Set<string>();
+        allItems.forEach(item => {
+            if ('tier' in item && typeof item.tier === 'string') {
+                tiers.add(parseInt(item.tier));
+            }
+            if (item._type === 'weapon' && 'trait' in item) {
+                traits.add((item as WeaponItem).trait);
+            }
+        });
+        this.availableTiers = Array.from(tiers).sort((a, b) => a - b);
+        this.availableTraits = Array.from(traits).sort();
     }
 
     onOpen() {
         const { contentEl } = this;
-        contentEl.createEl("h2", { text: "Add Item" });
+        contentEl.empty();
+        contentEl.createEl("h2", { text: "Add Item from Compendium" });
 
+        // --- Top Bar: Search, Filters, Custom Button ---
         const topBar = contentEl.createDiv({ cls: 'dh-modal-topbar' });
-        const searchContainer = topBar.createDiv({ cls: 'search-container' });
-        this.searchInput = new TextComponent(searchContainer).setPlaceholder("Search compendium...");
-        this.searchInput.onChange(() => this.renderList());
 
-        const filterContainer = topBar.createDiv({ cls: 'filter-container' });
-        const typeSelect = new Setting(filterContainer).addDropdown(dd => {
-            dd.addOption('all', 'All Types');
-            dd.addOption('weapon', 'Weapons');
-            dd.addOption('armor', 'Armor');
-            dd.addOption('item', 'Items');
-            dd.setValue(this.typeFilter);
-            dd.onChange(value => {
-                this.typeFilter = value;
-                this.renderList();
-            });
+        // Search Input
+        const searchContainer = topBar.createDiv({ cls: 'search-input-container' });
+        this.searchInput = new TextComponent(searchContainer)
+            .setPlaceholder("Search by name...");
+        this.searchInput.onChange((value) => {
+            this.searchTerm = value.toLowerCase();
+            this.renderList();
         });
-        typeSelect.nameEl.remove();
+        this.searchInput.inputEl.addClass('dh-full-width-input');
 
-        topBar.createEl('button', { text: 'Add Custom Item' }).addEventListener('click', () => {
+        // Main Actions Container
+        const actionsContainer = topBar.createDiv({ cls: 'modal-actions-container' });
+
+        // Filter Button
+        const filterButton = actionsContainer.createEl('button');
+        filterButton.ariaLabel = "Filter items";
+        setIcon(filterButton, 'filter');
+        filterButton.addEventListener('click', (event) => this.showFilterMenu(event));
+
+        // Custom Item Button
+        actionsContainer.createEl('button', { text: 'Create Custom' }).addEventListener('click', () => {
             this.close();
-            new ItemEditModal(this.app, this.plugin, this.character, null, (newItem) => {
-                this.onAdd(newItem);
-            }).open();
+            this.onCustom();
         });
 
+        // --- Active Filters Display ---
+        this.activeFiltersContainer = contentEl.createDiv({ cls: 'dh-active-filters-container' });
+        this.renderActiveFilters();
 
+        // --- Item List ---
         this.listEl = contentEl.createDiv({ cls: 'dh-modal-list' });
         this.renderList();
     }
 
+    private showFilterMenu(event: MouseEvent) {
+        const menu = new Menu();
+
+        const addMultiSelectSubMenu = (
+            title: string,
+            options: (string | number)[],
+            selectedSet: Set<any>,
+            onUpdate: (value: any) => void
+        ) => {
+            menu.addItem((item) => {
+                item.setTitle(title).setIcon('list-tree');
+                const subMenu = (item as any).setSubmenu() as Menu;
+                options.forEach(option => {
+                    subMenu.addItem((subItem: MenuItem) => {
+                        subItem
+                            .setTitle(String(option))
+                            .setChecked(selectedSet.has(option))
+                            .onClick(() => {
+                                onUpdate(option);
+                            });
+                    });
+                });
+            });
+        };
+
+        const createToggleHandler = (set: Set<any>) => (value: any) => {
+            if (set.has(value)) {
+                set.delete(value);
+            } else {
+                set.add(value);
+            }
+            this.renderActiveFilters();
+            this.renderList();
+        };
+
+        addMultiSelectSubMenu('Category', ['weapon', 'armor', 'item', 'consumable'], this.selectedCategories, createToggleHandler(this.selectedCategories));
+        addMultiSelectSubMenu('Tier', this.availableTiers, this.selectedTiers, createToggleHandler(this.selectedTiers));
+
+        const showWeaponFilters = this.selectedCategories.size === 0 || this.selectedCategories.has('weapon');
+        if (showWeaponFilters) {
+            menu.addSeparator();
+            addMultiSelectSubMenu('Burden', ['One-Handed', 'Two-Handed'], this.selectedBurdens, createToggleHandler(this.selectedBurdens));
+            addMultiSelectSubMenu('Trait', this.availableTraits, this.selectedTraits, createToggleHandler(this.selectedTraits));
+            addMultiSelectSubMenu('Slot', ['Primary', 'Secondary'], this.selectedSlots, createToggleHandler(this.selectedSlots));
+        }
+
+        menu.showAtMouseEvent(event);
+    }
+
+    private renderActiveFilters() {
+        this.activeFiltersContainer.empty();
+
+        const createTag = (type: string, value: string | number) => {
+            const tagEl = this.activeFiltersContainer.createDiv({ cls: 'dh-active-filter-tag' });
+            const displayType = type.charAt(0).toUpperCase() + type.slice(1);
+            const displayValue = String(value).charAt(0).toUpperCase() + String(value).slice(1);
+
+            tagEl.createSpan({ text: `${displayType}:`, cls: 'dh-filter-tag-type' });
+            tagEl.createSpan({ text: displayValue, cls: 'dh-filter-tag-value' });
+            const removeBtn = tagEl.createEl('button', { cls: 'dh-remove-filter-btn' });
+            setIcon(removeBtn, 'x');
+            removeBtn.addEventListener('click', () => {
+                let set: Set<any> | null = null;
+                switch (type.toLowerCase()) {
+                    case 'category': set = this.selectedCategories; break;
+                    case 'tier': set = this.selectedTiers; break;
+                    case 'burden': set = this.selectedBurdens; break;
+                    case 'trait': set = this.selectedTraits; break;
+                    case 'slot': set = this.selectedSlots; break;
+                }
+                if (set) {
+                    set.delete(value);
+                    this.renderActiveFilters();
+                    this.renderList();
+                }
+            });
+        };
+
+        this.selectedCategories.forEach(v => createTag('category', v));
+        this.selectedTiers.forEach(v => createTag('tier', v));
+        this.selectedBurdens.forEach(v => createTag('burden', v));
+        this.selectedTraits.forEach(v => createTag('trait', v));
+        this.selectedSlots.forEach(v => createTag('slot', v));
+    }
+
     renderList() {
         this.listEl.empty();
-        const searchTerm = this.searchInput.getValue().toLowerCase();
         const allItems = this.plugin.characterCompendium.getAllItems();
 
         const filtered = allItems.filter(item => {
-            const nameMatch = item.name.toLowerCase().includes(searchTerm);
-            const typeMatch = this.typeFilter === 'all' || item._type === this.typeFilter;
-            return nameMatch && typeMatch;
+            if (this.searchTerm && !item.name.toLowerCase().includes(this.searchTerm)) {
+                return false;
+            }
+
+            // Note: `item._type` is already lowercase from the compendium loader
+            const categoryMatch = this.selectedCategories.size === 0 || this.selectedCategories.has(item._type);
+            if (!categoryMatch) return false;
+
+            if (item._type === 'armor' || item._type === 'weapon') {
+                const tierMatch = this.selectedTiers.size === 0 || this.selectedTiers.has(parseInt(item.tier));
+                if (!tierMatch) return false;
+            }
+
+            if (item._type !== 'weapon') {
+                if (this.selectedBurdens.size > 0 || this.selectedTraits.size > 0 || this.selectedSlots.size > 0) {
+                    return false;
+                }
+            } else {
+                const weapon = item as WeaponItem;
+                const burdenMatch = this.selectedBurdens.size === 0 || this.selectedBurdens.has(weapon.burden);
+                if (!burdenMatch) return false;
+
+                const traitMatch = this.selectedTraits.size === 0 || this.selectedTraits.has(weapon.trait);
+                if (!traitMatch) return false;
+
+                const slotMatch = this.selectedSlots.size === 0 || this.selectedSlots.has(weapon.primary_or_secondary);
+                if (!slotMatch) return false;
+            }
+
+            return true;
         });
 
         if (filtered.length === 0) {
@@ -1024,8 +1276,51 @@ class AddItemModal extends Modal {
 
         filtered.forEach(item => {
             const itemEl = this.listEl.createDiv({ cls: 'dh-modal-list-item' });
-            itemEl.createEl('h4', { text: item.name });
-            itemEl.createEl('p', { text: item.description || '', cls: 'dh-item-description' });
+
+            const mainInfo = itemEl.createDiv({ cls: 'dh-modal-item-main' });
+            mainInfo.createEl('h4', { text: item.name });
+
+            const detailsEl = mainInfo.createDiv({ cls: 'dh-modal-item-details' });
+            const createTag = (text: string, hover?: string) => {
+                const tag = detailsEl.createSpan({ cls: 'dh-item-tag', text });
+                if (hover) tag.title = hover;
+                return tag;
+            };
+
+            switch (item._type) {
+                case 'weapon': {
+                    const weapon = item as WeaponItem;
+                    createTag(`T${weapon.tier}`, "Tier");
+                    createTag('Weapon', "Category");
+                    createTag(weapon.burden);
+                    createTag(weapon.range);
+                    createTag(weapon.trait, 'Primary Trait');
+                    createTag(weapon.primary_or_secondary);
+                    if (weapon.feat_name) {
+                        createTag(`Feat: ${weapon.feat_name}`, weapon.feat_text).addClass('dh-item-feature');
+                    }
+                    break;
+                }
+                case 'armor': {
+                    const armor = item as ArmorItem;
+                    createTag(`T${armor.tier}`, "Tier");
+                    createTag('Armor', "Category");
+                    createTag(`${armor.base_score} AS`, 'Armor Score');
+                    createTag(`${armor.base_thresholds}`, 'Major/Severe Thresholds');
+                    if (armor.feat_name) {
+                        createTag(`Feat: ${armor.feat_name}`, armor.feat_text).addClass('dh-item-feature');
+                    }
+                    break;
+                }
+                case 'consumable':
+                case 'item': {
+                    createTag(item._type.charAt(0).toUpperCase() + item._type.slice(1), "Category");
+                    if (item.description) {
+                        itemEl.createEl('p', { text: item.description, cls: 'dh-item-description' });
+                    }
+                    break;
+                }
+            }
             itemEl.addEventListener('click', () => {
                 this.onAdd(item);
                 this.close();
@@ -1104,7 +1399,7 @@ class CharacterManagerModal extends Modal {
         new Setting(container)
             .setName('Ancestry')
             .addDropdown(dd => {
-                this.plugin.characterCompendium.ancestries.forEach(a => dd.addOption(a.id, a.name));
+                this.plugin.characterCompendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
                 dd.setValue(this.tempCharacter.ancestryId)
                     .onChange(value => this.tempCharacter.ancestryId = value);
             });
@@ -1112,7 +1407,7 @@ class CharacterManagerModal extends Modal {
         new Setting(container)
             .setName('Community')
             .addDropdown(dd => {
-                this.plugin.characterCompendium.communities.forEach(c => dd.addOption(c.id, c.name));
+                this.plugin.characterCompendium.communities.forEach(c => dd.addOption(c.name, c.name));
                 dd.setValue(this.tempCharacter.communityId)
                     .onChange(value => this.tempCharacter.communityId = value);
             });
@@ -1120,7 +1415,7 @@ class CharacterManagerModal extends Modal {
         new Setting(container)
             .setName('Class')
             .addDropdown(dd => {
-                this.plugin.characterCompendium.classes.forEach(c => dd.addOption(c.id, c.name));
+                this.plugin.characterCompendium.classes.forEach(c => dd.addOption(c.name, c.name));
                 dd.setValue(this.tempCharacter.classId)
                     .onChange(value => this.tempCharacter.classId = value);
             });
@@ -1130,9 +1425,9 @@ class CharacterManagerModal extends Modal {
             .addDropdown(dd => {
                 const charClass = this.plugin.characterCompendium.getClass(this.tempCharacter.classId);
                 if (charClass) {
-                    charClass.subclasses.forEach(subRef => {
-                        const subclass = this.plugin.characterCompendium.getSubclass(subRef.value);
-                        if (subclass) dd.addOption(subclass.id, subclass.name);
+                    const subclasses = [this.plugin.characterCompendium.getSubclass(charClass.subclass_1), this.plugin.characterCompendium.getSubclass(charClass.subclass_2)].filter(s => s);
+                    subclasses.forEach(subclass => {
+                        if (subclass) dd.addOption(subclass.name, subclass.name);
                     });
                 }
                 dd.setValue(this.tempCharacter.subclassId)
@@ -1183,7 +1478,7 @@ class CharacterManagerModal extends Modal {
                     .addText(text => text
                         .setPlaceholder('Value')
                         .setValue(String(exp.value))
-                        .onChange(value => exp.value = parseInt(v) || 0))
+                        .onChange(value => exp.value = parseInt(value) || 0))
                     .addExtraButton(btn => btn
                         .setIcon('trash')
                         .setTooltip('Remove Experience')
@@ -1254,15 +1549,16 @@ class CharacterManagerModal extends Modal {
         parent.createEl('h3', { text: 'Available Replacements' });
         const listEl = parent.createDiv({ cls: 'dh-feature-list' });
 
-        const classId = this.tempCharacter.classId;
-        const classDomains = CLASS_DOMAINS[classId] || [];
+        const charClass = this.plugin.characterCompendium.getClass(this.tempCharacter.classId);
+        if (!charClass) return;
+
+        const classDomains = [charClass.domain_1, charClass.domain_2];
         const currentFeatureIds = this.tempCharacter.features.map(f => f.id);
 
-        const availableFeatures = this.plugin.characterCompendium.features.filter(f => {
-            const metadata = this.getFeatureMetadata(f);
-            const isDomainCard = classDomains.some(d => d.toLowerCase() === metadata.domain?.toLowerCase());
-            const isNotOwned = !currentFeatureIds.includes(f.id);
-            return isDomainCard && isNotOwned && (metadata.level ?? 1) <= this.tempCharacter.level;
+        const availableFeatures = this.plugin.characterCompendium.abilities.filter(f => {
+            const isDomainCard = classDomains.some(d => d.toLowerCase() === f.domain?.toLowerCase());
+            const isNotOwned = !currentFeatureIds.includes(f.name);
+            return isDomainCard && isNotOwned && (parseInt(f.level) ?? 1) <= this.tempCharacter.level;
         });
 
         if (availableFeatures.length === 0) {
@@ -1272,18 +1568,17 @@ class CharacterManagerModal extends Modal {
         availableFeatures.forEach(feature => {
             const itemEl = listEl.createDiv({ cls: 'dh-feature-list-item' });
             itemEl.createDiv({ cls: 'dh-feature-list-item-name', text: feature.name });
-            const metadata = this.getFeatureMetadata(feature);
-            if (metadata.domain) {
-                itemEl.createDiv({ cls: 'dh-feature-list-item-sub', text: `Domain: ${metadata.domain}` });
+            if (feature.domain) {
+                itemEl.createDiv({ cls: 'dh-feature-list-item-sub', text: `Domain: ${feature.domain}` });
             }
-            itemEl.dataset.featureId = feature.id;
+            itemEl.dataset.featureId = feature.name;
 
-            if (this.selectedNewFeatureId === feature.id) {
+            if (this.selectedNewFeatureId === feature.name) {
                 itemEl.addClass('is-selected');
             }
 
             itemEl.addEventListener('click', () => {
-                this.selectedNewFeatureId = feature.id;
+                this.selectedNewFeatureId = feature.name;
                 listEl.querySelectorAll('.dh-feature-list-item').forEach(el => el.removeClass('is-selected'));
                 itemEl.addClass('is-selected');
                 this.updateButtonState();
@@ -1302,8 +1597,8 @@ class CharacterManagerModal extends Modal {
     private handleReplace() {
         if (!this.selectedCurrentFeatureId || !this.selectedNewFeatureId) return;
 
-        const newFeature = this.plugin.characterCompendium.getFeature(this.selectedNewFeatureId);
-        if (!newFeature) {
+        const newAbility = this.plugin.characterCompendium.abilities.find(a => a.name === this.selectedNewFeatureId);
+        if (!newAbility) {
             new Notice("Error: Could not find the selected feature to learn.");
             return;
         }
@@ -1313,6 +1608,17 @@ class CharacterManagerModal extends Modal {
             new Notice("Error: Could not find the feature to replace.");
             return;
         }
+
+        const newFeature: DomainCard = {
+            _type: 'domainCard',
+            id: newAbility.name,
+            name: newAbility.name,
+            description: newAbility.text,
+            level: parseInt(newAbility.level),
+            domain: newAbility.domain,
+            type: newAbility.type,
+            recallCost: parseInt(newAbility.recall)
+        };
 
         this.tempCharacter.features[featureIndex] = newFeature;
 
@@ -1324,7 +1630,16 @@ class CharacterManagerModal extends Modal {
         this.updateButtonState();
     }
 
-    private getFeatureMetadata(feature: Feature | DomainCard): { level?: number; domain?: string; type?: string; recallCost?: number } { const metadata: { level?: number; domain?: string; type?: string; recallCost?: number } = {}; if ('notes' in feature && feature.notes && Array.isArray(feature.notes)) { feature.notes.forEach(note => { const lowerNote = note.toLowerCase(); if (lowerNote.startsWith('level:')) { const level = parseInt(note.split(':')[1]?.trim()); if (!isNaN(level)) metadata.level = level; } else if (lowerNote.startsWith('domain:')) { metadata.domain = note.split(':')[1]?.trim(); } else if (lowerNote.startsWith('type:')) { metadata.type = note.split(':')[1]?.trim(); } else if (lowerNote.startsWith('recall cost:')) { const cost = parseInt(note.split(':')[1]?.trim()); if (!isNaN(cost)) metadata.recallCost = cost; } }); } else if ('level' in feature) { const card = feature as DomainCard; metadata.level = card.level; metadata.domain = card.domain; metadata.type = card.type; metadata.recallCost = card.recallCost; } return metadata; }
+    private getFeatureMetadata(feature: DomainCard): { level?: number; domain?: string; type?: string; recallCost?: number } {
+        const metadata: { level?: number; domain?: string; type?: string; recallCost?: number } = {};
+        if (feature && feature._type === 'domainCard') {
+            metadata.level = feature.level;
+            metadata.domain = feature.domain;
+            metadata.type = feature.type;
+            metadata.recallCost = feature.recallCost;
+        }
+        return metadata;
+    }
 
     onClose() {
         this.contentEl.empty();

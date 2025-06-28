@@ -1354,7 +1354,8 @@
    ----------------------------------------------------------------------------- */
 /* General modal styles */
 .dh-name-modal .modal-title, 
-.dh-manage-encounters-modal .modal-title { 
+.dh-manage-encounters-modal .modal-title,
+.dh-add-item-modal .modal-title { 
     color: var(--text-normal);
     text-align: center; 
 }
@@ -1420,6 +1421,127 @@
     background-color: rgba(var(--color-red-rgb), 0.1);
 }
 
+/* --- Add Item Modal (Reworked) --- */
+.dh-add-item-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    width: 90vw;
+    max-width: 800px;
+}
+
+.dh-add-item-modal .dh-modal-topbar {
+    display: flex;
+    gap: var(--size-4-2);
+    align-items: center;
+}
+
+.dh-add-item-modal .dh-modal-topbar .search-input {
+    flex-grow: 1;
+}
+
+.dh-active-filters-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2) 0;
+    min-height: 28px; /* Prevent layout shift when empty */
+}
+
+.dh-active-filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-active-filter-tag .dh-filter-tag-type {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.dh-active-filter-tag .dh-remove-filter-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.dh-active-filter-tag .dh-remove-filter-btn:hover {
+    color: var(--text-error);
+}
+
+.dh-add-item-modal .dh-modal-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: var(--size-4-2);
+}
+
+.dh-modal-list-item {
+    padding: var(--size-4-2) var(--size-4-3);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+}
+.dh-modal-list-item:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+.dh-modal-item-main h4 {
+    margin: 0;
+}
+
+.dh-modal-item-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+    align-items: center;
+}
+
+.dh-item-tag {
+    background-color: var(--background-secondary-alt);
+    color: var(--text-muted);
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+    font-weight: 500;
+}
+
+.dh-item-feature {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 2px;
+}
+.dh-item-feature:hover {
+    color: var(--text-normal);
+}
+
+.dh-item-description {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    font-style: italic;
+    width: 100%;
+}
+
 .menu-item-icon { 
     margin-right: var(--size-4-2);
 }
@@ -1436,12 +1558,8 @@
 .menu-item:hover {
     background-color: var(--background-modifier-hover);
 }
-.menu-item.is-checked { 
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-.menu-item.is-checked:hover {
-    background-color: var(--interactive-accent-hover);
+.menu-item.is-checked > .menu-item-icon { 
+    color: var(--interactive-accent);
 }
 .menu-separator { 
     background-color: var(--background-modifier-border);
@@ -2661,7 +2779,6 @@
     font-size: var(--font-ui-smaller);
     text-transform: uppercase;
 }
-
 /* Details Tab */
 .dh-details-section {
     margin-bottom: var(--size-4-5);
