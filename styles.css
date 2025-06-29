@@ -2181,6 +2181,8 @@
     align-items: center;
     justify-content: center;
     background-color: var(--dh-sheet-bg-alt);
+    position: relative; /* Add for positioning context */
+    overflow: hidden; /* Add to crop the image */
 }
 .dh-avatar > .svg-icon {
     width: 40px; /* smaller */
@@ -2924,6 +2926,120 @@
 }
 
 
+/* ==========================================================================
+   AVATAR STYLES (BACKGROUND-IMAGE IMPLEMENTATION)
+   ========================================================================== */
+
+/* --- 1. AVATAR IN THE CHARACTER SHEET HEADER --- */
+
+/* This is the 70x70 circle that displays the final avatar. */
+.dh-avatar {
+    width: 70px;
+    height: 70px;
+    border: 2px solid var(--dh-sheet-accent);
+    border-radius: 50%;
+    background-color: var(--dh-sheet-bg-alt);
+    /* Default styles for when an image is loading or not set */
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    /* For flexbox layout in the header */
+    flex-shrink: 0;
+    /* For centering the placeholder icon */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The placeholder user icon */
+.dh-avatar > .svg-icon {
+    width: 40px;
+    height: 40px;
+}
+
+
+/* --- 2. AVATAR EDITOR (Used in Creator & Manager Modal) --- */
+.dh-avatar-editor-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+/* This is the 150x150 circular preview area. */
+.dh-preview-container {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 2px solid var(--interactive-accent);
+    background-color: var(--background-secondary);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+    cursor: move;
+    user-select: none;
+    /* For displaying error text */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-error);
+}
+
+.dh-preview-container.is-dragging {
+    cursor: grabbing;
+    box-shadow: 0 0 10px var(--interactive-accent);
+}
+
+/* This is the new container that sits BELOW the preview circle. */
+.dh-avatar-controls-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 220px; /* Give the controls a max width */
+}
+
+/* This container aligns the "Size:" label next to the slider. */
+.dh-avatar-scale-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.dh-avatar-scale-slider {
+    width: 100%;
+}
+
+.dh-avatar-position-hint {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
+/* The reset button */
+.dh-avatar-reset-btn {
+    pointer-events: auto; /* Make button clickable */
+    margin-top: 8px;
+}
+
+/* A utility class for displaying error text (e.g., "Invalid URL") */
+.dh-error-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 10px;
+    color: var(--text-error);
+    font-size: var(--font-ui-small);
+    cursor: default;
+    user-select: text;
+}
 /* --- [RESPONSIVE STYLES] --- */
 
 /* Tablet and smaller desktops */

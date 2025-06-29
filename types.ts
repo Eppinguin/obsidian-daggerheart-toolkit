@@ -37,6 +37,11 @@ export type CompendiumItem = ArmorItem | WeaponItem | GenericItem | ConsumableIt
 
 // --- CHARACTER DATA MODEL ---
 // This model should store data in a processed, ready-to-use format (e.g., numbers instead of strings)
+export interface AvatarTransform {
+    scale: number;
+    x: number;
+    y: number;
+}
 export interface Character {
     id: string;
     'dg-character': boolean;
@@ -66,6 +71,8 @@ export interface Character {
     background?: { question: string; answer: string; }[];
     connections?: { question: string; answer: string; }[];
     conditions: Condition[];
+    avatarUrl?: string | null;
+    avatarTransform?: AvatarTransform;
 }
 
 export interface Trait { _type: 'trait'; value: number; locked: boolean; }

@@ -2,11 +2,12 @@ import { ItemView, WorkspaceLeaf, Notice, setIcon, Modal, App, Setting, TextComp
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
-    Character, Trait, InventoryItem, Experience, CompendiumFeature, CompendiumItem, DomainCard, Condition, JsonClass, JsonSubclass, JsonAncestry, JsonCommunity, ArmorItem, WeaponItem
+    Character, Trait, InventoryItem, Experience, CompendiumFeature, CompendiumItem, DomainCard, Condition, JsonClass, JsonSubclass, JsonAncestry, JsonCommunity, ArmorItem, WeaponItem, AvatarTransform
 } from '../../types';
 import { DAGGERHEART_CONDITIONS } from '../constants';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
 import { handleAdvantageDisadvantage, formatTraitModifier } from '../services/dice-helpers';
+import { createAvatarEditor } from "./components/AvatarEditor";
 
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
@@ -37,7 +38,10 @@ type CreatorState = {
     domainCardIds: string[];
     potionChoice: 'health' | 'stamina';
     connections: string[];
+    avatarUrl?: string;
+    avatarTransform?: AvatarTransform;
 };
+
 
 export class CharacterSheetView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
@@ -51,6 +55,8 @@ export class CharacterSheetView extends ItemView {
         startingWeaponIds: [],
         potionChoice: 'health',
         connections: [],
+        avatarUrl: '',
+        avatarTransform: undefined,
     };
     private creatorStep: number = 0;
 
@@ -142,7 +148,7 @@ export class CharacterSheetView extends ItemView {
         setIcon(newCharBtn, 'plus');
         newCharBtn.ariaLabel = "Create New Character";
         newCharBtn.addEventListener('click', () => {
-            this.creatorState = { traits: {}, domainCardIds: [], backgroundAnswers: [], experiences: [{ name: '', description: '' }, { name: '', description: '' }], startingWeaponIds: [], potionChoice: 'health', connections: [] };
+            this.creatorState = { traits: {}, domainCardIds: [], backgroundAnswers: [], experiences: [{ name: '', description: '' }, { name: '', description: '' }], startingWeaponIds: [], potionChoice: 'health', connections: [], avatarUrl: '', avatarTransform: undefined };
             this.creatorStep = 0;
             this.plugin.setActiveCharacterId(null);
         });
@@ -220,7 +226,62 @@ export class CharacterSheetView extends ItemView {
         });
     }
     private drawCreatorStep8_Connections(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 8: Create Connections' }); parent.createEl('p', { text: "Use these questions as inspiration to create connections with the other characters at your table. Discuss your answers together and jot down your notes here." }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass?.connections) { charClass.connections.forEach((conn, index) => { new Setting(parent).setName(conn.question).addTextArea(text => { text.setValue(this.creatorState.connections?.[index] || '').onChange(value => { if (!this.creatorState.connections) this.creatorState.connections = []; this.creatorState.connections[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see connection questions.' }); } }
-    private drawCreatorStep9_FinalDetails(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 9: Final Details & Review' }); if (!this.creatorState.pronouns) this.creatorState.pronouns = { subject: 'they', object: 'them' }; new Setting(parent).setName("Character Name").addText(text => text.setPlaceholder("Elara Meadowlight").setValue(this.creatorState.name || '').onChange(value => this.creatorState.name = value)); new Setting(parent).setName("Subject Pronoun").addText(text => text.setPlaceholder("e.g., she").setValue(this.creatorState.pronouns?.subject || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.subject = value; })); new Setting(parent).setName("Object Pronoun").addText(text => text.setPlaceholder("e.g., her").setValue(this.creatorState.pronouns?.object || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.object = value; })); parent.createEl('hr'); parent.createEl('h4', { text: 'Character Review' }); const reviewEl = parent.createDiv({ cls: 'dh-creator-review' }); const { ancestryId, communityId, classId, subclassId, traits, startingArmorId, startingWeaponIds, domainCardIds } = this.creatorState; const ancestry = this.plugin.characterCompendium.getAncestry(ancestryId ?? ''); const community = this.plugin.characterCompendium.getCommunity(communityId ?? ''); const charClass = this.plugin.characterCompendium.getClass(classId ?? ''); const subclass = this.plugin.characterCompendium.getSubclass(subclassId ?? ''); const armor = this.plugin.characterCompendium.armors.find(a => a.name === startingArmorId) as ArmorItem | undefined; const weapons = startingWeaponIds ? (this.plugin.characterCompendium.weapons.filter(w => startingWeaponIds.includes(w.name)) as WeaponItem[]) : []; const domains = domainCardIds?.join(', '); reviewEl.createEl('p').innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`; reviewEl.createEl('p').innerHTML = `<strong>Ancestry:</strong> ${ancestry?.name || 'N/A'}`; reviewEl.createEl('p').innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`; reviewEl.createEl('h5', { text: 'Traits' }); if (traits) { Object.entries(traits).forEach(([key, value]) => { if (value !== undefined) reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>${key}:</strong> ${value >= 0 ? '+' : ''}${value}`; }); } reviewEl.createEl('h5', { text: 'Equipment' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`; reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`; reviewEl.createEl('h5', { text: 'Domain Cards' }); reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A'; }
+    private drawCreatorStep9_FinalDetails(parent: HTMLElement) {
+        parent.createEl('h3', { text: 'Step 9: Final Details & Review' });
+
+        // Character Name & Pronouns
+        if (!this.creatorState.pronouns) this.creatorState.pronouns = { subject: 'they', object: 'them' };
+        new Setting(parent).setName("Character Name").addText(text => text.setPlaceholder("Elara Meadowlight").setValue(this.creatorState.name || '').onChange(value => this.creatorState.name = value));
+        new Setting(parent).setName("Subject Pronoun").addText(text => text.setPlaceholder("e.g., she").setValue(this.creatorState.pronouns?.subject || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.subject = value; }));
+        new Setting(parent).setName("Object Pronoun").addText(text => text.setPlaceholder("e.g., her").setValue(this.creatorState.pronouns?.object || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.object = value; }));
+
+        // Avatar Section
+        parent.createEl('h4', { text: 'Character Avatar' });
+        parent.createEl('p', { text: 'Add an avatar image for your character. This is optional.' });
+
+        createAvatarEditor(
+            parent,
+            this.creatorState.avatarUrl || '',
+            this.creatorState.avatarTransform,
+            (newUrl) => {
+                this.creatorState.avatarUrl = newUrl;
+                this.creatorState.avatarTransform = undefined; // Reset transform on new URL
+            },
+            (newTransform) => {
+                this.creatorState.avatarTransform = newTransform;
+            }
+        );
+
+        // Review Section
+        parent.createEl('hr');
+        parent.createEl('h4', { text: 'Character Review' });
+        const reviewEl = parent.createDiv({ cls: 'dh-creator-review' });
+        const { ancestryId, communityId, classId, subclassId, traits, startingArmorId, startingWeaponIds, domainCardIds } = this.creatorState;
+        const ancestry = this.plugin.characterCompendium.getAncestry(ancestryId ?? '');
+        const community = this.plugin.characterCompendium.getCommunity(communityId ?? '');
+        const charClass = this.plugin.characterCompendium.getClass(classId ?? '');
+        const subclass = this.plugin.characterCompendium.getSubclass(subclassId ?? '');
+        const armor = this.plugin.characterCompendium.armors.find(a => a.name === startingArmorId) as ArmorItem | undefined;
+        const weapons = startingWeaponIds ? (this.plugin.characterCompendium.weapons.filter(w => startingWeaponIds.includes(w.name)) as WeaponItem[]) : [];
+        const domains = domainCardIds?.join(', ');
+
+        reviewEl.createEl('p').innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`;
+        reviewEl.createEl('p').innerHTML = `<strong>Ancestry:</strong> ${ancestry?.name || 'N/A'}`;
+        reviewEl.createEl('p').innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`;
+
+        reviewEl.createEl('h5', { text: 'Traits' });
+        if (traits) {
+            Object.entries(traits).forEach(([key, value]) => {
+                if (value !== undefined) reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>${key}:</strong> ${value >= 0 ? '+' : ''}${value}`;
+            });
+        }
+
+        reviewEl.createEl('h5', { text: 'Equipment' });
+        reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`;
+        reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`;
+        reviewEl.createEl('h5', { text: 'Domain Cards' });
+        reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A';
+    }
     private async finalizeCharacter(partialChar: Partial<CreatorState>) {
         if (!partialChar.name || !partialChar.classId || !partialChar.subclassId || !partialChar.ancestryId || !partialChar.communityId || !partialChar.startingArmorId || !partialChar.startingWeaponIds || partialChar.startingWeaponIds.length === 0 || !partialChar.traits || !partialChar.domainCardIds || partialChar.domainCardIds.length !== 2) {
             new Notice("Please complete all required fields on all steps.");
@@ -322,6 +383,8 @@ export class CharacterSheetView extends ItemView {
             stress: { _type: 'dynamicResource', max: 6, current: 0 },
             hope: { _type: 'dynamicResource', max: 6, current: 2 },
             armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: startingArmor.baseScore },
+            avatarUrl: partialChar.avatarUrl || null,
+            avatarTransform: partialChar.avatarTransform,
             damageThresholds: {
                 _type: 'damageThresholds',
                 major: startingArmor.baseThresholds.major + 1,
@@ -372,10 +435,55 @@ export class CharacterSheetView extends ItemView {
         const charClass = this.plugin.characterCompendium.getClass(data.classId);
         const subClass = this.plugin.characterCompendium.getSubclass(data.subclassId);
         const ancestry = this.plugin.characterCompendium.getAncestry(data.ancestryId);
+
         const header = parent.createDiv({ cls: 'dh-sheet-header' });
         const left = header.createDiv({ cls: 'dh-header-left' });
+
         const avatar = left.createDiv({ cls: 'dh-avatar' });
-        setIcon(avatar, 'user-round');
+        if (data.avatarUrl) {
+            // This logic mirrors the editor, but adapts for the smaller 70px header size
+            if (data.avatarTransform) {
+                const img = new Image();
+                img.src = data.avatarUrl;
+                img.onload = () => {
+                    // FIX: Re-check for avatarTransform inside the async callback.
+                    if (!data.avatarTransform) return;
+
+                    const EDITOR_SIZE = 150;
+                    const HEADER_SIZE = 70;
+                    const sizeRatio = HEADER_SIZE / EDITOR_SIZE;
+
+                    const scale = data.avatarTransform.scale;
+                    // Scale the offsets by the size ratio
+                    const offsetX = data.avatarTransform.x * sizeRatio;
+                    const offsetY = data.avatarTransform.y * sizeRatio;
+
+                    const imgRatio = img.naturalWidth / img.naturalHeight;
+                    let baseWidth, baseHeight;
+                    if (imgRatio > 1) {
+                        baseHeight = HEADER_SIZE;
+                        baseWidth = HEADER_SIZE * imgRatio;
+                    } else {
+                        baseWidth = HEADER_SIZE;
+                        baseHeight = HEADER_SIZE / imgRatio;
+                    }
+
+                    const bgWidth = baseWidth * scale;
+                    const bgHeight = baseHeight * scale;
+                    const bgPosX = `calc(50% + ${offsetX}px)`;
+                    const bgPosY = `calc(50% + ${offsetY}px)`;
+
+                    avatar.style.backgroundImage = `url("${data.avatarUrl}")`;
+                    avatar.style.backgroundSize = `${bgWidth}px ${bgHeight}px`;
+                    avatar.style.backgroundPosition = `${bgPosX} ${bgPosY}`;
+                    avatar.style.backgroundRepeat = 'no-repeat';
+                }
+            }
+        } else {
+            setIcon(avatar, 'user-round');
+        }
+
+
         const nameplate = left.createDiv({ cls: 'dh-nameplate' });
         nameplate.createEl('h1', { text: data.name || "Unnamed Character" });
         nameplate.createEl('p', { text: `${ancestry?.name || 'N/A'} ${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})` });
@@ -1449,21 +1557,28 @@ class CharacterManagerModal extends Modal {
     onOpen() {
         this.contentEl.empty();
         const { contentEl } = this;
-        contentEl.createEl("h1", { text: `Manage ${this.character.name}` });
 
-        this.drawCoreDetails(contentEl.createDiv());
-        this.drawHeritageAndClass(contentEl.createDiv());
-        this.drawVitalsEditor(contentEl.createDiv());
-        this.drawTraitsEditor(contentEl.createDiv());
-        this.drawExperiencesEditor(contentEl.createDiv());
-        this.drawFeatureReplacement(contentEl.createDiv());
+        // By wrapping the content creation in requestAnimationFrame, we ensure that the modal's
+        // initial layout and CSS have been calculated by the browser before we add our components.
+        // This solves the race condition where the avatar container had no dimensions when the image transform was applied.
+        requestAnimationFrame(() => {
+            contentEl.createEl("h1", { text: `Manage ${this.character.name}` });
 
-        const footer = contentEl.createDiv({ cls: 'dh-modal-footer' });
-        footer.createEl('button', { text: 'Save & Close', cls: 'mod-cta' }).addEventListener('click', () => {
-            this.onSave(this.tempCharacter);
-            this.close();
+            this.drawCoreDetails(contentEl.createDiv());
+            this.drawHeritageAndClass(contentEl.createDiv());
+            this.drawVitalsEditor(contentEl.createDiv());
+            this.drawTraitsEditor(contentEl.createDiv());
+            this.drawExperiencesEditor(contentEl.createDiv());
+            this.drawFeatureReplacement(contentEl.createDiv());
+
+            const footer = contentEl.createDiv({ cls: 'dh-modal-footer' });
+            footer.createEl('button', { text: 'Save & Close', cls: 'mod-cta' }).addEventListener('click', () => {
+                this.onSave(this.tempCharacter);
+                this.close();
+            });
         });
     }
+
 
     private drawCoreDetails(parent: HTMLElement) {
         const container = parent.createDiv({ cls: 'dh-manager-section' });
@@ -1484,6 +1599,19 @@ class CharacterManagerModal extends Modal {
                         this.tempCharacter.level = level;
                     }
                 }));
+
+        createAvatarEditor(
+            container,
+            this.tempCharacter.avatarUrl || '',
+            this.tempCharacter.avatarTransform,
+            (newUrl) => {
+                // The editor now handles transform resets, so we only need to update the URL.
+                this.tempCharacter.avatarUrl = newUrl || null;
+            },
+            (newTransform) => {
+                this.tempCharacter.avatarTransform = newTransform;
+            }
+        );
     }
 
     private drawHeritageAndClass(parent: HTMLElement) {
