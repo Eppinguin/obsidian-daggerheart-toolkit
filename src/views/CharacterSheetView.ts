@@ -121,9 +121,9 @@ export class CharacterSheetView extends ItemView {
             const option = selector.createEl('option', { value: char.id, text: char.name });
             if (char.id === activeCharId) { option.selected = true; }
         });
-        selector.addEventListener('change', (ev: Event) => {
+        selector.addEventListener('change', async (ev: Event) => {
             const selectEl = ev.target as HTMLSelectElement;
-            this.plugin.setActiveCharacterId(selectEl.value || null);
+            await this.plugin.setActiveCharacterId(selectEl.value || null);
         });
 
         const right = header.createDiv({ cls: 'dh-topbar-right' });

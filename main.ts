@@ -62,6 +62,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     async onload() {
         console.log('Loading Daggerheart Plugin');
         await this.loadSettings();
+        this.activeCharacterId = this.settings.activeCharacterId;
 
         this.handleDddiceInitialization();
 
@@ -181,8 +182,10 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     public getActiveCharacterId(): string | null { return this.activeCharacterId; }
 
-    public setActiveCharacterId(id: string | null) {
+    public async setActiveCharacterId(id: string | null) {
         this.activeCharacterId = id;
+        this.settings.activeCharacterId = id;
+        await this.saveSettings();
         this.app.workspace.trigger('daggerheart-character-update');
     }
 

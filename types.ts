@@ -132,6 +132,7 @@ export interface DddiceSettings {
 export interface EncounterBudgetConfig { playerCount: number; isEasier: boolean; isHarder: boolean; isDamageBoosted: boolean; useLowerTier: boolean; }
 
 export interface DaggerheartPluginSettings {
+    activeCharacterId: string | null;
     compendiumFolder: string;
     savedEncounters: SavedEncounter[];
     useSrdAdversaries: boolean;
@@ -155,6 +156,7 @@ export interface DaggerheartPluginSettings {
 }
 
 export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
+    activeCharacterId: null,
     compendiumFolder: '',
     savedEncounters: [],
     useSrdAdversaries: true,
