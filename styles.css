@@ -2800,24 +2800,36 @@
     border-top: 1px solid var(--dh-sheet-border);
     background-color: var(--dh-sheet-bg-alt);
     display: flex;
-    justify-content: flex-end; /* Align stat boxes to the right */
     padding: var(--size-4-2);
     gap: var(--size-4-2);
 }
 
+.dh-feature-card-footer-left {
+    justify-content: flex-start;
+}
+
 .dh-spellcast-box {
-    width: 70px;
-    height: 60px;
-    border: 1px solid var(--dh-sheet-accent-dark);
     border-radius: var(--radius-s);
     display: flex;
-    flex-direction: column;
     align-items: center;
+    padding: var(--size-4-2) var(--size-4-2);
+    background-color: var(--dh-sheet-bg);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.dh-spellcast-box-inline {
+    font-size: var(--font-ui-medium);
+        color: var(--dh-sheet-bg);
+    background-color: var(--dh-sheet-accent);
     justify-content: center;
     text-align: center;
     cursor: pointer;
-    background-color: var(--dh-sheet-accent);
-    color: var(--dh-sheet-bg);
+}
+
+.dh-spellcast-modifier {
+    font-weight: 700;
+    margin-right: var(--size-2-1);
     transition: all 0.2s ease;
 }
 

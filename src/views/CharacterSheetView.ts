@@ -998,19 +998,19 @@ export class CharacterSheetView extends ItemView {
         renderRollableContent(this.plugin, feature.description, body, feature.name, true);
 
         // --- Footer & Spellcasting Button ---
-        const footer = card.createDiv({ cls: 'dh-feature-card-footer' });
-
         // Check for spellcasting roll
         if (feature.description.toLowerCase().includes('make a spellcast roll')) {
+            const footer = card.createDiv({ cls: 'dh-feature-card-footer dh-feature-card-footer-left' });
             const subclass = this.plugin.characterCompendium.getSubclass(character.subclassId);
             const spellcastingTraitName = subclass?.spellcast_trait as keyof Character['traits'] | undefined;
 
             if (spellcastingTraitName) {
                 const traitValue = character.traits[spellcastingTraitName]?.value ?? 0;
                 // Create a styled box instead of a plain button
-                const rollBox = footer.createDiv({ cls: 'dh-spellcast-box' });
-                rollBox.createDiv({ text: `${traitValue >= 0 ? '+' : ''}${traitValue}` });
-                rollBox.createDiv({ text: spellcastingTraitName });
+                const rollBox = footer.createDiv({ cls: 'dh-spellcast-box dh-spellcast-box-inline' });
+                const modSpan = rollBox.createSpan({ cls: 'dh-spellcast-modifier' });
+                modSpan.setText(`${traitValue >= 0 ? '+' : ''}${traitValue}`);
+                rollBox.createSpan({ text: ` ${spellcastingTraitName}` });
                 rollBox.title = `Click to make a Spellcast roll with ${spellcastingTraitName}`;
 
                 rollBox.addEventListener('click', (event) => {
