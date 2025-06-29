@@ -3119,3 +3119,24 @@
 .dh-conditions-box.is-clickable:hover {
     background-color: var(--background-modifier-hover);
 }
+
+/* Specific styles for the modal actions container and buttons to fix alignment */
+.dh-add-item-modal .modal-actions-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.dh-add-item-modal .modal-actions-container button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.dh-add-item-modal .modal-actions-container button:hover {
+    background-color: var(--interactive-accent-hover);
+}

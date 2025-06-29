@@ -67,13 +67,17 @@ export class AddItemModal extends Modal {
         const actionsContainer = topBar.createDiv({ cls: 'modal-actions-container' });
 
         // Filter Button
-        const filterButton = actionsContainer.createEl('button');
+        const filterButton = actionsContainer.createEl('button', { cls: 'filter-button' });
         filterButton.ariaLabel = "Filter items";
         setIcon(filterButton, 'filter');
         filterButton.addEventListener('click', (event) => this.showFilterMenu(event));
 
         // Custom Item Button
-        actionsContainer.createEl('button', { text: 'Create Custom' }).addEventListener('click', () => {
+        const customButton = actionsContainer.createEl('button', {
+            text: 'Create Custom',
+            cls: 'custom-button'
+        });
+        customButton.addEventListener('click', () => {
             this.close();
             this.onCustom();
         });
