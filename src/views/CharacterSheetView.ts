@@ -167,17 +167,130 @@ export class CharacterSheetView extends ItemView {
     // --- CHARACTER CREATOR WIZARD (Omitted for brevity) ---
     private redrawCreatorStep() { if (!this.stepContainer) return; this.stepContainer.empty(); const steps = [this.drawCreatorStep1_Class.bind(this), this.drawCreatorStep2_Heritage.bind(this), this.drawCreatorStep3_Traits.bind(this), this.drawCreatorStep4_Equipment.bind(this), this.drawCreatorStep5_Background.bind(this), this.drawCreatorStep6_Experiences.bind(this), this.drawCreatorStep7_Domains.bind(this), this.drawCreatorStep8_Connections.bind(this), this.drawCreatorStep9_FinalDetails.bind(this),]; if (this.creatorStep < steps.length) { steps[this.creatorStep](this.stepContainer); } this.backBtn.style.visibility = this.creatorStep === 0 ? 'hidden' : 'visible'; this.nextBtn.textContent = this.creatorStep === steps.length - 1 ? 'Create Character' : 'Next'; }
     private drawCharacterCreator(parent: HTMLElement) { const creatorEl = parent.createDiv({ cls: 'dh-creator-wizard' }); creatorEl.createEl('h2', { text: 'Create New Character' }); this.stepContainer = creatorEl.createDiv(); const navContainer = creatorEl.createDiv({ cls: 'dh-creator-nav' }); this.backBtn = navContainer.createEl('button', { text: 'Back', cls: 'dh-creator-btn' }); this.nextBtn = navContainer.createEl('button', { text: 'Next', cls: 'dh-creator-btn mod-cta' }); this.backBtn.addEventListener('click', () => { if (this.creatorStep > 0) { this.creatorStep--; this.redrawCreatorStep(); } }); this.nextBtn.addEventListener('click', async () => { const steps = 9; if (this.creatorStep === steps - 1) { await this.finalizeCharacter(this.creatorState); } else if (this.creatorStep < steps - 1) { this.creatorStep++; this.redrawCreatorStep(); } }); this.redrawCreatorStep(); }
+
     private drawCreatorStep1_Class(parent: HTMLElement) {
-        parent.createEl('h3', { text: 'Step 1: Choose your Class & Subclass' }); const detailsContainer = parent.createDiv({ cls: 'dh-creator-details' }); const subclassSetting = new Setting(parent); const drawDetails = () => {
-            detailsContainer.empty(); if (!this.creatorState.classId) return; const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId); if (charClass) {
-                detailsContainer.createEl('h4', { text: charClass.name }); if (charClass.description) {
+        parent.createEl('h3', { text: 'Step 1: Choose your Class & Subclass' });
+        const detailsContainer = parent.createDiv({ cls: 'dh-creator-details' });
+        const subclassSetting = new Setting(parent);
+
+        const drawDetails = () => {
+            detailsContainer.empty();
+            if (!this.creatorState.classId) return;
+
+            const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId);
+            if (charClass) {
+                // Render class description
+                detailsContainer.createEl('h4', { text: charClass.name });
+                if (charClass.description) {
                     renderMarkdown(this.plugin, charClass.description, detailsContainer.createDiv());
                 }
-                detailsContainer.createEl('p', { text: `Initial HP: ${charClass.hp} | Initial Evasion: ${charClass.evasion}` }); if (this.creatorState.subclassId) { const subclass = this.plugin.characterCompendium.getSubclass(this.creatorState.subclassId); if (subclass) { detailsContainer.createEl('h5', { text: `Subclass: ${subclass.name}` }); renderMarkdown(this.plugin, subclass.description, detailsContainer.createDiv()); } }
+                detailsContainer.createEl('p', { text: `Initial HP: ${charClass.hp} | Initial Evasion: ${charClass.evasion}` });
+
+                // --- PREVIEW: Class Features ---
+                const classFeatures: CompendiumFeature[] = charClass.class_feats.map(f => ({ name: f.name, description: f.text }));
+                if (charClass.hope_feat_name) {
+                    classFeatures.push({ name: charClass.hope_feat_name, description: charClass.hope_feat_text });
+                }
+                this.drawCreatorFeaturePreview(detailsContainer, 'You will gain these Class Features', classFeatures);
+
+                if (this.creatorState.subclassId) {
+                    const subclass = this.plugin.characterCompendium.getSubclass(this.creatorState.subclassId);
+                    if (subclass) {
+                        // Render subclass description
+                        detailsContainer.createEl('h5', { text: `Subclass: ${subclass.name}` });
+                        renderMarkdown(this.plugin, subclass.description, detailsContainer.createDiv());
+
+                        // --- PREVIEW: Subclass Foundations ---
+                        const subclassFeatures: CompendiumFeature[] = subclass.foundations.map(f => ({ name: f.name, description: f.text }));
+                        this.drawCreatorFeaturePreview(detailsContainer, `You will gain these ${subclass.name} Foundations`, subclassFeatures);
+                    }
+                }
             }
-        }; const drawSubclassDropdown = () => { subclassSetting.clear(); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass) { const subclasses = [this.plugin.characterCompendium.getSubclass(charClass.subclass_1), this.plugin.characterCompendium.getSubclass(charClass.subclass_2)].filter(s => s); subclassSetting.setName("Subclass").addDropdown(dd => { dd.addOption('', '--- Select ---'); subclasses.forEach(subclass => { if (subclass) dd.addOption(subclass.name, subclass.name); }); dd.setValue(this.creatorState.subclassId || '').onChange(value => { this.creatorState.subclassId = value; drawDetails(); }); }); } }; new Setting(parent).setName("Class").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.classes.forEach(cls => dd.addOption(cls.name, cls.name)); dd.setValue(this.creatorState.classId || '').onChange(value => { this.creatorState.classId = value; this.creatorState.subclassId = undefined; this.creatorState.backgroundAnswers = []; this.creatorState.connections = []; drawSubclassDropdown(); drawDetails(); }); }); drawSubclassDropdown(); drawDetails();
+        };
+
+        const drawSubclassDropdown = () => {
+            subclassSetting.clear();
+            const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? '');
+            if (charClass) {
+                const subclasses = [this.plugin.characterCompendium.getSubclass(charClass.subclass_1), this.plugin.characterCompendium.getSubclass(charClass.subclass_2)].filter(s => s);
+                subclassSetting.setName("Subclass").addDropdown(dd => {
+                    dd.addOption('', '--- Select ---');
+                    subclasses.forEach(subclass => { if (subclass) dd.addOption(subclass.name, subclass.name); });
+                    dd.setValue(this.creatorState.subclassId || '').onChange(value => {
+                        this.creatorState.subclassId = value;
+                        drawDetails();
+                    });
+                });
+            }
+        };
+
+        new Setting(parent).setName("Class").addDropdown(dd => {
+            dd.addOption('', '--- Select ---');
+            this.plugin.characterCompendium.classes.forEach(cls => dd.addOption(cls.name, cls.name));
+            dd.setValue(this.creatorState.classId || '').onChange(value => {
+                this.creatorState.classId = value;
+                this.creatorState.subclassId = undefined;
+                this.creatorState.backgroundAnswers = [];
+                this.creatorState.connections = [];
+                drawSubclassDropdown();
+                drawDetails();
+            });
+        });
+
+        drawSubclassDropdown();
+        drawDetails();
     }
-    private drawCreatorStep2_Heritage(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 2: Choose Heritage' }); const ancestryDetails = parent.createDiv({ cls: 'dh-creator-details' }); new Setting(parent).setName("Ancestry").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.ancestries.forEach(anc => dd.addOption(anc.name, anc.name)); dd.setValue(this.creatorState.ancestryId || '').onChange(value => { this.creatorState.ancestryId = value; this.redrawCreatorStep(); }); }); if (this.creatorState.ancestryId) { const ancestry = this.plugin.characterCompendium.getAncestry(this.creatorState.ancestryId); if (ancestry) { ancestryDetails.createEl('h4', { text: ancestry.name }); renderMarkdown(this.plugin, ancestry.description, ancestryDetails.createDiv()); ancestry.feats.forEach(feat => { ancestryDetails.createEl('strong', { text: `${feat.name}: ` }).appendText(feat.text) }); } } const communityDetails = parent.createDiv({ cls: 'dh-creator-details' }); new Setting(parent).setName("Community").addDropdown(dd => { dd.addOption('', '--- Select ---'); this.plugin.characterCompendium.communities.forEach(com => dd.addOption(com.name, com.name)); dd.setValue(this.creatorState.communityId || '').onChange(value => { this.creatorState.communityId = value; this.redrawCreatorStep(); }); }); if (this.creatorState.communityId) { const community = this.plugin.characterCompendium.getCommunity(this.creatorState.communityId); if (community) { communityDetails.createEl('h4', { text: community.name }); renderMarkdown(this.plugin, community.description, communityDetails.createDiv()); community.feats.forEach(feat => { communityDetails.createEl('strong', { text: `${feat.name}: ` }).appendText(feat.text) }); } } }
+
+    private drawCreatorStep2_Heritage(parent: HTMLElement) {
+        parent.createEl('h3', { text: 'Step 2: Choose Heritage' });
+
+        // --- Ancestry ---
+        const ancestryDetails = parent.createDiv({ cls: 'dh-creator-details' });
+        new Setting(parent).setName("Ancestry").addDropdown(dd => {
+            dd.addOption('', '--- Select ---');
+            this.plugin.characterCompendium.ancestries.forEach(anc => dd.addOption(anc.name, anc.name));
+            dd.setValue(this.creatorState.ancestryId || '').onChange(value => {
+                this.creatorState.ancestryId = value;
+                this.redrawCreatorStep();
+            });
+        });
+
+        if (this.creatorState.ancestryId) {
+            const ancestry = this.plugin.characterCompendium.getAncestry(this.creatorState.ancestryId);
+            if (ancestry) {
+                ancestryDetails.createEl('h4', { text: ancestry.name });
+                renderMarkdown(this.plugin, ancestry.description, ancestryDetails.createDiv());
+
+                // --- PREVIEW: Ancestry Features ---
+                const ancestryFeatures: CompendiumFeature[] = ancestry.feats.map(f => ({ name: f.name, description: f.text }));
+                this.drawCreatorFeaturePreview(ancestryDetails, 'Ancestry Features', ancestryFeatures);
+            }
+        }
+
+        // --- Community ---
+        const communityDetails = parent.createDiv({ cls: 'dh-creator-details' });
+        new Setting(parent).setName("Community").addDropdown(dd => {
+            dd.addOption('', '--- Select ---');
+            this.plugin.characterCompendium.communities.forEach(com => dd.addOption(com.name, com.name));
+            dd.setValue(this.creatorState.communityId || '').onChange(value => {
+                this.creatorState.communityId = value;
+                this.redrawCreatorStep();
+            });
+        });
+
+        if (this.creatorState.communityId) {
+            const community = this.plugin.characterCompendium.getCommunity(this.creatorState.communityId);
+            if (community) {
+                communityDetails.createEl('h4', { text: community.name });
+                renderMarkdown(this.plugin, community.description, communityDetails.createDiv());
+
+                // --- PREVIEW: Community Features ---
+                const communityFeatures: CompendiumFeature[] = community.feats.map(f => ({ name: f.name, description: f.text }));
+                this.drawCreatorFeaturePreview(communityDetails, 'Community Features', communityFeatures);
+            }
+        }
+    }
+
     private drawCreatorStep3_Traits(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 3: Assign Traits' });
         parent.createEl('p', { text: 'Assign each value (+2, +1, +1, +0, +0, -1) to one of the six traits.' });
@@ -203,7 +316,80 @@ export class CharacterSheetView extends ItemView {
 
         TRAIT_NAMES.forEach(traitName => { new Setting(parent).setName(traitName).addDropdown(dd => { dd.addOption('none', '---'); const currentValue = this.creatorState.traits ? this.creatorState.traits[traitName] : undefined; const options = (currentValue !== undefined && currentValue !== null) ? [...new Set([currentValue, ...remainingValues])].sort((a, b) => b - a) : [...new Set(remainingValues)].sort((a, b) => b - a); options.forEach(val => dd.addOption(String(val), val >= 0 ? `+${val}` : String(val))); dd.setValue(String(currentValue ?? 'none')); dd.onChange(value => { const numValue = value === 'none' ? undefined : parseInt(value); if (this.creatorState.traits) { this.creatorState.traits[traitName] = numValue; } this.redrawCreatorStep(); }); }); });
     }
-    private drawCreatorStep4_Equipment(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 4: Starting Equipment' }); const weapons = this.plugin.characterCompendium.weapons.filter(w => (w as WeaponItem).tier === '1') as WeaponItem[]; const armors = this.plugin.characterCompendium.armors.filter(a => (a as ArmorItem).tier === '1') as ArmorItem[]; new Setting(parent).setName('Primary Weapon').addDropdown(dd => { dd.addOption('', '--- Select ---'); weapons.filter(w => w.burden === 'Two-Handed').forEach(w => dd.addOption(w.name, `${w.name} (2-Handed)`)); weapons.filter(w => w.burden === 'One-Handed').forEach(w => dd.addOption(w.name, `${w.name} (1-Handed)`)); dd.setValue(this.creatorState.startingWeaponIds?.[0] || '').onChange(value => { const weapon = weapons.find(w => w.name === value); this.creatorState.startingWeaponIds = weapon ? [value] : []; this.redrawCreatorStep(); }); }); const primaryWeapon = weapons.find(w => w.name === this.creatorState.startingWeaponIds?.[0]); if (primaryWeapon && primaryWeapon.burden === 'One-Handed') { const secondaryWeapons = this.plugin.characterCompendium.weapons.filter(w => (w as WeaponItem).burden === 'One-Handed' && (w as WeaponItem).tier === '1') as WeaponItem[]; new Setting(parent).setName('Secondary Weapon').addDropdown(dd => { dd.addOption('', '--- None ---'); secondaryWeapons.forEach(w => dd.addOption(w.name, w.name)); dd.setValue(this.creatorState.startingWeaponIds?.[1] || '').onChange(value => { this.creatorState.startingWeaponIds = value ? [primaryWeapon.name, value] : [primaryWeapon.name]; }); }); } new Setting(parent).setName('Armor').addDropdown(dd => { dd.addOption('', '--- Select ---'); armors.forEach(a => dd.addOption(a.name, a.name)); dd.setValue(this.creatorState.startingArmorId || '').onChange(value => { this.creatorState.startingArmorId = value; }); }); new Setting(parent).setName('Starting Potion').addDropdown(dd => { dd.addOption('health', 'Minor Health Potion').addOption('stamina', 'Minor Stamina Potion').setValue(this.creatorState.potionChoice || 'health').onChange(value => { this.creatorState.potionChoice = value as 'health' | 'stamina'; }); }); }
+
+    private drawCreatorStep4_Equipment(parent: HTMLElement) {
+        parent.createEl('h3', { text: 'Step 4: Starting Equipment' });
+        const weapons = this.plugin.characterCompendium.weapons.filter(w => (w as WeaponItem).tier === '1') as WeaponItem[];
+        const armors = this.plugin.characterCompendium.armors.filter(a => (a as ArmorItem).tier === '1') as ArmorItem[];
+
+        // --- Weapon Selection ---
+        new Setting(parent).setName('Primary Weapon').addDropdown(dd => {
+            dd.addOption('', '--- Select ---');
+            weapons.filter(w => w.burden === 'Two-Handed').forEach(w => dd.addOption(w.name, `${w.name} (2-Handed)`));
+            weapons.filter(w => w.burden === 'One-Handed').forEach(w => dd.addOption(w.name, `${w.name} (1-Handed)`));
+            dd.setValue(this.creatorState.startingWeaponIds?.[0] || '').onChange(value => {
+                const weapon = weapons.find(w => w.name === value);
+                this.creatorState.startingWeaponIds = weapon ? [value] : [];
+                this.redrawCreatorStep();
+            });
+        });
+
+        const primaryWeapon = weapons.find(w => w.name === this.creatorState.startingWeaponIds?.[0]);
+        if (primaryWeapon && primaryWeapon.burden === 'One-Handed') {
+            const secondaryWeapons = this.plugin.characterCompendium.weapons.filter(w => (w as WeaponItem).burden === 'One-Handed' && (w as WeaponItem).tier === '1') as WeaponItem[];
+            new Setting(parent).setName('Secondary Weapon').addDropdown(dd => {
+                dd.addOption('', '--- None ---');
+                secondaryWeapons.forEach(w => dd.addOption(w.name, w.name));
+                dd.setValue(this.creatorState.startingWeaponIds?.[1] || '').onChange(value => {
+                    this.creatorState.startingWeaponIds = value ? [primaryWeapon.name, value] : [primaryWeapon.name];
+                    this.redrawCreatorStep(); // Redraw to update previews
+                });
+            });
+        }
+
+        // --- Armor & Potion Selection ---
+        new Setting(parent).setName('Armor').addDropdown(dd => {
+            dd.addOption('', '--- Select ---');
+            armors.forEach(a => dd.addOption(a.name, a.name));
+            dd.setValue(this.creatorState.startingArmorId || '').onChange(value => {
+                this.creatorState.startingArmorId = value;
+                this.redrawCreatorStep(); // Redraw to update previews
+            });
+        });
+
+        new Setting(parent).setName('Starting Potion').addDropdown(dd => {
+            dd.addOption('health', 'Minor Health Potion').addOption('stamina', 'Minor Stamina Potion').setValue(this.creatorState.potionChoice || 'health').onChange(value => {
+                this.creatorState.potionChoice = value as 'health' | 'stamina';
+            });
+        });
+
+        // --- PREVIEW: Equipment Features ---
+        const equipmentFeatures: CompendiumFeature[] = [];
+
+        // Get armor feature
+        if (this.creatorState.startingArmorId) {
+            const armor = armors.find(a => a.name === this.creatorState.startingArmorId);
+            if (armor && armor.feat_name) {
+                equipmentFeatures.push({ name: armor.feat_name, description: armor.feat_text || '' });
+            }
+        }
+
+        // Get weapon features
+        if (this.creatorState.startingWeaponIds) {
+            this.creatorState.startingWeaponIds.forEach(weaponId => {
+                const weapon = weapons.find(w => w.name === weaponId);
+                if (weapon && weapon.feat_name) {
+                    equipmentFeatures.push({ name: weapon.feat_name, description: weapon.feat_text || '' });
+                }
+            });
+        }
+
+        // Draw the preview section if any features were found
+        if (equipmentFeatures.length > 0) {
+            this.drawCreatorFeaturePreview(parent, 'You will gain these Equipment Features', equipmentFeatures);
+        }
+    }
+
     private drawCreatorStep5_Background(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 5: Background Questions' }); const charClass = this.plugin.characterCompendium.getClass(this.creatorState.classId ?? ''); if (charClass?.backgrounds) { charClass.backgrounds.forEach((bg, index) => { new Setting(parent).setName(bg.question).addTextArea(text => { text.setValue(this.creatorState.backgroundAnswers?.[index] || '').onChange(value => { if (!this.creatorState.backgroundAnswers) this.creatorState.backgroundAnswers = []; this.creatorState.backgroundAnswers[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see background questions.' }); } }
     private drawCreatorStep6_Experiences(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 6: Create Experiences' }); parent.createEl('p', { text: 'Create two experiences for your character. These represent skills or defining moments from their past. They both start with a +2 modifier.' }); if (!this.creatorState.experiences) this.creatorState.experiences = [{ name: '', description: '' }, { name: '', description: '' }]; this.creatorState.experiences.forEach((exp, index) => { parent.createEl('h5', { text: `Experience ${index + 1}` }); new Setting(parent).setName('Name').addText(text => text.setPlaceholder('e.g., Survivor, Master of Disguise').setValue(exp.name).onChange(value => exp.name = value)); }); }
     private drawCreatorStep7_Domains(parent: HTMLElement) {
@@ -1097,6 +1283,45 @@ export class CharacterSheetView extends ItemView {
         }
         return metadata;
     }
+
+    /**
+     * Renders a full section for previewing features, complete with a title bar and a grid of cards.
+     * @param parent - The parent HTMLElement to append the section to.
+     * @param title - The title to display in the section header.
+     * @param features - An array of features to display as cards.
+     */
+    private drawCreatorFeaturePreview(parent: HTMLElement, title: string, features: CompendiumFeature[]) {
+        // Don't render anything if there are no features to show.
+        if (!features || features.length === 0) return;
+
+        const section = parent.createDiv({ cls: 'dh-card-section' });
+        const header = section.createDiv({ cls: 'dh-section-header-bar' });
+        header.createEl('h3', { text: title });
+
+        const grid = section.createDiv({ cls: 'dh-feature-grid' });
+        features.forEach(feat => {
+            // Ensure the feature object is valid and has a name before creating a card.
+            if (feat && feat.name) {
+                this.createCreatorPreviewCard(grid, feat);
+            }
+        });
+    }
+
+    /**
+     * Creates a single feature card, styled like the cards in the main character sheet manager.
+     * @param parent - The parent grid HTMLElement to append the card to.
+     * @param feature - The feature to display.
+     */
+    private createCreatorPreviewCard(parent: HTMLElement, feature: CompendiumFeature) {
+        const card = parent.createDiv({ cls: 'dh-feature-card' });
+
+        // --- Card Header ---
+        const header = card.createDiv({ cls: 'dh-feature-card-header' });
+        header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
+
+        // --- Card Body ---
+        const body = card.createDiv({ cls: 'dh-feature-card-body' });
+        // Use renderRollableContent for consistency. It safely handles markdown and dice roll syntax.
+        renderRollableContent(this.plugin, feature.description, body, feature.name, true);
+    }
 }
-
-
