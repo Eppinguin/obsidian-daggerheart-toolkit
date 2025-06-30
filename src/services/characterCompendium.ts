@@ -1,4 +1,5 @@
 import DaggerheartStatblockPlugin from "main";
+import { Notice } from "obsidian";
 import {
     JsonAncestry, JsonClass, JsonCommunity, JsonSubclass, JsonArmor, JsonWeapon, JsonItem, JsonAbility, JsonConsumable, CompendiumItem, DomainCard
 } from "types";
@@ -14,6 +15,7 @@ export class CharacterCompendium {
     public classes: JsonClass[] = [];
     public subclasses: JsonSubclass[] = [];
     public abilities: JsonAbility[] = [];
+    public userAbilities: JsonAbility[] = [];
     public armors: CompendiumItem[] = [];
     public weapons: CompendiumItem[] = [];
     public items: CompendiumItem[] = [];
@@ -31,7 +33,15 @@ export class CharacterCompendium {
         this.communities = await this.loadFile<JsonCommunity>('communities.json');
         this.classes = await this.loadFile<JsonClass>('classes.json');
         this.subclasses = await this.loadFile<JsonSubclass>('subclasses.json');
-        this.abilities = await this.loadFile<JsonAbility>('abilities.json');
+
+        const srdAbilities = await this.loadFile<JsonAbility>('abilities.json');
+        this.userAbilities = await this.loadUserAbilities();
+
+        // Combine and de-duplicate, with user abilities taking precedence
+        const abilityMap = new Map<string, JsonAbility>();
+        srdAbilities.forEach(ability => abilityMap.set(ability.name.toLowerCase(), ability));
+        this.userAbilities.forEach(ability => abilityMap.set(ability.name.toLowerCase(), ability));
+        this.abilities = Array.from(abilityMap.values());
 
         this.armors = (await this.loadFile<JsonArmor>('armor.json')).map(a => ({ ...a, _type: 'armor' }));
         this.weapons = (await this.loadFile<JsonWeapon>('weapons.json')).map(w => ({ ...w, _type: 'weapon' }));
@@ -39,6 +49,27 @@ export class CharacterCompendium {
         this.consumables = (await this.loadFile<JsonConsumable>('consumables.json')).map(i => ({ ...i, _type: 'consumable' }));
 
         console.log("Daggerheart | Character Compendium loaded successfully.");
+    }
+
+    private async loadUserAbilities(): Promise<JsonAbility[]> {
+        if (!this.plugin.settings.userAbilitiesFile) {
+            return [];
+        }
+        const path = `${this.plugin.manifest.dir}/${this.plugin.settings.userAbilitiesFile}`;
+        if (await this.plugin.app.vault.adapter.exists(path)) {
+            try {
+                const data = await this.plugin.app.vault.adapter.read(path);
+                // Remove BOM if it exists
+                const cleanData = data.charCodeAt(0) === 0xFEFF ? data.slice(1) : data;
+                if (cleanData.trim() === '') return []; // Handle empty file
+                return JSON.parse(cleanData) as JsonAbility[];
+            } catch (e) {
+                console.error(`Daggerheart | Error reading or parsing ${this.plugin.settings.userAbilitiesFile}`, e);
+                new Notice(`Could not read user abilities file: ${this.plugin.settings.userAbilitiesFile}`);
+                return [];
+            }
+        }
+        return [];
     }
 
     private async loadFile<T>(fileName: string): Promise<T[]> {
@@ -67,9 +98,8 @@ export class CharacterCompendium {
     public getAncestry(name: string): JsonAncestry | undefined { return this.ancestries.find(a => a.name === name); }
     public getCommunity(name: string): JsonCommunity | undefined { return this.communities.find(c => c.name === name); }
 
-    // This method still needs to process the data for use in the character sheet
     public getAbility(name: string): DomainCard | undefined {
-        const ability = this.abilities.find(a => a.name === name);
+        const ability = this.abilities.find(a => a.name.toLowerCase() === name.toLowerCase());
         if (!ability) return undefined;
         return {
             _type: 'domainCard',
@@ -78,8 +108,20 @@ export class CharacterCompendium {
             level: parseInt(ability.level),
             domain: ability.domain,
             type: ability.type,
+            recall: parseInt(ability.recall) || 0,
             description: ability.text
         }
+    }
+
+    public getAllDomains(): string[] {
+        const domains = this.abilities.map(a => a.domain).filter(d => d); // filter out any null/undefined domains
+        return [...new Set(domains)].sort();
+    }
+
+    public getAllLevels(): number[] {
+        const levels = this.abilities.map(a => parseInt(a.level));
+        const uniqueLevels = [...new Set(levels)].filter(l => !isNaN(l)); // filter out any NaN values
+        return uniqueLevels.sort((a, b) => a - b);
     }
 
     public getAllItems(): CompendiumItem[] {

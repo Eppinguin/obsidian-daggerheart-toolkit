@@ -1,6 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character } from './types';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/views/EncounterBuilderView';
 import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './src/views/CharacterSheetView';
 import { getCompendiumItems, saveItemToUserCompendium } from './src/services/compendium';
@@ -298,6 +298,37 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         return saveItemToUserCompendium(this, itemData);
     }
 
+    public async saveAbilityToUserCompendium(abilityData: JsonAbility) {
+        const path = `${this.manifest.dir}/${this.settings.userAbilitiesFile}`;
+        let userAbilities: JsonAbility[] = [];
+
+        if (await this.app.vault.adapter.exists(path)) {
+            try {
+                const data = await this.app.vault.adapter.read(path);
+                userAbilities = JSON.parse(data);
+            } catch (e) {
+                console.error(`Daggerheart: Error reading or parsing ${this.settings.userAbilitiesFile}`, e);
+                new Notice(`Could not read existing user abilities file. Starting fresh.`);
+                userAbilities = [];
+            }
+        }
+
+        // Avoid duplicates by name (case-insensitive)
+        const existingIndex = userAbilities.findIndex(a => a.name.toLowerCase() === abilityData.name.toLowerCase());
+        if (existingIndex > -1) {
+            userAbilities[existingIndex] = abilityData;
+            new Notice(`Updated custom card: ${abilityData.name}`);
+        } else {
+            userAbilities.push(abilityData);
+            new Notice(`Saved new custom card: ${abilityData.name}`);
+        }
+
+        await this.app.vault.adapter.write(path, JSON.stringify(userAbilities, null, 2));
+
+        // Reload compendium to reflect changes immediately
+        await this.characterCompendium.load();
+    }
+
     public createInteractiveTrack(parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string, currentValue: number, updateCallback: (newValue: number) => void) {
         createInteractiveTrack(parentEl, label, maxValue, trackIdPrefix, currentValue, updateCallback);
     }
@@ -460,6 +491,20 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.triggerEncounterBuilderUpdate();
                 }));
+
+        new Setting(containerEl)
+            .setName('User Abilities File')
+            .setDesc('The name of the JSON file in the plugin folder for storing custom domain cards. It will be created if it doesn\'t exist.')
+            .addText(text => text
+                .setValue(this.plugin.settings.userAbilitiesFile)
+                .onChange(async (value) => {
+                    this.plugin.settings.userAbilitiesFile = value.trim() || DEFAULT_SETTINGS.userAbilitiesFile;
+                    if (!this.plugin.settings.userAbilitiesFile.toLowerCase().endsWith('.json')) {
+                        this.plugin.settings.userAbilitiesFile += '.json';
+                    }
+                    await this.plugin.saveSettings();
+                    await this.plugin.characterCompendium.load();
+                }));
     }
 
     renderEncounterViewSettings(containerEl: HTMLElement) {
@@ -542,7 +587,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
             .setName('dddice API Key')
             .setDesc(createFragment((frag) => {
                 frag.appendText('Your dddice.com API key. Get one from your ');
-                frag.createEl('a', { text: 'account page', attr: { href: 'https://dddice.com/account/developer', target: '_blank' } });
+                frag.createEl('a', { text: 'account page', attr: { href: '[https://dddice.com/account/developer](https://dddice.com/account/developer)', target: '_blank' } });
                 frag.appendText('.');
             }))
             .addText(text => text

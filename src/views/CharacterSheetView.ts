@@ -6,6 +6,7 @@ import {
 } from '../../types';
 import {
     AddItemModal,
+    CardSwapModal,
     CharacterManagerModal,
     ConfirmationModal,
     ConditionModal,
@@ -431,6 +432,7 @@ export class CharacterSheetView extends ItemView {
                 _type: 'experience'
             })),
             features: finalFeatures,
+            vault: [],
             inventory: [
                 ...standardInventory,
                 ...initialInventory,
@@ -993,15 +995,32 @@ export class CharacterSheetView extends ItemView {
 
     private createExperienceCard(parent: HTMLElement, title: string, subtext: string, isInteractive: boolean = false) { const card = parent.createDiv({ cls: `dh-experience-card ${isInteractive ? 'is-interactive' : ''}` }); card.createDiv({ cls: 'dh-card-title', text: title }); if (subtext) card.createSpan({ cls: 'dh-experience-value', text: subtext }); return card; }
 
-    private drawFeatureSection(parent: HTMLElement, title: string, features: (CompendiumFeature | DomainCard | undefined)[], character: Character) {
-        if (!features.some(f => f)) return;
+    private drawFeatureSection(parent: HTMLElement, title: string, features: (CompendiumFeature | DomainCard | undefined)[], character: Character, addManageButton: boolean = true) {
+        if (!features.some(f => f) && !addManageButton) return;
         const section = parent.createDiv({ cls: 'dh-card-section' });
         const header = section.createDiv({ cls: 'dh-section-header-bar' });
         header.createEl('h3', { text: title });
+
+        // ADD THIS BLOCK to include the manage cards button
+        if (addManageButton) {
+            const controls = header.createDiv({ cls: 'dh-section-header-controls' });
+            const manageBtn = controls.createEl('button', { text: 'Manage Cards' });
+            setIcon(manageBtn, 'book-copy');
+            manageBtn.addEventListener('click', () => {
+                new CardSwapModal(this.app, this.plugin, character, (updatedChar) => {
+                    this.plugin.updateCharacter(updatedChar);
+                }).open();
+            });
+        }
+
         const grid = section.createDiv({ cls: 'dh-feature-grid' });
-        features.forEach(feat => {
-            if (feat) this.createFeatureCard(grid, feat, character);
-        });
+        if (features.length > 0) {
+            features.forEach(feat => {
+                if (feat) this.createFeatureCard(grid, feat, character);
+            });
+        } else {
+            grid.createDiv({ text: 'No cards in loadout.', cls: 'dh-empty-text' })
+        }
     }
 
     private createFeatureCard(parent: HTMLElement, feature: CompendiumFeature | DomainCard, character: Character) {

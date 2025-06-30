@@ -3140,3 +3140,180 @@
 .dh-add-item-modal .modal-actions-container button:hover {
     background-color: var(--interactive-accent-hover);
 }
+
+/* --- Card Swap Modal --- */
+/* Apply strict overflow control to all elements inside the modal */
+.dh-card-swap-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.dh-card-swap-modal .modal-content {
+    width: 90vw;
+    /* max-width: 500px;  */
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+/* Make sure the modal content container doesn't overflow */
+.dh-modal-content-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    max-width: 100%;
+}
+
+.dh-card-manage-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.dh-card-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    max-width: 100%;
+}
+
+.dh-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.dh-swap-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--background-primary);
+    border: 1.5px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
+    padding: var(--size-4-3);
+    margin-bottom: var(--size-4-2);
+    transition: box-shadow 0.2s;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+.dh-swap-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+}
+.dh-swap-card-header {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+}
+.dh-swap-card-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+}
+.dh-swap-card-info strong {
+    font-size: var(--font-ui-large);
+    font-weight: 600;
+    color: var(--text-normal);
+}
+.dh-swap-card-meta {
+    display: flex;
+    gap: var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    margin-top: var(--size-4-1);
+}
+.dh-swap-card-controls {
+    display: flex;
+    flex-direction: row;
+    gap: var(--size-4-1);
+    align-items: flex-start;
+    margin-left: var(--size-4-2);
+}
+.dh-swap-card-controls button {
+    background: var(--background-secondary-alt);
+    border: none;
+    border-radius: var(--radius-s);
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    color: var(--text-normal);
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+}
+.dh-swap-card-controls button:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.dh-swap-card-controls .mod-warning {
+    background: var(--background-modifier-error);
+    color: var(--text-on-accent);
+}
+.dh-swap-card-desc {
+    margin-top: var(--size-4-2);
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+.dh-modal-tabs {
+    display: flex;
+    gap: var(--size-4-1);
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin: 0 calc(var(--modal-padding) * -1) var(--modal-padding);
+    padding: 0 var(--modal-padding);
+}
+
+.dh-modal-tab {
+    padding: var(--size-4-2) var(--size-4-3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    color: var(--text-muted);
+}
+
+.dh-modal-tab.is-active,
+.dh-modal-tab:hover {
+    color: var(--text-normal);
+}
+
+.dh-modal-tab.is-active {
+    border-bottom-color: var(--interactive-accent);
+}
+
+.dh-modal-content-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+    margin: 0 calc(var(--modal-padding) * -1);
+    padding: 0 var(--modal-padding);
+}
+
+.dh-card-manage-container {
+    display: grid;
+    /* Changed to single column layout */
+    grid-template-columns: 1fr;
+    gap: var(--size-4-4);
+    height: 100%;
+}
+
+/* --- Card Swap Modal Customizations --- */
+.dh-compendium-actions {
+    display: flex;
+    justify-content: center;
+    padding: var(--size-4-2) 0;
+    margin-top: var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
+}

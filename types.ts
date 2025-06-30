@@ -25,7 +25,7 @@ export interface JsonConsumable { roll: string; name: string; description: strin
 
 // --- PROCESSED/APPLICATION-LEVEL TYPES ---
 export interface CompendiumFeature { name: string; description: string; }
-export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; description: string; }
+export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; recall: number; description: string; }
 
 // Base Item types with _type property
 export type ArmorItem = JsonArmor & { _type: 'armor'; };
@@ -64,7 +64,8 @@ export interface Character {
     damageThresholds: DamageThresholds;
     gold: Gold;
     experiences: Experience[];
-    features: (DomainCard)[];
+    features: (DomainCard)[]; // This is the LOADOUT
+    vault: (DomainCard)[]; // ADD THIS LINE for the VAULT
     inventory: InventoryItem[];
     equippedArmorId: string | null;
     equippedWeaponIds: string[];
@@ -138,6 +139,7 @@ export interface DaggerheartPluginSettings {
     useSrdAdversaries: boolean;
     useSrdEnvironments: boolean;
     userCompendiumFile: string;
+    userAbilitiesFile: string;
     showDescriptionOnCards: boolean;
     showFeatureDetailsOnCards: boolean;
     enableFearTracker: boolean;
@@ -145,8 +147,8 @@ export interface DaggerheartPluginSettings {
     enableCountdownTracker: boolean;
     countdowns: Countdown[];
     enableEncounterBudget: boolean;
-    encounterBudgetConfig: EncounterBudgetConfig;
     isCompendiumVisible: boolean;
+    encounterBudgetConfig: EncounterBudgetConfig;
 
     // Dice Rolling Settings
     diceProvider: 'dice-roller' | 'dddice';
@@ -162,6 +164,7 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     useSrdAdversaries: true,
     useSrdEnvironments: true,
     userCompendiumFile: 'User-Adversaries.json',
+    userAbilitiesFile: 'user-abilities.json',
     showDescriptionOnCards: false,
     showFeatureDetailsOnCards: true,
     enableFearTracker: false,

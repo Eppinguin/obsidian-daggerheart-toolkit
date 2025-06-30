@@ -3,6 +3,8 @@ export { AddItemModal } from './AddItemModal';
 export { AdversaryReferenceModal } from './AdversaryReferenceModal';
 export { EncounterLinkModal } from './EncounterLinkModal';
 export { CustomConditionModal } from './CustomConditionModal';
+export { CardSwapModal } from './CardSwapModal';
+export { CreateCardModal } from './CreateCardModal';
 export { EditAdversaryModal } from './EditAdversaryModal';
 export { EncounterBudgetModal } from './EncounterBudgetModal';
 export { ManageEncountersModal } from './ManageEncountersModal';
