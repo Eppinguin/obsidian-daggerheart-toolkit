@@ -3351,10 +3351,149 @@
     padding: var(--size-4-3);
 }
 
-/* Ensure all content inside the modal respects container width */
 .dh-add-item-modal * {
     max-width: 100%;
     box-sizing: border-box;
     overflow-wrap: break-word;
     word-break: break-word;
+}
+/* --- Level Up Modal --- */
+.dh-level-up-modal .modal-content {
+    max-width: 100%;
+    width: 90vw;
+}
+
+.dh-level-up-modal .setting-item {
+    border-top: none;
+}
+
+.dh-level-up-container {
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: var(--size-4-2);
+    margin-right: calc(var(--size-4-2) * -1);
+}
+
+.dh-level-entry {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-level-entry h2 {
+    margin-top: 0;
+    color: var(--interactive-accent);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-2);
+}
+
+.dh-level-entry h3 {
+    margin-top: var(--size-4-4);
+    margin-bottom: var(--size-4-2);
+    font-size: var(--font-ui-medium);
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.dh-advancement-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.dh-advancement-choice {
+    background-color: var(--background-primary-alt);
+    padding: 0 var(--size-4-2);
+    border-radius: var(--radius-s);
+}
+
+.dh-advancement-choice .setting-item {
+    border-bottom: none;
+    padding: var(--size-4-2) 0;
+}
+
+.dh-advancement-details {
+    padding-left: var(--size-4-4);
+    border-left: 2px solid var(--background-modifier-border);
+    margin-bottom: var(--size-4-2);
+}
+
+.dh-domain-card-preview {
+    background-color: var(--background-primary);
+    border-radius: var(--radius-s);
+    padding: var(--size-4-3);
+    margin-top: var(--size-4-2);
+    border: 1px solid var(--background-modifier-border);
+}
+
+.dh-domain-card-preview h4 {
+    margin-top: 0;
+    font-weight: bold;
+}
+
+.dh-domain-card-preview p {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+/* Level up button on character sheet */
+.dh-level-box.is-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-level-box.is-clickable:hover {
+    background-color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent);
+}
+
+.dh-level-up-modal .setting-item-control .button-group {
+    display: flex;
+    align-items: center;
+}
+.dh-level-up-modal .setting-item-control .button-group .button {
+    margin: 0 5px;
+}
+
+.dh-automatic-advancements {
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-automatic-advancements h3 {
+    margin-top: 0;
+    margin-bottom: var(--size-4-2);
+    color: var(--interactive-accent);
+}
+
+.dh-automatic-advancements ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+/* Adjust the Setting component for better alignment */
+.dh-automatic-advancements .setting-item {
+    padding: 0;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-4);
+}
+
+.dh-automatic-advancements .setting-item-control input[type="text"] {
+    width: 100%;
+}
+
+.dh-level-entry h3 {
+    font-size: var(--font-ui-large);
 }

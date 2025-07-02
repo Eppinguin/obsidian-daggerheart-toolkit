@@ -13,7 +13,8 @@ import {
     GoldModal,
     ExperienceModal,
     ItemEditModal,
-    CompendiumCreatorModal
+    CompendiumCreatorModal,
+    LevelUpModal
 } from '../modals';
 import { DAGGERHEART_CONDITIONS } from '../constants';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
@@ -650,6 +651,7 @@ export class CharacterSheetView extends ItemView {
             _type: 'character',
             name: partialChar.name,
             level: 1,
+            proficiency: 1,
             pronouns: { ...partialChar.pronouns, _type: 'pronouns' } as Character['pronouns'],
             ancestryId: ancestry.name,
             communityId: community.name,
@@ -693,6 +695,7 @@ export class CharacterSheetView extends ItemView {
                 question: c.question,
                 answer: partialChar.connections?.[i] || ''
             })),
+            levelUpHistory: {},
             conditions: [],
         };
 
@@ -767,10 +770,22 @@ export class CharacterSheetView extends ItemView {
 
         const nameplate = left.createDiv({ cls: 'dh-nameplate' });
         nameplate.createEl('h1', { text: data.name || "Unnamed Character" });
-        nameplate.createEl('p', { text: `${ancestry?.name || 'N/A'} ${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})` });
+
+        // Build class string with multiclass support
+        let classDisplay = `${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})`;
+        if (data.multiclassClassId) {
+            const mcClass = this.plugin.compendium.getClass(data.multiclassClassId);
+            const mcSubclass = data.multiclassSubclassId ? this.plugin.compendium.getSubclass(data.multiclassSubclassId) : null;
+            classDisplay += ` / ${mcClass?.name || 'N/A'} (${mcSubclass?.name || 'N/A'})`;
+        }
+        nameplate.createEl('p', { text: `${ancestry?.name || 'N/A'} ${classDisplay}` });
+
         const right = header.createDiv({ cls: 'dh-header-right' });
         if (charClass) {
             const classDomains = [charClass.domain_1, charClass.domain_2];
+            if (data.multiclassDomainId) {
+                classDomains.push(data.multiclassDomainId);
+            }
             right.createDiv({ cls: 'dh-domain-placeholder', text: classDomains.join(' & ') });
         }
     }
@@ -946,8 +961,7 @@ export class CharacterSheetView extends ItemView {
             });
         }
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
-        let proficiency = 1;
-        if (character.level >= 8) { proficiency = 4; } else if (character.level >= 5) { proficiency = 3; } else if (character.level >= 2) { proficiency = 2; }
+        let proficiency = character.proficiency;
         const damageFormula = `${proficiency}${weapon.damageDice}`;
         damageBox.createDiv({ text: weapon.damageDice });
         damageBox.createDiv({ text: weapon.damageType });
@@ -956,13 +970,20 @@ export class CharacterSheetView extends ItemView {
             this.plugin.rollDice(damageFormula, `${weapon.name} Damage`);
         });
     }
-
     private drawVitals(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-vitals' });
         this.drawConditions(container, data);
-        const level = container.createDiv({ cls: 'dh-level-box' });
-        level.createEl('h4', { text: 'Level' });
-        level.createDiv({ cls: 'dh-level-value', text: String(data.level) });
+        const levelBox = container.createDiv({ cls: 'dh-level-box', text: '' });
+        levelBox.createEl('h4', { text: 'Level' });
+        levelBox.createDiv({ cls: 'dh-level-value', text: String(data.level) });
+
+        levelBox.addClass('is-clickable');
+        levelBox.ariaLabel = "Manage Levels";
+        levelBox.addEventListener('click', () => {
+            new LevelUpModal(this.app, this.plugin, data, (updatedCharacter) => {
+                this.plugin.updateCharacter(updatedCharacter);
+            }).open();
+        });
     }
 
     private drawConditions(parent: HTMLElement, data: Character) {
@@ -1214,7 +1235,13 @@ export class CharacterSheetView extends ItemView {
         const ancestryFeats: CompendiumFeature[] = ancestry ? ancestry.feats.map(f => ({ name: f.name, description: f.text })) : [];
         const communityFeats: CompendiumFeature[] = community ? community.feats.map(f => ({ name: f.name, description: f.text })) : [];
 
-        this.drawFeatureSection(parent, 'Domain & Class Features', data.features, data);
+        const domainFeatures = data.features.filter(f => f.domain !== 'Multiclass');
+        const multiclassFeatures = data.features.filter(f => f.domain === 'Multiclass');
+
+        this.drawFeatureSection(parent, 'Domain & Class Features', domainFeatures, data);
+        if (multiclassFeatures.length > 0) {
+            this.drawFeatureSection(parent, 'Multiclass Features', multiclassFeatures, data, false);
+        }
         if (ancestry) this.drawFeatureSection(parent, 'Heritage Features', ancestryFeats, data, false);
         if (community) this.drawFeatureSection(parent, 'Community Features', communityFeats, data, false);
         if (charClass) this.drawFeatureSection(parent, 'Core Class Features', [...classFeats, hopeFeat], data, false);

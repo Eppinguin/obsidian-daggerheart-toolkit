@@ -18,3 +18,4 @@ export { ItemEditModal } from './ItemEditModal';
 export { CompendiumCreatorModal } from './CompendiumCreatorModal';
 export { CompendiumEntryTypeSuggester } from './CompendiumEntryTypeSuggester';
 export { SaveChoiceModal } from './SaveChoiceModal';
+export { LevelUpModal } from './LevelUpModal';

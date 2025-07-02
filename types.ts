@@ -73,10 +73,14 @@ export interface Character {
     notes?: string;
     pronouns: { _type: 'pronouns'; subject: string; object: string; };
     level: number;
+    proficiency: number;
     ancestryId: string;
     communityId: string;
     classId: string;
     subclassId: string;
+    multiclassClassId?: string | null;
+    multiclassSubclassId?: string | null;
+    multiclassDomainId?: string | null;
     evasion: number;
     traits: { Strength: Trait; Agility: Trait; Finesse: Trait; Instinct: Trait; Presence: Trait; Knowledge: Trait; };
     hitPoints: DynamicResource;
@@ -93,6 +97,7 @@ export interface Character {
     equippedWeaponIds: string[];
     background?: { question: string; answer: string; }[];
     connections?: { question: string; answer: string; }[];
+    levelUpHistory: { [level: number]: LevelUpSelection };
     conditions: Condition[];
     avatarUrl?: string | null;
     avatarTransform?: AvatarTransform;
@@ -103,6 +108,13 @@ export interface DynamicResource { _type: 'dynamicResource'; max: number; curren
 export interface DamageThresholds { _type: 'damageThresholds'; major: number; severe: number; }
 export interface Gold { _type: 'gold'; handfuls: number; bags: number; chests: number; }
 export interface Experience { _type: 'experience'; id: string; name: string; value: number; description: string | null; }
+
+
+export interface LevelUpSelection {
+    advancements: ({ id: string; choices: string[] } | null)[];
+    domainCardId: string | null;
+    newExperienceName?: string;
+}
 
 // InventoryItem on the Character Sheet is the processed version of a CompendiumItem
 export type InventoryItem = {
