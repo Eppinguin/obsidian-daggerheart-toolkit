@@ -1,75 +1,107 @@
-import { App, Modal, Setting, Notice } from 'obsidian';
+import { App, Modal, Setting, Notice, TextAreaComponent, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
-import { Character, DomainCard } from '../../types';
+import { Character, DomainCard, Experience, Trait } from '../../types';
 import { createAvatarEditor } from '../views/components/AvatarEditor';
 import { TRAIT_NAMES } from '../constants';
 
+/**
+ * A modal for freely editing all aspects of a character sheet.
+ * This modal disregards game rules and provides direct access to the character data model.
+ */
 export class CharacterManagerModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     character: Character;
     onSave: (character: Character) => void;
-
     private tempCharacter: Character;
-    private selectedCurrentFeatureId: string | null = null;
-    private selectedNewFeatureId: string | null = null;
-    private replaceBtn: HTMLButtonElement;
-    private featureListsContainer: HTMLElement;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, onSave: (character: Character) => void) {
         super(app);
         this.plugin = plugin;
         this.character = character;
+        // Deep copy to avoid modifying the original character object until save
         this.tempCharacter = JSON.parse(JSON.stringify(character));
         this.onSave = onSave;
         this.modalEl.addClass('dh-character-manager-modal');
     }
 
     onOpen() {
-        this.contentEl.empty();
         const { contentEl } = this;
+        contentEl.empty();
 
-        requestAnimationFrame(() => {
-            contentEl.createEl("h1", { text: `Manage ${this.character.name}` });
+        contentEl.createEl("h1", { text: `Edit ${this.character.name}` });
+        contentEl.createEl("p", { text: "Freely edit all aspects of your character. Changes are saved when you click the save button." });
 
-            this.drawCoreDetails(contentEl.createDiv());
-            this.drawHeritageAndClass(contentEl.createDiv());
-            this.drawVitalsEditor(contentEl.createDiv());
-            this.drawTraitsEditor(contentEl.createDiv());
-            this.drawExperiencesEditor(contentEl.createDiv());
-            this.drawFeatureReplacement(contentEl.createDiv());
+        // Create collapsible sections for better organization
+        this.drawCoreDetails(this.createCollapsibleSection(contentEl, 'Core Details & Avatar'));
+        this.drawVitals(this.createCollapsibleSection(contentEl, 'Vitals & Defenses'));
+        this.drawTraits(this.createCollapsibleSection(contentEl, 'Traits'));
+        this.drawHeritageAndClass(this.createCollapsibleSection(contentEl, 'Heritage & Class'));
+        this.drawExperiences(this.createCollapsibleSection(contentEl, 'Experiences'));
+        this.drawFeatures(this.createCollapsibleSection(contentEl, 'Features & Cards'));
+        this.drawDetails(this.createCollapsibleSection(contentEl, 'Background & Connections'));
+        this.drawInventory(this.createCollapsibleSection(contentEl, 'Gold'));
 
-            const footer = contentEl.createDiv({ cls: 'dh-modal-footer' });
-            footer.createEl('button', { text: 'Save & Close', cls: 'mod-cta' }).addEventListener('click', () => {
-                this.onSave(this.tempCharacter);
-                this.close();
-            });
+        // Save button
+        const footer = contentEl.createDiv({ cls: 'dh-modal-footer' });
+        footer.createEl('button', { text: 'Save & Close', cls: 'mod-cta' }).addEventListener('click', () => {
+            this.onSave(this.tempCharacter);
+            this.close();
         });
     }
 
+    onClose() {
+        this.contentEl.empty();
+    }
+
+    /**
+     * Helper to create a standardized collapsible section.
+     * @param parent The parent element.
+     * @param title The title for the section header.
+     * @returns The container element within the collapsible section to which settings can be added.
+     */
+    private createCollapsibleSection(parent: HTMLElement, title: string): HTMLElement {
+        const details = parent.createEl('details', { cls: 'dh-manager-section' });
+        details.open = false; // Start collapsed
+        const summary = details.createEl('summary');
+        summary.createEl('h2', { text: title });
+        return details.createDiv();
+    }
+
     private drawCoreDetails(parent: HTMLElement) {
-        const container = parent.createDiv({ cls: 'dh-manager-section' });
-        container.createEl('h2', { text: 'Core Details' });
-        new Setting(container)
+        new Setting(parent)
             .setName('Character Name')
             .addText(text => text
                 .setValue(this.tempCharacter.name)
                 .onChange(value => this.tempCharacter.name = value));
 
-        new Setting(container)
+        const grid = parent.createDiv({ cls: 'is-grid' });
+        new Setting(grid)
             .setName('Level')
             .addText(text => text
                 .setValue(String(this.tempCharacter.level))
-                .onChange(value => {
-                    const level = parseInt(value);
-                    if (!isNaN(level)) {
-                        this.tempCharacter.level = level;
-                    }
-                }));
+                .onChange(value => this.tempCharacter.level = parseInt(value) || 1));
+
+        new Setting(grid)
+            .setName('Proficiency')
+            .addText(text => text
+                .setValue(String(this.tempCharacter.proficiency))
+                .onChange(value => this.tempCharacter.proficiency = parseInt(value) || 1));
+
+        new Setting(parent)
+            .setName('Pronouns (Subject/Object)')
+            .addText(text => text
+                .setPlaceholder('they')
+                .setValue(this.tempCharacter.pronouns.subject)
+                .onChange(value => this.tempCharacter.pronouns.subject = value))
+            .addText(text => text
+                .setPlaceholder('them')
+                .setValue(this.tempCharacter.pronouns.object)
+                .onChange(value => this.tempCharacter.pronouns.object = value));
 
         createAvatarEditor(
             this.app,
-            container,
+            parent,
             this.tempCharacter.avatarUrl || '',
             this.tempCharacter.avatarTransform,
             (newUrl) => {
@@ -82,10 +114,36 @@ export class CharacterManagerModal extends Modal {
         );
     }
 
-    private drawHeritageAndClass(parent: HTMLElement) {
-        const container = parent.createDiv({ cls: 'dh-manager-section is-grid' });
+    private drawVitals(parent: HTMLElement) {
+        const grid = parent.createDiv({ cls: 'is-grid' });
+        new Setting(grid).setName("Max HP").addText(text => text.setValue(String(this.tempCharacter.hitPoints.max)).onChange(v => this.tempCharacter.hitPoints.max = parseInt(v) || 0));
+        new Setting(grid).setName("Current HP").addText(text => text.setValue(String(this.tempCharacter.hitPoints.current)).onChange(v => this.tempCharacter.hitPoints.current = parseInt(v) || 0));
+        new Setting(grid).setName("Max Stress").addText(text => text.setValue(String(this.tempCharacter.stress.max)).onChange(v => this.tempCharacter.stress.max = parseInt(v) || 0));
+        new Setting(grid).setName("Current Stress").addText(text => text.setValue(String(this.tempCharacter.stress.current)).onChange(v => this.tempCharacter.stress.current = parseInt(v) || 0));
+        new Setting(grid).setName("Max Hope").addText(text => text.setValue(String(this.tempCharacter.hope.max)).onChange(v => this.tempCharacter.hope.max = parseInt(v) || 0));
+        new Setting(grid).setName("Current Hope").addText(text => text.setValue(String(this.tempCharacter.hope.current)).onChange(v => this.tempCharacter.hope.current = parseInt(v) || 0));
+        new Setting(grid).setName("Evasion").addText(text => text.setValue(String(this.tempCharacter.evasion)).onChange(v => this.tempCharacter.evasion = parseInt(v) || 0));
+        new Setting(grid).setName("Armor Slots (Max)").addText(text => text.setValue(String(this.tempCharacter.armorSlots.max)).onChange(v => this.tempCharacter.armorSlots.max = parseInt(v) || 0));
+        new Setting(grid).setName("Armor Slots (Current)").addText(text => text.setValue(String(this.tempCharacter.armorSlots.current)).onChange(v => this.tempCharacter.armorSlots.current = parseInt(v) || 0));
+        new Setting(grid).setName("Major Threshold").addText(text => text.setValue(String(this.tempCharacter.damageThresholds.major)).onChange(v => this.tempCharacter.damageThresholds.major = parseInt(v) || 0));
+        new Setting(grid).setName("Severe Threshold").addText(text => text.setValue(String(this.tempCharacter.damageThresholds.severe)).onChange(v => this.tempCharacter.damageThresholds.severe = parseInt(v) || 0));
+    }
 
-        new Setting(container)
+    private drawTraits(parent: HTMLElement) {
+        const grid = parent.createDiv({ cls: 'is-grid' });
+        TRAIT_NAMES.forEach(traitName => {
+            new Setting(grid)
+                .setName(traitName)
+                .addText(text => text
+                    .setValue(String(this.tempCharacter.traits[traitName].value))
+                    .onChange(value => this.tempCharacter.traits[traitName].value = parseInt(value) || 0)
+                );
+        });
+    }
+
+    private drawHeritageAndClass(parent: HTMLElement) {
+        const grid = parent.createDiv({ cls: 'is-grid' });
+        new Setting(grid)
             .setName('Ancestry')
             .addDropdown(dd => {
                 this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
@@ -93,7 +151,7 @@ export class CharacterManagerModal extends Modal {
                     .onChange(value => this.tempCharacter.ancestryId = value);
             });
 
-        new Setting(container)
+        new Setting(grid)
             .setName('Community')
             .addDropdown(dd => {
                 this.plugin.compendium.communities.forEach(c => dd.addOption(c.name, c.name));
@@ -101,18 +159,23 @@ export class CharacterManagerModal extends Modal {
                     .onChange(value => this.tempCharacter.communityId = value);
             });
 
-        new Setting(container)
+        new Setting(grid)
             .setName('Class')
             .addDropdown(dd => {
                 this.plugin.compendium.classes.forEach(c => dd.addOption(c.name, c.name));
                 dd.setValue(this.tempCharacter.classId)
-                    .onChange(value => this.tempCharacter.classId = value);
+                    .onChange(value => {
+                        this.tempCharacter.classId = value;
+                        this.tempCharacter.subclassId = ''; // Clear subclass to avoid invalid combos
+                        this.onOpen(); // Redraw to update subclass dropdown
+                    });
             });
 
-        new Setting(container)
+        new Setting(grid)
             .setName('Subclass')
             .addDropdown(dd => {
                 const charClass = this.plugin.compendium.getClass(this.tempCharacter.classId);
+                dd.addOption('', 'None');
                 if (charClass) {
                     const subclasses = [this.plugin.compendium.getSubclass(charClass.subclass_1), this.plugin.compendium.getSubclass(charClass.subclass_2)].filter(s => s);
                     subclasses.forEach(subclass => {
@@ -124,44 +187,17 @@ export class CharacterManagerModal extends Modal {
             });
     }
 
-    private drawVitalsEditor(parent: HTMLElement) {
-        const container = parent.createDiv({ cls: 'dh-manager-section is-grid' });
+    private drawExperiences(parent: HTMLElement) {
+        const experiencesContainer = parent.createDiv();
 
-        new Setting(container).setName("Max HP").addText(text => text.setValue(String(this.tempCharacter.hitPoints.max)).onChange(v => this.tempCharacter.hitPoints.max = parseInt(v) || 0));
-        new Setting(container).setName("Current HP").addText(text => text.setValue(String(this.tempCharacter.hitPoints.current)).onChange(v => this.tempCharacter.hitPoints.current = parseInt(v) || 0));
-        new Setting(container).setName("Max Stress").addText(text => text.setValue(String(this.tempCharacter.stress.max)).onChange(v => this.tempCharacter.stress.max = parseInt(v) || 0));
-        new Setting(container).setName("Current Stress").addText(text => text.setValue(String(this.tempCharacter.stress.current)).onChange(v => this.tempCharacter.stress.current = parseInt(v) || 0));
-        new Setting(container).setName("Max Hope").addText(text => text.setValue(String(this.tempCharacter.hope.max)).onChange(v => this.tempCharacter.hope.max = parseInt(v) || 0));
-        new Setting(container).setName("Current Hope").addText(text => text.setValue(String(this.tempCharacter.hope.current)).onChange(v => this.tempCharacter.hope.current = parseInt(v) || 0));
-        new Setting(container).setName("Evasion").addText(text => text.setValue(String(this.tempCharacter.evasion)).onChange(v => this.tempCharacter.evasion = parseInt(v) || 0));
-    }
-
-    private drawTraitsEditor(parent: HTMLElement) {
-        const container = parent.createDiv({ cls: 'dh-manager-section' });
-        container.createEl('h2', { text: 'Traits' });
-        const grid = container.createDiv({ cls: 'is-grid' });
-        TRAIT_NAMES.forEach(traitName => {
-            new Setting(grid)
-                .setName(traitName)
-                .addText(text => text
-                    .setValue(String(this.tempCharacter.traits[traitName].value))
-                    .onChange(value => this.tempCharacter.traits[traitName].value = parseInt(value) || 0)
-                );
-        });
-    }
-
-    private drawExperiencesEditor(parent: HTMLElement) {
-        const container = parent.createDiv({ cls: 'dh-manager-section' });
-        container.createEl('h2', { text: 'Experiences' });
-        const experiencesContainer = container.createDiv();
-
-        const redrawExperiences = () => {
+        const redraw = () => {
             experiencesContainer.empty();
+            if (!this.tempCharacter.experiences) this.tempCharacter.experiences = [];
+
             this.tempCharacter.experiences.forEach((exp, index) => {
-                new Setting(experiencesContainer)
-                    .setName(`Experience ${index + 1}`)
+                const setting = new Setting(experiencesContainer)
                     .addText(text => text
-                        .setPlaceholder('Name')
+                        .setPlaceholder('Experience Name')
                         .setValue(exp.name)
                         .onChange(value => exp.name = value))
                     .addText(text => text
@@ -173,163 +209,147 @@ export class CharacterManagerModal extends Modal {
                         .setTooltip('Remove Experience')
                         .onClick(() => {
                             this.tempCharacter.experiences.splice(index, 1);
-                            redrawExperiences();
+                            redraw();
                         }));
+                setting.nameEl.setText(`Experience ${index + 1}`);
             });
+
+            new Setting(parent).addButton(btn => btn.setButtonText("Add Experience").onClick(() => {
+                this.tempCharacter.experiences.push({ _type: 'experience', id: uuidv4(), name: '', description: '', value: 0 });
+                redraw();
+            })).settingEl.style.borderTop = 'none';
         };
-
-        new Setting(container).addButton(btn => btn.setButtonText("Add Experience").onClick(() => {
-            this.tempCharacter.experiences.push({ _type: 'experience', id: uuidv4(), name: '', description: '', value: 0 });
-            redrawExperiences();
-        }));
-
-        redrawExperiences();
+        redraw();
     }
 
+    private drawFeatures(parent: HTMLElement) {
+        const container = parent.createDiv();
 
-    private drawFeatureReplacement(parent: HTMLElement) {
-        const container = parent.createDiv({ cls: 'dh-manager-section' });
-        container.createEl('h2', { text: 'Replace Domain Feature' });
-        container.createEl("p", { text: "Select one of your current domain features to replace, and then select an available feature from your class domains to learn." });
+        const redraw = () => {
+            container.empty();
+            if (!this.tempCharacter.vault) { this.tempCharacter.vault = []; }
+            const allCards = [...this.tempCharacter.features, ...this.tempCharacter.vault];
 
-        this.featureListsContainer = container.createDiv({ cls: 'dh-replace-feature-container' });
-        this.redrawFeatureLists();
-
-        const buttonContainer = container.createDiv({ cls: 'dh-modal-footer-bar' });
-        this.replaceBtn = buttonContainer.createEl('button', { text: 'Replace Selected Feature' });
-        this.replaceBtn.disabled = true;
-        this.replaceBtn.addEventListener('click', () => this.handleReplace());
-    }
-
-    private redrawFeatureLists() {
-        this.featureListsContainer.empty();
-        this.drawCurrentFeatures(this.featureListsContainer.createDiv());
-        this.drawAvailableFeatures(this.featureListsContainer.createDiv());
-    }
-
-    private drawCurrentFeatures(parent: HTMLElement) {
-        parent.createEl('h3', { text: 'Your Current Features' });
-        const listEl = parent.createDiv({ cls: 'dh-feature-list' });
-        const currentDomainFeatures = this.tempCharacter.features;
-
-        currentDomainFeatures.forEach(feature => {
-            const itemEl = listEl.createDiv({ cls: 'dh-feature-list-item' });
-            itemEl.createDiv({ cls: 'dh-feature-list-item-name', text: feature.name });
-            const metadata = this.getFeatureMetadata(feature);
-            if (metadata.domain) {
-                itemEl.createDiv({ cls: 'dh-feature-list-item-sub', text: `Domain: ${metadata.domain}` });
-            }
-            itemEl.dataset.featureId = feature.id;
-
-            if (this.selectedCurrentFeatureId === feature.id) {
-                itemEl.addClass('is-selected');
+            if (allCards.length === 0) {
+                container.createEl('p', { text: 'No features or cards.' });
             }
 
-            itemEl.addEventListener('click', () => {
-                this.selectedCurrentFeatureId = feature.id;
-                listEl.querySelectorAll('.dh-feature-list-item').forEach(el => el.removeClass('is-selected'));
-                itemEl.addClass('is-selected');
-                this.updateButtonState();
+            allCards.forEach(card => {
+                const cardDetails = container.createEl('details', { cls: 'dh-manager-section' });
+                const summaryEl = cardDetails.createEl('summary');
+                const h2El = summaryEl.createEl('h2', { text: card.name });
+                const cardContainer = cardDetails.createDiv();
+                cardContainer.addClass('dh-manager-card-editor');
+
+                new Setting(cardContainer)
+                    .setName('Name')
+                    .addText(text => text.setValue(card.name).onChange(val => {
+                        card.name = val;
+                        h2El.setText(val);
+                    }));
+
+                new Setting(cardContainer)
+                    .setName('Description')
+                    .addTextArea(text => text.setValue(card.description).onChange(val => card.description = val));
+
+                const grid = cardContainer.createDiv({ cls: 'is-grid' });
+                new Setting(grid).setName('Level').addText(text => text.setValue(String(card.level)).onChange(val => card.level = parseInt(val) || 0));
+                new Setting(grid).setName('Domain').addText(text => text.setValue(card.domain).onChange(val => card.domain = val));
+                new Setting(grid).setName('Type').addText(text => text.setValue(card.type).onChange(val => card.type = val));
+                new Setting(grid).setName('Recall Cost').addText(text => text.setValue(String(card.recall)).onChange(val => card.recall = parseInt(val) || 0));
+
+                const isInLoadout = this.tempCharacter.features.some(f => f.id === card.id);
+                const locationToggle = new Setting(cardContainer)
+                    .setName('Location')
+                    .setDesc(isInLoadout ? 'In Loadout' : 'In Vault')
+                    .addToggle(toggle => toggle
+                        .setValue(isInLoadout)
+                        .onChange(inLoadout => {
+                            if (inLoadout) {
+                                // Move from vault to loadout
+                                const cardIndex = this.tempCharacter.vault.findIndex(c => c.id === card.id);
+                                if (cardIndex > -1) {
+                                    const [movedCard] = this.tempCharacter.vault.splice(cardIndex, 1);
+                                    this.tempCharacter.features.push(movedCard);
+                                }
+                            } else {
+                                // Move from loadout to vault
+                                const cardIndex = this.tempCharacter.features.findIndex(c => c.id === card.id);
+                                if (cardIndex > -1) {
+                                    const [movedCard] = this.tempCharacter.features.splice(cardIndex, 1);
+                                    this.tempCharacter.vault.push(movedCard);
+                                }
+                            }
+                            locationToggle.setDesc(inLoadout ? 'In Loadout' : 'In Vault');
+                        })
+                    );
+
+                new Setting(cardContainer).addButton(btn => btn
+                    .setButtonText('Delete Card')
+                    .setWarning()
+                    .onClick(() => {
+                        this.tempCharacter.features = this.tempCharacter.features.filter(f => f.id !== card.id);
+                        this.tempCharacter.vault = this.tempCharacter.vault.filter(v => v.id !== card.id);
+                        redraw();
+                    }));
             });
-        });
-    }
 
-    private drawAvailableFeatures(parent: HTMLElement) {
-        parent.createEl('h3', { text: 'Available Replacements' });
-        const listEl = parent.createDiv({ cls: 'dh-feature-list' });
-
-        const charClass = this.plugin.compendium.getClass(this.tempCharacter.classId);
-        if (!charClass) return;
-
-        const classDomains = [charClass.domain_1, charClass.domain_2];
-        const currentFeatureIds = this.tempCharacter.features.map(f => f.id);
-
-        const availableFeatures = this.plugin.compendium.abilities.filter(f => {
-            const isDomainCard = classDomains.some(d => d.toLowerCase() === f.domain?.toLowerCase());
-            const isNotOwned = !currentFeatureIds.includes(f.name);
-            return isDomainCard && isNotOwned && (parseInt(f.level) ?? 1) <= this.tempCharacter.level;
-        });
-
-        if (availableFeatures.length === 0) {
-            listEl.createDiv({ cls: 'dh-empty-text', text: 'No available features to learn at this time.' });
-        }
-
-        availableFeatures.forEach(feature => {
-            const itemEl = listEl.createDiv({ cls: 'dh-feature-list-item' });
-            itemEl.createDiv({ cls: 'dh-feature-list-item-name', text: feature.name });
-            if (feature.domain) {
-                itemEl.createDiv({ cls: 'dh-feature-list-item-sub', text: `Domain: ${feature.domain}` });
-            }
-            itemEl.dataset.featureId = feature.name;
-
-            if (this.selectedNewFeatureId === feature.name) {
-                itemEl.addClass('is-selected');
-            }
-
-            itemEl.addEventListener('click', () => {
-                this.selectedNewFeatureId = feature.name;
-                listEl.querySelectorAll('.dh-feature-list-item').forEach(el => el.removeClass('is-selected'));
-                itemEl.addClass('is-selected');
-                this.updateButtonState();
-            });
-        });
-    }
-
-    private updateButtonState() {
-        if (this.selectedCurrentFeatureId && this.selectedNewFeatureId) {
-            this.replaceBtn.disabled = false;
-        } else {
-            this.replaceBtn.disabled = true;
-        }
-    }
-
-    private handleReplace() {
-        if (!this.selectedCurrentFeatureId || !this.selectedNewFeatureId) return;
-
-        const newAbility = this.plugin.compendium.abilities.find(a => a.name === this.selectedNewFeatureId);
-        if (!newAbility) {
-            new Notice("Error: Could not find the selected feature to learn.");
-            return;
-        }
-
-        const featureIndex = this.tempCharacter.features.findIndex(f => f.id === this.selectedCurrentFeatureId);
-        if (featureIndex === -1) {
-            new Notice("Error: Could not find the feature to replace.");
-            return;
-        }
-
-        const newFeature: DomainCard = {
-            _type: 'domainCard',
-            id: newAbility.name,
-            name: newAbility.name,
-            description: newAbility.text,
-            level: parseInt(newAbility.level),
-            domain: newAbility.domain,
-            type: newAbility.type,
-            recall: parseInt(newAbility.recall) || 0
+            new Setting(parent).addButton(btn => btn.setButtonText("Add New Card").onClick(() => {
+                const newCard: DomainCard = {
+                    _type: 'domainCard',
+                    id: uuidv4(),
+                    name: 'New Card',
+                    description: '',
+                    level: 1,
+                    domain: '',
+                    type: 'Ability',
+                    recall: 0,
+                };
+                this.tempCharacter.vault.push(newCard);
+                redraw();
+            })).settingEl.style.borderTop = 'none';
         };
-
-        this.tempCharacter.features[featureIndex] = newFeature;
-
-        new Notice(`Replaced feature with ${newFeature.name}. Save to apply changes.`);
-
-        this.selectedCurrentFeatureId = null;
-        this.selectedNewFeatureId = null;
-        this.redrawFeatureLists();
-        this.updateButtonState();
+        redraw();
     }
 
-    private getFeatureMetadata(feature: DomainCard): { level?: number; domain?: string; type?: string; } {
-        const metadata: { level?: number; domain?: string; type?: string; } = {};
-        if (feature && feature._type === 'domainCard') {
-            metadata.level = feature.level;
-            metadata.domain = feature.domain;
-            metadata.type = feature.type;
-        }
-        return metadata;
+    private drawDetails(parent: HTMLElement) {
+        const container = parent.createDiv();
+        container.createEl('h3', { text: 'Background' });
+        if (!this.tempCharacter.background) this.tempCharacter.background = [];
+        this.tempCharacter.background.forEach((bg) => {
+            new Setting(container)
+                .setName(`Q: ${bg.question}`)
+                .addTextArea(text => text
+                    .setPlaceholder('Answer...')
+                    .setValue(bg.answer)
+                    .onChange(val => bg.answer = val));
+        });
+
+        container.createEl('h3', { text: 'Connections' });
+        if (!this.tempCharacter.connections) this.tempCharacter.connections = [];
+        this.tempCharacter.connections.forEach((conn) => {
+            new Setting(container)
+                .setName(`Q: ${conn.question}`)
+                .addTextArea(text => text
+                    .setPlaceholder('Answer...')
+                    .setValue(conn.answer)
+                    .onChange(val => conn.answer = val));
+        });
     }
 
-    onClose() {
-        this.contentEl.empty();
+    private drawInventory(parent: HTMLElement) {
+        new Setting(parent)
+            .setName('Gold (Handfuls/Bags/Chests)')
+            .addText(text => text.setPlaceholder('H').setValue(String(this.tempCharacter.gold.handfuls)).onChange(v => this.tempCharacter.gold.handfuls = parseInt(v) || 0))
+            .addText(text => text.setPlaceholder('B').setValue(String(this.tempCharacter.gold.bags)).onChange(v => this.tempCharacter.gold.bags = parseInt(v) || 0))
+            .addText(text => text.setPlaceholder('C').setValue(String(this.tempCharacter.gold.chests)).onChange(v => this.tempCharacter.gold.chests = parseInt(v) || 0));
+
+        // new Setting(parent)
+        //     .setName('General Notes')
+        //     .setDesc('For quickly jotting down notes. Full inventory management is on the character sheet.')
+        //     .addTextArea(text => text
+        //         .setPlaceholder('e.g., Quest items, reminders...')
+        //         .setValue(this.tempCharacter.notes || '')
+        //         .onChange(val => this.tempCharacter.notes = val));
     }
 }

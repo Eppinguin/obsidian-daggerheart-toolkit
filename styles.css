@@ -2914,12 +2914,62 @@
 .dh-character-manager-modal.modal {
     max-width: 800px;
 }
-.dh-character-manager-modal h2 {
-    border-bottom: 1px solid var(--dh-sheet-border);
-    padding-bottom: var(--size-4-2);
+
+.dh-character-manager-modal .dh-manager-section {
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
     margin-bottom: var(--size-4-3);
-    color: var(--dh-sheet-accent);
+    padding: 0; /* Remove padding from details element */
 }
+
+.dh-character-manager-modal .dh-manager-section summary {
+    padding: var(--size-4-3);
+    cursor: pointer;
+    list-style: none; /* Hide default triangle */
+}
+
+.dh-character-manager-modal .dh-manager-section summary::-webkit-details-marker {
+    display: none; /* Hide default triangle in Chrome */
+}
+
+.dh-character-manager-modal .dh-manager-section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: var(--font-ui-large);
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.dh-character-manager-modal .dh-manager-section > div {
+    padding: var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-character-manager-modal .is-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--size-4-2) var(--size-4-4);
+}
+
+.dh-manager-card-editor {
+    background-color: var(--background-secondary) !important;
+}
+
+.dh-manager-card-editor .setting-item-control textarea {
+    min-height: 120px;
+    width: 100%;
+}
+
+.dh-character-manager-modal .setting-item-control textarea {
+    width: 100%;
+}
+
+.dh-character-manager-modal .setting-item-control {
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+}
+
 .dh-replace-feature-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
