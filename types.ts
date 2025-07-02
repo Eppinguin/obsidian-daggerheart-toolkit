@@ -5,7 +5,7 @@ export interface StatblockAttack { name: string; range: string; damage: string; 
 export interface StatblockExperience { [key: string]: number; }
 export interface StatblockHpStress { hp: number; stress: number; minor_hp?: number | null; major_hp?: number | null; severe_hp?: number | null; }
 export interface StatblockFeature { name: string; type: string; parsedCost?: string; countdown?: string | null; description: string; }
-export interface Condition { name: string; description: string; }
+export interface Condition { name: string; description: string; isCustom?: boolean; }
 export interface StatblockData { name: string; category: 'adversary' | 'environment'; image?: string; tier?: number | string; type?: string; description?: string; attack?: StatblockAttack; difficulty?: number | string; experience?: StatblockExperience | string; motives_tactics?: string[] | string; impulses?: string; potential_adversaries?: string; hp_stress: StatblockHpStress; features?: StatblockFeature[]; sourceFile?: string; isCustom?: boolean; }
 export interface AdversaryInstance extends StatblockData { id: string; groupId: string; currentHp: number; currentStress: number; displayName: string; conditions?: Condition[]; }
 export interface SavedEncounter { id: string; name: string; adversaries: AdversaryInstance[]; adversaryGroupOrder: string[]; }
@@ -13,19 +13,40 @@ export interface Countdown { id: string; name: string; value: number; }
 
 // --- RAW COMPENDIUM JSON TYPES ---
 export interface JsonFeat { name: string; text: string; }
-export interface JsonAncestry { name: string; description: string; feats: JsonFeat[]; }
-export interface JsonCommunity { name: string; description: string; note: string; feats: JsonFeat[]; }
-export interface JsonSubclass { name: string; description: string; spellcast_trait?: string; foundations: JsonFeat[]; specializations: JsonFeat[]; masteries: JsonFeat[]; }
-export interface JsonClass { name: string; description: string; domain_1: string; domain_2: string; evasion: string; hp: string; items: string; hope_feat_name: string; hope_feat_text: string; subclass_1: string; subclass_2: string; class_feats: JsonFeat[]; backgrounds: { question: string; }[]; connections: { question: string; }[]; }
-export interface JsonAbility { name: string; level: string; domain: string; type: string; recall: string; text: string; }
-export interface JsonArmor { name: string; tier: string; base_thresholds: string; base_score: string; feat_name?: string; feat_text?: string; }
-export interface JsonWeapon { name: string; primary_or_secondary: string; tier: string; physical_or_magical: string; trait: string; range: string; damage: string; burden: string; feat_name?: string; feat_text?: string; }
-export interface JsonItem { roll?: string; name: string; description: string; }
-export interface JsonConsumable { roll: string; name: string; description: string; }
+export interface JsonAncestry { name: string; description: string; feats: JsonFeat[]; isCustom?: boolean; }
+export interface JsonCommunity { name: string; description: string; note: string; feats: JsonFeat[]; isCustom?: boolean; }
+export interface JsonSubclass { name: string; description: string; spellcast_trait?: string; foundations: JsonFeat[]; specializations: JsonFeat[]; masteries: JsonFeat[]; isCustom?: boolean; }
+export interface JsonClass { name: string; description: string; domain_1: string; domain_2: string; evasion: string; hp: string; items: string; hope_feat_name: string; hope_feat_text: string; subclass_1: string; subclass_2: string; class_feats: JsonFeat[]; backgrounds: { question: string; }[]; connections: { question: string; }[]; isCustom?: boolean; }
+export interface JsonAbility { name: string; level: string; domain: string; type: string; recall: string; text: string; isCustom?: boolean; }
+export interface JsonArmor { name: string; tier: string; base_thresholds: string; base_score: string; feat_name?: string; feat_text?: string; isCustom?: boolean; _type?: 'armor'; }
+export interface JsonWeapon { name: string; primary_or_secondary: string; tier: string; physical_or_magical: string; trait: string; range: string; damage: string; burden: string; feat_name?: string; feat_text?: string; isCustom?: boolean; _type?: 'weapon'; }
+export interface JsonItem { roll?: string; name: string; description: string; isCustom?: boolean; _type?: 'item'; }
+export interface JsonConsumable { roll: string; name: string; description: string; isCustom?: boolean; _type?: 'consumable'; }
+
+// --- CONSOLIDATED COMPENDIUM EDITOR TYPES ---
+export const ALL_COMPENDIUM_TYPES = [
+    'Class', 'Subclass', 'Ancestry', 'Community',
+    'Ability',
+    'Weapon', 'Armor', 'Item', 'Consumable',
+    'Adversary', 'Environment'
+] as const;
+export type CompendiumType = typeof ALL_COMPENDIUM_TYPES[number];
+
+export type AllCompendiumData =
+    | JsonClass
+    | JsonSubclass
+    | JsonAncestry
+    | JsonCommunity
+    | JsonAbility
+    | JsonWeapon
+    | JsonArmor
+    | JsonItem
+    | JsonConsumable
+    | StatblockData;
 
 // --- PROCESSED/APPLICATION-LEVEL TYPES ---
 export interface CompendiumFeature { name: string; description: string; }
-export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; recall: number; description: string; }
+export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; recall: number; description: string; isCustom?: boolean; }
 
 // Base Item types with _type property
 export type ArmorItem = JsonArmor & { _type: 'armor'; };
@@ -33,7 +54,8 @@ export type WeaponItem = JsonWeapon & { _type: 'weapon'; };
 export type GenericItem = JsonItem & { _type: 'item'; };
 export type ConsumableItem = JsonConsumable & { _type: 'consumable'; };
 
-export type CompendiumItem = ArmorItem | WeaponItem | GenericItem | ConsumableItem;
+export type CompendiumItem = (ArmorItem | WeaponItem | GenericItem | ConsumableItem) & { isCustom?: boolean };
+
 
 // --- CHARACTER DATA MODEL ---
 // This model should store data in a processed, ready-to-use format (e.g., numbers instead of strings)
@@ -88,6 +110,7 @@ export type InventoryItem = {
     quantity: number;
     name: string;
     description?: string;
+    isCustom?: boolean;
 } & ({
     _type: 'armor';
     baseThresholds: { major: number; severe: number; };
@@ -140,6 +163,9 @@ export interface DaggerheartPluginSettings {
     useSrdEnvironments: boolean;
     userCompendiumFile: string;
     userAbilitiesFile: string;
+    userClassesFile: string;
+    userSubclassesFile: string;
+    userAncestriesFile: string;
     showDescriptionOnCards: boolean;
     showFeatureDetailsOnCards: boolean;
     enableFearTracker: boolean;
@@ -165,6 +191,9 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     useSrdEnvironments: true,
     userCompendiumFile: 'User-Adversaries.json',
     userAbilitiesFile: 'user-abilities.json',
+    userClassesFile: 'user-classes.json',
+    userSubclassesFile: 'user-subclasses.json',
+    userAncestriesFile: 'user-ancestries.json',
     showDescriptionOnCards: false,
     showFeatureDetailsOnCards: true,
     enableFearTracker: false,

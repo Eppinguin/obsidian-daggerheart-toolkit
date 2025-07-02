@@ -1,39 +1,40 @@
 import { App, Modal, Setting, Notice } from 'obsidian';
 import DaggerheartStatblockPlugin from '../../main';
 import { JsonAbility } from '../../types';
+import { SaveChoiceModal } from './SaveChoiceModal';
 
 export class CreateCardModal extends Modal {
-    plugin: DaggerheartStatblockPlugin;
-    onSave: (ability: JsonAbility) => void;
     private ability: Partial<JsonAbility>;
-    private isEditing: boolean;
+    private originalName: string;
+    private isOriginalCustom: boolean;
 
-    constructor(app: App, plugin: DaggerheartStatblockPlugin, onSave: (ability: JsonAbility) => void, abilityToEdit?: JsonAbility) {
+    constructor(
+        app: App,
+        private plugin: DaggerheartStatblockPlugin,
+        // The callback now provides the new ability data and the original name for lookups.
+        private onComplete: (ability: JsonAbility, oldName?: string) => void,
+        abilityToEdit?: JsonAbility
+    ) {
         super(app);
-        this.plugin = plugin;
-        this.onSave = onSave;
-        // If we're editing, create a copy to avoid modifying the original object until saved.
         this.ability = abilityToEdit ? { ...abilityToEdit } : {};
-        this.isEditing = !!abilityToEdit;
+        this.originalName = abilityToEdit?.name || '';
+        this.isOriginalCustom = !!abilityToEdit?.isCustom;
     }
 
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
         this.modalEl.addClass('dh-create-card-modal');
-        contentEl.createEl('h2', { text: this.isEditing ? 'Edit Custom Domain Card' : 'Create Custom Domain Card' });
+        const isEditing = !!this.originalName;
+        contentEl.createEl('h2', { text: isEditing ? 'Edit Custom Domain Card' : 'Create Custom Domain Card' });
 
         new Setting(contentEl)
             .setName('Card Name')
-            .setDesc('The name of the feature or ability. This cannot be changed after creation.')
             .addText(text => text
                 .setPlaceholder('e.g., Shadow Step')
                 .setValue(this.ability.name || '')
-                .setDisabled(this.isEditing) // Cannot change the name when editing
                 .onChange(value => {
-                    if (!this.isEditing) {
-                        this.ability.name = value;
-                    }
+                    this.ability.name = value;
                 }));
 
         new Setting(contentEl)
@@ -54,9 +55,9 @@ export class CreateCardModal extends Modal {
 
         new Setting(contentEl)
             .setName('Type')
-            .setDesc('e.g., Action, Reaction, Passive')
+            .setDesc('e.g., Ability, Grimoire, Spell')
             .addText(text => text
-                .setPlaceholder('Action')
+                .setPlaceholder('Ability')
                 .setValue(this.ability.type || '')
                 .onChange(value => this.ability.type = value));
 
@@ -85,23 +86,45 @@ export class CreateCardModal extends Modal {
                 .onClick(() => this.handleSave()));
     }
 
-    private handleSave() {
-        if (!this.ability.name || !this.ability.domain || !this.ability.level || !this.ability.text) {
+    private async handleSave() {
+        const finalName = this.ability.name?.trim();
+        if (!finalName || !this.ability.domain || !this.ability.level || !this.ability.text) {
             new Notice('Please fill out all required fields (Name, Domain, Level, Description).');
             return;
         }
 
         const finalAbility: JsonAbility = {
-            name: this.ability.name,
+            name: finalName,
             domain: this.ability.domain,
             level: this.ability.level,
             type: this.ability.type || '',
             recall: this.ability.recall || '0',
             text: this.ability.text,
+            isCustom: true,
         };
 
-        this.onSave(finalAbility);
-        this.close();
+        const nameHasChanged = finalName !== this.originalName;
+        const fileName = 'user-abilities.json';
+
+        const saveAsNew = async () => {
+            await this.plugin.saveCustomCompendiumData(fileName, finalAbility);
+            this.onComplete(finalAbility, this.originalName);
+            this.close();
+        };
+
+        const renameOriginal = async () => {
+            await this.plugin.renameCustomCompendiumEntry(fileName, this.originalName, finalAbility);
+            this.onComplete(finalAbility, this.originalName);
+            this.close();
+        };
+
+        if (nameHasChanged && this.isOriginalCustom) {
+            new SaveChoiceModal(this.app, finalName, saveAsNew, renameOriginal).open();
+        } else {
+            await this.plugin.saveCustomCompendiumData(fileName, finalAbility);
+            this.onComplete(finalAbility, this.originalName);
+            this.close();
+        }
     }
 
     onClose() {

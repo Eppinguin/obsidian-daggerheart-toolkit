@@ -31,8 +31,7 @@ export class CardSwapModal extends Modal {
             this.character.vault = [];
         }
 
-        // Initialize filter states
-        const charClass = this.plugin.characterCompendium.getClass(this.character.classId);
+        const charClass = this.plugin.compendium.getClass(this.character.classId);
         if (charClass) {
             this.selectedDomains = [charClass.domain_1, charClass.domain_2].filter(d => d);
         }
@@ -126,37 +125,30 @@ export class CardSwapModal extends Modal {
 
         const controls = header.createDiv({ cls: 'dh-swap-card-controls' });
 
-        // Add Edit button for custom cards
-        const isCustom = this.plugin.characterCompendium.userAbilities.some(ua => ua.name.toLowerCase() === card.id.toLowerCase());
-        if (isCustom) {
-            const rawCard = this.plugin.characterCompendium.abilities.find(a => a.name.toLowerCase() === card.id.toLowerCase());
-            if (rawCard) {
-                const editBtn = controls.createEl('button');
-                setIcon(editBtn, 'pencil');
-                editBtn.ariaLabel = "Edit Custom Card";
-                editBtn.addEventListener('click', () => {
-                    new CreateCardModal(this.app, this.plugin, async (updatedAbility: JsonAbility) => {
-                        // Save the change to the JSON file
-                        await this.plugin.saveAbilityToUserCompendium(updatedAbility);
+        // Find the raw card data from the compendium to allow editing.
+        const rawCard = this.plugin.compendium.abilities.find(a => a.name.toLowerCase() === card.id.toLowerCase());
+        if (rawCard) {
+            const editBtn = controls.createEl('button');
+            setIcon(editBtn, 'pencil');
+            editBtn.ariaLabel = "Edit Card";
+            editBtn.addEventListener('click', () => {
+                new CreateCardModal(this.app, this.plugin, (updatedAbility, oldName) => {
+                    // This callback now correctly handles updating the character.
+                    const updatedDomainCard = this.plugin.compendium.getAbility(updatedAbility.name);
+                    if (!updatedDomainCard) return;
 
-                        // Update the card in the character's data
-                        const updatedDomainCard = this.plugin.characterCompendium.getAbility(updatedAbility.name);
-                        if (updatedDomainCard) {
-                            if (location === 'loadout') {
-                                const index = this.character.features.findIndex(f => f.id === card.id);
-                                if (index > -1) this.character.features[index] = updatedDomainCard;
-                            } else {
-                                const index = this.character.vault.findIndex(v => v.id === card.id);
-                                if (index > -1) this.character.vault[index] = updatedDomainCard;
-                            }
-                        }
-
-                        // Save the character and refresh the modal
-                        this.onSave(this.character);
-                        this.onOpen();
-                    }, rawCard).open();
-                });
-            }
+                    const nameToFind = oldName || card.name;
+                    if (location === 'loadout') {
+                        const index = this.character.features.findIndex(f => f.name === nameToFind);
+                        if (index > -1) this.character.features[index] = updatedDomainCard;
+                    } else {
+                        const index = this.character.vault.findIndex(v => v.name === nameToFind);
+                        if (index > -1) this.character.vault[index] = updatedDomainCard;
+                    }
+                    this.onSave(this.character);
+                    this.onOpen(); // Redraw the modal to show changes
+                }, rawCard).open();
+            });
         }
 
         if (location === 'loadout') {
@@ -182,8 +174,8 @@ export class CardSwapModal extends Modal {
 
     private drawCompendiumFilters(parent: HTMLElement) {
         const filterContainer = parent.createDiv({ cls: 'dh-compendium-filters' });
-        const allDomains = this.plugin.characterCompendium.getAllDomains();
-        const allLevels = this.plugin.characterCompendium.getAllLevels();
+        const allDomains = this.plugin.compendium.getAllDomains();
+        const allLevels = this.plugin.compendium.getAllLevels();
 
         this.createMultiSelectSetting(filterContainer, 'Domains', allDomains, this.selectedDomains, (domain) => {
             const index = this.selectedDomains.indexOf(domain as string);
@@ -213,8 +205,7 @@ export class CardSwapModal extends Modal {
         const actionsContainer = parent.createDiv({ cls: 'dh-compendium-actions' });
         actionsContainer.createEl('button', { text: 'Create Custom Card', cls: 'mod-cta' })
             .addEventListener('click', () => {
-                new CreateCardModal(this.app, this.plugin, async (newAbility: JsonAbility) => {
-                    await this.plugin.saveAbilityToUserCompendium(newAbility);
+                new CreateCardModal(this.app, this.plugin, (newAbility, oldName) => {
                     this.redrawCompendiumList();
                 }).open();
             });
@@ -222,7 +213,7 @@ export class CardSwapModal extends Modal {
 
     private redrawCompendiumList() {
         this.listContainer.empty();
-        const allCards = this.plugin.characterCompendium.abilities;
+        const allCards = this.plugin.compendium.abilities;
         const ownedCardIds = [...this.character.features.map(f => f.id), ...this.character.vault.map(v => v.id)];
 
         const availableCards = allCards
@@ -235,10 +226,9 @@ export class CardSwapModal extends Modal {
             this.listContainer.createDiv({ text: 'No matching cards found.', cls: 'dh-empty-text' });
         } else {
             availableCards.forEach(rawCard => {
-                const card = this.plugin.characterCompendium.getAbility(rawCard.name);
+                const card = this.plugin.compendium.getAbility(rawCard.name);
                 if (card) {
-                    const isCustom = this.plugin.characterCompendium.userAbilities.some(ua => ua.name.toLowerCase() === rawCard.name.toLowerCase());
-                    this.createCompendiumCard(this.listContainer, card, rawCard, isCustom);
+                    this.createCompendiumCard(this.listContainer, card, rawCard);
                 }
             });
         }
@@ -274,7 +264,7 @@ export class CardSwapModal extends Modal {
         });
     }
 
-    private createCompendiumCard(parent: HTMLElement, card: DomainCard, rawCard: JsonAbility, isCustom: boolean) {
+    private createCompendiumCard(parent: HTMLElement, card: DomainCard, rawCard: JsonAbility) {
         const cardEl = parent.createDiv({ cls: 'dh-swap-card' });
         cardEl.createEl('strong', { text: card.name });
         const meta = cardEl.createDiv({ cls: 'dh-swap-card-meta' });
@@ -285,17 +275,15 @@ export class CardSwapModal extends Modal {
 
         const controls = cardEl.createDiv({ cls: 'dh-swap-card-controls' });
 
-        if (isCustom) {
-            const editBtn = controls.createEl('button');
-            setIcon(editBtn, 'pencil');
-            editBtn.ariaLabel = "Edit Custom Card";
-            editBtn.addEventListener('click', () => {
-                new CreateCardModal(this.app, this.plugin, async (updatedAbility: JsonAbility) => {
-                    await this.plugin.saveAbilityToUserCompendium(updatedAbility);
-                    this.redrawCompendiumList();
-                }, rawCard).open();
-            });
-        }
+        // Always show the edit button for any card in the compendium list
+        const editBtn = controls.createEl('button');
+        setIcon(editBtn, 'pencil');
+        editBtn.ariaLabel = "Edit Card";
+        editBtn.addEventListener('click', () => {
+            new CreateCardModal(this.app, this.plugin, (updatedAbility, oldName) => {
+                this.redrawCompendiumList();
+            }, rawCard).open();
+        });
 
         controls.createEl('button', { text: 'To Loadout' }).addEventListener('click', () => this.addCardFromCompendium(card, 'loadout'));
         controls.createEl('button', { text: 'To Vault' }).addEventListener('click', () => this.addCardFromCompendium(card, 'vault'));

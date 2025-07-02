@@ -1434,12 +1434,27 @@
 }
 
 /* --- Add Item Modal (Reworked) --- */
+.dh-add-item-modal {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
 .dh-add-item-modal .modal-content {
     display: flex;
     flex-direction: column;
     gap: var(--size-4-2);
     width: 90vw;
     max-width: 800px;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+/* Ensure all content inside the modal respects container width */
+.dh-add-item-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .dh-add-item-modal .dh-modal-topbar {
@@ -1495,6 +1510,7 @@
 .dh-add-item-modal .dh-modal-list {
     max-height: 50vh;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: var(--size-4-1);
@@ -1519,11 +1535,13 @@
 
 .dh-modal-item-main h4 {
     margin: 0;
+    min-width: 0;
 }
 
 .dh-modal-item-details {
     display: flex;
     flex-wrap: wrap;
+    max-width: 100%;
     gap: var(--size-4-2);
     align-items: center;
 }
@@ -1535,6 +1553,8 @@
     border-radius: var(--radius-s);
     font-size: var(--font-ui-smaller);
     font-weight: 500;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .dh-item-feature {
@@ -3316,4 +3336,25 @@
     padding: var(--size-4-2) 0;
     margin-top: var(--size-4-2);
     border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Prevent horizontal scrolling in the AddItemModal */
+.dh-add-item-modal {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.dh-add-item-modal .modal-content {
+    width: 90vw;
+    max-width: 100%;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+/* Ensure all content inside the modal respects container width */
+.dh-add-item-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }

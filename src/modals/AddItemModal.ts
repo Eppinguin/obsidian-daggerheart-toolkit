@@ -29,8 +29,8 @@ export class AddItemModal extends Modal {
         super(app);
         this.modalEl.addClass('dh-add-item-modal');
 
-        // Pre-calculate available filter options
-        const allItems = this.plugin.characterCompendium.getAllItems();
+        // Pre-calculate available filter options from the unified compendium
+        const allItems = this.plugin.compendium.getAllItems();
         const tiers = new Set<number>();
         const traits = new Set<string>();
         allItems.forEach(item => {
@@ -178,14 +178,13 @@ export class AddItemModal extends Modal {
 
     private renderList() {
         this.listEl.empty();
-        const allItems = this.plugin.characterCompendium.getAllItems();
+        const allItems = this.plugin.compendium.getAllItems();
 
         const filtered = allItems.filter(item => {
             if (this.searchTerm && !item.name.toLowerCase().includes(this.searchTerm)) {
                 return false;
             }
 
-            // Note: `item._type` is already lowercase from the compendium loader
             const categoryMatch = this.selectedCategories.size === 0 || this.selectedCategories.has(item._type);
             if (!categoryMatch) return false;
 
@@ -224,6 +223,7 @@ export class AddItemModal extends Modal {
             const mainInfo = itemEl.createDiv({ cls: 'dh-modal-item-main' });
             mainInfo.createEl('h4', { text: item.name });
 
+            // This container for tags is set to wrap in the CSS, preventing horizontal overflow.
             const detailsEl = mainInfo.createDiv({ cls: 'dh-modal-item-details' });
             const createTag = (text: string, hover?: string) => {
                 const tag = detailsEl.createSpan({ cls: 'dh-item-tag', text });

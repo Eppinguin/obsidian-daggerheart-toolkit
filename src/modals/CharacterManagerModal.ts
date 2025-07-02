@@ -90,7 +90,7 @@ export class CharacterManagerModal extends Modal {
         new Setting(container)
             .setName('Ancestry')
             .addDropdown(dd => {
-                this.plugin.characterCompendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
+                this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
                 dd.setValue(this.tempCharacter.ancestryId)
                     .onChange(value => this.tempCharacter.ancestryId = value);
             });
@@ -98,7 +98,7 @@ export class CharacterManagerModal extends Modal {
         new Setting(container)
             .setName('Community')
             .addDropdown(dd => {
-                this.plugin.characterCompendium.communities.forEach(c => dd.addOption(c.name, c.name));
+                this.plugin.compendium.communities.forEach(c => dd.addOption(c.name, c.name));
                 dd.setValue(this.tempCharacter.communityId)
                     .onChange(value => this.tempCharacter.communityId = value);
             });
@@ -106,7 +106,7 @@ export class CharacterManagerModal extends Modal {
         new Setting(container)
             .setName('Class')
             .addDropdown(dd => {
-                this.plugin.characterCompendium.classes.forEach(c => dd.addOption(c.name, c.name));
+                this.plugin.compendium.classes.forEach(c => dd.addOption(c.name, c.name));
                 dd.setValue(this.tempCharacter.classId)
                     .onChange(value => this.tempCharacter.classId = value);
             });
@@ -114,9 +114,9 @@ export class CharacterManagerModal extends Modal {
         new Setting(container)
             .setName('Subclass')
             .addDropdown(dd => {
-                const charClass = this.plugin.characterCompendium.getClass(this.tempCharacter.classId);
+                const charClass = this.plugin.compendium.getClass(this.tempCharacter.classId);
                 if (charClass) {
-                    const subclasses = [this.plugin.characterCompendium.getSubclass(charClass.subclass_1), this.plugin.characterCompendium.getSubclass(charClass.subclass_2)].filter(s => s);
+                    const subclasses = [this.plugin.compendium.getSubclass(charClass.subclass_1), this.plugin.compendium.getSubclass(charClass.subclass_2)].filter(s => s);
                     subclasses.forEach(subclass => {
                         if (subclass) dd.addOption(subclass.name, subclass.name);
                     });
@@ -240,13 +240,13 @@ export class CharacterManagerModal extends Modal {
         parent.createEl('h3', { text: 'Available Replacements' });
         const listEl = parent.createDiv({ cls: 'dh-feature-list' });
 
-        const charClass = this.plugin.characterCompendium.getClass(this.tempCharacter.classId);
+        const charClass = this.plugin.compendium.getClass(this.tempCharacter.classId);
         if (!charClass) return;
 
         const classDomains = [charClass.domain_1, charClass.domain_2];
         const currentFeatureIds = this.tempCharacter.features.map(f => f.id);
 
-        const availableFeatures = this.plugin.characterCompendium.abilities.filter(f => {
+        const availableFeatures = this.plugin.compendium.abilities.filter(f => {
             const isDomainCard = classDomains.some(d => d.toLowerCase() === f.domain?.toLowerCase());
             const isNotOwned = !currentFeatureIds.includes(f.name);
             return isDomainCard && isNotOwned && (parseInt(f.level) ?? 1) <= this.tempCharacter.level;
@@ -288,7 +288,7 @@ export class CharacterManagerModal extends Modal {
     private handleReplace() {
         if (!this.selectedCurrentFeatureId || !this.selectedNewFeatureId) return;
 
-        const newAbility = this.plugin.characterCompendium.abilities.find(a => a.name === this.selectedNewFeatureId);
+        const newAbility = this.plugin.compendium.abilities.find(a => a.name === this.selectedNewFeatureId);
         if (!newAbility) {
             new Notice("Error: Could not find the selected feature to learn.");
             return;

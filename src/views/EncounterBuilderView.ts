@@ -166,7 +166,7 @@ export class EncounterBuilderView extends ItemView {
     }
 
     async loadCompendium() {
-        this.compendiumItems = await this.plugin.getCompendiumItems();
+        this.compendiumItems = this.plugin.compendium.getStatblocks();
         this.compendiumItems.sort((a, b) => a.name.localeCompare(b.name));
         console.log(`Daggerheart View: Loaded ${this.compendiumItems.length} compendium items.`);
     }
