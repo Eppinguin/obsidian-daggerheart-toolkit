@@ -1,3 +1,89 @@
+/* Import component styles */
+@import url('src/styles/import-export.css');
+
+/* --- Styles for dddice Theme Selection --- */
+
+.dh-theme-selector-container {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+}
+
+.dh-theme-card.is-selected-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2);
+    width: 150px;
+    background-color: var(--background-secondary);
+}
+
+.dh-theme-card.is-selected-card .dh-theme-preview {
+    width: 100%;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: var(--size-4-1);
+}
+
+.dh-theme-card.is-selected-card .dh-theme-name {
+    font-size: var(--font-ui-small);
+}
+
+/* Modal specific styles */
+.dh-theme-modal .modal-content {
+    max-width: 800px;
+    width: 90vw;
+}
+
+.dh-theme-modal .dh-theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--size-4-2);
+    margin-top: var(--size-4-3);
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.dh-theme-modal .dh-theme-card {
+    border: 2px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: var(--background-secondary);
+}
+
+.dh-theme-modal .dh-theme-card:hover {
+    border-color: var(--interactive-accent-hover);
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-theme-modal .dh-theme-card.is-selected {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+.dh-theme-modal .dh-theme-preview {
+    width: 100%;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: var(--size-4-1);
+    border-radius: var(--radius-s);
+}
+
+.dh-theme-modal .dh-theme-name {
+    font-size: var(--font-ui-smaller);
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
 /* -----------------------------------------------------------------------------
    1. VARIABLES
    ----------------------------------------------------------------------------- */
@@ -846,6 +932,18 @@
     color: var(--text-accent);
 }
 
+/* Only apply cursor and visual cues to clickable costs */
+.dh-clickable-cost {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    transition: color 0.2s ease;
+}
+
+.dh-clickable-cost:hover {
+    color: var(--text-accent-hover);
+    text-decoration: underline;
+}
+
 /* Feature toggle (expand/collapse) */
 .dh-instance-card-content .dh-feature-toggle {
     color: var(--text-muted); 
@@ -976,25 +1074,6 @@
     opacity: 1;
 }
 
-.dh-add-condition-btn {
-    background-color: var(--background-modifier-hover);
-    border: 1px dashed var(--background-modifier-border);
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    color: var(--text-muted);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dh-add-condition-btn:hover {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-style: solid;
-}
-
 /* Condition list in menus */
 .dh-conditions-list-container {
     padding: 0;
@@ -1005,6 +1084,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--size-4-1);
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+}
+
+.dh-condition-tags-list .dh-empty-text {
+    color: var(--text-faint);
+    font-style: italic;
 }
 
 .dh-condition-tag > span {
@@ -1024,6 +1111,35 @@
 
 .dh-remove-condition-btn:hover {
     color: var(--text-error);
+}
+
+/* --- Condition Modal --- */
+.dh-predefined-conditions-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: var(--size-4-4);
+}
+
+.dh-condition-card {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dh-condition-card:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-condition-card > p {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    margin-top: var(--size-4-1);
 }
 
 /* -----------------------------------------------------------------------------
@@ -1253,7 +1369,8 @@
    ----------------------------------------------------------------------------- */
 /* General modal styles */
 .dh-name-modal .modal-title, 
-.dh-manage-encounters-modal .modal-title { 
+.dh-manage-encounters-modal .modal-title,
+.dh-add-item-modal .modal-title { 
     color: var(--text-normal);
     text-align: center; 
 }
@@ -1319,6 +1436,147 @@
     background-color: rgba(var(--color-red-rgb), 0.1);
 }
 
+/* --- Add Item Modal (Reworked) --- */
+.dh-add-item-modal {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.dh-add-item-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    width: 90vw;
+    max-width: 800px;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+/* Ensure all content inside the modal respects container width */
+.dh-add-item-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.dh-add-item-modal .dh-modal-topbar {
+    display: flex;
+    gap: var(--size-4-2);
+    align-items: center;
+}
+
+.dh-add-item-modal .dh-modal-topbar .search-input {
+    flex-grow: 1;
+}
+
+.dh-active-filters-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2) 0;
+    min-height: 28px; /* Prevent layout shift when empty */
+}
+
+.dh-active-filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-active-filter-tag .dh-filter-tag-type {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.dh-active-filter-tag .dh-remove-filter-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.dh-active-filter-tag .dh-remove-filter-btn:hover {
+    color: var(--text-error);
+}
+
+.dh-add-item-modal .dh-modal-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: var(--size-4-2);
+}
+
+.dh-modal-list-item {
+    padding: var(--size-4-2) var(--size-4-3);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+}
+.dh-modal-list-item:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+.dh-modal-item-main h4 {
+    margin: 0;
+    min-width: 0;
+}
+
+.dh-modal-item-details {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 100%;
+    gap: var(--size-4-2);
+    align-items: center;
+}
+
+.dh-item-tag {
+    background-color: var(--background-secondary-alt);
+    color: var(--text-muted);
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+    font-weight: 500;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.dh-item-feature {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 2px;
+}
+.dh-item-feature:hover {
+    color: var(--text-normal);
+}
+
+.dh-item-description {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    font-style: italic;
+    width: 100%;
+}
+
 .menu-item-icon { 
     margin-right: var(--size-4-2);
 }
@@ -1335,12 +1593,8 @@
 .menu-item:hover {
     background-color: var(--background-modifier-hover);
 }
-.menu-item.is-checked { 
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-.menu-item.is-checked:hover {
-    background-color: var(--interactive-accent-hover);
+.menu-item.is-checked > .menu-item-icon { 
+    color: var(--interactive-accent);
 }
 .menu-separator { 
     background-color: var(--background-modifier-border);
@@ -1348,6 +1602,70 @@
 .menu.context-menu .menu-item-icon { 
     color: var(--text-muted);
 }
+
+/* -----------------------------------------------------------------------------
+   13.5 CHARACTER CREATOR WIZARD
+   ----------------------------------------------------------------------------- */
+.dh-creator-nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--size-4-4);
+}
+
+.dh-creator-btn {
+    min-width: 120px;
+}
+
+.dh-creator-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: var(--size-4-3);
+    margin-top: var(--size-4-3);
+}
+
+.dh-creator-card {
+    border: 2px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: var(--background-secondary);
+    display: flex;
+    flex-direction: column;
+}
+
+.dh-creator-card:hover {
+    border-color: var(--interactive-accent-hover);
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-creator-card.is-selected {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--interactive-accent), 0 0 10px var(--dh-sheet-accent-glow, rgba(229, 179, 42, 0.4));
+    background-color: var(--background-secondary-alt);
+}
+
+.dh-creator-card > strong {
+    display: block;
+    margin-bottom: var(--size-4-2);
+    font-size: var(--font-ui-large);
+}
+
+.dh-creator-card > div:not(.dh-creator-card-meta) {
+    flex-grow: 1;
+}
+
+.dh-creator-card-meta {
+    margin-top: var(--size-4-3);
+    padding-top: var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
 
 /* -----------------------------------------------------------------------------
    14. COUNTDOWN POPUP 
@@ -1806,4 +2124,1566 @@
 /* Minor segment additional styling */
 .dh-threshold-minor {
     padding-right: var(--size-4-3);
+}
+
+/* Character Sheet Styles */
+/* --- [REFACTORED] CHARACTER SHEET VIEW STYLES --- */
+/* This section contains the new styles to match the screenshot layout. */
+
+:root {
+    --dh-sheet-bg: #17181c;
+    --dh-sheet-bg-alt: #1d1f25;
+    --dh-sheet-border: #333644;
+    --dh-sheet-text: #e6e6e6;
+    --dh-sheet-text-muted: #858999;
+    --dh-sheet-accent: #e5b32a;
+    --dh-sheet-accent-dark: #b98e1c;
+    --dh-sheet-accent-glow: rgba(229, 179, 42, 0.4);
+    --dh-sheet-purple: #8c5cd8;
+}
+
+.dh-character-sheet-view .view-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--dh-sheet-bg);
+    color: var(--dh-sheet-text);
+    font-size: 14px; /* Reduced base font size */
+}
+
+.dh-cs-main {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: var(--size-4-3);
+}
+
+.dh-cs-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 8px;
+}
+
+.dh-topbar-left,
+.dh-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dh-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+/* Header */
+.dh-sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--size-4-3);
+    border-bottom: 2px solid var(--dh-sheet-accent);
+}
+
+.dh-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+}
+
+.dh-avatar {
+    width: 70px; /* smaller */
+    height: 70px; /* smaller */
+    border: 2px solid var(--dh-sheet-accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--dh-sheet-bg-alt);
+    position: relative; /* Add for positioning context */
+    overflow: hidden; /* Add to crop the image */
+}
+.dh-avatar > .svg-icon {
+    width: 40px; /* smaller */
+    height: 40px; /* smaller */
+}
+
+.dh-nameplate h1 {
+    font-size: 2.2em; /* smaller */
+    font-weight: 700;
+    margin: 0;
+    color: var(--dh-sheet-accent);
+    text-transform: uppercase;
+}
+
+.dh-nameplate p {
+    margin: 0;
+    font-size: var(--font-ui-medium); /* smaller */
+    color: var(--dh-sheet-text-muted);
+    font-weight: 500;
+}
+
+.dh-domain-placeholder {
+    border: 1px solid var(--dh-sheet-border);
+    padding: var(--size-4-2) var(--size-4-4);
+    background-color: var(--dh-sheet-bg-alt);
+    font-weight: bold;
+    color: var(--dh-sheet-accent);
+}
+
+
+/* Main Grid Layout */
+.dh-sheet-grid {
+    display: grid;
+    /* Adjusted column widths for a more compact layout */
+    grid-template-columns: 240px 1fr 240px;
+    gap: var(--size-4-4);
+    padding: 0 var(--size-4-1);
+}
+
+.dh-grid-column-left,
+.dh-grid-column-center,
+.dh-grid-column-right {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-4);
+    min-width: 0; /* Prevents grid blowout */
+}
+
+/* --- Left Column --- */
+.dh-primary-defenses {
+    display: flex;
+    justify-content: space-around;
+    gap: var(--size-4-2);
+}
+
+.dh-stat-hex {
+    width: 95px; /* smaller */
+    height: 110px; /* smaller */
+    background-color: var(--dh-sheet-bg-alt);
+    color: var(--dh-sheet-text);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.dh-stat-hex .dh-stat-value {
+    font-size: 2.5em; /* smaller */
+    line-height: 1;
+    color: var(--dh-sheet-accent);
+}
+
+.dh-stat-hex .dh-stat-label {
+    font-size: var(--font-ui-small); /* smaller */
+    text-transform: uppercase;
+    margin-top: var(--size-2-1);
+}
+
+.dh-armor-slots {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+.dh-armor-slots .dh-pips-container {
+    justify-content: center;
+}
+.dh-armor-slots .dh-pip {
+    width: 18px; /* smaller */
+    height: 18px; /* smaller */
+    border-radius: 0;
+    border-color: var(--dh-sheet-accent);
+    background-color: transparent;
+}
+.dh-armor-slots .dh-pip-marked {
+    background-color: var(--dh-sheet-accent);
+}
+
+.dh-damage-and-resources {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+.dh-section-header-box {
+    text-align: center;
+    background-color: var(--dh-sheet-border);
+    padding: var(--size-4-2);
+    border-radius: var(--radius-s);
+    margin: -12px -12px 12px -12px;
+}
+.dh-section-header-box h3 {
+    margin: 0;
+    font-size: var(--font-ui-medium);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+
+.dh-thresholds-box {
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2) 0;
+    border-top: 1px solid var(--dh-sheet-border);
+    border-bottom: 1px solid var(--dh-sheet-border);
+}
+.dh-thresholds-box > div {
+    flex-grow: 1;
+}
+.dh-threshold-label {
+    display: block;
+    font-size: var(--font-ui-smaller);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+}
+.dh-threshold-value {
+    display: inline-block;
+    font-size: 1.3em;
+    font-weight: bold;
+    color: var(--dh-sheet-text);
+    background-color: var(--dh-sheet-bg);
+    border-radius: var(--radius-s);
+    padding: 0 var(--size-4-2);
+    margin: var(--size-2-1) 0;
+}
+.dh-threshold-desc {
+    display: block;
+    font-size: 0.8em;
+}
+
+
+/* --- Center Column --- */
+.dh-traits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* responsive traits */
+    gap: var(--size-4-3);
+}
+
+.dh-trait-box-large {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.dh-trait-box-large:hover {
+    border-color: var(--dh-sheet-accent);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+}
+
+.dh-trait-value-large {
+    font-size: 2.2em;
+    font-weight: 700;
+    color: var(--dh-sheet-text);
+    border: 2px solid var(--dh-sheet-border);
+    border-radius: var(--radius-s);
+    margin: -16px auto 8px auto;
+    width: 50px;
+    background-color: var(--dh-sheet-bg-alt);
+}
+.dh-trait-name-large {
+    font-size: var(--font-ui-medium);
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: var(--size-4-2);
+}
+.dh-trait-skills {
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-2-1);
+}
+
+.dh-active-weapons {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.dh-weapon-card {
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-2);
+    border-radius: var(--radius-s);
+}
+.dh-weapon-card h4 {
+    margin: 0 0 var(--size-4-2) 0;
+    font-size: var(--font-ui-small);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+    font-weight: 600;
+}
+.dh-weapon-card-body {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--size-4-2);
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+.dh-weapon-name {
+    font-size: var(--font-ui-medium);
+    font-weight: bold;
+}
+.dh-weapon-type {
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+}
+.dh-weapon-feature {
+    font-size: var(--font-ui-small);
+    font-style: italic;
+    margin-top: var(--size-4-2);
+    padding-top: var(--size-4-2);
+    border-top: 1px dashed var(--dh-sheet-border);
+    width: 100%; /* Ensure it takes full width when wrapped */
+}
+.dh-weapon-card-right {
+    display: flex;
+    gap: var(--size-4-2);
+    flex-shrink: 0;
+}
+
+.dh-weapon-roll-box, .dh-weapon-damage-box {
+    min-width: 70px;
+    padding: var(--size-4-2) var(--size-4-1);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-s);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-weapon-roll-box:hover,
+.dh-weapon-damage-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+    border-color: var(--dh-sheet-accent);
+}
+
+.dh-weapon-roll-box {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent-dark);
+}
+
+.dh-weapon-roll-box div:first-child,
+.dh-weapon-damage-box div:first-child {
+    font-size: 1.3em;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.dh-weapon-roll-box div:last-child,
+.dh-weapon-damage-box div:last-child {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.dh-weapon-damage-box div:last-child {
+    color: var(--dh-sheet-text-muted);
+}
+/* END STYLING FIX */
+
+
+/* --- Right Column --- */
+.dh-vitals {
+    display: flex;
+    gap: var(--size-4-3);
+}
+
+.dh-conditions-box.is-clickable, .dh-level-box.is-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-conditions-box.is-clickable:hover, .dh-level-box:hover {
+    background-color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent);
+}
+
+.dh-conditions-box, .dh-level-box {
+    flex-grow: 1;
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2);
+    text-align: center;
+}
+.dh-vitals h4 {
+    margin: 0 0 var(--size-4-1) 0;
+    font-size: var(--font-ui-small);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+}
+.dh-level-value {
+    font-size: 2.2em;
+    font-weight: bold;
+}
+
+.dh-experiences {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+.dh-experience-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-2) var(--size-4-3);
+    border-radius: var(--radius-s);
+}
+.dh-experience-card.is-interactive {
+    cursor: pointer;
+}
+.dh-experience-card.is-interactive:hover {
+    background-color: var(--dh-sheet-border);
+}
+.dh-experience-value {
+    background-color: var(--dh-sheet-bg-alt);
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: var(--radius-l);
+    font-weight: bold;
+}
+
+/* Overriding interactive track for new theme */
+.dh-character-sheet-view .dh-interactive-track {
+    align-items: center;
+}
+.dh-character-sheet-view .dh-track-label {
+    width: auto;
+    font-weight: 600;
+    font-size: var(--font-ui-medium);
+}
+.dh-character-sheet-view .dh-pips-container {
+    gap: var(--size-2-2);
+}
+.dh-character-sheet-view .dh-pip {
+    width: 13px; /* smaller */
+    height: 13px; /* smaller */
+    border-width: 2px;
+    border-color: var(--dh-sheet-text-muted);
+    transform: rotate(45deg);
+    border-radius: 0;
+    background-color: transparent;
+}
+.dh-character-sheet-view .dh-pip-marked {
+    background-color: var(--dh-sheet-accent);
+    border-color: var(--dh-sheet-accent);
+}
+.dh-character-sheet-view .dh-track-btn {
+    background-color: var(--dh-sheet-border);
+    color: var(--dh-sheet-text);
+    border-radius: 50%;
+}
+.dh-character-sheet-view .dh-track-btn:hover {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+}
+
+/* --- Manager Section (REWORKED) --- */
+.dh-manager-container {
+    margin-top: var(--size-4-4);
+    background-color: var(--dh-sheet-bg-alt);
+    border: 2px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+}
+.dh-manager-tabs { 
+    display: flex; 
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-1) var(--size-4-3);
+    gap: var(--size-4-3);
+    border-bottom: 2px solid var(--dh-sheet-border);
+}
+.dh-manager-tab { 
+    padding: var(--size-4-2) var(--size-4-3); 
+    cursor: pointer; 
+    color: var(--dh-sheet-text-muted); 
+    font-weight: 600;
+    font-size: var(--font-ui-large);
+    text-transform: uppercase;
+    border-bottom: 3px solid transparent; 
+    transition: all 0.2s ease;
+}
+.dh-manager-tab.is-active { 
+    color: var(--dh-sheet-accent); 
+    border-bottom-color: var(--dh-sheet-accent); 
+}
+.dh-manager-tab:hover:not(.is-active) { 
+    color: var(--dh-sheet-text);
+}
+.dh-manager-content { 
+    padding: var(--size-4-4); 
+}
+
+/* Equipment Tab */
+.dh-inventory-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--size-4-3);
+    flex-wrap: wrap;
+    gap: var(--size-4-3);
+}
+
+.dh-inventory-buttons {
+    display: flex;
+    gap: var(--size-4-2);
+}
+
+.dh-gold-tracker {
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-2) var(--size-4-3);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+}
+.dh-inventory-topbar button {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+    font-weight: bold;
+    border: none;
+    padding: var(--size-4-2) var(--size-4-4);
+    border-radius: var(--radius-s);
+}
+.dh-inventory-list {
+    display: flex;
+    flex-direction: column;
+}
+.dh-inventory-item {
+    display: grid;
+    grid-template-columns: 1.5fr 0.5fr 2fr 1fr;
+    gap: var(--size-4-3);
+    padding: var(--size-4-2);
+    border-bottom: 1px solid var(--dh-sheet-border);
+    align-items: center;
+}
+.dh-inventory-item:last-child {
+    border-bottom: none;
+}
+.dh-inventory-item.is-header {
+    font-weight: bold;
+    color: var(--dh-sheet-text-muted);
+    text-transform: uppercase;
+    font-size: var(--font-ui-small);
+}
+.dh-inventory-item-name {
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+.dh-inventory-item-name.is-equipped {
+    color: var(--dh-sheet-accent);
+}
+.dh-inventory-item-name .svg-icon {
+    flex-shrink: 0;
+}
+.dh-inventory-item-qty {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    justify-content: center;
+}
+.dh-inventory-item-qty button {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    line-height: 20px;
+}
+.dh-inventory-item-details {
+    color: var(--dh-sheet-text-muted);
+    font-size: var(--font-ui-small);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dh-inventory-item-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--size-4-1);
+}
+.dh-inventory-item-actions button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--size-2-1);
+}
+.dh-inventory-item-actions button:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+
+
+/* Features Tab */
+.dh-card-section {
+    margin-bottom: var(--size-4-5);
+}
+.dh-section-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid var(--dh-sheet-accent);
+    padding-left: var(--size-4-3);
+    margin-bottom: var(--size-4-3);
+}
+.dh-section-header-bar h3 {
+    margin: 0;
+    font-size: var(--font-ui-large);
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+}
+
+/* --- [REWORKED] Feature Card Styles --- */
+.dh-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: var(--size-4-3);
+}
+
+.dh-feature-card {
+    background-color: var(--dh-sheet-bg);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-feature-card:hover {
+    border-color: var(--dh-sheet-accent);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+}
+
+.dh-feature-card-header {
+    padding: var(--size-4-2) var(--size-4-3);
+    border-bottom: 1px solid var(--dh-sheet-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--size-4-2);
+    flex-wrap: wrap;
+}
+
+.dh-feature-card-title {
+    font-size: var(--font-ui-large);
+    font-weight: 700;
+    color: var(--dh-sheet-accent);
+    text-transform: uppercase;
+    flex-grow: 1;
+}
+
+.dh-feature-card-meta-header {
+    display: flex;
+    gap: var(--size-4-2);
+    flex-shrink: 0; /* Prevent tags from shrinking on smaller card sizes */
+}
+
+.dh-feature-card-type {
+    font-size: var(--font-ui-smaller);
+    font-weight: 500;
+    color: var(--dh-sheet-text-muted);
+    background-color: var(--dh-sheet-bg-alt); /* Use alternate bg for tags */
+    padding: var(--size-2-1) var(--size-2-2);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-s);
+    text-transform: uppercase;
+}
+
+.dh-feature-card-body {
+    padding: var(--size-4-3);
+    flex-grow: 1; /* Allows body to take up available space */
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+}
+.dh-feature-card-body .dh-rollable-dice {
+    color: var(--dh-sheet-accent);
+}
+.dh-feature-card-body .dh-feature-cost-text {
+    color: var(--dh-sheet-accent);
+    font-weight: bold;
+}
+
+.dh-feature-card-footer {
+    border-top: 1px solid var(--dh-sheet-border);
+    background-color: var(--dh-sheet-bg-alt);
+    display: flex;
+    padding: var(--size-4-2);
+    gap: var(--size-4-2);
+}
+
+.dh-feature-card-footer-left {
+    justify-content: flex-start;
+}
+
+.dh-spellcast-box {
+    border-radius: var(--radius-s);
+    display: flex;
+    align-items: center;
+    padding: var(--size-4-2) var(--size-4-2);
+    background-color: var(--dh-sheet-bg);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.dh-spellcast-box-inline {
+    font-size: var(--font-ui-medium);
+        color: var(--dh-sheet-bg);
+    background-color: var(--dh-sheet-accent);
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+}
+
+.dh-spellcast-modifier {
+    font-weight: 700;
+    margin-right: var(--size-2-1);
+    transition: all 0.2s ease;
+}
+
+.dh-spellcast-box:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px var(--dh-sheet-accent-glow);
+}
+
+.dh-spellcast-box div:first-child {
+    font-size: 1.4em;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.dh-spellcast-box div:last-child {
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.dh-feature-card-box {
+    text-align: center;
+}
+
+.dh-feature-card-box .value {
+    font-weight: bold;
+    font-size: 1.2em;
+    color: var(--dh-sheet-text);
+}
+
+.dh-feature-card-box .label {
+    font-size: var(--font-ui-smaller);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+}
+
+/* Details Tab */
+.dh-details-section {
+    margin-bottom: var(--size-4-5);
+}
+.dh-details-section h3 {
+    margin: 0 0 var(--size-4-3) 0;
+    font-size: var(--font-ui-large);
+    font-weight: 600;
+    color: var(--dh-sheet-text-muted);
+}
+.dh-detail-card {
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-3);
+    border-radius: var(--radius-m);
+    margin-bottom: var(--size-4-2);
+}
+.dh-detail-card h4 {
+    margin: 0 0 var(--size-4-2) 0;
+    font-weight: bold;
+    color: var(--dh-sheet-accent);
+}
+.dh-detail-card p {
+    color: var(--dh-sheet-text-muted);
+}
+
+/* Character Manager Modal */
+.dh-character-manager-modal.modal {
+    max-width: 800px;
+}
+
+.dh-character-manager-modal .dh-manager-section {
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    margin-bottom: var(--size-4-3);
+    padding: 0; /* Remove padding from details element */
+}
+
+.dh-character-manager-modal .dh-manager-section summary {
+    padding: var(--size-4-3);
+    cursor: pointer;
+    list-style: none; /* Hide default triangle */
+}
+
+.dh-character-manager-modal .dh-manager-section summary::-webkit-details-marker {
+    display: none; /* Hide default triangle in Chrome */
+}
+
+.dh-character-manager-modal .dh-manager-section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: var(--font-ui-large);
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.dh-character-manager-modal .dh-manager-section > div {
+    padding: var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-character-manager-modal .is-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--size-4-2) var(--size-4-4);
+}
+
+.dh-manager-card-editor {
+    background-color: var(--background-secondary) !important;
+}
+
+.dh-manager-card-editor .setting-item-control textarea {
+    min-height: 120px;
+    width: 100%;
+}
+
+.dh-character-manager-modal .setting-item-control textarea {
+    width: 100%;
+}
+
+.dh-character-manager-modal .setting-item-control {
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+}
+
+.dh-replace-feature-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--size-4-4);
+    margin-top: var(--size-4-3);
+}
+.dh-feature-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: var(--dh-sheet-bg);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+}
+.dh-feature-list-item {
+    padding: var(--size-4-2) var(--size-4-3);
+    border-bottom: 1px solid var(--dh-sheet-border);
+    cursor: pointer;
+}
+.dh-feature-list-item-sub {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+}
+.dh-feature-list-item:last-child { border-bottom: none; }
+.dh-feature-list-item:hover { background-color: var(--dh-sheet-border); }
+.dh-feature-list-item.is-selected {
+    background-color: var(--dh-sheet-purple);
+    color: white;
+    font-weight: bold;
+}
+.dh-modal-footer, .dh-modal-footer-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    margin: 0 calc(var(--size-4-3) * -1) calc(var(--size-4-3) * -1);
+}
+
+
+/* ==========================================================================
+   AVATAR STYLES (BACKGROUND-IMAGE IMPLEMENTATION)
+   ========================================================================== */
+
+/* --- 1. AVATAR IN THE CHARACTER SHEET HEADER --- */
+
+/* This is the 70x70 circle that displays the final avatar. */
+.dh-avatar {
+    width: 70px;
+    height: 70px;
+    border: 2px solid var(--dh-sheet-accent);
+    border-radius: 50%;
+    background-color: var(--dh-sheet-bg-alt);
+    /* Default styles for when an image is loading or not set */
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    /* For flexbox layout in the header */
+    flex-shrink: 0;
+    /* For centering the placeholder icon */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The placeholder user icon */
+.dh-avatar > .svg-icon {
+    width: 40px;
+    height: 40px;
+}
+
+
+/* --- 2. AVATAR EDITOR (Used in Creator & Manager Modal) --- */
+.dh-avatar-editor-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+/* This is the 150x150 circular preview area. */
+.dh-preview-container {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 2px solid var(--interactive-accent);
+    background-color: var(--background-secondary);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+    cursor: move;
+    user-select: none;
+    /* For displaying error text */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-error);
+}
+
+.dh-preview-container.is-dragging {
+    cursor: grabbing;
+    box-shadow: 0 0 10px var(--interactive-accent);
+}
+
+/* This is the new container that sits BELOW the preview circle. */
+.dh-avatar-controls-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 220px; /* Give the controls a max width */
+}
+
+/* This container aligns the "Size:" label next to the slider. */
+.dh-avatar-scale-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.dh-avatar-scale-slider {
+    width: 100%;
+}
+
+.dh-avatar-position-hint {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
+/* The reset button */
+.dh-avatar-reset-btn {
+    pointer-events: auto; /* Make button clickable */
+    margin-top: 8px;
+}
+
+/* A utility class for displaying error text (e.g., "Invalid URL") */
+.dh-error-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 10px;
+    color: var(--text-error);
+    font-size: var(--font-ui-small);
+    cursor: default;
+    user-select: text;
+}
+/* --- [RESPONSIVE STYLES] --- */
+
+/* Tablet and smaller desktops */
+@media (max-width: 900px) {
+    .dh-sheet-grid {
+        grid-template-columns: 1fr; /* Stack columns */
+    }
+    .dh-grid-column-center {
+        order: -1; /* Move traits to the top */
+    }
+}
+
+/* Mobile phones */
+@media (max-width: 600px) {
+    .dh-character-sheet-view .view-content {
+        font-size: 13px; /* Further reduce font size on mobile */
+    }
+
+    .dh-cs-main {
+        padding: var(--size-4-2);
+    }
+    
+    .dh-sheet-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--size-4-3);
+    }
+
+    .dh-nameplate h1 {
+        font-size: 1.8em;
+    }
+
+    .dh-primary-defenses {
+        flex-wrap: wrap; /* Allow hexes to wrap */
+        justify-content: center;
+    }
+    
+    .dh-vitals {
+        flex-direction: column;
+    }
+
+    .dh-traits-grid {
+        /* 2 columns for traits on mobile */
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dh-inventory-item {
+        grid-template-columns: 1fr 50px; /* Stack name/desc */
+        gap: var(--size-2-2) var(--size-4-3);
+    }
+    .dh-inventory-item-desc {
+        grid-column: 1 / 2;
+        padding-left: var(--size-4-2);
+    }
+    .dh-replace-feature-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dh-conditions-box.is-clickable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dh-conditions-box.is-clickable:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+/* Specific styles for the modal actions container and buttons to fix alignment */
+.dh-add-item-modal .modal-actions-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.dh-add-item-modal .modal-actions-container button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.dh-add-item-modal .modal-actions-container button:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* --- Card Swap Modal --- */
+/* Apply strict overflow control to all elements inside the modal */
+.dh-card-swap-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.dh-card-swap-modal .modal-content {
+    width: 90vw;
+    /* max-width: 500px;  */
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+/* Make sure the modal content container doesn't overflow */
+.dh-modal-content-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    max-width: 100%;
+}
+
+.dh-card-manage-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.dh-card-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    max-width: 100%;
+}
+
+.dh-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.dh-swap-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--background-primary);
+    border: 1.5px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
+    padding: var(--size-4-3);
+    margin-bottom: var(--size-4-2);
+    transition: box-shadow 0.2s;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+.dh-swap-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+}
+.dh-swap-card-header {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+}
+.dh-swap-card-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+}
+.dh-swap-card-info strong {
+    font-size: var(--font-ui-large);
+    font-weight: 600;
+    color: var(--text-normal);
+}
+.dh-swap-card-meta {
+    display: flex;
+    gap: var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    margin-top: var(--size-4-1);
+}
+.dh-swap-card-controls {
+    display: flex;
+    flex-direction: row;
+    gap: var(--size-4-1);
+    align-items: flex-start;
+    margin-left: var(--size-4-2);
+}
+.dh-swap-card-controls button {
+    background: var(--background-secondary-alt);
+    border: none;
+        border-radius: var(--radius-s);
+padding: 4px 8px;
+    cursor: pointer;
+    transition:     background 0.15s;
+color: var(--text-normal);
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+    }
+.dh-swap-card-controls button:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.dh-swap-card-controls .mod-warning {
+    background: var(--background-modifier-error);
+    color: var(--text-on-accent);
+}
+.dh-swap-card-desc {
+    margin-top: var(--size-4-2);
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+.dh-modal-tabs {
+    display: flex;
+    gap: var(--size-4-1);
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin: 0 calc(var(--modal-padding) * -1) var(--modal-padding);
+    padding: 0 var(--modal-padding);
+}
+
+.dh-modal-tab {
+    padding: var(--size-4-2) var(--size-4-3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    color: var(--text-muted);
+}
+
+.dh-modal-tab.is-active,
+.dh-modal-tab:hover {
+    color: var(--text-normal);
+}
+
+.dh-modal-tab.is-active {
+    border-bottom-color: var(--interactive-accent);
+}
+
+.dh-modal-content-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+    margin: 0 calc(var(--modal-padding) * -1);
+    padding: 0 var(--modal-padding);
+}
+
+.dh-card-manage-container {
+    display: grid;
+    /* Changed to single column layout */
+    grid-template-columns: 1fr;
+    gap: var(--size-4-4);
+    height: 100%;
+}
+
+/* --- Card Swap Modal Customizations --- */
+.dh-compendium-actions {
+    display: flex;
+    justify-content: center;
+    padding: var(--size-4-2) 0;
+    margin-top: var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Prevent horizontal scrolling in the AddItemModal */
+.dh-add-item-modal {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.dh-add-item-modal .modal-content {
+    width: 90vw;
+    max-width: 100%;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+.dh-add-item-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+/* --- Level Up Modal --- */
+.dh-level-up-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height:inherit;
+    margin-top: auto;
+ margin-bottom: auto;
+    padding: auto;
+    max-width: 100%;
+}
+
+.dh-level-up-modal .setting-item {
+    border-top: none;
+}
+
+.dh-level-up-container {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0 var(--size-4-3);
+    margin: var(--size-4-3) calc(var(--size-4-3) * -1);
+    min-height: 0;
+}
+
+.dh-level-entry {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+        margin-bottom: var(--size-4-3);
+}
+
+.dh-level-entry h2 {
+    margin-top: 0;
+    color: var(--interactive-accent);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-2);
+}
+
+.dh-level-entry h3 {
+    margin-top: var(--size-4-4);
+    margin-bottom: var(--size-4-2);
+    font-size: var(--font-ui-medium);
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.dh-advancement-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.dh-advancement-choice {
+    background-color: var(--background-primary-alt);
+    padding: 0 var(--size-4-2);
+    border-radius: var(--radius-s);
+}
+
+.dh-advancement-choice .setting-item {
+    border-bottom: none;
+    padding: var(--size-4-2) 0;
+}
+
+.dh-advancement-details {
+    padding-left: var(--size-4-4);
+    border-left: 2px solid var(--background-modifier-border);
+    margin-bottom: var(--size-4-2);
+}
+
+.dh-domain-card-preview {
+    background-color: var(--background-primary);
+    border-radius: var(--radius-s);
+    padding: var(--size-4-3);
+    margin-top: var(--size-4-2);
+    border: 1px solid var(--background-modifier-border);
+}
+
+.dh-domain-card-preview h4 {
+    margin-top: 0;
+    font-weight: bold;
+}
+
+.dh-domain-card-preview p {
+    font-size: var(--font-ui-small);
+color: var(--text-muted);
+}
+
+/* Level up button on character sheet */
+.dh-level-box.is-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-level-box.is-clickable:hover {
+    background-color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent);
+}
+
+.dh-level-up-modal .setting-item-control .button-group {
+    display: flex;
+    align-items: center;
+}
+.dh-level-up-modal .setting-item-control .button-group .button {
+    margin: 0 5px;
+}
+
+.dh-automatic-advancements {
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-automatic-advancements h3 {
+    margin-top: 0;
+margin-bottom: var(--size-4-2);
+    color: var(--interactive-accent);
+}
+
+.dh-automatic-advancements ul {
+list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+/* Adjust the Setting component for better alignment */
+.dh-automatic-advancements .setting-item {
+    padding: 0;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-4);
+}
+
+.dh-automatic-advancements .setting-item-control input[type="text"] {
+    width: 100%;
+}
+
+.dh-level-entry h3 {
+    font-size: var(--font-ui-large);
+}
+
+/* Fixed header styles for Level Up modal */
+.dh-level-up-modal .modal-content > h1,
+.dh-level-up-modal .modal-content > .setting-item,
+.dh-level-up-modal .modal-content > p {
+    margin: 0;
+    padding: 0 var(--size-4-3);
+    flex-shrink: 0;
+}
+
+.dh-level-up-modal .modal-content > h1 {
+    margin-top: var(--size-4-3);
+    margin-bottom: var(--size-4-2);
+}
+
+.dh-level-up-modal .modal-content > p {
+    margin-bottom: var(--size-4-3);
+    color: var(--text-muted);
+}
+/* --- Styles for Export/Import --- */
+
+.dh-export-btn,
+.dh-import-btn {
+    color: var(--text-normal);
+    border: none;
+    padding: 4px;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    margin-left: 8px;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dh-export-btn:hover,
+.dh-import-btn:hover {
+    color: var(--interactive-accent);
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-export-modal,
+.dh-import-modal {
+    width: 600px;
+    max-width: 90vw;
+}
+
+.dh-export-preview {
+    max-height: 300px;
+    overflow: auto;
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    padding: var(--size-4-2);
+    margin-top: var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-import-modal textarea {
+    width: 100%;
+    height: 200px;
+    font-family: monospace;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary);
+    resize: vertical;
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-export-modal pre {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.dh-export-modal code {
+    white-space: pre-wrap;
+}
+
+.dh-import-modal .url-input-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+}
+
+.dh-import-modal .url-input-container input {
+    flex-grow: 1;
+}
+
+.dh-import-modal .url-input-container button {
+    white-space: nowrap;
+}
+
+.dh-import-modal .dh-url-examples {
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    padding: 12px;
+    margin: 8px 0;
+    font-size: var(--font-ui-small);
+}
+
+.dh-import-modal .dh-examples-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    margin-top: 0;
+}
+
+.dh-import-modal .dh-url-examples ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.dh-import-modal .dh-url-examples li {
+    margin-bottom: 4px;
 }

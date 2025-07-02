@@ -24,7 +24,7 @@ export class AdversaryReferenceModal extends FuzzySuggestModal<StatblockData> {
     }
 
     async onOpen() {
-        const allItems = await this.plugin.getCompendiumItems();
+        const allItems = await this.plugin.compendium.getStatblocks();
         if (this.itemCategory !== 'all') {
             this.items = allItems.filter(item => item.category === this.itemCategory);
         } else {

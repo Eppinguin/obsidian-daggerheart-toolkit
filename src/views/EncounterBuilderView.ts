@@ -4,14 +4,11 @@ import { StatblockData, AdversaryInstance, SavedEncounter, Countdown, Condition 
 import { renderStatblockCard } from '../rendering/statblock';
 import {
     EncounterBudgetModal, CustomConditionModal, EditAdversaryModal,
-    NameEncounterModal, ManageEncountersModal
+    NameEncounterModal, ManageEncountersModal, ImportExportModal
 } from '../modals/index';
+import { DAGGERHEART_CONDITIONS } from 'src/constants';
+import { ContentType } from '../services/export-import';
 
-const DAGGERHEART_CONDITIONS: Condition[] = [
-    { name: "Hidden", description: "While you’re out of sight from all enemies and they don’t otherwise know your location, you gain the Hidden condition. Any rolls against a Hidden adversary have disadvantage. After an adversary moves to where they would see you, you move into their line of sight, or you make an attack, you are no longer Hidden." },
-    { name: "Restrained", description: "Restrained characters can’t move, but you can still take actions from their current position." },
-    { name: "Vulnerable", description: "When a adversary is Vulnerable, all rolls targeting them have advantage." }
-];
 
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
 
@@ -170,7 +167,7 @@ export class EncounterBuilderView extends ItemView {
     }
 
     async loadCompendium() {
-        this.compendiumItems = await this.plugin.getCompendiumItems();
+        this.compendiumItems = this.plugin.compendium.getStatblocks();
         this.compendiumItems.sort((a, b) => a.name.localeCompare(b.name));
         console.log(`Daggerheart View: Loaded ${this.compendiumItems.length} compendium items.`);
     }
@@ -329,6 +326,7 @@ export class EncounterBuilderView extends ItemView {
         this.uiContainer.empty();
         const containerWrapper = this.uiContainer.createDiv({ cls: "dh-encounter-wrapper" });
         const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+
         const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
         const titleAndTrackersWrapper = header.createDiv({ cls: 'dh-title-fear-wrapper' });
         const titleText = currentEncounter ? `${currentEncounter.name}` : "No Encounter active";
@@ -876,6 +874,14 @@ export class EncounterBuilderView extends ItemView {
         new Notice(`Removed ${groupName} group from encounter.`);
     }
 
+    /**
+     * Handles selecting an encounter
+     * @param encounterId ID of the encounter to select
+     */
+    handleSelectEncounter(encounterId: string) {
+        this.loadEncounter(encounterId);
+    }
+
     addConditionToInstance(instanceId: string, condition: Condition) {
         const instance = this.activeEncounterItems.find(c => c.id === instanceId);
         if (!instance) return;
@@ -982,7 +988,9 @@ export class EncounterBuilderView extends ItemView {
             const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
             if (encounter?.adversaryGroupOrder) {
                 const groupIndex = encounter.adversaryGroupOrder.indexOf(groupId);
-                if (groupIndex > -1) encounter.adversaryGroupOrder.splice(groupIndex, 1);
+                if (groupIndex > -1) {
+                    encounter.adversaryGroupOrder.splice(groupIndex, 1);
+                }
             }
         }
         this.updateDisplayNamesForGroup(groupId);

@@ -1,17 +1,22 @@
-import { App, Modal, Setting, ButtonComponent } from 'obsidian';
+import { App, Modal, Setting, ButtonComponent, Notice } from 'obsidian';
 import DaggerheartStatblockPlugin from '../../main';
-import { AdversaryInstance } from '../../types';
+import { AdversaryInstance, StatblockData } from '../../types';
+import { SaveChoiceModal } from './SaveChoiceModal';
 
 export class EditAdversaryModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     adversary: AdversaryInstance;
     onSubmit: (updatedAdversary: AdversaryInstance) => void;
+    originalName: string;
+    isOriginalCustom: boolean;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin, adversary: AdversaryInstance, onSubmit: (updatedAdversary: AdversaryInstance) => void) {
         super(app);
         this.plugin = plugin;
-        this.adversary = JSON.parse(JSON.stringify(adversary)); // Deep clone
         this.onSubmit = onSubmit;
+        this.adversary = JSON.parse(JSON.stringify(adversary));
+        this.originalName = adversary.name;
+        this.isOriginalCustom = !!adversary.isCustom;
     }
 
     onOpen() {
@@ -21,7 +26,7 @@ export class EditAdversaryModal extends Modal {
         contentEl.addClass('dh-edit-adversary-modal');
 
         const headerEl = contentEl.createDiv({ cls: 'modal-header' });
-        headerEl.createEl("h2", { text: `Edit ${this.adversary.name}` });
+        headerEl.createEl("h2", { text: `Edit ${this.originalName}` });
 
         const contentBodyEl = contentEl.createDiv({ cls: 'modal-body' });
 
@@ -33,18 +38,88 @@ export class EditAdversaryModal extends Modal {
 
         const footerEl = contentEl.createDiv({ cls: 'modal-footer' });
         const buttonContainer = footerEl.createDiv({ cls: 'dh-modal-buttons' });
-        new ButtonComponent(buttonContainer).setButtonText("Save to Compendium").setTooltip("Saves this item to your custom JSON file and closes").onClick(async () => { await this.plugin.saveItemToUserCompendium(this.adversary); this.onSubmit(this.adversary); this.close(); });
-        new ButtonComponent(buttonContainer).setButtonText("Apply & Close").setTooltip("Applies changes to this instance only and closes").setCta().onClick(() => { this.onSubmit(this.adversary); this.close(); });
+
+        new ButtonComponent(buttonContainer)
+            .setButtonText("Apply to Instance Only")
+            .setTooltip("Applies changes to this instance without saving to the compendium")
+            .onClick(() => {
+                this.onSubmit(this.adversary);
+                this.close();
+            });
+
+        new ButtonComponent(buttonContainer)
+            .setButtonText("Save to Compendium & Apply")
+            .setCta()
+            .setTooltip("Saves changes to the compendium and applies them to this instance")
+            .onClick(() => this.handleSave());
+    }
+
+    private handleSave() {
+        const finalName = this.adversary.name?.trim();
+        if (!finalName) {
+            new Notice("Name cannot be empty.");
+            return;
+        }
+
+        const nameHasChanged = finalName !== this.originalName;
+        const fileName = this.adversary.category === 'environment' ? 'user-environments.json' : 'user-adversaries.json';
+
+        // Clean instance-specific data before saving to compendium
+        const dataToSave: StatblockData = { ...this.adversary };
+        delete (dataToSave as any).id;
+        delete (dataToSave as any).groupId;
+        delete (dataToSave as any).currentHp;
+        delete (dataToSave as any).currentStress;
+        delete (dataToSave as any).displayName;
+        delete (dataToSave as any).conditions;
+
+        // When an item is saved to the compendium, it becomes a custom item.
+        // We need to mark the instance being returned as custom so that subsequent
+        // edits will have the correct options (e.g., "Rename").
+        this.adversary.isCustom = true;
+
+        const saveAsNew = async () => {
+            await this.plugin.saveCustomCompendiumData(fileName, dataToSave);
+            this.onSubmit(this.adversary);
+            this.close();
+        };
+
+        const renameOriginal = async () => {
+            await this.plugin.renameCustomCompendiumEntry(fileName, this.originalName, dataToSave);
+            this.onSubmit(this.adversary);
+            this.close();
+        };
+
+        if (nameHasChanged) {
+            new SaveChoiceModal(
+                this.app,
+                finalName,
+                saveAsNew,
+                this.isOriginalCustom ? renameOriginal : undefined
+            ).open();
+        } else {
+            this.plugin.saveCustomCompendiumData(fileName, dataToSave);
+            this.onSubmit(this.adversary);
+            this.close();
+        }
     }
 
     renderAdversaryEditor(container: HTMLElement) {
         const basicInfoSection = container.createDiv({ cls: 'dh-modal-section' });
         basicInfoSection.createEl('h3', { text: "Basic Information" });
         const infoGrid = basicInfoSection.createDiv({ cls: 'dh-modal-field-grid' });
-        const nameSetting = new Setting(infoGrid).setName("Name").addText(text => text.setValue(this.adversary.name).onChange(val => this.adversary.name = val));
+
+        const nameSetting = new Setting(infoGrid)
+            .setName("Name")
+            .setDesc("The base name of this creature type.")
+            .addText(text => text
+                .setValue(this.adversary.name)
+                .onChange(val => this.adversary.name = val));
         nameSetting.settingEl.addClass('dh-grid-span-all');
+
         const imageSetting = new Setting(infoGrid).setName("Image URL").addText(text => text.setValue(this.adversary.image || '').onChange(val => this.adversary.image = val));
         imageSetting.settingEl.addClass('dh-grid-span-all');
+
         new Setting(infoGrid).setName("Tier").addText(text => text.setValue(String(this.adversary.tier || '')).onChange(val => this.adversary.tier = val));
         new Setting(infoGrid).setName("Type").addText(text => text.setValue(this.adversary.type || '').onChange(val => this.adversary.type = val));
         const descSetting = new Setting(infoGrid).setName("Description").addTextArea(text => text.setValue(this.adversary.description || '').onChange(val => this.adversary.description = val));
@@ -53,6 +128,7 @@ export class EditAdversaryModal extends Modal {
         const motivesSetting = new Setting(infoGrid).setName("Motives & Tactics").setDesc("Comma-separated").addTextArea(text => text.setValue(motives).onChange(val => this.adversary.motives_tactics = val.split(',').map(s => s.trim())));
         motivesSetting.settingEl.addClass('dh-grid-span-all');
 
+        // ... The rest of the render methods (stats, attack, features) are unchanged
         const statsSection = container.createDiv({ cls: 'dh-modal-section' });
         statsSection.createEl('h3', { text: "Statistics" });
         const statsGrid = statsSection.createDiv({ cls: 'dh-modal-field-grid' });
@@ -84,13 +160,21 @@ export class EditAdversaryModal extends Modal {
         const basicInfoSection = container.createDiv({ cls: 'dh-modal-section' });
         basicInfoSection.createEl('h3', { text: "Basic Information" });
         const infoGrid = basicInfoSection.createDiv({ cls: 'dh-modal-field-grid' });
-        const nameSetting = new Setting(infoGrid).setName("Name").addText(text => text.setValue(this.adversary.name).onChange(val => this.adversary.name = val));
+
+        const nameSetting = new Setting(infoGrid)
+            .setName("Name")
+            .setDesc("The name of this environment.")
+            .addText(text => text
+                .setValue(this.adversary.name)
+                .onChange(val => this.adversary.name = val));
         nameSetting.settingEl.addClass('dh-grid-span-all');
+
         new Setting(infoGrid).setName("Tier").addText(text => text.setValue(String(this.adversary.tier || '')).onChange(val => this.adversary.tier = val));
         new Setting(infoGrid).setName("Type").addText(text => text.setValue(this.adversary.type || '').onChange(val => this.adversary.type = val));
         const descSetting = new Setting(infoGrid).setName("Description").addTextArea(text => text.setValue(this.adversary.description || '').onChange(val => this.adversary.description = val));
         descSetting.settingEl.addClass('dh-grid-span-all');
 
+        // ... The rest of this method is unchanged
         const envDetailsSection = container.createDiv({ cls: 'dh-modal-section' });
         envDetailsSection.createEl('h3', { text: "Environment Details" });
         const detailsGrid = envDetailsSection.createDiv({ cls: 'dh-modal-field-grid' });

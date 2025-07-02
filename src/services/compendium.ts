@@ -1,301 +1,324 @@
 import { TFile, TFolder, Notice } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, StatblockHpStress, StatblockFeature, StatblockExperience, AdversaryInstance } from '../../types';
+import {
+    StatblockData,
+    JsonAncestry,
+    JsonClass,
+    JsonCommunity,
+    JsonSubclass,
+    JsonArmor,
+    JsonWeapon,
+    JsonItem,
+    JsonAbility,
+    JsonConsumable,
+    CompendiumItem,
+    DomainCard,
+    GenericItem,
+    ArmorItem,
+    WeaponItem,
+    ConsumableItem,
+    StatblockHpStress,
+    StatblockFeature,
+    InventoryItem
+} from '../../types';
 import DaggerheartStatblockPlugin from '../../main';
+import { v4 as uuidv4 } from 'uuid';
 
-const SRD_ADVERSARIES_FILE = "adversaries.json";
-const SRD_ENVIRONMENTS_FILE = "environments.json";
+const DATA_PATH = "data";
+const USER_DATA_PATH = "user_compendium";
 
-function parseFeatureCost(description: string): string | undefined {
-    if (!description) return undefined;
-    const desc = description.toLowerCase().trim();
+export class DaggerheartCompendium {
+    private plugin: DaggerheartStatblockPlugin;
 
-    // Only match if the description starts with these patterns
-    const stressMatch = desc.match(/^(?:mark|suffer)\s+(a|\d+)\s+stress/);
-    if (stressMatch) {
-        const amount = stressMatch[1];
-        return amount === 'a' ? 'S' : `${amount}S`;
+    public ancestries: JsonAncestry[] = [];
+    public communities: JsonCommunity[] = [];
+    public classes: JsonClass[] = [];
+    public subclasses: JsonSubclass[] = [];
+    public abilities: JsonAbility[] = [];
+    public armors: CompendiumItem[] = [];
+    public weapons: CompendiumItem[] = [];
+    public items: CompendiumItem[] = [];
+    public consumables: CompendiumItem[] = [];
+    public statblocks: StatblockData[] = [];
+
+    constructor(plugin: DaggerheartStatblockPlugin) {
+        this.plugin = plugin;
     }
 
-    const fearMatch = desc.match(/^spend\s+(a|\d+)\s+fear/);
-    if (fearMatch) {
-        const amount = fearMatch[1];
-        return amount === 'a' ? 'F' : `${amount}F`;
-    }
+    async load() {
+        console.log("Daggerheart | Loading all compendiums...");
 
-    return undefined;
-}
+        const srdAncestries = await this.loadSrdFile<JsonAncestry>('ancestries.json');
+        const srdCommunities = await this.loadSrdFile<JsonCommunity>('communities.json');
+        const srdClasses = await this.loadSrdFile<JsonClass>('classes.json');
+        const srdSubclasses = await this.loadSrdFile<JsonSubclass>('subclasses.json');
+        const srdAbilities = await this.loadSrdFile<JsonAbility>('abilities.json');
 
-function parseSrdAdversaryData(srd: any): StatblockData | null {
-    try {
-        if (!srd.name || !srd.hp || !srd.stress) return null;
-        const hpStress: StatblockHpStress = { hp: Number(srd.hp) || 0, stress: Number(srd.stress) || 0 };
-        if (srd.thresholds && typeof srd.thresholds === 'string') {
-            const parts = srd.thresholds.split('/');
-            if (parts.length >= 1 && parts[0].trim().toLowerCase() !== "none") hpStress.major_hp = Number(parts[0].trim()) || null;
-            if (parts.length >= 2 && parts[1].trim().toLowerCase() !== "none") hpStress.severe_hp = Number(parts[1].trim()) || null;
+        const userAncestries = await this.loadUserFile<JsonAncestry>('user-ancestries.json');
+        const userClasses = await this.loadUserFile<JsonClass>('user-classes.json');
+        const userSubclasses = await this.loadUserFile<JsonSubclass>('user-subclasses.json');
+        const userAbilities = await this.loadUserFile<JsonAbility>('user-abilities.json');
+        const userCommunities = await this.loadUserFile<JsonCommunity>('user-communities.json');
+
+        this.ancestries = this.mergeData(srdAncestries, userAncestries);
+        this.communities = this.mergeData(srdCommunities, userCommunities);
+        this.classes = this.mergeData(srdClasses, userClasses);
+        this.subclasses = this.mergeData(srdSubclasses, userSubclasses);
+        this.abilities = this.mergeData(srdAbilities, userAbilities);
+
+        this.armors = this.mergeData(
+            (await this.loadSrdFile<JsonArmor>('armor.json')).map(a => ({ ...a, _type: 'armor' })),
+            (await this.loadUserFile<ArmorItem>('user-armor.json'))
+        );
+        this.weapons = this.mergeData(
+            (await this.loadSrdFile<JsonWeapon>('weapons.json')).map(w => ({ ...w, _type: 'weapon' })),
+            (await this.loadUserFile<WeaponItem>('user-weapons.json'))
+        );
+        this.items = this.mergeData(
+            (await this.loadSrdFile<JsonItem>('items.json')).map(i => ({ ...i, _type: 'item' })),
+            (await this.loadUserFile<GenericItem>('user-items.json'))
+        );
+        this.consumables = this.mergeData(
+            (await this.loadSrdFile<JsonConsumable>('consumables.json')).map(c => ({ ...c, _type: 'consumable' })),
+            (await this.loadUserFile<ConsumableItem>('user-consumables.json'))
+        );
+
+        const itemsMap = new Map<string, StatblockData>();
+        if (this.plugin.settings.useSrdAdversaries) {
+            const srdAdversaries = await this.loadSrdFile<any>('adversaries.json');
+            srdAdversaries.forEach(raw => this.parseAndAddStatblock(raw, 'adversary', itemsMap));
         }
-        const features: StatblockFeature[] = [];
-        if (srd.feats && Array.isArray(srd.feats)) {
-            srd.feats.forEach((feat: any) => {
-                if (feat.name && feat.text) {
-                    let featNameFull = feat.name;
-                    let type = "Passive";
-                    let nameOnly = featNameFull;
-
-                    const typeMatch = featNameFull.match(/-\s*(Passive|Action|Reaction(?:[:\s].*)?)$/i);
-                    if (typeMatch) {
-                        type = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1).toLowerCase().replace(/:.*/, '').trim();
-                        nameOnly = featNameFull.substring(0, typeMatch.index).trim();
-                    }
-
-                    const description = feat.text;
-                    const parsedCost = parseFeatureCost(description);
-
-                    features.push({ name: nameOnly.trim(), type, description, parsedCost });
-                }
-            });
+        if (this.plugin.settings.useSrdEnvironments) {
+            const srdEnvironments = await this.loadSrdFile<any>('environments.json');
+            srdEnvironments.forEach(raw => this.parseAndAddStatblock(raw, 'environment', itemsMap));
         }
-        return {
-            name: srd.name,
-            category: 'adversary',
-            tier: srd.tier ? (isNaN(Number(srd.tier)) ? srd.tier : Number(srd.tier)) : undefined,
-            type: srd.type,
-            description: srd.description,
-            motives_tactics: srd.motives_and_tactics,
-            difficulty: srd.difficulty ? (isNaN(Number(srd.difficulty)) ? srd.difficulty : Number(srd.difficulty)) : undefined,
-            hp_stress: hpStress,
-            attack: { name: srd.attack || "Attack", range: srd.range || "", damage: srd.damage || "", modifier: srd.atk || "0" },
-            experience: srd.experience,
-            features,
-            sourceFile: SRD_ADVERSARIES_FILE
-        };
-    } catch (e) { console.error("Error parsing SRD data:", srd, e); return null; }
-}
-
-function parseSrdEnvironmentData(srd: any): StatblockData | null {
-    try {
-        if (!srd.name) return null;
-
-        const features: StatblockFeature[] = [];
-        if (srd.feats && Array.isArray(srd.feats)) {
-            srd.feats.forEach((feat: any) => {
-                if (feat.name && feat.text) {
-                    let featNameFull = feat.name;
-                    let type = "Passive"; // Default type
-                    let nameOnly = featNameFull;
-
-                    const typeMatch = featNameFull.match(/-\s*(Passive|Action|Reaction(?:[:\s].*)?)$/i);
-                    if (typeMatch) {
-                        type = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1).toLowerCase().replace(/:.*/, '').trim();
-                        nameOnly = featNameFull.substring(0, typeMatch.index).trim();
-                    }
-
-                    const description = feat.text.replace(/\\n/g, '\n');
-                    const parsedCost = parseFeatureCost(description);
-
-                    features.push({ name: nameOnly.trim(), type, description, parsedCost });
-                }
-            });
-        }
-
-        return {
-            name: srd.name,
-            category: 'environment',
-            tier: srd.tier ? (isNaN(Number(srd.tier)) ? srd.tier : Number(srd.tier)) : undefined,
-            type: srd.type,
-            description: srd.description,
-            impulses: srd.impulses,
-            potential_adversaries: srd.potential_adversaries,
-            difficulty: srd.difficulty ? (isNaN(Number(srd.difficulty)) ? srd.difficulty : Number(srd.difficulty)) : undefined,
-            hp_stress: { hp: 0, stress: 0 },
-            features: features,
-            sourceFile: SRD_ENVIRONMENTS_FILE,
-        };
-    } catch (e) {
-        console.error("Error parsing SRD Environment data:", srd, e);
-        return null;
-    }
-}
-
-function extractStatblocksFromFile(content: string, filePath: string, adversariesArray: StatblockData[]) {
-    const codeBlockRegex = /```daggerheart-statblock\s*([\s\S]*?)```/g;
-    let match;
-    while ((match = codeBlockRegex.exec(content)) !== null) {
-        try {
-            const yamlContent = match[1].replace(/\u00A0/g, ' ');
-            const statblock = YAML.load(yamlContent) as StatblockData;
-            if (statblock?.name && statblock.hp_stress) {
-                statblock.category = 'adversary'; // All markdown statblocks are considered adversaries
-                statblock.sourceFile = filePath;
-                statblock.hp_stress.hp = Number(statblock.hp_stress.hp);
-                statblock.hp_stress.stress = Number(statblock.hp_stress.stress);
-                if (statblock.hp_stress.major_hp) statblock.hp_stress.major_hp = Number(statblock.hp_stress.major_hp);
-                if (statblock.hp_stress.severe_hp) statblock.hp_stress.severe_hp = Number(statblock.hp_stress.severe_hp);
-                if (typeof statblock.experience === 'string') {
-                    const expObj: StatblockExperience = {};
-                    statblock.experience.split(',').forEach(part => { const sp = part.trim().split(/\s+/); if (sp.length === 2 && !isNaN(Number(sp[1]))) expObj[sp[0]] = Number(sp[1]); });
-                    statblock.experience = expObj;
-                } else if (!statblock.experience) statblock.experience = {};
-                statblock.motives_tactics = typeof statblock.motives_tactics === 'string' ? statblock.motives_tactics.split(',').map(s => s.trim()) : (statblock.motives_tactics || []);
-
-                if (statblock.features && Array.isArray(statblock.features)) {
-                    statblock.features.forEach(feature => {
-                        if (feature.description) {
-                            feature.parsedCost = parseFeatureCost(feature.description);
-                        }
-                        if ((feature as any).cost !== undefined) {
-                            delete (feature as any).cost;
-                        }
-                    });
-                }
-
-                adversariesArray.push(statblock);
-            }
-        } catch (e: any) { console.warn(`Failed to parse YAML in ${filePath}: ${e.message}.`); }
-    }
-}
-
-export async function getCompendiumItems(plugin: DaggerheartStatblockPlugin): Promise<StatblockData[]> {
-    console.log("Daggerheart: Starting compendium load...");
-    const itemsMap = new Map<string, StatblockData>();
-
-    // 1. Load SRD Adversaries
-    if (plugin.settings.useSrdAdversaries) {
-        try {
-            const srdFilePath = `${plugin.manifest.dir}/${SRD_ADVERSARIES_FILE}`;
-            if (await plugin.app.vault.adapter.exists(srdFilePath)) {
-                const srdFileContent = await plugin.app.vault.adapter.read(srdFilePath);
-                const cleanedSrdContent = srdFileContent.charCodeAt(0) === 0xFEFF ? srdFileContent.substring(1) : srdFileContent;
-                const srdRawItems = JSON.parse(cleanedSrdContent) as any[];
-                srdRawItems.forEach(rawItem => {
-                    const transformed = parseSrdAdversaryData(rawItem);
-                    if (transformed) itemsMap.set(transformed.name.toLowerCase(), transformed);
-                });
-                console.log(`Daggerheart: Loaded ${itemsMap.size} SRD adversaries.`);
-            } else {
-                console.warn(`Daggerheart: SRD Adversaries file not found at ${srdFilePath}.`);
-            }
-        } catch (e: any) {
-            console.error("Error loading SRD Adversaries:", e);
-            new Notice("Error loading SRD Adversaries.");
-        }
+        const userAdversaries = await this.loadUserFile<StatblockData>('user-adversaries.json');
+        userAdversaries.forEach(item => itemsMap.set(item.name.toLowerCase(), item));
+        const userEnvironments = await this.loadUserFile<StatblockData>('user-environments.json');
+        userEnvironments.forEach(item => itemsMap.set(item.name.toLowerCase(), item));
+        const mdAdversaries = await this.loadMarkdownStatblocks();
+        mdAdversaries.forEach(item => itemsMap.set(item.name.toLowerCase(), item));
+        this.statblocks = Array.from(itemsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        console.log(`Daggerheart | Compendium load finished. Total statblocks: ${this.statblocks.length}`);
     }
 
-    // 2. Load SRD Environments
-    if (plugin.settings.useSrdEnvironments) {
-        try {
-            const srdFilePath = `${plugin.manifest.dir}/${SRD_ENVIRONMENTS_FILE}`;
-            if (await plugin.app.vault.adapter.exists(srdFilePath)) {
-                const srdFileContent = await plugin.app.vault.adapter.read(srdFilePath);
-                const cleanedSrdContent = srdFileContent.charCodeAt(0) === 0xFEFF ? srdFileContent.substring(1) : srdFileContent;
-                const srdRawItems = JSON.parse(cleanedSrdContent) as any[];
-                let count = 0;
-                srdRawItems.forEach(rawItem => {
-                    const transformed = parseSrdEnvironmentData(rawItem);
-                    if (transformed) {
-                        itemsMap.set(transformed.name.toLowerCase(), transformed);
-                        count++;
-                    }
-                });
-                console.log(`Daggerheart: Loaded ${count} SRD environments.`);
-            } else {
-                console.warn(`Daggerheart: SRD Environments file not found at ${srdFilePath}.`);
-            }
-        } catch (e: any) {
-            console.error("Error loading SRD Environments:", e);
-            new Notice("Error loading SRD Environments.");
-        }
+    private mergeData<T extends { name: string }>(srdData: T[], userData: T[]): T[] {
+        const map = new Map<string, T>();
+        srdData.forEach(item => map.set(item.name.toLowerCase(), item));
+        userData.forEach(item => map.set(item.name.toLowerCase(), item));
+        return Array.from(map.values());
     }
 
-    // 3. Load User Compendium (JSON)
-    if (plugin.settings.userCompendiumFile) {
-        const userCompendiumPath = `${plugin.manifest.dir}/${plugin.settings.userCompendiumFile}`;
-        if (await plugin.app.vault.adapter.exists(userCompendiumPath)) {
+    private async loadUserFile<T extends { isCustom?: boolean }>(fileName: string): Promise<T[]> {
+        const path = `${this.plugin.manifest.dir}/${USER_DATA_PATH}/${fileName}`;
+        if (await this.plugin.app.vault.adapter.exists(path)) {
             try {
-                const userFileContent = await plugin.app.vault.adapter.read(userCompendiumPath);
-                const userAdversaries = JSON.parse(userFileContent) as StatblockData[];
-                userAdversaries.forEach(item => {
-                    item.isCustom = true;
-                    item.sourceFile = userCompendiumPath;
-                    if (!item.category) { // Backwards compatibility
-                        item.category = item.hp_stress ? 'adversary' : 'environment';
-                    }
-                    itemsMap.set(item.name.toLowerCase(), item);
-                });
-                console.log(`Daggerheart: Loaded items from user compendium file.`);
-            } catch (e: any) {
-                console.error(`Error loading user compendium file \"${userCompendiumPath}\":`, e);
-                new Notice(`Error loading user compendium: ${userCompendiumPath}`);
+                const data = await this.plugin.app.vault.adapter.read(path);
+                if (data.trim() === '') return [];
+                const items = JSON.parse(data) as T[];
+                items.forEach(item => item.isCustom = true);
+                return items;
+            } catch (e) {
+                new Notice(`Could not read user file: ${fileName}. Check console for details.`);
+                return [];
             }
+        }
+        return [];
+    }
+
+    private async loadSrdFile<T>(fileName: string): Promise<T[]> {
+        const filePath = `${this.plugin.manifest.dir}/${DATA_PATH}/${fileName}`;
+        try {
+            if (await this.plugin.app.vault.adapter.exists(filePath)) {
+                let content = await this.plugin.app.vault.adapter.read(filePath);
+                if (content.charCodeAt(0) === 0xFEFF) {
+                    content = content.slice(1);
+                }
+                return JSON.parse(content) as T[];
+            }
+        } catch (e) {
+            console.error(`Daggerheart | Error loading SRD file ${fileName}:`, e);
+        }
+        return [];
+    }
+
+    public getClass(name: string): JsonClass | undefined { return this.classes.find(c => c.name === name); }
+    public getSubclass(name: string): JsonSubclass | undefined { return this.subclasses.find(s => s.name === name); }
+    public getAncestry(name: string): JsonAncestry | undefined { return this.ancestries.find(a => a.name === name); }
+    public getCommunity(name: string): JsonCommunity | undefined { return this.communities.find(c => c.name === name); }
+    public getAbility(name: string): DomainCard | undefined {
+        const ability = this.abilities.find(a => a.name.toLowerCase() === name.toLowerCase());
+        if (!ability) return undefined;
+        return {
+            _type: 'domainCard', id: ability.name, name: ability.name,
+            level: parseInt(ability.level), domain: ability.domain, type: ability.type,
+            recall: parseInt(ability.recall) || 0, description: ability.text, isCustom: ability.isCustom,
+        }
+    }
+    public getAllDomains(): string[] { return [...new Set(this.abilities.map(a => a.domain).filter(d => d))].sort(); }
+    public getAllLevels(): number[] { return [...new Set(this.abilities.map(a => parseInt(a.level)).filter(l => !isNaN(l)))].sort((a, b) => a - b); }
+    public getAllItems(): CompendiumItem[] {
+        return [...this.armors, ...this.weapons, ...this.items, ...this.consumables];
+    }
+
+    public getStatblocks(): StatblockData[] {
+        return this.statblocks;
+    }
+
+    private parseAndAddStatblock(srd: any, category: 'adversary' | 'environment', map: Map<string, StatblockData>) {
+        try {
+            const features: StatblockFeature[] = (srd.feats || []).map((feat: any) => ({
+                name: feat.name,
+                type: feat.type || 'Passive', // Use SRD type if available, otherwise default.
+                description: feat.text,
+            }));
+
+            const thresholds = srd.thresholds?.split('/').map((s: string) => s.trim()).filter(Boolean);
+
+            const statblock: StatblockData = {
+                name: srd.name,
+                category: category,
+                tier: srd.tier,
+                type: srd.type,
+                description: srd.description,
+                motives_tactics: srd.motives_and_tactics || srd.motives_tactics, // Check for both keys
+                impulses: srd.impulses,
+                potential_adversaries: srd.potential_adversaries,
+                difficulty: srd.difficulty,
+                hp_stress: {
+                    hp: Number(srd.hp) || 0,
+                    stress: Number(srd.stress) || 0,
+                    major_hp: thresholds?.[0] ? Number(thresholds[0]) : null,
+                    severe_hp: thresholds?.[1] ? Number(thresholds[1]) : null,
+                },
+                attack: { name: srd.attack || "Attack", range: srd.range || "", damage: srd.damage || "", modifier: srd.atk || "0" },
+                features: features,
+            };
+            map.set(statblock.name.toLowerCase(), statblock);
+        } catch (e) {
+            console.error(`Error parsing SRD ${category}:`, srd, e);
         }
     }
 
-    // 4. Load from Markdown Folder
-    const folderPath = plugin.settings.compendiumFolder;
-    if (folderPath) {
-        const abstractFileOrFolder = plugin.app.vault.getAbstractFileByPath(folderPath);
-        const mdAdversaries: StatblockData[] = [];
+    private async loadMarkdownStatblocks(): Promise<StatblockData[]> {
+        const folderPath = this.plugin.settings.compendiumFolder;
+        if (!folderPath) return [];
+
+        const abstractFileOrFolder = this.plugin.app.vault.getAbstractFileByPath(folderPath);
+        const mdStatblocks: StatblockData[] = [];
         if (abstractFileOrFolder instanceof TFile && abstractFileOrFolder.extension === 'md') {
-            extractStatblocksFromFile(await plugin.app.vault.cachedRead(abstractFileOrFolder), abstractFileOrFolder.path, mdAdversaries);
+            const content = await this.plugin.app.vault.cachedRead(abstractFileOrFolder);
+            this.extractStatblocksFromFile(content, abstractFileOrFolder.path, mdStatblocks);
         } else if (abstractFileOrFolder instanceof TFolder) {
             for (const file of abstractFileOrFolder.children.filter((f): f is TFile => f instanceof TFile && f.extension === 'md')) {
-                extractStatblocksFromFile(await plugin.app.vault.cachedRead(file), file.path, mdAdversaries);
+                const content = await this.plugin.app.vault.cachedRead(file);
+                this.extractStatblocksFromFile(content, file.path, mdStatblocks);
             }
         }
-        mdAdversaries.forEach(adversary => itemsMap.set(adversary.name.toLowerCase(), adversary));
-        if (mdAdversaries.length > 0) console.log(`Daggerheart: Loaded ${mdAdversaries.length} adversaries from Markdown folder.`);
+        return mdStatblocks;
     }
 
-    console.log(`Daggerheart: Compendium load finished. Total items: ${itemsMap.size}`);
-    return Array.from(itemsMap.values());
-}
-
-export async function saveItemToUserCompendium(plugin: DaggerheartStatblockPlugin, itemData: StatblockData): Promise<void> {
-    const userCompendiumFileName = plugin.settings.userCompendiumFile;
-    if (!userCompendiumFileName) {
-        new Notice("User compendium file path is not set in settings.");
-        return;
-    }
-    const filePath = `${plugin.manifest.dir}/${userCompendiumFileName}`;
-
-    let compendium: StatblockData[] = [];
-    try {
-        if (await plugin.app.vault.adapter.exists(filePath)) {
-            const fileContent = await plugin.app.vault.adapter.read(filePath);
-            if (fileContent) {
-                compendium = JSON.parse(fileContent);
-                if (!Array.isArray(compendium)) throw new Error("Compendium is not an array.");
-            }
+    private extractStatblocksFromFile(content: string, filePath: string, statblocksArray: StatblockData[]) {
+        const codeBlockRegex = /```daggerheart-statblock\s*([\s\S]*?)```/g;
+        let match;
+        while ((match = codeBlockRegex.exec(content)) !== null) {
+            try {
+                const statblock = YAML.load(match[1]) as StatblockData;
+                if (statblock?.name) {
+                    statblock.isCustom = true;
+                    statblock.sourceFile = filePath;
+                    statblocksArray.push(statblock);
+                }
+            } catch (e: any) { console.warn(`Failed to parse YAML in ${filePath}: ${e.message}.`); }
         }
-    } catch (e: any) {
-        new Notice(`Error reading user compendium file. Check console for details. Overwriting.`);
-        console.error("Error reading user compendium, will overwrite:", e);
-        compendium = [];
     }
 
-    const itemToSave: Partial<AdversaryInstance> = { ...itemData };
-    delete itemToSave.id;
-    delete itemToSave.groupId;
-    delete itemToSave.currentHp;
-    delete itemToSave.currentStress;
-    delete itemToSave.displayName;
-    delete itemToSave.conditions;
-    itemToSave.isCustom = true;
-    itemToSave.sourceFile = filePath;
+    public convertCompendiumItemToInventoryItem(item: CompendiumItem, instanceId?: string): InventoryItem {
+        const base = {
+            instanceId: instanceId || uuidv4(),
+            name: item.name,
+            quantity: 1,
+            isCustom: item.isCustom,
+        };
 
-    const existingIndex = compendium.findIndex(c => c.name.toLowerCase() === (itemToSave as StatblockData).name.toLowerCase());
-    if (existingIndex !== -1) {
-        compendium[existingIndex] = itemToSave as StatblockData;
-    } else {
-        compendium.push(itemToSave as StatblockData);
+        switch (item._type) {
+            case 'armor':
+                const [major, severe] = item.base_thresholds.split(' / ').map(s => parseInt(s.trim()));
+                return {
+                    ...base,
+                    _type: 'armor',
+                    description: item.feat_text,
+                    tier: parseInt(item.tier),
+                    baseScore: parseInt(item.base_score),
+                    baseThresholds: { major, severe },
+                    features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
+                };
+            case 'weapon':
+                const [damageDice, damageType] = item.damage.split(' ');
+                return {
+                    ...base,
+                    _type: 'weapon',
+                    description: item.feat_text,
+                    tier: parseInt(item.tier),
+                    burden: item.burden as 'One-Handed' | 'Two-Handed',
+                    range: item.range,
+                    trait: item.trait,
+                    primaryOrSecondary: item.primary_or_secondary as 'Primary' | 'Secondary',
+                    damage: item.damage,
+                    damageDice,
+                    damageType,
+                    features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
+                };
+            case 'consumable':
+                return { ...base, _type: 'consumable', description: item.description, roll: item.roll };
+            case 'item':
+                return { ...base, _type: 'item', description: item.description };
+        }
     }
 
-    try {
-        await plugin.app.vault.adapter.write(filePath, JSON.stringify(compendium, null, 2));
-        new Notice(`"${itemToSave.name}" saved to your compendium.`);
-    } catch (e: any) {
-        new Notice("Failed to save to user compendium. See console for details.");
-        console.error("Error saving to user compendium:", e);
+    public convertInventoryItemToCompendiumItem(item: InventoryItem): CompendiumItem {
+        switch (item._type) {
+            case 'armor':
+                return {
+                    _type: 'armor',
+                    name: item.name,
+                    tier: String(item.tier),
+                    base_score: String(item.baseScore),
+                    base_thresholds: `${item.baseThresholds.major} / ${item.baseThresholds.severe}`,
+                    feat_name: item.features?.[0]?.name,
+                    feat_text: item.features?.[0]?.description,
+                    isCustom: item.isCustom,
+                };
+            case 'weapon':
+                return {
+                    _type: 'weapon',
+                    name: item.name,
+                    tier: String(item.tier),
+                    damage: item.damage,
+                    range: item.range,
+                    trait: item.trait,
+                    burden: item.burden,
+                    primary_or_secondary: item.primaryOrSecondary,
+                    physical_or_magical: 'physical', // Assuming default
+                    feat_name: item.features?.[0]?.name,
+                    feat_text: item.features?.[0]?.description,
+                    isCustom: item.isCustom,
+                };
+            case 'consumable':
+                return {
+                    _type: 'consumable',
+                    name: item.name,
+                    description: item.description || '',
+                    roll: item.roll,
+                    isCustom: item.isCustom,
+                };
+            case 'item':
+                return {
+                    _type: 'item',
+                    name: item.name,
+                    description: item.description || '',
+                    isCustom: item.isCustom,
+                };
+        }
     }
 }

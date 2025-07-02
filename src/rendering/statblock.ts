@@ -88,7 +88,10 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
             const diceString = `1d20${(normalizedModifier === '+0' || normalizedModifier === '0') ? '' : normalizedModifier}`;
             const atkRollable = atkSpan.createSpan({ text: modifierValue, cls: 'dh-rollable-dice' });
             atkRollable.title = `Click to roll ${diceString}`;
-            atkRollable.addEventListener('click', (e) => { e.stopPropagation(); rollDice(plugin, diceString); });
+            atkRollable.addEventListener('click', (e) => {
+                e.stopPropagation();
+                plugin.rollDice(diceString, data.attack?.name || 'Attack');
+            });
         } else {
             atkSpan.appendText(modifierValue);
         }
@@ -97,7 +100,7 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
         const attackDetailsSpan = document.createElement('span');
         attackDetailsSpan.createEl('strong', { text: `${data.attack.name || 'Attack'}: ` });
         attackDetailsSpan.appendText(`${data.attack.range || ''} `);
-        renderRollableContent(plugin, data.attack.damage || '', attackDetailsSpan);
+        renderRollableContent(plugin, data.attack.damage || '', attackDetailsSpan, data.attack.name || 'Attack');
         statElements.push(attackDetailsSpan);
     }
 
@@ -146,39 +149,11 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
 
             const descSpan = p.createSpan({ cls: 'dh-feature-description' });
             if (description.includes('d20') || description.includes('d6') || description.includes('Mark stress') || description.includes('Spend fear')) {
-                renderRollableContent(plugin, description, descSpan);
+                renderRollableContent(plugin, description, descSpan, feature.name);
             } else {
                 renderMarkdown(plugin, description, descSpan);
             }
         });
-    }
-}
-
-async function rollDice(plugin: DaggerheartStatblockPlugin, diceString: string) {
-    const diceRollerPlugin = (plugin.app as any).plugins.getPlugin("obsidian-dice-roller");
-    if (!diceRollerPlugin) {
-        new Notice("Dice Roller plugin is not enabled. Please install or enable it to roll dice.");
-        return;
-    }
-
-    const DiceRollerAPI = diceRollerPlugin.api;
-    if (!DiceRollerAPI || typeof DiceRollerAPI.getRoller !== 'function') {
-        new Notice("Dice Roller plugin API not available. Please ensure Dice Roller is up to date.");
-        console.error("Daggerheart: Dice Roller plugin is active, but its API is not available or is missing getRoller.");
-        return;
-    }
-
-    try {
-        const roller = await DiceRollerAPI.getRoller(diceString);
-        if (plugin.settings.useGraphicalDice) {
-            await roller.roll({ showDice: true, throw: true });
-        } else {
-            await roller.roll();
-            new Notice(`Rolled ${diceString}: ${roller.result}`, 5000);
-        }
-    } catch (e) {
-        console.error("Daggerheart: Error rolling dice:", e);
-        new Notice(`Error rolling dice for "${diceString}". See console for details.`);
     }
 }
 
@@ -269,7 +244,7 @@ function renderEnvironmentInstance(
             }
             if (feature.description) {
                 const descDiv = li.createDiv({ cls: `dh-feature-description ${isExpanded ? '' : 'dh-feature-description-hidden'}` });
-                renderRollableContent(plugin, feature.description, descDiv);
+                renderRollableContent(plugin, feature.description, descDiv, feature.name);
                 header.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const isHidden = descDiv.classList.toggle('dh-feature-description-hidden');
@@ -331,18 +306,27 @@ function renderAdversaryInstance(
     if (data.difficulty !== undefined) {
         coreStatsLine.createSpan().innerHTML = `<strong>Difficulty:</strong> ${data.difficulty}`;
     }
+
     if (data.attack) {
         const attackSpan = coreStatsLine.createSpan({ cls: 'dh-attack-details-span' });
         attackSpan.createEl('strong', { text: `${data.attack.name || 'Attack'}:` });
         attackSpan.appendText(` ${data.attack.range || ''} – `);
         const damageSpan = attackSpan.createSpan();
-        renderRollableContent(plugin, data.attack.damage || '', damageSpan);
+        renderRollableContent(plugin, data.attack.damage || '', damageSpan, data.attack.name || 'Attack');
         attackSpan.appendText(' (ATK ');
         const modValue = String(data.attack.modifier ?? '0').trim();
         if (/^[+-]?\d+$/.test(modValue) && plugin.isDiceRollerEnabled) {
             const diceString = `1d20${modValue === '0' ? '' : modValue.startsWith('+') ? modValue : `+${modValue}`}`;
-            const rollSpan = attackSpan.createSpan({ text: modValue, cls: 'dh-rollable-dice', attr: { title: `Click to roll ${diceString}` } });
-            rollSpan.addEventListener('click', (e) => { e.stopPropagation(); rollDice(plugin, diceString); });
+            const attackName = data.attack?.name || 'Attack';
+            const rollSpan = attackSpan.createSpan({
+                text: modValue,
+                cls: 'dh-rollable-dice',
+                attr: { title: `Click to roll ${diceString} for ${attackName}` }
+            });
+            rollSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                plugin.rollDice(diceString, attackName);
+            });
         } else {
             attackSpan.appendText(modValue);
         }
@@ -401,7 +385,7 @@ function renderAdversaryInstance(
             }
             if (feature.description) {
                 const descDiv = li.createDiv({ cls: `dh-feature-description ${isExpanded ? '' : 'dh-feature-description-hidden'}` });
-                renderRollableContent(plugin, feature.description, descDiv);
+                renderRollableContent(plugin, feature.description, descDiv, feature.name);
                 header.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const isHidden = descDiv.classList.toggle('dh-feature-description-hidden');

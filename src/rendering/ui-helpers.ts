@@ -1,34 +1,13 @@
 import DaggerheartStatblockPlugin from '../../main';
 import { Notice } from 'obsidian';
 
-async function rollDice(plugin: DaggerheartStatblockPlugin, diceString: string) {
-    const diceRollerPlugin = (plugin.app as any).plugins.getPlugin("obsidian-dice-roller");
-    if (!diceRollerPlugin) {
-        new Notice("Dice Roller plugin is not enabled. Please install or enable it to roll dice.");
-        return;
-    }
-
-    const DiceRollerAPI = diceRollerPlugin.api;
-    if (!DiceRollerAPI || typeof DiceRollerAPI.getRoller !== 'function') {
-        new Notice("Dice Roller plugin API not available. Please ensure Dice Roller is up to date.");
-        console.error("Daggerheart: Dice Roller plugin is active, but its API is not available or is missing getRoller.");
-        return;
-    }
-
-    try {
-        const roller = await DiceRollerAPI.getRoller(diceString);
-        if (plugin.settings.useGraphicalDice) {
-            await roller.roll({ showDice: true, throw: true });
-        } else {
-            await roller.roll();
-            new Notice(`Rolled ${diceString}: ${roller.result}`, 5000);
-        }
-    } catch (e) {
-        console.error("Daggerheart: Error rolling dice:", e);
-        new Notice(`Error rolling dice for "${diceString}". See console for details.`);
-    }
-}
-
+/**
+ * Renders basic markdown formatting for descriptions.
+ * Handles bold, italic, and lists.
+ * @param plugin The main plugin instance.
+ * @param text The text to render.
+ * @param containerEl The HTML element to render the markdown into.
+ */
 export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement) {
     try {
         // First, handle basic inline formatting (bold, italic)
@@ -48,46 +27,33 @@ export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string,
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
 
-            // Handle unordered lists (*, -, +)
             const unorderedMatch = line.match(/^\s*([\*\-\+])\s+(.*)$/);
             if (unorderedMatch) {
-                const content = unorderedMatch[2].replace(/\*(.*?)\*/g, '<em>$1</em>'); // Process italic in list items
+                const content = unorderedMatch[2].replace(/\*(.*?)\*/g, '<em>$1</em>');
                 if (!inList || listType !== 'ul') {
-                    // Start a new list or close previous list
-                    if (inList) {
-                        listHtml += `</${listType}>`;
-                    }
+                    if (inList) listHtml += `</${listType}>`;
                     listHtml += '<ul style="margin: 0; padding-left: 1.5em; margin-top: 0.2em; margin-bottom: 0.2em;">';
                     listType = 'ul';
                     inList = true;
                 }
-
                 listHtml += `<li style="margin: 0; padding: 0;">${content}</li>`;
                 continue;
             }
 
-            // Handle ordered lists (1., 2., etc.)
             const orderedMatch = line.match(/^\s*(\d+)\.\s+(.*)$/);
             if (orderedMatch) {
-                const content = orderedMatch[2].replace(/\*(.*?)\*/g, '<em>$1</em>'); // Process italic in list items
-
+                const content = orderedMatch[2].replace(/\*(.*?)\*/g, '<em>$1</em>');
                 if (!inList || listType !== 'ol') {
-                    // Start a new list or close previous list
-                    if (inList) {
-                        listHtml += `</${listType}>`;
-                    }
+                    if (inList) listHtml += `</${listType}>`;
                     listHtml += '<ol style="margin: 0; padding-left: 1.5em; margin-top: 0.2em; margin-bottom: 0.2em;">';
                     listType = 'ol';
                     inList = true;
                 }
-
                 listHtml += `<li style="margin: 0; padding: 0;">${content}</li>`;
                 continue;
             }
 
-            // Not a list item
             if (inList) {
-                // End the current list
                 listHtml += `</${listType}>`;
                 finalHtml += listHtml;
                 listHtml = '';
@@ -95,36 +61,41 @@ export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string,
                 listType = '';
             }
 
-            // Process normal line with italic formatting
             line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-            // Add the line to the final HTML
             finalHtml += line + (i < lines.length - 1 ? '<br>' : '');
         }
 
-        // Close any open list
         if (inList) {
             listHtml += `</${listType}>`;
             finalHtml += listHtml;
         }
 
-        // Set the HTML content
         containerEl.innerHTML = finalHtml;
     } catch (error) {
         console.error("Error formatting markdown:", error);
-        // Fallback to plain text if formatting fails
         containerEl.appendText(text);
     }
 }
 
-export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement) {
-    const pattern = /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+fear)/gi;
+/**
+ * Renders content with rollable dice strings and feature costs.
+ * @param plugin The main plugin instance.
+ * @param text The text to process.
+ * @param containerEl The parent element for the rendered content.
+ * @param context A string describing what the roll is for (e.g., an attack or feature name).
+ * @param isCharacterContext Whether this is being rendered in a character sheet context (vs. encounter/statblock).
+ */
+export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement, context: string, isCharacterContext: boolean = false) {
+    const pattern = /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear))/gi;
     let lastIndex = 0;
     let match;
 
+    const isDiceRollerConfigured = plugin.settings.diceProvider === 'dice-roller' && plugin.settings.enableDiceRoller && plugin.isDiceRollerEnabled;
+    const isDddiceConfigured = plugin.settings.diceProvider === 'dddice' && !!plugin.settings.dddice.apiKey;
+    const isRollable = isDiceRollerConfigured || isDddiceConfigured;
+
     while ((match = pattern.exec(text)) !== null) {
         if (match.index > lastIndex) {
-            // Render the text between matches as markdown
             const textFragment = text.substring(lastIndex, match.index);
             const fragmentEl = containerEl.createSpan();
             renderMarkdown(plugin, textFragment, fragmentEl);
@@ -133,18 +104,78 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
         const dicePart = match[1];
         const costPart = match[2];
 
-        if (dicePart && plugin.isDiceRollerEnabled) {
+        if (dicePart && isRollable) {
             const diceString = dicePart.replace(/\s/g, '');
             containerEl.createSpan({
                 text: dicePart,
                 cls: 'dh-rollable-dice',
-                title: `Click to roll ${diceString}`
+                title: `Click to roll ${diceString} for ${context}`
             }).addEventListener('click', (e) => {
                 e.stopPropagation();
-                rollDice(plugin, diceString);
+                // Pass the context of the roll to the main dice rolling function
+                // Extract trait name from context if possible (e.g., "Weapon Attack with Strength")
+                const traitMatch = context.match(/with\s+(\w+)(?:\s|$)/i);
+                const traitName = traitMatch ? traitMatch[1] : undefined;
+                plugin.rollDice(diceString, context, traitName);
             });
         } else if (costPart) {
-            containerEl.createEl('strong', { text: costPart, cls: 'dh-feature-cost-text' });
+            // Parse stress/hope costs and make them clickable to mark/spend resources
+            const markStressMatch = costPart.match(/Mark\s+(a|\d+)\s+stress/i);
+            const spendHopeMatch = costPart.match(/Spend\s+(a|\d+)\s+hope/i);
+            const spendFearMatch = costPart.match(/Spend\s+(a|\d+)\s+fear/i);
+
+            const costEl = containerEl.createEl('strong', {
+                text: costPart,
+                cls: 'dh-feature-cost-text dh-interactive-cost'
+            });
+
+            if (markStressMatch || spendHopeMatch || spendFearMatch) {
+                const resourceType = markStressMatch ? 'stress' : (spendHopeMatch ? 'hope' : 'fear');
+                const amountText = (markStressMatch ? markStressMatch[1] :
+                    (spendHopeMatch ? spendHopeMatch[1] : spendFearMatch![1])).toLowerCase();
+                const amount = amountText === 'a' ? 1 : parseInt(amountText);
+
+                // Only make stress and hope clickable in character contexts
+                if (isCharacterContext && resourceType !== 'fear') {
+                    costEl.addClass('dh-clickable-cost');
+                    costEl.title = `Click to ${markStressMatch ? 'mark' : 'spend'} ${amount} ${resourceType}`;
+
+                    costEl.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const activeChar = plugin.getActiveCharacter();
+                        if (!activeChar) {
+                            new Notice('No active character selected.');
+                            return;
+                        }
+
+                        if (resourceType === 'stress') {
+                            if (!activeChar.stress) {
+                                new Notice('Character does not have stress tracking enabled.');
+                                return;
+                            }
+
+                            const newStress = Math.min(activeChar.stress.max, activeChar.stress.current + amount);
+                            activeChar.stress.current = newStress;
+                            plugin.updateCharacter(activeChar);
+                            new Notice(`Marked ${amount} stress on ${activeChar.name}.`);
+                        } else { // hope
+                            if (!activeChar.hope) {
+                                new Notice('Character does not have hope tracking enabled.');
+                                return;
+                            }
+
+                            if (activeChar.hope.current < amount) {
+                                new Notice(`Not enough hope. Current: ${activeChar.hope.current}`);
+                                return;
+                            }
+
+                            activeChar.hope.current -= amount;
+                            plugin.updateCharacter(activeChar);
+                            new Notice(`Spent ${amount} hope from ${activeChar.name}.`);
+                        }
+                    });
+                }
+            }
         } else {
             containerEl.appendText(match[0]);
         }
@@ -153,13 +184,21 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
     }
 
     if (lastIndex < text.length) {
-        // Render any remaining text as markdown
         const remainingText = text.substring(lastIndex);
         const remainingEl = containerEl.createSpan();
         renderMarkdown(plugin, remainingText, remainingEl);
     }
 }
 
+/**
+ * Creates an interactive track with pips for things like HP and Stress.
+ * @param parentEl The parent element to attach the track to.
+ * @param label The label for the track (e.g., "HP").
+ * @param maxValue The maximum value for the track.
+ * @param trackIdPrefix A prefix for generating unique IDs.
+ * @param currentValue The initial value of the track.
+ * @param updateCallback A function to call when the value is updated.
+ */
 export function createInteractiveTrack(
     parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string,
     currentValue: number, updateCallback: (newValue: number) => void
@@ -184,7 +223,8 @@ export function createInteractiveTrack(
         pip.addEventListener('click', () => {
             const clickedIndex = parseInt(pip.dataset.index!);
             const currentMarkedCount = pips.filter(p => p.classList.contains('dh-pip-marked')).length;
-            updatePipsAndState(pip.classList.contains('dh-pip-marked') && clickedIndex === currentMarkedCount - 1 ? clickedIndex : clickedIndex + 1);
+            const isLastPip = clickedIndex === currentMarkedCount - 1;
+            updatePipsAndState(pip.classList.contains('dh-pip-marked') && isLastPip ? clickedIndex : clickedIndex + 1);
         });
         pips.push(pip);
     }

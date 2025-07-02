@@ -1,0 +1,34 @@
+/* Styles for the ManageEncountersModal */
+.dh-manage-encounters-modal .dh-manage-list-item {
+    display: flex;
+    align-items: center;
+    padding: var(--size-4-2) var(--size-4-3);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.dh-manage-encounters-modal .dh-manage-item-name-container {
+    flex: 1;
+}
+
+.dh-manage-encounters-modal .dh-manage-item-buttons {
+    display: flex;
+    gap: var(--size-4-1);
+}
+
+.dh-manage-encounters-modal .dh-modal-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--size-4-4);
+    margin-bottom: var(--size-4-2);
+}
+
+.dh-manage-encounters-modal .dh-modal-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--size-4-2);
+}
+
+/* For the delete confirmation state */
+.dh-delete-btn-confirmable.is-confirming-delete {
+    color: var(--text-error) !important;
+}
