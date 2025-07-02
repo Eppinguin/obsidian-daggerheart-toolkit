@@ -24,10 +24,15 @@ export class LevelUpModal extends Modal {
         this.onSave = onSave;
         this.modalEl.addClass('dh-level-up-modal');
 
+        // Store the original level up history for comparison
+        this.originalLevelUpHistory = JSON.parse(JSON.stringify(character.levelUpHistory || {}));
+
         if (!this.tempCharacter.levelUpHistory) {
             this.tempCharacter.levelUpHistory = {};
         }
     }
+
+    private readonly originalLevelUpHistory: { [level: number]: LevelUpSelection };
 
     onOpen() {
         const { contentEl } = this;
@@ -532,6 +537,8 @@ export class LevelUpModal extends Modal {
                 const isFoundation = subclass.foundations.some(found => found.name === f.name);
                 return f.level === 1 || isFoundation;
             }),
+            // Initialize/preserve vault array
+            vault: this.originalCharacter.vault || [],
             // Filter experiences to only include the starting ones (heuristic: they don't have a tier-based name)
             experiences: this.originalCharacter.experiences.filter(exp => {
                 return ![`Level 2 Experience`, `Level 5 Experience`, `Level 8 Experience`].includes(exp.name) &&
@@ -550,7 +557,16 @@ export class LevelUpModal extends Modal {
         }
 
         // --- Step 2: Apply the NEW level-up history to the pristine L1 character ---
-        for (let level = 2; level <= this.tempCharacter.level; level++) {
+        for (let level = 2; level <= Math.max(this.tempCharacter.level, this.originalCharacter.level); level++) {
+            // Skip levels beyond current level (handle level decrease)
+            if (level > this.tempCharacter.level) {
+                // If this level was previously chosen, log that we're removing those choices
+                if (this.originalLevelUpHistory[level]) {
+                    new Notice(`Removing advancements from level ${level}`);
+                }
+                continue;
+            }
+
             rebuiltChar.level = level;
             rebuiltChar.damageThresholds.major++;
             rebuiltChar.damageThresholds.severe++;
@@ -558,7 +574,11 @@ export class LevelUpModal extends Modal {
             if (level === 2 || level === 5 || level === 8) {
                 rebuiltChar.proficiency++;
                 const newExpName = this.tempCharacter.levelUpHistory[level]?.newExperienceName || `Level ${level} Experience`;
-                rebuiltChar.experiences.push({ _type: 'experience', id: uuidv4(), name: newExpName, value: 2 });
+
+                // Only add the experience if it doesn't exist yet
+                if (!rebuiltChar.experiences.some(e => e.name === newExpName)) {
+                    rebuiltChar.experiences.push({ _type: 'experience', id: uuidv4(), name: newExpName, value: 2 });
+                }
                 Object.values(rebuiltChar.traits).forEach(t => t.locked = false);
             }
 
@@ -587,21 +607,74 @@ export class LevelUpModal extends Modal {
                             if (experience) experience.value++;
                         });
                         break;
-                    case 'upgrade_subclass':
+                    case 'upgrade_subclass': {
+                        // Check if this level had a different choice before
+                        const originalChoice = this.originalLevelUpHistory[level]?.advancements
+                            .find(a => a?.id === 'upgrade_subclass')?.choices[0];
+                        if (originalChoice) {
+                            // Remove the original card if it exists
+                            rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalChoice);
+                            rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalChoice);
+                        }
+
                         const hasSpecialization = rebuiltChar.features.some(f => subclass.specializations.some(s => s.name === f.name));
                         const cardToAdd = !hasSpecialization ? subclass.specializations[0] : subclass.masteries[0];
-                        if (cardToAdd && !rebuiltChar.features.some(f => f.name === cardToAdd.name)) {
-                            rebuiltChar.features.push({ _type: 'domainCard', id: cardToAdd.name, name: cardToAdd.name, description: cardToAdd.text, level: 0, domain: 'Subclass', type: 'Ability', recall: 0 });
+                        if (cardToAdd) {
+                            const newCard: DomainCard = { _type: 'domainCard', id: cardToAdd.name, name: cardToAdd.name, description: cardToAdd.text, level: 0, domain: 'Subclass', type: 'Ability', recall: 0 };
+                            if (rebuiltChar.features.length < 5) {
+                                rebuiltChar.features.push(newCard);
+                            } else {
+                                rebuiltChar.vault.push(newCard);
+                                new Notice(`${cardToAdd.name} added to vault because loadout was full.`);
+                            }
                         }
                         break;
-                    case 'take_domain_card':
+                    }
+                    case 'take_domain_card': {
+                        // Check if this level had a different domain card choice before
+                        const originalChoice = this.originalLevelUpHistory[level]?.advancements
+                            .find(a => a?.id === 'take_domain_card')?.choices[0];
+                        if (originalChoice) {
+                            // Remove the original card if it exists
+                            rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalChoice);
+                            rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalChoice);
+                        }
+
                         if (adv.choices[0]) {
                             const card = this.plugin.compendium.getAbility(adv.choices[0]);
-                            if (card) rebuiltChar.features.push(card);
+                            if (card) {
+                                if (rebuiltChar.features.length < 5) {
+                                    rebuiltChar.features.push(card);
+                                } else {
+                                    rebuiltChar.vault.push(card);
+                                    new Notice(`${card.name} added to vault because loadout was full.`);
+                                }
+                            }
                         }
                         break;
+                    }
                     case 'multiclass':
                         const [classId, subclassId, domainId] = adv.choices;
+                        // Handle previous multiclass choice removal
+                        const originalChoices = this.originalLevelUpHistory[level]?.advancements
+                            .find(a => a?.id === 'multiclass')?.choices;
+                        if (originalChoices && originalChoices.length >= 3) {
+                            const [originalClassId, originalSubclassId] = originalChoices;
+                            const originalClass = originalClassId ? this.plugin.compendium.getClass(originalClassId) : null;
+                            const originalSubclass = originalSubclassId ? this.plugin.compendium.getSubclass(originalSubclassId) : null;
+
+                            // Remove original class feature
+                            if (originalClass) {
+                                rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalClass.hope_feat_name);
+                                rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalClass.hope_feat_name);
+                            }
+                            // Remove original foundation
+                            if (originalSubclass && originalSubclass.foundations[0]) {
+                                rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalSubclass.foundations[0].name);
+                                rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalSubclass.foundations[0].name);
+                            }
+                        }
+
                         if (classId && subclassId && domainId) {
                             rebuiltChar.multiclassClassId = classId;
                             rebuiltChar.multiclassSubclassId = subclassId;
@@ -612,13 +685,23 @@ export class LevelUpModal extends Modal {
 
                             if (newClass) {
                                 const classFeature: DomainCard = { _type: 'domainCard', id: newClass.hope_feat_name, name: newClass.hope_feat_name, description: newClass.hope_feat_text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0 };
-                                rebuiltChar.features.push(classFeature);
+                                if (rebuiltChar.features.length < 5) {
+                                    rebuiltChar.features.push(classFeature);
+                                } else {
+                                    rebuiltChar.vault.push(classFeature);
+                                    new Notice(`${classFeature.name} added to vault because loadout was full.`);
+                                }
                             }
                             if (newSubclass) {
                                 const foundation = newSubclass.foundations[0];
                                 if (foundation) {
                                     const foundationCard: DomainCard = { _type: 'domainCard', id: foundation.name, name: foundation.name, description: foundation.text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0 };
-                                    rebuiltChar.features.push(foundationCard);
+                                    if (rebuiltChar.features.length < 5) {
+                                        rebuiltChar.features.push(foundationCard);
+                                    } else {
+                                        rebuiltChar.vault.push(foundationCard);
+                                        new Notice(`${foundationCard.name} added to vault because loadout was full.`);
+                                    }
                                 }
                             }
                         }
@@ -626,9 +709,24 @@ export class LevelUpModal extends Modal {
                 }
             });
 
+            // Handle the main domain card selection
+            const originalDomainCard = this.originalLevelUpHistory[level]?.domainCardId;
+            if (originalDomainCard) {
+                // Remove the original card if it exists
+                rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalDomainCard);
+                rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalDomainCard);
+            }
+
             if (selection.domainCardId) {
                 const card = this.plugin.compendium.getAbility(selection.domainCardId);
-                if (card) rebuiltChar.features.push(card);
+                if (card) {
+                    if (rebuiltChar.features.length < 5) {
+                        rebuiltChar.features.push(card);
+                    } else {
+                        rebuiltChar.vault.push(card);
+                        new Notice(`${card.name} added to vault because loadout was full.`);
+                    }
+                }
             }
         }
 

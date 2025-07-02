@@ -3015,9 +3015,11 @@
 .dh-modal-footer, .dh-modal-footer-bar {
     display: flex;
     justify-content: flex-end;
-    margin-top: var(--size-4-4);
-    padding-top: var(--size-4-3);
-    border-top: 1px solid var(--dh-sheet-border);
+    padding: var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    margin: 0 calc(var(--size-4-3) * -1) calc(var(--size-4-3) * -1);
+    flex-shrink: 0;
 }
 
 
@@ -3422,8 +3424,13 @@
 }
 /* --- Level Up Modal --- */
 .dh-level-up-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height:inherit;
+    margin-top: auto;
+ margin-bottom: auto;
+    padding: auto;
     max-width: 100%;
-    width: 90vw;
 }
 
 .dh-level-up-modal .setting-item {
@@ -3431,10 +3438,11 @@
 }
 
 .dh-level-up-container {
-    max-height: 70vh;
+    flex: 1 1 auto;
     overflow-y: auto;
-    padding-right: var(--size-4-2);
-    margin-right: calc(var(--size-4-2) * -1);
+    padding: 0 var(--size-4-3);
+    margin: var(--size-4-3) calc(var(--size-4-3) * -1);
+    min-height: 0;
 }
 
 .dh-level-entry {
@@ -3559,4 +3567,23 @@
 
 .dh-level-entry h3 {
     font-size: var(--font-ui-large);
+}
+
+/* Fixed header styles for Level Up modal */
+.dh-level-up-modal .modal-content > h1,
+.dh-level-up-modal .modal-content > .setting-item,
+.dh-level-up-modal .modal-content > p {
+    margin: 0;
+    padding: 0 var(--size-4-3);
+    flex-shrink: 0;
+}
+
+.dh-level-up-modal .modal-content > h1 {
+    margin-top: var(--size-4-3);
+    margin-bottom: var(--size-4-2);
+}
+
+.dh-level-up-modal .modal-content > p {
+    margin-bottom: var(--size-4-3);
+    color: var(--text-muted);
 }
