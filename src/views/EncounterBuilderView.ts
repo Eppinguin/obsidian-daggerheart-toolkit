@@ -4,9 +4,10 @@ import { StatblockData, AdversaryInstance, SavedEncounter, Countdown, Condition 
 import { renderStatblockCard } from '../rendering/statblock';
 import {
     EncounterBudgetModal, CustomConditionModal, EditAdversaryModal,
-    NameEncounterModal, ManageEncountersModal
+    NameEncounterModal, ManageEncountersModal, ImportExportModal
 } from '../modals/index';
 import { DAGGERHEART_CONDITIONS } from 'src/constants';
+import { ContentType } from '../services/export-import';
 
 
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
@@ -325,6 +326,7 @@ export class EncounterBuilderView extends ItemView {
         this.uiContainer.empty();
         const containerWrapper = this.uiContainer.createDiv({ cls: "dh-encounter-wrapper" });
         const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+
         const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
         const titleAndTrackersWrapper = header.createDiv({ cls: 'dh-title-fear-wrapper' });
         const titleText = currentEncounter ? `${currentEncounter.name}` : "No Encounter active";
@@ -870,6 +872,14 @@ export class EncounterBuilderView extends ItemView {
         }
 
         new Notice(`Removed ${groupName} group from encounter.`);
+    }
+
+    /**
+     * Handles selecting an encounter
+     * @param encounterId ID of the encounter to select
+     */
+    handleSelectEncounter(encounterId: string) {
+        this.loadEncounter(encounterId);
     }
 
     addConditionToInstance(instanceId: string, condition: Condition) {

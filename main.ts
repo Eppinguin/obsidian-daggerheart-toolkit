@@ -1,17 +1,17 @@
 import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry } from './types';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/views/EncounterBuilderView';
 import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './src/views/CharacterSheetView';
 import { DaggerheartCompendium } from './src/services/compendium';
 import { renderStatblockCard } from './src/rendering/statblock';
 import { createInteractiveTrack } from './src/rendering/ui-helpers';
+import { ContentType } from './src/services/export-import';
 import {
     AdversaryReferenceModal,
     EncounterLinkModal,
     CompendiumEntryTypeSuggester,
-    ExportCharacterModal,
-    ImportCharacterModal
+    ImportExportModal
 } from './src/modals/index';
 import * as dddice from './src/services/dddice-service';
 import { ITheme, ThreeDDice } from 'dddice-js';
@@ -23,6 +23,8 @@ declare module "obsidian" {
         trigger(name: 'daggerheart-character-update'): void;
         on(name: 'daggerheart-compendium-update', callback: () => void, ctx?: any): EventRef;
         trigger(name: 'daggerheart-compendium-update'): void;
+        on(name: 'daggerheart-encounter-update', callback: () => void, ctx?: any): EventRef;
+        trigger(name: 'daggerheart-encounter-update'): void;
     }
 }
 
@@ -79,12 +81,29 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
             // Add export and import commands
             this.addCommand({
+                id: 'export-daggerheart-content',
+                name: 'Export Daggerheart Content',
+                callback: () => {
+                    new ImportExportModal(this.app, this, 'export').open();
+                }
+            });
+
+            this.addCommand({
+                id: 'import-daggerheart-content',
+                name: 'Import Daggerheart Content',
+                callback: () => {
+                    new ImportExportModal(this.app, this, 'import').open();
+                }
+            });
+
+            // Keep the character-specific commands for backward compatibility
+            this.addCommand({
                 id: 'export-daggerheart-character',
                 name: 'Export Character',
                 callback: () => {
                     const activeChar = this.getActiveCharacter();
                     if (activeChar) {
-                        new ExportCharacterModal(this.app, this, activeChar).open();
+                        new ImportExportModal(this.app, this, 'export', ContentType.CHARACTER, activeChar.id).open();
                     } else {
                         new Notice('No character selected. Please open the character sheet and select a character first.');
                     }
@@ -95,7 +114,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 id: 'import-daggerheart-character',
                 name: 'Import Character',
                 callback: () => {
-                    new ImportCharacterModal(this.app, this).open();
+                    new ImportExportModal(this.app, this, 'import', ContentType.CHARACTER).open();
                 }
             });
         }
@@ -225,6 +244,48 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
         await this.saveCharacters();
         this.app.workspace.trigger('daggerheart-character-update');
+    }
+
+    /**
+     * Get all saved encounters
+     * @returns Array of saved encounters
+     */
+    getSavedEncounters(): SavedEncounter[] {
+        return this.settings.savedEncounters || [];
+    }
+
+    /**
+     * Get a saved encounter by ID
+     * @param id The encounter ID
+     * @returns The encounter or undefined if not found
+     */
+    getSavedEncounter(id: string): SavedEncounter | undefined {
+        return this.settings.savedEncounters.find(e => e.id === id);
+    }
+
+    /**
+     * Update a saved encounter
+     * @param encounter The encounter to update
+     */
+    async updateSavedEncounter(encounter: SavedEncounter): Promise<void> {
+        const index = this.settings.savedEncounters.findIndex(e => e.id === encounter.id);
+        if (index >= 0) {
+            this.settings.savedEncounters[index] = encounter;
+        } else {
+            this.settings.savedEncounters.push(encounter);
+        }
+        await this.saveSettings();
+        this.app.workspace.trigger('daggerheart-encounter-update');
+    }
+
+    /**
+     * Remove a saved encounter
+     * @param id The ID of the encounter to remove
+     */
+    async removeSavedEncounter(id: string): Promise<void> {
+        this.settings.savedEncounters = this.settings.savedEncounters.filter(e => e.id !== id);
+        await this.saveSettings();
+        this.app.workspace.trigger('daggerheart-encounter-update');
     }
 
     async activateEncounterBuilderView(encounterId?: string) {

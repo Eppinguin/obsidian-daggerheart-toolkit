@@ -11,9 +11,8 @@ import {
     CharacterManagerModal,
     ConfirmationModal,
     ConditionModal,
-    ExportCharacterModal,
     GoldModal,
-    ImportCharacterModal,
+    ImportExportModal,
     ItemEditModal,
     CompendiumCreatorModal,
     LevelUpModal
@@ -22,6 +21,8 @@ import { DAGGERHEART_CONDITIONS } from '../constants';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
 import { handleAdvantageDisadvantage, formatTraitModifier } from '../services/dice-helpers';
 import { createAvatarEditor } from "./components/AvatarEditor";
+import { ContentType } from '../services/export-import';
+import { createImportExportButton } from '../rendering/import-export-ui';
 
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
@@ -156,30 +157,28 @@ export class CharacterSheetView extends ItemView {
             await this.plugin.setActiveCharacterId(selectEl.value || null);
         });
 
-        // Add Import Character button next to the dropdown
+        // Add Import Character button next to the dropdown with original styling
         const importBtn = left.createEl('button', { cls: 'dh-import-btn clickable-icon' });
         setIcon(importBtn, 'download');
         importBtn.setAttribute('aria-label', 'Import Character');
         importBtn.title = 'Import Character';
         importBtn.addEventListener('click', () => {
-            // Open import modal
-            const importModal = new ImportCharacterModal(this.app, this.plugin);
-            importModal.open();
+            // Open import modal using the new ImportExportModal
+            new ImportExportModal(this.app, this.plugin, 'import', ContentType.CHARACTER).open();
         });
 
         const right = header.createDiv({ cls: 'dh-topbar-right' });
 
         const activeChar = this.plugin.getActiveCharacter();
         if (activeChar) {
-            // Add Export button for the active character
+            // Add Export button for the active character with original styling
             const exportBtn = right.createEl('button', { cls: 'dh-export-btn clickable-icon' });
             setIcon(exportBtn, 'upload');
             exportBtn.setAttribute('aria-label', 'Export Character');
             exportBtn.title = 'Export Character';
             exportBtn.addEventListener('click', () => {
-                // Open export modal
-                const exportModal = new ExportCharacterModal(this.app, this.plugin, activeChar);
-                exportModal.open();
+                // Open export modal using the new ImportExportModal
+                new ImportExportModal(this.app, this.plugin, 'export', ContentType.CHARACTER, activeChar.id).open();
             });
 
             const editBtn = right.createEl('button', { cls: 'clickable-icon' });

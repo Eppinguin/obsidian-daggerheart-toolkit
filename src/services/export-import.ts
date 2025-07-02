@@ -18,6 +18,133 @@ export interface ExportedData<T> {
 }
 
 /**
+ * Content types that can be exported/imported
+ */
+export enum ContentType {
+    CHARACTER = 'character',
+    ENCOUNTER = 'encounter',
+    ADVERSARY = 'adversary',
+    ENVIRONMENT = 'environment',
+    ABILITY = 'ability',
+    CLASS = 'class',
+    SUBCLASS = 'subclass',
+    ANCESTRY = 'ancestry',
+    COMMUNITY = 'community',
+    ARMOR = 'armor',
+    WEAPON = 'weapon',
+    ITEM = 'item',
+    CONSUMABLE = 'consumable'
+}
+
+/**
+ * Content type metadata
+ */
+export interface ContentTypeInfo {
+    type: ContentType;
+    displayName: string;
+    description: string;
+    icon: string;
+    collection: string;
+}
+
+/**
+ * Content type info lookup
+ */
+export const CONTENT_TYPE_INFO: Record<ContentType, ContentTypeInfo> = {
+    [ContentType.CHARACTER]: {
+        type: ContentType.CHARACTER,
+        displayName: 'Character',
+        description: 'Export or import character sheets',
+        icon: 'user',
+        collection: 'characters'
+    },
+    [ContentType.ENCOUNTER]: {
+        type: ContentType.ENCOUNTER,
+        displayName: 'Encounter',
+        description: 'Export or import saved encounters',
+        icon: 'swords',
+        collection: 'savedEncounters'
+    },
+    [ContentType.ADVERSARY]: {
+        type: ContentType.ADVERSARY,
+        displayName: 'Adversary',
+        description: 'Export or import adversary statblocks',
+        icon: 'skull',
+        collection: 'statblocks'
+    },
+    [ContentType.ENVIRONMENT]: {
+        type: ContentType.ENVIRONMENT,
+        displayName: 'Environment',
+        description: 'Export or import environment statblocks',
+        icon: 'mountain-snow',
+        collection: 'statblocks'
+    },
+    [ContentType.ABILITY]: {
+        type: ContentType.ABILITY,
+        displayName: 'Ability',
+        description: 'Export or import abilities',
+        icon: 'zap',
+        collection: 'abilities'
+    },
+    [ContentType.CLASS]: {
+        type: ContentType.CLASS,
+        displayName: 'Class',
+        description: 'Export or import classes',
+        icon: 'shield',
+        collection: 'classes'
+    },
+    [ContentType.SUBCLASS]: {
+        type: ContentType.SUBCLASS,
+        displayName: 'Subclass',
+        description: 'Export or import subclasses',
+        icon: 'shield-half',
+        collection: 'subclasses'
+    },
+    [ContentType.ANCESTRY]: {
+        type: ContentType.ANCESTRY,
+        displayName: 'Ancestry',
+        description: 'Export or import ancestries',
+        icon: 'dna',
+        collection: 'ancestries'
+    },
+    [ContentType.COMMUNITY]: {
+        type: ContentType.COMMUNITY,
+        displayName: 'Community',
+        description: 'Export or import communities',
+        icon: 'home',
+        collection: 'communities'
+    },
+    [ContentType.ARMOR]: {
+        type: ContentType.ARMOR,
+        displayName: 'Armor',
+        description: 'Export or import armor',
+        icon: 'shield',
+        collection: 'armors'
+    },
+    [ContentType.WEAPON]: {
+        type: ContentType.WEAPON,
+        displayName: 'Weapon',
+        description: 'Export or import weapons',
+        icon: 'sword',
+        collection: 'weapons'
+    },
+    [ContentType.ITEM]: {
+        type: ContentType.ITEM,
+        displayName: 'Item',
+        description: 'Export or import items',
+        icon: 'backpack',
+        collection: 'items'
+    },
+    [ContentType.CONSUMABLE]: {
+        type: ContentType.CONSUMABLE,
+        displayName: 'Consumable',
+        description: 'Export or import consumables',
+        icon: 'potion',
+        collection: 'consumables'
+    }
+}
+
+/**
  * Export data to a JSON object
  * @param type Type of data being exported (e.g., "character", "compendium-entry")
  * @param data The data to export
@@ -51,33 +178,62 @@ export function exportToJsonString<T>(type: string, data: T): string {
 export function importFromJsonString<T>(jsonString: string): ExportedData<T> | null {
     try {
         const parsed = JSON.parse(jsonString);
+        console.log('Parsed JSON:', parsed);
 
         // Check if this is already in our export format
         if (parsed.type && parsed.version && parsed.data) {
+            console.log('Found export format with type:', parsed.type);
             return parsed as ExportedData<T>;
         }
 
-        // If not, check if it's a direct character object (with id and _type properties)
-        if (parsed.id && parsed._type === 'character') {
+        // If it's a direct content object with id and name properties
+        if (parsed.id && typeof parsed.name === 'string') {
+            // Try to determine content type
+            let contentType = 'unknown';
+
+            if (parsed._type === 'character') {
+                contentType = ContentType.CHARACTER;
+            } else if (Array.isArray(parsed.adversaries) && Array.isArray(parsed.adversaryGroupOrder)) {
+                contentType = ContentType.ENCOUNTER;
+                console.log('Detected encounter from object structure, checking arrays:', {
+                    adversaries: parsed.adversaries,
+                    adversaryGroupOrder: parsed.adversaryGroupOrder
+                });
+            }
+
+            console.log('Detected content type:', contentType);
+
             // Wrap it in our export format
             return {
-                type: 'character',
+                type: contentType,
                 version: '1.0.0',
                 exportDate: new Date().toISOString(),
                 data: parsed as unknown as T
             };
         }
 
-        // If it's an array of characters, take the first one
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id && parsed[0]._type === 'character') {
+        // If it's an array of content items, take the first one
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
+            let contentType = 'unknown';
+            const firstItem = parsed[0];
+
+            if (firstItem._type === 'character') {
+                contentType = ContentType.CHARACTER;
+            } else if (Array.isArray(firstItem.adversaries) && Array.isArray(firstItem.adversaryGroupOrder)) {
+                contentType = ContentType.ENCOUNTER;
+            }
+
+            console.log('Detected content type from array:', contentType);
+
             return {
-                type: 'character',
+                type: contentType,
                 version: '1.0.0',
                 exportDate: new Date().toISOString(),
-                data: parsed[0] as unknown as T
+                data: firstItem as unknown as T
             };
         }
 
+        console.error('Could not determine content type from imported data');
         return null;
     } catch (e) {
         console.error("Error parsing import JSON:", e);
@@ -90,15 +246,7 @@ export function importFromJsonString<T>(jsonString: string): ExportedData<T> | n
  * @param data The data to validate
  * @returns True if valid character data
  */
-export function isValidCharacterData(data: any): boolean {
-    return (
-        typeof data === 'object' &&
-        data !== null &&
-        typeof data.id === 'string' &&
-        data._type === 'character' &&
-        typeof data.name === 'string'
-    );
-}
+export { isValidCharacterData, isValidContentData } from './content-validators';
 
 /**
  * Copy text to clipboard
