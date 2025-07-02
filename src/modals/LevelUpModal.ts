@@ -558,7 +558,7 @@ export class LevelUpModal extends Modal {
             if (level === 2 || level === 5 || level === 8) {
                 rebuiltChar.proficiency++;
                 const newExpName = this.tempCharacter.levelUpHistory[level]?.newExperienceName || `Level ${level} Experience`;
-                rebuiltChar.experiences.push({ _type: 'experience', id: uuidv4(), name: newExpName, value: 2, description: '' });
+                rebuiltChar.experiences.push({ _type: 'experience', id: uuidv4(), name: newExpName, value: 2 });
                 Object.values(rebuiltChar.traits).forEach(t => t.locked = false);
             }
 

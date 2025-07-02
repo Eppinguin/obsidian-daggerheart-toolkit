@@ -13,7 +13,7 @@ export { CharacterManagerModal } from './CharacterManagerModal';
 export { ConfirmationModal } from './ConfirmationModal';
 export { ConditionModal } from './ConditionModal';
 export { GoldModal } from './GoldModal';
-export { ExperienceModal } from './ExperienceModal';
+// export { ExperienceModal } from './ExperienceModal';
 export { ItemEditModal } from './ItemEditModal';
 export { CompendiumCreatorModal } from './CompendiumCreatorModal';
 export { CompendiumEntryTypeSuggester } from './CompendiumEntryTypeSuggester';

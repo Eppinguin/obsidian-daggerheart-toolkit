@@ -1,3 +1,4 @@
+// src/views/CharacterSheetView.ts
 import { ItemView, WorkspaceLeaf, Notice, setIcon, Modal, App, Setting, TextComponent, ExtraButtonComponent, Menu, MenuItem, TFile } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
@@ -11,7 +12,6 @@ import {
     ConfirmationModal,
     ConditionModal,
     GoldModal,
-    ExperienceModal,
     ItemEditModal,
     CompendiumCreatorModal,
     LevelUpModal
@@ -46,7 +46,7 @@ type CreatorState = {
     startingWeaponIds: string[];
     startingArmorId: string;
     backgroundAnswers: string[];
-    experiences: { name: string; description: string; }[];
+    experiences: { name: string; }[];
     domainCardIds: string[];
     potionChoice: 'health' | 'stamina';
     connections: string[];
@@ -93,7 +93,7 @@ export class CharacterSheetView extends ItemView {
         traits: {},
         domainCardIds: [],
         backgroundAnswers: [],
-        experiences: [{ name: '', description: '' }, { name: '', description: '' }],
+        experiences: [{ name: '' }, { name: '' }],
         startingWeaponIds: [],
         potionChoice: 'health',
         connections: [],
@@ -185,7 +185,7 @@ export class CharacterSheetView extends ItemView {
         setIcon(newCharBtn, 'plus');
         newCharBtn.ariaLabel = "Create New Character";
         newCharBtn.addEventListener('click', () => {
-            this.creatorState = { traits: {}, domainCardIds: [], backgroundAnswers: [], experiences: [{ name: '', description: '' }, { name: '', description: '' }], startingWeaponIds: [], potionChoice: 'health', connections: [], avatarUrl: '', avatarTransform: undefined };
+            this.creatorState = { traits: {}, domainCardIds: [], backgroundAnswers: [], experiences: [{ name: '' }, { name: '' }], startingWeaponIds: [], potionChoice: 'health', connections: [], avatarUrl: '', avatarTransform: undefined };
             this.creatorStep = 0;
             this.plugin.setActiveCharacterId(null);
         });
@@ -441,7 +441,7 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawCreatorStep5_Background(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 5: Background Questions' }); const charClass = this.plugin.compendium.getClass(this.creatorState.classId ?? ''); if (charClass?.backgrounds) { charClass.backgrounds.forEach((bg, index) => { new Setting(parent).setName(bg.question).addTextArea(text => { text.setValue(this.creatorState.backgroundAnswers?.[index] || '').onChange(value => { if (!this.creatorState.backgroundAnswers) this.creatorState.backgroundAnswers = []; this.creatorState.backgroundAnswers[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see background questions.' }); } }
-    private drawCreatorStep6_Experiences(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 6: Create Experiences' }); parent.createEl('p', { text: 'Create two experiences for your character. These represent skills or defining moments from their past. They both start with a +2 modifier.' }); if (!this.creatorState.experiences) this.creatorState.experiences = [{ name: '', description: '' }, { name: '', description: '' }]; this.creatorState.experiences.forEach((exp, index) => { parent.createEl('h5', { text: `Experience ${index + 1}` }); new Setting(parent).setName('Name').addText(text => text.setPlaceholder('e.g., Survivor, Master of Disguise').setValue(exp.name).onChange(value => exp.name = value)); }); }
+    private drawCreatorStep6_Experiences(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 6: Create Experiences' }); parent.createEl('p', { text: 'Create two experiences for your character. These represent skills or defining moments from their past. They both start with a +2 modifier.' }); if (!this.creatorState.experiences) this.creatorState.experiences = [{ name: '' }, { name: '' }]; this.creatorState.experiences.forEach((exp, index) => { parent.createEl('h5', { text: `Experience ${index + 1}` }); new Setting(parent).setName('Name').addText(text => text.setPlaceholder('e.g., Survivor, Master of Disguise').setValue(exp.name).onChange(value => exp.name = value)); }); }
     private drawCreatorStep7_Domains(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 7: Choose Domain Cards' });
         const classId = this.creatorState.classId;
@@ -659,7 +659,7 @@ export class CharacterSheetView extends ItemView {
             subclassId: subclass.name,
             evasion: finalEvasion,
             traits: finalTraits,
-            hitPoints: { _type: 'dynamicResource', max: finalHp, current: finalHp },
+            hitPoints: { _type: 'dynamicResource', max: finalHp, current: 0 },
             stress: { _type: 'dynamicResource', max: 6, current: 0 },
             hope: { _type: 'dynamicResource', max: 6, current: 2 },
             armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: startingArmor.baseScore },
@@ -672,10 +672,10 @@ export class CharacterSheetView extends ItemView {
             },
             gold: { _type: 'gold', handfuls: 1, bags: 0, chests: 0 },
             experiences: (partialChar.experiences || []).map(exp => ({
-                ...exp,
+                _type: 'experience',
                 id: uuidv4(),
+                name: exp.name,
                 value: 2,
-                _type: 'experience'
             })),
             features: finalFeatures,
             vault: [],
@@ -1045,12 +1045,7 @@ export class CharacterSheetView extends ItemView {
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Experience' });
         (data.experiences || []).forEach(exp => {
-            const card = this.createExperienceCard(container, exp.name, `+${exp.value}`, true);
-            card.addEventListener('click', () => {
-                new ExperienceModal(this.app, data, (updatedCharacter) => {
-                    this.plugin.updateCharacter(updatedCharacter);
-                }).open();
-            });
+            const card = this.createExperienceCard(container, exp.name, `+${exp.value}`, false);
         });
     }
 

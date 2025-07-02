@@ -107,7 +107,7 @@ export interface Trait { _type: 'trait'; value: number; locked: boolean; }
 export interface DynamicResource { _type: 'dynamicResource'; max: number; current: number; }
 export interface DamageThresholds { _type: 'damageThresholds'; major: number; severe: number; }
 export interface Gold { _type: 'gold'; handfuls: number; bags: number; chests: number; }
-export interface Experience { _type: 'experience'; id: string; name: string; value: number; description: string | null; }
+export interface Experience { _type: 'experience'; id: string; name: string; value: number; }
 
 
 export interface LevelUpSelection {

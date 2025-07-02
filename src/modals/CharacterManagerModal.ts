@@ -215,7 +215,7 @@ export class CharacterManagerModal extends Modal {
             });
 
             new Setting(parent).addButton(btn => btn.setButtonText("Add Experience").onClick(() => {
-                this.tempCharacter.experiences.push({ _type: 'experience', id: uuidv4(), name: '', description: '', value: 0 });
+                this.tempCharacter.experiences.push({ _type: 'experience', id: uuidv4(), name: '', value: 0 });
                 redraw();
             })).settingEl.style.borderTop = 'none';
         };
