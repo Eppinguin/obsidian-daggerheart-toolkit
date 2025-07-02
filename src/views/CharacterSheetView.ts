@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, setIcon, Modal, App, Setting, TextComponent, ExtraButtonComponent, Menu, MenuItem } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, setIcon, Modal, App, Setting, TextComponent, ExtraButtonComponent, Menu, MenuItem, TFile } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
@@ -52,6 +52,36 @@ type CreatorState = {
     avatarUrl?: string;
     avatarTransform?: AvatarTransform;
 };
+
+/**
+ * Resolves an internal or external link to a usable image URL.
+ * @param app The Obsidian App instance.
+ * @param url The raw URL or link text from the character data.
+ * @returns A usable image src, or null if the link cannot be resolved.
+ */
+function resolveImageUrl(app: App, url: string | null | undefined): string | null {
+    if (!url) {
+        return null;
+    }
+
+    // It's already a full URL
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+        return url;
+    }
+
+    let fileName = url;
+    const match = url.match(/^!?\[\[(.*?)(?:\|.*)?\]\]/);
+    if (match) {
+        fileName = match[1];
+    }
+
+    const file = app.metadataCache.getFirstLinkpathDest(fileName, '');
+    if (file instanceof TFile) {
+        return app.vault.getResourcePath(file);
+    }
+
+    return null;
+}
 
 
 export class CharacterSheetView extends ItemView {
@@ -479,6 +509,7 @@ export class CharacterSheetView extends ItemView {
         parent.createEl('p', { text: 'Add an avatar image for your character. This is optional.' });
 
         createAvatarEditor(
+            this.app,
             parent,
             this.creatorState.avatarUrl || '',
             this.creatorState.avatarTransform,
@@ -688,21 +719,21 @@ export class CharacterSheetView extends ItemView {
         const left = header.createDiv({ cls: 'dh-header-left' });
 
         const avatar = left.createDiv({ cls: 'dh-avatar' });
-        if (data.avatarUrl) {
-            // This logic mirrors the editor, but adapts for the smaller 70px header size
+        const resolvedUrl = resolveImageUrl(this.app, data.avatarUrl); // Resolve the URL here
+
+        if (resolvedUrl) {
             if (data.avatarTransform) {
                 const img = new Image();
-                img.src = data.avatarUrl;
+                img.src = resolvedUrl; // Use resolved URL
                 img.onload = () => {
-                    // FIX: Re-check for avatarTransform inside the async callback.
-                    if (!data.avatarTransform) return;
+                    // This code runs asynchronously after the image has loaded
+                    if (!data.avatarTransform) return; // Guard against data changing
 
                     const EDITOR_SIZE = 150;
                     const HEADER_SIZE = 70;
                     const sizeRatio = HEADER_SIZE / EDITOR_SIZE;
 
                     const scale = data.avatarTransform.scale;
-                    // Scale the offsets by the size ratio
                     const offsetX = data.avatarTransform.x * sizeRatio;
                     const offsetY = data.avatarTransform.y * sizeRatio;
 
@@ -721,11 +752,13 @@ export class CharacterSheetView extends ItemView {
                     const bgPosX = `calc(50% + ${offsetX}px)`;
                     const bgPosY = `calc(50% + ${offsetY}px)`;
 
-                    avatar.style.backgroundImage = `url("${data.avatarUrl}")`;
+                    avatar.style.backgroundImage = `url("${resolvedUrl}")`; // Use resolved URL
                     avatar.style.backgroundSize = `${bgWidth}px ${bgHeight}px`;
                     avatar.style.backgroundPosition = `${bgPosX} ${bgPosY}`;
                     avatar.style.backgroundRepeat = 'no-repeat';
                 }
+            } else {
+                avatar.style.backgroundImage = `url("${resolvedUrl}")`;
             }
         } else {
             setIcon(avatar, 'user-round');
@@ -1329,7 +1362,6 @@ export class CharacterSheetView extends ItemView {
 
         const grid = section.createDiv({ cls: 'dh-feature-grid' });
         features.forEach(feat => {
-            // Ensure the feature object is valid and has a name before creating a card.
             if (feat && feat.name) {
                 this.createCreatorPreviewCard(grid, feat);
             }

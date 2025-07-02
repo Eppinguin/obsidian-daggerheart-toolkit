@@ -1,9 +1,48 @@
 // src/views/components/AvatarEditor.ts
 
-import { Setting } from "obsidian";
+import { Setting, App, TFile } from "obsidian";
 import { AvatarTransform } from "types";
 
+/**
+ * Resolves an internal or external link to a usable image URL.
+ * Handles:
+ * - Full URLs (http, https)
+ * - Obsidian wikilinks like ![[image.png]] or [[image.png]]
+ * @param app The Obsidian App instance.
+ * @param url The raw URL or link text from the character data.
+ * @returns A usable image src, or null if the link cannot be resolved.
+ */
+function resolveImageUrl(app: App, url: string | null | undefined): string | null {
+    if (!url) {
+        return null;
+    }
+
+    // It's already a full URL
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+        return url;
+    }
+
+    let fileName = url;
+    // Check for Obsidian wikilink embed format ![[...]] or [[...]] and strip out aliases
+    const match = url.match(/^!?\[\[(.*?)(?:\|.*)?\]\]/);
+    if (match) {
+        fileName = match[1];
+    }
+
+    // Use getFirstLinkpathDest to resolve wikilinks (with or without extension) to a file
+    const file = app.metadataCache.getFirstLinkpathDest(fileName, '');
+    if (file instanceof TFile) {
+        // getResourcePath provides a usable URL for the vault file
+        return app.vault.getResourcePath(file);
+    }
+
+    // If not found, return null to indicate we couldn't resolve it.
+    return null;
+}
+
+
 export function createAvatarEditor(
+    app: App, // Pass the app instance
     parent: HTMLElement,
     initialUrl: string,
     initialTransform: AvatarTransform | undefined,
@@ -30,8 +69,8 @@ export function createAvatarEditor(
         onTransformChange({ scale, x: offsetX, y: offsetY });
     };
 
-    const updateBackgroundStyles = () => {
-        if (!naturalWidth || !naturalHeight) return;
+    const updateBackgroundStyles = (resolvedUrl: string) => {
+        if (!naturalWidth || !naturalHeight || !resolvedUrl) return;
         const EDITOR_SIZE = 150;
 
         const ratio = naturalWidth / naturalHeight;
@@ -49,7 +88,7 @@ export function createAvatarEditor(
         const bgPosX = `calc(50% + ${offsetX}px)`;
         const bgPosY = `calc(50% + ${offsetY}px)`;
 
-        previewContainer.style.backgroundImage = `url("${initialUrl}")`;
+        previewContainer.style.backgroundImage = `url("${resolvedUrl}")`;
         previewContainer.style.backgroundSize = `${bgWidth}px ${bgHeight}px`;
         previewContainer.style.backgroundPosition = `${bgPosX} ${bgPosY}`;
         previewContainer.style.backgroundRepeat = 'no-repeat';
@@ -58,10 +97,18 @@ export function createAvatarEditor(
     const loadImage = (url: string) => {
         controlsContainer.empty();
         previewContainer.style.backgroundImage = 'none';
+        previewContainer.setText('');
+
         if (!url) return;
 
+        const resolvedUrl = resolveImageUrl(app, url);
+        if (!resolvedUrl) {
+            previewContainer.setText('Invalid Link');
+            return;
+        }
+
         const img = new Image();
-        img.src = url;
+        img.src = resolvedUrl;
         img.onload = () => {
             naturalWidth = img.naturalWidth;
             naturalHeight = img.naturalHeight;
@@ -75,16 +122,16 @@ export function createAvatarEditor(
                 fireTransformChange();
             }
 
-            updateBackgroundStyles();
+            updateBackgroundStyles(resolvedUrl);
             createControls();
         };
         img.onerror = () => {
-            previewContainer.setText('Invalid URL');
+            previewContainer.setText('Invalid Image');
         };
     };
 
     const createControls = () => {
-        controlsContainer.empty(); // Clear previous controls
+        controlsContainer.empty();
 
         // --- Size Slider ---
         const scaleControl = controlsContainer.createDiv({ cls: 'dh-avatar-scale-control' });
@@ -94,7 +141,7 @@ export function createAvatarEditor(
         });
         scaleSlider.oninput = () => {
             scale = parseFloat(scaleSlider.value);
-            updateBackgroundStyles();
+            updateBackgroundStyles(resolveImageUrl(app, initialUrl)!);
         };
         scaleSlider.onchange = fireTransformChange;
 
@@ -108,7 +155,7 @@ export function createAvatarEditor(
             offsetX = 0;
             offsetY = 0;
             scaleSlider.value = '1';
-            updateBackgroundStyles();
+            updateBackgroundStyles(resolveImageUrl(app, initialUrl)!);
             fireTransformChange();
         };
     };
@@ -123,7 +170,7 @@ export function createAvatarEditor(
         if (!isDragging) return;
         offsetX = e.clientX - dragStartX;
         offsetY = e.clientY - dragStartY;
-        updateBackgroundStyles();
+        updateBackgroundStyles(resolveImageUrl(app, initialUrl)!);
     };
     document.onmouseup = () => {
         if (!isDragging) return;
@@ -133,10 +180,10 @@ export function createAvatarEditor(
     };
 
     new Setting(parent)
-        .setName("Avatar Image URL")
-        .setDesc("URL for your character's portrait.")
+        .setName("Avatar Image URL or Link")
+        .setDesc("URL or Obsidian link (e.g., ![[portrait.jpg]]) for your character's portrait.")
         .addText(text => text
-            .setPlaceholder("https://example.com/avatar.jpg")
+            .setPlaceholder("https://... or ![[portrait.jpg]]")
             .setValue(initialUrl)
             .onChange(value => {
                 initialUrl = value;

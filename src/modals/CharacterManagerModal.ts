@@ -29,9 +29,6 @@ export class CharacterManagerModal extends Modal {
         this.contentEl.empty();
         const { contentEl } = this;
 
-        // By wrapping the content creation in requestAnimationFrame, we ensure that the modal's
-        // initial layout and CSS have been calculated by the browser before we add our components.
-        // This solves the race condition where the avatar container had no dimensions when the image transform was applied.
         requestAnimationFrame(() => {
             contentEl.createEl("h1", { text: `Manage ${this.character.name}` });
 
@@ -71,12 +68,13 @@ export class CharacterManagerModal extends Modal {
                 }));
 
         createAvatarEditor(
+            this.app,
             container,
             this.tempCharacter.avatarUrl || '',
             this.tempCharacter.avatarTransform,
             (newUrl) => {
-                // The editor now handles transform resets, so we only need to update the URL.
                 this.tempCharacter.avatarUrl = newUrl || null;
+                this.tempCharacter.avatarTransform = undefined;
             },
             (newTransform) => {
                 this.tempCharacter.avatarTransform = newTransform;
