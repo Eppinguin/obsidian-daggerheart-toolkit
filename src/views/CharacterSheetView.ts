@@ -961,9 +961,33 @@ export class CharacterSheetView extends ItemView {
             });
         }
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
-        let proficiency = character.proficiency;
-        const damageFormula = `${proficiency}${weapon.damageDice}`;
-        damageBox.createDiv({ text: weapon.damageDice });
+
+        // --- PROFICIENCY FIX START ---
+        // The original code displayed the base weapon damage, which was confusing
+        // because the roll correctly included the proficiency bonus. This fix
+        // ensures the displayed damage formula matches the rolled formula.
+        const proficiency = character.proficiency;
+
+        // We parse the damage string to separate the dice from the modifier.
+        // This makes applying the proficiency to the number of dice more explicit and robust.
+        const damageString = weapon.damageDice; // e.g., "d8+1" or "d8"
+        const match = damageString.match(/(d\d+)([+-]\d+)?/);
+
+        let damageFormula = '';
+
+        if (match) {
+            const diePart = match[1]; // e.g., "d8"
+            const modifierPart = match[2] || ''; // e.g., "+1" or ""
+            // As per Daggerheart rules, proficiency determines the number of dice rolled.
+            damageFormula = `${proficiency}${diePart}${modifierPart}`;
+        } else {
+            // Fallback for any unusual damage formats, though this shouldn't be hit with standard data.
+            damageFormula = `${proficiency}${damageString}`;
+        }
+
+        damageBox.createDiv({ text: damageFormula }); // Display the full formula including proficiency.
+        // --- PROFICIENCY FIX END ---
+
         damageBox.createDiv({ text: weapon.damageType });
         damageBox.title = `Click to roll ${damageFormula}`;
         damageBox.addEventListener('click', () => {

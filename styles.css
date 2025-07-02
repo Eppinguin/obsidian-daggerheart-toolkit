@@ -2455,9 +2455,10 @@
     gap: var(--size-4-2);
     flex-shrink: 0;
 }
+
 .dh-weapon-roll-box, .dh-weapon-damage-box {
-    width: 60px; /* smaller */
-    height: 60px; /* smaller */
+    min-width: 70px;
+    padding: var(--size-4-2) var(--size-4-1);
     border: 1px solid var(--dh-sheet-border);
     border-radius: var(--radius-s);
     display: flex;
@@ -2466,30 +2467,42 @@
     justify-content: center;
     text-align: center;
     cursor: pointer;
+    transition: all 0.2s ease-in-out;
 }
+
+.dh-weapon-roll-box:hover,
+.dh-weapon-damage-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+    border-color: var(--dh-sheet-accent);
+}
+
 .dh-weapon-roll-box {
     background-color: var(--dh-sheet-accent);
     color: var(--dh-sheet-bg);
     border-color: var(--dh-sheet-accent-dark);
 }
-.dh-weapon-roll-box div:first-child {
-    font-size: 1.3em;
-    font-weight: bold;
-}
-.dh-weapon-roll-box div:last-child {
-    font-size: 0.8em;
-    text-transform: uppercase;
-}
 
+.dh-weapon-roll-box div:first-child,
 .dh-weapon-damage-box div:first-child {
     font-size: 1.3em;
     font-weight: bold;
+    line-height: 1.2;
 }
+
+.dh-weapon-roll-box div:last-child,
 .dh-weapon-damage-box div:last-child {
-    font-size: 0.8em;
+    font-size: 0.75em;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.dh-weapon-damage-box div:last-child {
     color: var(--dh-sheet-text-muted);
 }
+/* END STYLING FIX */
 
 
 /* --- Right Column --- */
