@@ -6,7 +6,13 @@ import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './src/views/Chara
 import { DaggerheartCompendium } from './src/services/compendium';
 import { renderStatblockCard } from './src/rendering/statblock';
 import { createInteractiveTrack } from './src/rendering/ui-helpers';
-import { AdversaryReferenceModal, EncounterLinkModal, CompendiumEntryTypeSuggester } from './src/modals/index';
+import {
+    AdversaryReferenceModal,
+    EncounterLinkModal,
+    CompendiumEntryTypeSuggester,
+    ExportCharacterModal,
+    ImportCharacterModal
+} from './src/modals/index';
 import * as dddice from './src/services/dddice-service';
 import { ITheme, ThreeDDice } from 'dddice-js';
 import { displayRollNotice } from './src/services/dice-helpers';
@@ -70,6 +76,28 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             this.registerView(CHARACTER_SHEET_VIEW_TYPE, (leaf: WorkspaceLeaf) => new CharacterSheetView(leaf, this));
             this.addRibbonIcon('user-round', 'Open Daggerheart Characters', () => this.activateCharacterSheetView());
             this.addCommand({ id: 'open-daggerheart-character-sheet', name: 'Open Characters', callback: () => this.activateCharacterSheetView() });
+
+            // Add export and import commands
+            this.addCommand({
+                id: 'export-daggerheart-character',
+                name: 'Export Character',
+                callback: () => {
+                    const activeChar = this.getActiveCharacter();
+                    if (activeChar) {
+                        new ExportCharacterModal(this.app, this, activeChar).open();
+                    } else {
+                        new Notice('No character selected. Please open the character sheet and select a character first.');
+                    }
+                }
+            });
+
+            this.addCommand({
+                id: 'import-daggerheart-character',
+                name: 'Import Character',
+                callback: () => {
+                    new ImportCharacterModal(this.app, this).open();
+                }
+            });
         }
 
         this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el) => { this.processStatblock(source, el); });

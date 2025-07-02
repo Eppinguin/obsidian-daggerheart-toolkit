@@ -2159,16 +2159,17 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--size-4-2) var(--size-4-4);
-    background-color: var(--dh-sheet-bg-alt);
-    border-bottom: 1px solid var(--dh-sheet-border);
-    flex-shrink: 0;
+    padding: 8px 16px;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 8px;
 }
 
-.dh-topbar-left, .dh-topbar-right {
+.dh-topbar-left,
+.dh-topbar-right {
     display: flex;
     align-items: center;
-    gap: var(--size-4-2);
+    gap: 8px;
 }
 
 .dh-sheet {
@@ -2511,12 +2512,12 @@
     gap: var(--size-4-3);
 }
 
-.dh-conditions-box.is-clickable {
+.dh-conditions-box.is-clickable, .dh-level-box.is-clickable {
     cursor: pointer;
     transition: all 0.2s ease-in-out;
 }
 
-.dh-conditions-box.is-clickable:hover {
+.dh-conditions-box.is-clickable:hover, .dh-level-box:hover {
     background-color: var(--dh-sheet-bg);
     border-color: var(--dh-sheet-accent);
 }
@@ -2734,7 +2735,8 @@
     padding: var(--size-2-1);
 }
 .dh-inventory-item-actions button:hover {
-    color: var(--interactive-accent-hover);
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
 }
 
 
@@ -3019,7 +3021,6 @@
     border-top: 1px solid var(--background-modifier-border);
     background: var(--background-secondary);
     margin: 0 calc(var(--size-4-3) * -1) calc(var(--size-4-3) * -1);
-    flex-shrink: 0;
 }
 
 
@@ -3137,453 +3138,100 @@
     cursor: default;
     user-select: text;
 }
-/* --- [RESPONSIVE STYLES] --- */
 
-/* Tablet and smaller desktops */
-@media (max-width: 900px) {
-    .dh-sheet-grid {
-        grid-template-columns: 1fr; /* Stack columns */
-    }
-    .dh-grid-column-center {
-        order: -1; /* Move traits to the top */
-    }
-}
+/* --- Styles for Export/Import --- */
 
-/* Mobile phones */
-@media (max-width: 600px) {
-    .dh-character-sheet-view .view-content {
-        font-size: 13px; /* Further reduce font size on mobile */
-    }
-
-    .dh-cs-main {
-        padding: var(--size-4-2);
-    }
-    
-    .dh-sheet-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--size-4-3);
-    }
-
-    .dh-nameplate h1 {
-        font-size: 1.8em;
-    }
-
-    .dh-primary-defenses {
-        flex-wrap: wrap; /* Allow hexes to wrap */
-        justify-content: center;
-    }
-    
-    .dh-vitals {
-        flex-direction: column;
-    }
-
-    .dh-traits-grid {
-        /* 2 columns for traits on mobile */
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .dh-inventory-item {
-        grid-template-columns: 1fr 50px; /* Stack name/desc */
-        gap: var(--size-2-2) var(--size-4-3);
-    }
-    .dh-inventory-item-desc {
-        grid-column: 1 / 2;
-        padding-left: var(--size-4-2);
-    }
-    .dh-replace-feature-container {
-        grid-template-columns: 1fr;
-    }
-}
-
-.dh-conditions-box.is-clickable {
+.dh-export-btn,
+.dh-import-btn {
+    color: var(--text-normal);
+    border: none;
+    padding: 4px;
+    border-radius: var(--radius-s);
     cursor: pointer;
-    transition: background-color 0.2s;
+    margin-left: 8px;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.dh-conditions-box.is-clickable:hover {
+.dh-export-btn:hover,
+.dh-import-btn:hover {
+    color: var(--interactive-accent);
     background-color: var(--background-modifier-hover);
 }
 
-/* Specific styles for the modal actions container and buttons to fix alignment */
-.dh-add-item-modal .modal-actions-container {
+.dh-export-modal,
+.dh-import-modal {
+    width: 600px;
+    max-width: 90vw;
+}
+
+.dh-export-preview {
+    max-height: 300px;
+    overflow: auto;
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    padding: var(--size-4-2);
+    margin-top: var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-import-modal textarea {
+    width: 100%;
+    height: 200px;
+    font-family: monospace;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary);
+    resize: vertical;
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-export-modal pre {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.dh-export-modal code {
+    white-space: pre-wrap;
+}
+
+.dh-import-modal .url-input-container {
     display: flex;
     gap: 8px;
     align-items: center;
-}
-
-.dh-add-item-modal .modal-actions-container button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-
-.dh-add-item-modal .modal-actions-container button:hover {
-    background-color: var(--interactive-accent-hover);
-}
-
-/* --- Card Swap Modal --- */
-/* Apply strict overflow control to all elements inside the modal */
-.dh-card-swap-modal * {
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow-wrap: break-word;
-    word-break: break-word;
-}
-
-.dh-card-swap-modal .modal-content {
-    width: 90vw;
-    /* max-width: 500px;  */
-    display: flex;
-    flex-direction: column;
-    overflow-x: hidden;
-    padding: var(--size-4-3);
-}
-
-/* Make sure the modal content container doesn't overflow */
-.dh-modal-content-container {
-    flex-grow: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    min-height: 0;
-    max-width: 100%;
-}
-
-.dh-card-manage-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-3);
-    overflow-x: hidden;
-    max-width: 100%;
-}
-
-.dh-card-column {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-2);
-    max-width: 100%;
-}
-
-.dh-card-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-2);
-    overflow-x: hidden;
-    max-width: 100%;
-}
-
-.dh-swap-card {
-    display: flex;
-    flex-direction: column;
-    background: var(--background-primary);
-    border: 1.5px solid var(--background-modifier-border);
-    border-radius: var(--radius-m);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
-    padding: var(--size-4-3);
-    margin-bottom: var(--size-4-2);
-    transition: box-shadow 0.2s;
-    max-width: 100%;
-    min-width: 0;
-    overflow: hidden;
-}
-.dh-swap-card:hover {
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
-}
-.dh-swap-card-header {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--size-4-2);
-    margin-bottom: var(--size-4-2);
-}
-.dh-swap-card-info {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-}
-.dh-swap-card-info strong {
-    font-size: var(--font-ui-large);
-    font-weight: 600;
-    color: var(--text-normal);
-}
-.dh-swap-card-meta {
-    display: flex;
-    gap: var(--size-4-2);
-    font-size: var(--font-ui-smaller);
-    color: var(--text-muted);
-    margin-top: var(--size-4-1);
-}
-.dh-swap-card-controls {
-    display: flex;
-    flex-direction: row;
-    gap: var(--size-4-1);
-    align-items: flex-start;
-    margin-left: var(--size-4-2);
-}
-.dh-swap-card-controls button {
-    background: var(--background-secondary-alt);
-    border: none;
-    border-radius: var(--radius-s);
-    padding: 4px 8px;
-    cursor: pointer;
-    transition: background 0.15s;
-    color: var(--text-normal);
-    font-size: 1em;
-    display: flex;
-    align-items: center;
-}
-.dh-swap-card-controls button:hover {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-}
-.dh-swap-card-controls .mod-warning {
-    background: var(--background-modifier-error);
-    color: var(--text-on-accent);
-}
-.dh-swap-card-desc {
-    margin-top: var(--size-4-2);
-    font-size: var(--font-ui-small);
-    color: var(--text-normal);
-    max-width: 100%;
-    overflow-wrap: break-word;
-    word-break: break-word;
-}
-.dh-modal-tabs {
-    display: flex;
-    gap: var(--size-4-1);
-    border-bottom: 1px solid var(--background-modifier-border);
-    margin: 0 calc(var(--modal-padding) * -1) var(--modal-padding);
-    padding: 0 var(--modal-padding);
-}
-
-.dh-modal-tab {
-    padding: var(--size-4-2) var(--size-4-3);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    color: var(--text-muted);
-}
-
-.dh-modal-tab.is-active,
-.dh-modal-tab:hover {
-    color: var(--text-normal);
-}
-
-.dh-modal-tab.is-active {
-    border-bottom-color: var(--interactive-accent);
-}
-
-.dh-modal-content-container {
-    flex-grow: 1;
-    overflow-y: auto;
-    min-height: 0;
-    margin: 0 calc(var(--modal-padding) * -1);
-    padding: 0 var(--modal-padding);
-}
-
-.dh-card-manage-container {
-    display: grid;
-    /* Changed to single column layout */
-    grid-template-columns: 1fr;
-    gap: var(--size-4-4);
-    height: 100%;
-}
-
-/* --- Card Swap Modal Customizations --- */
-.dh-compendium-actions {
-    display: flex;
-    justify-content: center;
-    padding: var(--size-4-2) 0;
-    margin-top: var(--size-4-2);
-    border-top: 1px solid var(--background-modifier-border);
-}
-
-/* Prevent horizontal scrolling in the AddItemModal */
-.dh-add-item-modal {
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-.dh-add-item-modal .modal-content {
-    width: 90vw;
-    max-width: 100%;
-    overflow-x: hidden;
-    padding: var(--size-4-3);
-}
-
-.dh-add-item-modal * {
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow-wrap: break-word;
-    word-break: break-word;
-}
-/* --- Level Up Modal --- */
-.dh-level-up-modal .modal-content {
-    display: flex;
-    flex-direction: column;
-    max-height:inherit;
-    margin-top: auto;
- margin-bottom: auto;
-    padding: auto;
-    max-width: 100%;
-}
-
-.dh-level-up-modal .setting-item {
-    border-top: none;
-}
-
-.dh-level-up-container {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    padding: 0 var(--size-4-3);
-    margin: var(--size-4-3) calc(var(--size-4-3) * -1);
-    min-height: 0;
-}
-
-.dh-level-entry {
-    background-color: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-m);
-    padding: var(--size-4-3);
-    margin-bottom: var(--size-4-3);
-}
-
-.dh-level-entry h2 {
-    margin-top: 0;
-    color: var(--interactive-accent);
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: var(--size-4-2);
-}
-
-.dh-level-entry h3 {
-    margin-top: var(--size-4-4);
-    margin-bottom: var(--size-4-2);
-    font-size: var(--font-ui-medium);
-    font-weight: 600;
-    color: var(--text-muted);
-}
-
-.dh-advancement-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-2);
-}
-
-.dh-advancement-choice {
-    background-color: var(--background-primary-alt);
-    padding: 0 var(--size-4-2);
-    border-radius: var(--radius-s);
-}
-
-.dh-advancement-choice .setting-item {
-    border-bottom: none;
-    padding: var(--size-4-2) 0;
-}
-
-.dh-advancement-details {
-    padding-left: var(--size-4-4);
-    border-left: 2px solid var(--background-modifier-border);
-    margin-bottom: var(--size-4-2);
-}
-
-.dh-domain-card-preview {
-    background-color: var(--background-primary);
-    border-radius: var(--radius-s);
-    padding: var(--size-4-3);
-    margin-top: var(--size-4-2);
-    border: 1px solid var(--background-modifier-border);
-}
-
-.dh-domain-card-preview h4 {
-    margin-top: 0;
-    font-weight: bold;
-}
-
-.dh-domain-card-preview p {
-    font-size: var(--font-ui-small);
-    color: var(--text-muted);
-}
-
-/* Level up button on character sheet */
-.dh-level-box.is-clickable {
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-}
-
-.dh-level-box.is-clickable:hover {
-    background-color: var(--dh-sheet-bg);
-    border-color: var(--dh-sheet-accent);
-}
-
-.dh-level-up-modal .setting-item-control .button-group {
-    display: flex;
-    align-items: center;
-}
-.dh-level-up-modal .setting-item-control .button-group .button {
-    margin: 0 5px;
-}
-
-.dh-automatic-advancements {
-    background-color: var(--background-secondary-alt);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-m);
-    padding: var(--size-4-3);
-    margin-bottom: var(--size-4-3);
-}
-
-.dh-automatic-advancements h3 {
-    margin-top: 0;
-    margin-bottom: var(--size-4-2);
-    color: var(--interactive-accent);
-}
-
-.dh-automatic-advancements ul {
-    list-style-type: none;
-    padding-left: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-2);
-}
-
-/* Adjust the Setting component for better alignment */
-.dh-automatic-advancements .setting-item {
-    padding: 0;
-    border: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--size-4-4);
-}
-
-.dh-automatic-advancements .setting-item-control input[type="text"] {
     width: 100%;
 }
 
-.dh-level-entry h3 {
-    font-size: var(--font-ui-large);
+.dh-import-modal .url-input-container input {
+    flex-grow: 1;
 }
 
-/* Fixed header styles for Level Up modal */
-.dh-level-up-modal .modal-content > h1,
-.dh-level-up-modal .modal-content > .setting-item,
-.dh-level-up-modal .modal-content > p {
+.dh-import-modal .url-input-container button {
+    white-space: nowrap;
+}
+
+.dh-import-modal .dh-url-examples {
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    padding: 12px;
+    margin: 8px 0;
+    font-size: var(--font-ui-small);
+}
+
+.dh-import-modal .dh-examples-title {
+    font-weight: bold;
+    margin-bottom: 8px;
+    margin-top: 0;
+}
+
+.dh-import-modal .dh-url-examples ul {
     margin: 0;
-    padding: 0 var(--size-4-3);
-    flex-shrink: 0;
+    padding-left: 20px;
 }
 
-.dh-level-up-modal .modal-content > h1 {
-    margin-top: var(--size-4-3);
-    margin-bottom: var(--size-4-2);
-}
-
-.dh-level-up-modal .modal-content > p {
-    margin-bottom: var(--size-4-3);
-    color: var(--text-muted);
+.dh-import-modal .dh-url-examples li {
+    margin-bottom: 4px;
 }

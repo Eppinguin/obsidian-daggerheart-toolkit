@@ -11,7 +11,9 @@ import {
     CharacterManagerModal,
     ConfirmationModal,
     ConditionModal,
+    ExportCharacterModal,
     GoldModal,
+    ImportCharacterModal,
     ItemEditModal,
     CompendiumCreatorModal,
     LevelUpModal
@@ -154,10 +156,32 @@ export class CharacterSheetView extends ItemView {
             await this.plugin.setActiveCharacterId(selectEl.value || null);
         });
 
+        // Add Import Character button next to the dropdown
+        const importBtn = left.createEl('button', { cls: 'dh-import-btn clickable-icon' });
+        setIcon(importBtn, 'download');
+        importBtn.setAttribute('aria-label', 'Import Character');
+        importBtn.title = 'Import Character';
+        importBtn.addEventListener('click', () => {
+            // Open import modal
+            const importModal = new ImportCharacterModal(this.app, this.plugin);
+            importModal.open();
+        });
+
         const right = header.createDiv({ cls: 'dh-topbar-right' });
 
         const activeChar = this.plugin.getActiveCharacter();
         if (activeChar) {
+            // Add Export button for the active character
+            const exportBtn = right.createEl('button', { cls: 'dh-export-btn clickable-icon' });
+            setIcon(exportBtn, 'upload');
+            exportBtn.setAttribute('aria-label', 'Export Character');
+            exportBtn.title = 'Export Character';
+            exportBtn.addEventListener('click', () => {
+                // Open export modal
+                const exportModal = new ExportCharacterModal(this.app, this.plugin, activeChar);
+                exportModal.open();
+            });
+
             const editBtn = right.createEl('button', { cls: 'clickable-icon' });
             setIcon(editBtn, 'settings-2');
             editBtn.ariaLabel = "Edit Character";
