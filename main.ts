@@ -59,13 +59,18 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         this.isDiceRollerEnabled = this.settings.enableDiceRoller && !!(this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api;
 
-        this.registerView(ENCOUNTER_BUILDER_VIEW_TYPE, (leaf: WorkspaceLeaf) => new EncounterBuilderView(leaf, this));
-        this.registerView(CHARACTER_SHEET_VIEW_TYPE, (leaf: WorkspaceLeaf) => new CharacterSheetView(leaf, this));
+        // Register views conditionally based on settings
+        if (this.settings.enableEncounterView) {
+            this.registerView(ENCOUNTER_BUILDER_VIEW_TYPE, (leaf: WorkspaceLeaf) => new EncounterBuilderView(leaf, this));
+            this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => this.activateEncounterBuilderView());
+            this.addCommand({ id: 'open-daggerheart-encounter-builder', name: 'Open Encounter Builder', callback: () => this.activateEncounterBuilderView() });
+        }
 
-        this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => this.activateEncounterBuilderView());
-        this.addRibbonIcon('user-round', 'Open Daggerheart Characters', () => this.activateCharacterSheetView());
-        this.addCommand({ id: 'open-daggerheart-encounter-builder', name: 'Open Encounter Builder', callback: () => this.activateEncounterBuilderView() });
-        this.addCommand({ id: 'open-daggerheart-character-sheet', name: 'Open Characters', callback: () => this.activateCharacterSheetView() });
+        if (this.settings.enableCharacterSheet) {
+            this.registerView(CHARACTER_SHEET_VIEW_TYPE, (leaf: WorkspaceLeaf) => new CharacterSheetView(leaf, this));
+            this.addRibbonIcon('user-round', 'Open Daggerheart Characters', () => this.activateCharacterSheetView());
+            this.addCommand({ id: 'open-daggerheart-character-sheet', name: 'Open Characters', callback: () => this.activateCharacterSheetView() });
+        }
 
         this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el) => { this.processStatblock(source, el); });
         this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el) => { this.processEmbed(source, el); });
@@ -314,8 +319,12 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     onunload() {
         this.destroyDddiceInstance();
-        this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
-        this.app.workspace.detachLeavesOfType(CHARACTER_SHEET_VIEW_TYPE);
+        if (this.settings.enableEncounterView) {
+            this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
+        }
+        if (this.settings.enableCharacterSheet) {
+            this.app.workspace.detachLeavesOfType(CHARACTER_SHEET_VIEW_TYPE);
+        }
     }
 }
 
@@ -329,6 +338,55 @@ class DaggerheartSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         containerEl.createEl('h2', { text: 'Daggerheart Settings' });
+
+        // Feature Toggle Settings
+        containerEl.createEl('h3', { text: 'Feature Settings' });
+
+        new Setting(containerEl)
+            .setName('Enable Encounter View')
+            .setDesc('Enable or disable the Encounter Builder view. Changes will take effect after restarting Obsidian.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableEncounterView)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableEncounterView = value;
+                    await this.plugin.saveSettings();
+                    new Notice('Encounter View setting changed. Please reload Obsidian for the change to take effect.');
+                    await promptReload();
+                }));
+
+        const promptReload = async () => {
+            const shouldReload = await new Promise(resolve => {
+                const notice = new Notice('Would you like to reload Obsidian now?', 0);
+                notice.noticeEl.createEl('button', {
+                    text: 'Yes',
+                    cls: 'mod-cta'
+                }).onclick = () => {
+                    notice.hide();
+                    resolve(true);
+                };
+                notice.noticeEl.createEl('button', {
+                    text: 'No'
+                }).onclick = () => {
+                    notice.hide();
+                    resolve(false);
+                };
+            });
+            if (shouldReload) {
+                window.location.reload();
+            }
+        };
+
+        new Setting(containerEl)
+            .setName('Enable Character Sheet')
+            .setDesc('Enable or disable the Character Sheet view. Changes will take effect after restarting Obsidian.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableCharacterSheet)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableCharacterSheet = value;
+                    await this.plugin.saveSettings();
+                    new Notice('Character Sheet setting changed. Please reload Obsidian for the change to take effect.');
+                    await promptReload();
+                }));
 
         this.renderCompendiumSettings(containerEl);
         this.renderEncounterViewSettings(containerEl);

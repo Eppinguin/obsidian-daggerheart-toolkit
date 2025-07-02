@@ -175,6 +175,8 @@ export interface DaggerheartPluginSettings {
     enableEncounterBudget: boolean;
     isCompendiumVisible: boolean;
     encounterBudgetConfig: EncounterBudgetConfig;
+    enableEncounterView: boolean;
+    enableCharacterSheet: boolean;
 
     // Dice Rolling Settings
     diceProvider: 'dice-roller' | 'dddice';
@@ -203,6 +205,8 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     enableEncounterBudget: false,
     isCompendiumVisible: true,
     encounterBudgetConfig: { playerCount: 4, isEasier: false, isHarder: false, isDamageBoosted: false, useLowerTier: false },
+    enableEncounterView: true,
+    enableCharacterSheet: true,
 
     // Dice Rolling Settings
     diceProvider: 'dice-roller',
