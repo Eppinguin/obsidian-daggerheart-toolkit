@@ -1665,7 +1665,89 @@
     color: var(--text-muted);
     flex-shrink: 0;
 }
+.dh-creator-wizard .dh-suggestion-box {
+    background-color: var(--background-secondary); /* Slightly less prominent background */
+    border: 1px solid var(--background-modifier-border);
+    border-left: 3px solid var(--interactive-accent);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2) var(--size-4-3); /* Reduced padding */
+    margin: var(--size-4-3) 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--size-4-4); /* A bit more space between elements */
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
 
+/* Header (Icon + Title) */
+.dh-creator-wizard .dh-suggestion-header {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    margin-bottom: 0; /* Removed bottom margin */
+}
+
+.dh-creator-wizard .dh-suggestion-header h5 {
+    margin: 0;
+    font-size: var(--font-ui-medium); /* Smaller title */
+    font-weight: 600;
+    color: var(--text-normal);
+    white-space: nowrap; /* Prevent title from wrapping */
+}
+
+.dh-creator-wizard .dh-suggestion-icon {
+    color: var(--interactive-accent);
+}
+
+/* List of suggested items */
+.dh-creator-wizard .dh-suggestion-list {
+    display: flex;
+    flex-direction: row; /* Horizontal layout */
+    flex-wrap: wrap; /* Allow tags to wrap */
+    gap: var(--size-4-2); /* Space between tags */
+    padding-left: 0; /* Remove padding */
+    flex-grow: 1; /* Allow the list to take available space */
+    justify-content: flex-start; /* Align items to the start */
+}
+
+/* Individual suggestion item (now a tag-like element) */
+.dh-creator-wizard .dh-suggestion-item {
+    display: flex;
+    gap: var(--size-4-1);
+    align-items: center;
+    font-size: var(--font-ui-smaller); /* Smaller font */
+    background-color: var(--background-secondary-alt);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+}
+
+.dh-creator-wizard .dh-suggestion-key {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.dh-creator-wizard .dh-suggestion-value {
+    font-weight: 700;
+    color: var(--text-normal);
+}
+
+/* Footer (Apply Button) */
+.dh-creator-wizard .dh-suggestion-footer {
+    margin-top: 0; /* Remove top margin */
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Styling for the spellcasting trait hint remains the same */
+.dh-creator-wizard .dh-spellcasting-trait p {
+    font-style: italic;
+    color: var(--text-accent);
+    background-color: var(--background-secondary);
+    padding: var(--size-4-2);
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    margin-bottom: var(--size-4-3);
+}
 
 /* -----------------------------------------------------------------------------
    14. COUNTDOWN POPUP 

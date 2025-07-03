@@ -364,9 +364,36 @@ export class CharacterSheetView extends ItemView {
         }
     }
 
+    private drawSuggestionBox(parent: HTMLElement, title: string, suggestions: { [key: string]: string; }, onApply: () => void) {
+        const suggestionContainer = parent.createDiv({ cls: 'dh-suggestion-box' });
+
+        const header = suggestionContainer.createDiv({ cls: 'dh-suggestion-header' });
+        const iconEl = header.createSpan({ cls: 'dh-suggestion-icon' });
+        setIcon(iconEl, 'star'); // Using a star icon
+        header.createEl('h5', { text: title });
+
+        const list = suggestionContainer.createDiv({ cls: 'dh-suggestion-list' });
+        for (const [key, value] of Object.entries(suggestions)) {
+            if (value) { // Only show if there is a suggestion
+                const item = list.createDiv({ cls: 'dh-suggestion-item' });
+                item.createSpan({ cls: 'dh-suggestion-key', text: `${key}:` });
+                item.createSpan({ cls: 'dh-suggestion-value', text: value });
+            }
+        }
+
+        const footer = suggestionContainer.createDiv({ cls: 'dh-suggestion-footer' });
+        const applyBtn = footer.createEl('button', { text: 'Apply Suggestions', cls: 'mod-cta' });
+        applyBtn.addEventListener('click', () => {
+            onApply();
+            this.redrawCreatorStep();
+        });
+    }
+
     private drawCreatorStep3_Traits(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 3: Assign Traits' });
         parent.createEl('p', { text: 'Assign each value (+2, +1, +1, +0, +0, -1) to one of the six traits.' });
+
+        const selectedClass = this.plugin.compendium.getClass(this.creatorState.classId || '');
 
         // Display spellcasting trait if the subclass has one
         if (this.creatorState.subclassId) {
@@ -378,6 +405,30 @@ export class CharacterSheetView extends ItemView {
                     cls: 'mod-spellcasting'
                 });
             }
+        }
+
+        // Suggestions Box
+        if (selectedClass?.suggested_traits) {
+            const traitSuggestions: { [key: string]: string } = {};
+            const suggested = selectedClass.suggested_traits.split(',').map(s => s.trim());
+            TRAIT_NAMES.forEach((name, i) => {
+                traitSuggestions[name] = suggested[i] || 'N/A';
+            });
+
+            this.drawSuggestionBox(parent, 'Suggested Traits', traitSuggestions, () => {
+                const traitValues = selectedClass.suggested_traits?.split(',').map(s => parseInt(s.trim()));
+                if (traitValues && traitValues.length === TRAIT_NAMES.length) {
+                    this.creatorState.traits = {}; // Reset traits
+                    TRAIT_NAMES.forEach((name, i) => {
+                        if (this.creatorState.traits) {
+                            this.creatorState.traits[name] = traitValues[i];
+                        }
+                    });
+                    new Notice(`${selectedClass.name} suggested traits applied.`);
+                } else {
+                    new Notice('Could not apply suggested traits. Data might be malformed.');
+                }
+            });
         }
 
         const assignedValues = Object.values(this.creatorState.traits || {});
@@ -394,6 +445,33 @@ export class CharacterSheetView extends ItemView {
         parent.createEl('h3', { text: 'Step 4: Starting Equipment' });
         const weapons = this.plugin.compendium.weapons.filter(w => (w as WeaponItem).tier === '1') as WeaponItem[];
         const armors = this.plugin.compendium.armors.filter(a => (a as ArmorItem).tier === '1') as ArmorItem[];
+        const selectedClass = this.plugin.compendium.getClass(this.creatorState.classId || '');
+
+        // Suggestions Box
+        if (selectedClass && (selectedClass.suggested_primary || selectedClass.suggested_secondary || selectedClass.suggested_armor)) {
+            const suggestions: { [key: string]: string } = {};
+            if (selectedClass.suggested_primary) suggestions['Primary Weapon'] = selectedClass.suggested_primary;
+            if (selectedClass.suggested_secondary) suggestions['Secondary Weapon'] = selectedClass.suggested_secondary;
+            if (selectedClass.suggested_armor) suggestions['Armor'] = selectedClass.suggested_armor;
+
+            this.drawSuggestionBox(parent, 'Suggested Equipment', suggestions, () => {
+                const primary = weapons.find(w => w.name === selectedClass.suggested_primary);
+                const secondary = weapons.find(w => w.name === selectedClass.suggested_secondary);
+                const armor = armors.find(a => a.name === selectedClass.suggested_armor);
+
+                if (armor) {
+                    this.creatorState.startingArmorId = armor.name;
+                }
+
+                const weaponIds = [];
+                if (primary) weaponIds.push(primary.name);
+                if (secondary) weaponIds.push(secondary.name);
+                this.creatorState.startingWeaponIds = weaponIds;
+
+                new Notice(`${selectedClass.name} suggested equipment applied.`);
+            });
+        }
+
 
         // --- Weapon Selection ---
         new Setting(parent).setName('Primary Weapon').addDropdown(dd => {

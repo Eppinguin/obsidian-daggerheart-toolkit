@@ -125,6 +125,13 @@ export class CompendiumCreatorModal extends Modal {
         new Setting(parentEl).setName('Hope Feat Text').addTextArea(text => text.setValue(d.hope_feat_text || '').onChange(v => d.hope_feat_text = v));
         new Setting(parentEl).setName('Subclass 1 Name').addText(text => text.setValue(d.subclass_1 || '').onChange(v => d.subclass_1 = v));
         new Setting(parentEl).setName('Subclass 2 Name').addText(text => text.setValue(d.subclass_2 || '').onChange(v => d.subclass_2 = v));
+
+        // Add new fields for suggestions
+        parentEl.createEl('h4', { text: 'Suggestions (Optional)' });
+        new Setting(parentEl).setName('Suggested Traits').setDesc('Comma-separated values, e.g., +2, +1, +1, 0, 0, -1').addText(text => text.setValue(d.suggested_traits || '').onChange(v => d.suggested_traits = v));
+        new Setting(parentEl).setName('Suggested Primary Weapon').addText(text => text.setValue(d.suggested_primary || '').onChange(v => d.suggested_primary = v));
+        new Setting(parentEl).setName('Suggested Secondary Weapon').addText(text => text.setValue(d.suggested_secondary || '').onChange(v => d.suggested_secondary = v));
+        new Setting(parentEl).setName('Suggested Armor').addText(text => text.setValue(d.suggested_armor || '').onChange(v => d.suggested_armor = v));
     }
 
     private renderSubclassFields(parentEl: HTMLElement) {

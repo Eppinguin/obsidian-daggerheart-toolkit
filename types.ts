@@ -16,7 +16,27 @@ export interface JsonFeat { name: string; text: string; }
 export interface JsonAncestry { name: string; description: string; feats: JsonFeat[]; isCustom?: boolean; }
 export interface JsonCommunity { name: string; description: string; note: string; feats: JsonFeat[]; isCustom?: boolean; }
 export interface JsonSubclass { name: string; description: string; spellcast_trait?: string; foundations: JsonFeat[]; specializations: JsonFeat[]; masteries: JsonFeat[]; isCustom?: boolean; }
-export interface JsonClass { name: string; description: string; domain_1: string; domain_2: string; evasion: string; hp: string; items: string; hope_feat_name: string; hope_feat_text: string; subclass_1: string; subclass_2: string; class_feats: JsonFeat[]; backgrounds: { question: string; }[]; connections: { question: string; }[]; isCustom?: boolean; }
+export interface JsonClass {
+    name: string;
+    description: string;
+    domain_1: string;
+    domain_2: string;
+    evasion: string;
+    hp: string;
+    items: string;
+    hope_feat_name: string;
+    hope_feat_text: string;
+    subclass_1: string;
+    subclass_2: string;
+    class_feats: JsonFeat[];
+    backgrounds: { question: string; }[];
+    connections: { question: string; }[];
+    isCustom?: boolean;
+    suggested_traits?: string;
+    suggested_primary?: string;
+    suggested_secondary?: string;
+    suggested_armor?: string;
+}
 export interface JsonAbility { name: string; level: string; domain: string; type: string; recall: string; text: string; isCustom?: boolean; }
 export interface JsonArmor { name: string; tier: string; base_thresholds: string; base_score: string; feat_name?: string; feat_text?: string; isCustom?: boolean; _type?: 'armor'; }
 export interface JsonWeapon { name: string; primary_or_secondary: string; tier: string; physical_or_magical: string; trait: string; range: string; damage: string; burden: string; feat_name?: string; feat_text?: string; isCustom?: boolean; _type?: 'weapon'; }
