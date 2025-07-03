@@ -36,6 +36,7 @@ export interface JsonClass {
     suggested_primary?: string;
     suggested_secondary?: string;
     suggested_armor?: string;
+    extras?: string;
 }
 export interface JsonAbility { name: string; level: string; domain: string; type: string; recall: string; text: string; isCustom?: boolean; }
 export interface JsonArmor { name: string; tier: string; base_thresholds: string; base_score: string; feat_name?: string; feat_text?: string; isCustom?: boolean; _type?: 'armor'; }

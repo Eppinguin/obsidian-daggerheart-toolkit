@@ -1,7 +1,7 @@
 import { App, Modal, Setting, Notice, TextAreaComponent, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
-import { Character, DomainCard, Experience, Trait } from '../../types';
+import { Character, DomainCard, Experience, JsonAncestry, Trait } from '../../types';
 import { createAvatarEditor } from '../views/components/AvatarEditor';
 import { TRAIT_NAMES } from '../constants';
 
@@ -15,14 +15,30 @@ export class CharacterManagerModal extends Modal {
     onSave: (character: Character) => void;
     private tempCharacter: Character;
 
+    // State for mixed ancestry editing
+    private isMixedAncestry: boolean = false;
+    private parentAncestry1: string = '';
+    private parentAncestry2: string = '';
+    private originalAncestryId: string = '';
+
     constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, onSave: (character: Character) => void) {
         super(app);
         this.plugin = plugin;
         this.character = character;
-        // Deep copy to avoid modifying the original character object until save
-        this.tempCharacter = JSON.parse(JSON.stringify(character));
         this.onSave = onSave;
+        this.tempCharacter = JSON.parse(JSON.stringify(character));
+        this.originalAncestryId = character.ancestryId;
         this.modalEl.addClass('dh-character-manager-modal');
+
+        const ancestry = this.plugin.compendium.getAncestry(this.tempCharacter.ancestryId);
+        if (ancestry?.isCustom) {
+            const match = ancestry.description.match(/combining the traits of (.*) and (.*)\./);
+            if (match) {
+                this.isMixedAncestry = true;
+                this.parentAncestry1 = match[1];
+                this.parentAncestry2 = match[2];
+            }
+        }
     }
 
     onOpen() {
@@ -32,7 +48,6 @@ export class CharacterManagerModal extends Modal {
         contentEl.createEl("h1", { text: `Edit ${this.character.name}` });
         contentEl.createEl("p", { text: "Freely edit all aspects of your character. Changes are saved when you click the save button." });
 
-        // Create collapsible sections for better organization
         this.drawCoreDetails(this.createCollapsibleSection(contentEl, 'Core Details & Avatar'));
         this.drawVitals(this.createCollapsibleSection(contentEl, 'Vitals & Defenses'));
         this.drawTraits(this.createCollapsibleSection(contentEl, 'Traits'));
@@ -40,11 +55,35 @@ export class CharacterManagerModal extends Modal {
         this.drawExperiences(this.createCollapsibleSection(contentEl, 'Experiences'));
         this.drawFeatures(this.createCollapsibleSection(contentEl, 'Features & Cards'));
         this.drawDetails(this.createCollapsibleSection(contentEl, 'Background & Connections'));
-        this.drawInventory(this.createCollapsibleSection(contentEl, 'Gold'));
+        this.drawInventory(this.createCollapsibleSection(contentEl, 'Gold & Notes'));
 
-        // Save button
         const footer = contentEl.createDiv({ cls: 'dh-modal-footer' });
-        footer.createEl('button', { text: 'Save & Close', cls: 'mod-cta' }).addEventListener('click', () => {
+        footer.createEl('button', { text: 'Save & Close', cls: 'mod-cta' }).addEventListener('click', async () => {
+            if (this.isMixedAncestry) {
+                if (!this.tempCharacter.ancestryId || !this.parentAncestry1 || !this.parentAncestry2) {
+                    new Notice('For a mixed ancestry, please provide a name and select two parent ancestries.');
+                    return;
+                }
+
+                const ancestry1 = this.plugin.compendium.getAncestry(this.parentAncestry1);
+                const ancestry2 = this.plugin.compendium.getAncestry(this.parentAncestry2);
+
+                if (!ancestry1 || !ancestry2 || !ancestry1.feats?.[0] || !ancestry2.feats?.[1]) {
+                    new Notice('Could not create mixed ancestry. Please ensure both selected ancestries are valid.');
+                    return;
+                }
+
+                const newMixedAncestry: JsonAncestry = {
+                    name: this.tempCharacter.ancestryId,
+                    description: `A unique heritage combining the traits of ${ancestry1.name} and ${ancestry2.name}.`,
+                    feats: [ancestry1.feats[0], ancestry2.feats[1]],
+                    isCustom: true,
+                };
+
+                // This will add or overwrite an entry with the same name.
+                await this.plugin.saveCustomCompendiumData('user-ancestries.json', newMixedAncestry);
+            }
+
             this.onSave(this.tempCharacter);
             this.close();
         });
@@ -54,15 +93,9 @@ export class CharacterManagerModal extends Modal {
         this.contentEl.empty();
     }
 
-    /**
-     * Helper to create a standardized collapsible section.
-     * @param parent The parent element.
-     * @param title The title for the section header.
-     * @returns The container element within the collapsible section to which settings can be added.
-     */
-    private createCollapsibleSection(parent: HTMLElement, title: string): HTMLElement {
+    private createCollapsibleSection(parent: HTMLElement, title: string, isOpen: boolean = false): HTMLElement {
         const details = parent.createEl('details', { cls: 'dh-manager-section' });
-        details.open = false; // Start collapsed
+        details.open = isOpen;
         const summary = details.createEl('summary');
         summary.createEl('h2', { text: title });
         return details.createDiv();
@@ -142,14 +175,28 @@ export class CharacterManagerModal extends Modal {
     }
 
     private drawHeritageAndClass(parent: HTMLElement) {
+        new Setting(parent)
+            .setName('Mixed Ancestry')
+            .setDesc('Combine features from two different ancestries.')
+            .addToggle(toggle => toggle
+                .setValue(this.isMixedAncestry)
+                .onChange(value => {
+                    this.isMixedAncestry = value;
+                    if (!value) {
+                        this.tempCharacter.ancestryId = this.parentAncestry1 || this.originalAncestryId || '';
+                    } else {
+                        this.tempCharacter.ancestryId = this.originalAncestryId;
+                    }
+                    this.onOpen();
+                }));
+
+        if (this.isMixedAncestry) {
+            this.drawMixedAncestryEditor(parent);
+        } else {
+            this.drawSingleAncestryEditor(parent);
+        }
+
         const grid = parent.createDiv({ cls: 'is-grid' });
-        new Setting(grid)
-            .setName('Ancestry')
-            .addDropdown(dd => {
-                this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
-                dd.setValue(this.tempCharacter.ancestryId)
-                    .onChange(value => this.tempCharacter.ancestryId = value);
-            });
 
         new Setting(grid)
             .setName('Community')
@@ -166,8 +213,8 @@ export class CharacterManagerModal extends Modal {
                 dd.setValue(this.tempCharacter.classId)
                     .onChange(value => {
                         this.tempCharacter.classId = value;
-                        this.tempCharacter.subclassId = ''; // Clear subclass to avoid invalid combos
-                        this.onOpen(); // Redraw to update subclass dropdown
+                        this.tempCharacter.subclassId = '';
+                        this.onOpen();
                     });
             });
 
@@ -184,6 +231,41 @@ export class CharacterManagerModal extends Modal {
                 }
                 dd.setValue(this.tempCharacter.subclassId)
                     .onChange(value => this.tempCharacter.subclassId = value);
+            });
+    }
+
+    private drawSingleAncestryEditor(parent: HTMLElement) {
+        new Setting(parent)
+            .setName('Ancestry')
+            .addDropdown(dd => {
+                this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
+                dd.setValue(this.tempCharacter.ancestryId)
+                    .onChange(value => this.tempCharacter.ancestryId = value);
+            });
+    }
+
+    private drawMixedAncestryEditor(parent: HTMLElement) {
+        new Setting(parent)
+            .setName('Heritage Name')
+            .setDesc('e.g., Goblin-Orc, Half-Elf')
+            .addText(text => text
+                .setValue(this.tempCharacter.ancestryId)
+                .onChange(value => this.tempCharacter.ancestryId = value));
+
+        new Setting(parent)
+            .setName('First Ancestry (Feature 1)')
+            .addDropdown(dd => {
+                this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
+                dd.setValue(this.parentAncestry1)
+                    .onChange(val => this.parentAncestry1 = val);
+            });
+
+        new Setting(parent)
+            .setName('Second Ancestry (Feature 2)')
+            .addDropdown(dd => {
+                this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
+                dd.setValue(this.parentAncestry2)
+                    .onChange(val => this.parentAncestry2 = val);
             });
     }
 
@@ -266,14 +348,12 @@ export class CharacterManagerModal extends Modal {
                         .setValue(isInLoadout)
                         .onChange(inLoadout => {
                             if (inLoadout) {
-                                // Move from vault to loadout
                                 const cardIndex = this.tempCharacter.vault.findIndex(c => c.id === card.id);
                                 if (cardIndex > -1) {
                                     const [movedCard] = this.tempCharacter.vault.splice(cardIndex, 1);
                                     this.tempCharacter.features.push(movedCard);
                                 }
                             } else {
-                                // Move from loadout to vault
                                 const cardIndex = this.tempCharacter.features.findIndex(c => c.id === card.id);
                                 if (cardIndex > -1) {
                                     const [movedCard] = this.tempCharacter.features.splice(cardIndex, 1);
@@ -344,12 +424,12 @@ export class CharacterManagerModal extends Modal {
             .addText(text => text.setPlaceholder('B').setValue(String(this.tempCharacter.gold.bags)).onChange(v => this.tempCharacter.gold.bags = parseInt(v) || 0))
             .addText(text => text.setPlaceholder('C').setValue(String(this.tempCharacter.gold.chests)).onChange(v => this.tempCharacter.gold.chests = parseInt(v) || 0));
 
-        // new Setting(parent)
-        //     .setName('General Notes')
-        //     .setDesc('For quickly jotting down notes. Full inventory management is on the character sheet.')
-        //     .addTextArea(text => text
-        //         .setPlaceholder('e.g., Quest items, reminders...')
-        //         .setValue(this.tempCharacter.notes || '')
-        //         .onChange(val => this.tempCharacter.notes = val));
+        new Setting(parent)
+            .setName('General Notes')
+            .setDesc('For quickly jotting down notes. Full inventory management is on the character sheet.')
+            .addTextArea(text => text
+                .setPlaceholder('e.g., Quest items, reminders...')
+                .setValue(this.tempCharacter.notes || '')
+                .onChange(val => this.tempCharacter.notes = val));
     }
 }

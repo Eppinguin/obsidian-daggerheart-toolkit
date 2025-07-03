@@ -40,11 +40,15 @@ const TRAIT_SKILLS: { [key in keyof Character['traits']]: string[] } = {
 
 type CreatorState = {
     name: string;
+    description?: string;
     pronouns: { subject: string; object: string; };
+    isMixedAncestry?: boolean;
+    mixedAncestryName?: string;
+    ancestryId: string;
+    ancestryId2?: string;
+    communityId: string;
     classId: string;
     subclassId: string;
-    ancestryId: string;
-    communityId: string;
     traits: { [key in keyof Character['traits']]?: number };
     startingWeaponIds: string[];
     startingArmorId: string;
@@ -57,18 +61,11 @@ type CreatorState = {
     avatarTransform?: AvatarTransform;
 };
 
-/**
- * Resolves an internal or external link to a usable image URL.
- * @param app The Obsidian App instance.
- * @param url The raw URL or link text from the character data.
- * @returns A usable image src, or null if the link cannot be resolved.
- */
 function resolveImageUrl(app: App, url: string | null | undefined): string | null {
     if (!url) {
         return null;
     }
 
-    // It's already a full URL
     if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
         return url;
     }
@@ -92,17 +89,7 @@ export class CharacterSheetView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
     private activeManagerTab: ManagerTab = 'abilities';
 
-    private creatorState: Partial<CreatorState> = {
-        traits: {},
-        domainCardIds: [],
-        backgroundAnswers: [],
-        experiences: [{ name: '' }, { name: '' }],
-        startingWeaponIds: [],
-        potionChoice: 'health',
-        connections: [],
-        avatarUrl: '',
-        avatarTransform: undefined,
-    };
+    private creatorState: Partial<CreatorState> = {};
     private creatorStep: number = 0;
 
     private stepContainer: HTMLElement;
@@ -113,6 +100,22 @@ export class CharacterSheetView extends ItemView {
         super(leaf);
         this.plugin = plugin;
         this.containerEl.addClass('dh-character-sheet-view');
+        this.resetCreatorState();
+    }
+
+    private resetCreatorState() {
+        this.creatorState = {
+            traits: {},
+            domainCardIds: [],
+            backgroundAnswers: [],
+            experiences: [{ name: '' }, { name: '' }],
+            startingWeaponIds: [],
+            potionChoice: 'health',
+            connections: [],
+            avatarUrl: '',
+            avatarTransform: undefined,
+            isMixedAncestry: false,
+        };
     }
 
     getViewType(): string { return CHARACTER_SHEET_VIEW_TYPE; }
@@ -157,13 +160,11 @@ export class CharacterSheetView extends ItemView {
             await this.plugin.setActiveCharacterId(selectEl.value || null);
         });
 
-        // Add Import Character button next to the dropdown with original styling
         const importBtn = left.createEl('button', { cls: 'dh-import-btn clickable-icon' });
         setIcon(importBtn, 'download');
         importBtn.setAttribute('aria-label', 'Import Character');
         importBtn.title = 'Import Character';
         importBtn.addEventListener('click', () => {
-            // Open import modal using the new ImportExportModal
             new ImportExportModal(this.app, this.plugin, 'import', ContentType.CHARACTER).open();
         });
 
@@ -171,13 +172,11 @@ export class CharacterSheetView extends ItemView {
 
         const activeChar = this.plugin.getActiveCharacter();
         if (activeChar) {
-            // Add Export button for the active character with original styling
             const exportBtn = right.createEl('button', { cls: 'dh-export-btn clickable-icon' });
             setIcon(exportBtn, 'upload');
             exportBtn.setAttribute('aria-label', 'Export Character');
             exportBtn.title = 'Export Character';
             exportBtn.addEventListener('click', () => {
-                // Open export modal using the new ImportExportModal
                 new ImportExportModal(this.app, this.plugin, 'export', ContentType.CHARACTER, activeChar.id).open();
             });
 
@@ -208,15 +207,158 @@ export class CharacterSheetView extends ItemView {
         setIcon(newCharBtn, 'plus');
         newCharBtn.ariaLabel = "Create New Character";
         newCharBtn.addEventListener('click', () => {
-            this.creatorState = { traits: {}, domainCardIds: [], backgroundAnswers: [], experiences: [{ name: '' }, { name: '' }], startingWeaponIds: [], potionChoice: 'health', connections: [], avatarUrl: '', avatarTransform: undefined };
+            this.resetCreatorState();
             this.creatorStep = 0;
             this.plugin.setActiveCharacterId(null);
         });
     }
 
-    // --- CHARACTER CREATOR WIZARD (Omitted for brevity) ---
-    private redrawCreatorStep() { if (!this.stepContainer) return; this.stepContainer.empty(); const steps = [this.drawCreatorStep1_Class.bind(this), this.drawCreatorStep2_Heritage.bind(this), this.drawCreatorStep3_Traits.bind(this), this.drawCreatorStep4_Equipment.bind(this), this.drawCreatorStep5_Background.bind(this), this.drawCreatorStep6_Experiences.bind(this), this.drawCreatorStep7_Domains.bind(this), this.drawCreatorStep8_Connections.bind(this), this.drawCreatorStep9_FinalDetails.bind(this),]; if (this.creatorStep < steps.length) { steps[this.creatorStep](this.stepContainer); } this.backBtn.style.visibility = this.creatorStep === 0 ? 'hidden' : 'visible'; this.nextBtn.textContent = this.creatorStep === steps.length - 1 ? 'Create Character' : 'Next'; }
-    private drawCharacterCreator(parent: HTMLElement) { const creatorEl = parent.createDiv({ cls: 'dh-creator-wizard' }); creatorEl.createEl('h2', { text: 'Create New Character' }); this.stepContainer = creatorEl.createDiv(); const navContainer = creatorEl.createDiv({ cls: 'dh-creator-nav' }); this.backBtn = navContainer.createEl('button', { text: 'Back', cls: 'dh-creator-btn' }); this.nextBtn = navContainer.createEl('button', { text: 'Next', cls: 'dh-creator-btn mod-cta' }); this.backBtn.addEventListener('click', () => { if (this.creatorStep > 0) { this.creatorStep--; this.redrawCreatorStep(); } }); this.nextBtn.addEventListener('click', async () => { const steps = 9; if (this.creatorStep === steps - 1) { await this.finalizeCharacter(this.creatorState); } else if (this.creatorStep < steps - 1) { this.creatorStep++; this.redrawCreatorStep(); } }); this.redrawCreatorStep(); }
+    private redrawCreatorStep() {
+        if (!this.stepContainer) return;
+        this.stepContainer.empty();
+
+        const steps = [
+            this.drawCreatorStep1_Class.bind(this),
+            this.drawCreatorStep2_Heritage.bind(this),
+            this.drawCreatorStep3_Traits.bind(this),
+            this.drawCreatorStep4_Equipment.bind(this),
+            this.drawCreatorStep5_Background.bind(this),
+            this.drawCreatorStep6_Experiences.bind(this),
+            this.drawCreatorStep7_Domains.bind(this),
+            this.drawCreatorStep8_Connections.bind(this),
+            this.drawCreatorStep9_FinalDetails.bind(this),
+        ];
+
+        // Update step indicators in the sidebar
+        const stepsNav = this.containerEl.querySelector('.dh-creator-steps-list');
+        if (stepsNav) {
+            const stepItems = stepsNav.querySelectorAll('.dh-creator-step-item');
+            stepItems.forEach((item, idx) => {
+                item.classList.remove('is-active', 'is-completed');
+                // FIX: Cast the result to HTMLElement to satisfy setIcon's type requirement.
+                const indicator = item.querySelector('.dh-creator-step-indicator') as HTMLElement;
+
+                // This is the new logic to check for actual completion
+                const isCompleted = this.isStepCompleted(idx);
+
+                if (indicator) {
+                    if (idx === this.creatorStep) {
+                        item.classList.add('is-active');
+                        setIcon(indicator, 'circle-dot'); // Active icon
+                    } else if (isCompleted) {
+                        item.classList.add('is-completed');
+                        setIcon(indicator, 'check-circle'); // Completed icon
+                    } else {
+                        setIcon(indicator, 'circle'); // Default icon
+                    }
+                }
+            });
+        }
+
+        if (this.creatorStep < steps.length) {
+            steps[this.creatorStep](this.stepContainer);
+        }
+        this.backBtn.style.visibility = this.creatorStep === 0 ? 'hidden' : 'visible';
+        this.nextBtn.textContent = this.creatorStep === steps.length - 1 ? 'Create Character' : 'Next';
+    }
+
+    private isStepCompleted(stepIndex: number): boolean {
+        const state = this.creatorState;
+        switch (stepIndex) {
+            case 0: // Class & Subclass
+                return !!(state.classId && state.subclassId);
+            case 1: // Heritage
+                if (!state.communityId) return false;
+                if (state.isMixedAncestry) {
+                    return !!(state.mixedAncestryName && state.ancestryId && state.ancestryId2);
+                } else {
+                    return !!state.ancestryId;
+                }
+            case 2: // Traits
+                const assignedTraits = Object.values(state.traits || {}).filter(v => v !== undefined);
+                return assignedTraits.length === 6;
+            case 3: // Equipment
+                return !!(state.startingArmorId && state.startingWeaponIds && state.startingWeaponIds.length > 0);
+            case 4: // Background
+                // Step is not complete if no class is selected yet.
+                if (!state.classId) return false;
+                const charClassBg = this.plugin.compendium.getClass(state.classId);
+                // If the class has no background questions, the step is considered complete.
+                if (!charClassBg?.backgrounds || charClassBg.backgrounds.length === 0) return true;
+                // Otherwise, check if all questions have been answered.
+                return state.backgroundAnswers?.length === charClassBg.backgrounds.length && state.backgroundAnswers.every(a => a && a.trim() !== '');
+            case 5: // Experiences
+                return !!(state.experiences && state.experiences.length === 2 && state.experiences.every(e => e.name && e.name.trim() !== ''));
+            case 6: // Domains
+                return !!(state.domainCardIds && state.domainCardIds.length === 2);
+            case 7: // Connections
+                // Considered complete if at least one connection has been filled out.
+                return !!state.connections?.some(c => c && c.trim() !== '');
+            case 8: // Final Details
+                return !!(state.name && state.name.trim() !== '');
+            default:
+                return false;
+        }
+    }
+
+    private drawCharacterCreator(parent: HTMLElement) {
+        const wizardWrapper = parent.createDiv({ cls: 'dh-creator-wizard' });
+
+        // Header with title and navigation buttons
+        const header = wizardWrapper.createDiv({ cls: 'dh-creator-header' });
+        header.createEl('h2', { text: 'Create New Character' });
+        const navButtons = header.createDiv({ cls: 'dh-creator-nav-buttons' });
+        this.backBtn = navButtons.createEl('button', { text: 'Back', cls: 'dh-creator-btn' });
+        this.nextBtn = navButtons.createEl('button', { text: 'Next', cls: 'dh-creator-btn mod-cta' });
+
+        const creatorLayout = wizardWrapper.createDiv({ cls: 'dh-creator-layout' });
+
+        // Left sidebar for steps
+        const stepsNav = creatorLayout.createDiv({ cls: 'dh-creator-steps-nav' });
+        const stepsList = stepsNav.createDiv({ cls: 'dh-creator-steps-list' });
+
+        const stepLabels = [
+            'Class', 'Heritage', 'Traits', 'Equipment', 'Background',
+            'Experiences', 'Domains', 'Connections', 'Details'
+        ];
+
+        stepLabels.forEach((label, idx) => {
+            const stepItem = stepsList.createDiv({ cls: 'dh-creator-step-item' });
+            const indicator = stepItem.createDiv({ cls: 'dh-creator-step-indicator' });
+            setIcon(indicator, 'circle'); // Default state icon
+            const stepLabel = stepItem.createDiv({ cls: 'dh-creator-step-label' });
+            stepLabel.textContent = label;
+
+            stepItem.addEventListener('click', () => {
+                this.creatorStep = idx;
+                this.redrawCreatorStep();
+            });
+        });
+
+        // Main content area
+        const contentWrapper = creatorLayout.createDiv({ cls: 'dh-creator-content-wrapper' });
+        this.stepContainer = contentWrapper.createDiv({ cls: 'dh-creator-step-content' });
+
+        // Event listeners for the buttons
+        this.backBtn.addEventListener('click', () => {
+            if (this.creatorStep > 0) {
+                this.creatorStep--;
+                this.redrawCreatorStep();
+            }
+        });
+
+        this.nextBtn.addEventListener('click', async () => {
+            const steps = 9;
+            if (this.creatorStep === steps - 1) {
+                await this.finalizeCharacter(this.creatorState);
+            } else if (this.creatorStep < steps - 1) {
+                this.creatorStep++;
+                this.redrawCreatorStep();
+            }
+        });
+
+        this.redrawCreatorStep();
+    }
 
     private drawCreatorStep1_Class(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 1: Choose your Class & Subclass' });
@@ -269,7 +411,6 @@ export class CharacterSheetView extends ItemView {
             }
         }
 
-        // --- Descriptions and Previews (this logic is unchanged) ---
         const detailsContainer = parent.createDiv({ cls: 'dh-creator-details' });
         if (selectedClass) {
             detailsContainer.createEl('h4', { text: selectedClass.name });
@@ -303,44 +444,28 @@ export class CharacterSheetView extends ItemView {
         }
     }
 
-    // Replace your drawCreatorStep2_Heritage method with this corrected version
     private drawCreatorStep2_Heritage(parent: HTMLElement) {
-        parent.createEl('h3', { text: 'Step 2: Choose Heritage' });
+        parent.createEl('h3', { text: 'Step 2: Choose Your Heritage' });
 
-        // --- Ancestry Section ---
-        const ancestrySetting = new Setting(parent)
-            .setName("Ancestry")
-            .addDropdown(dd => {
-                dd.addOption('', '--- Select ---');
-                this.plugin.compendium.ancestries.forEach(anc => {
-                    dd.addOption(anc.name, anc.name);
-                });
-                dd.setValue(this.creatorState.ancestryId || '').onChange(value => {
-                    this.creatorState.ancestryId = value;
+        new Setting(parent)
+            .setName('Create a Mixed Ancestry')
+            .setDesc('Combine features from two different ancestries.')
+            .addToggle(toggle => toggle
+                .setValue(this.creatorState.isMixedAncestry || false)
+                .onChange(value => {
+                    this.creatorState.isMixedAncestry = value;
+                    this.creatorState.ancestryId = undefined;
+                    this.creatorState.ancestryId2 = undefined;
+                    this.creatorState.mixedAncestryName = undefined;
                     this.redrawCreatorStep();
-                });
-            });
+                }));
 
-        const selectedAncestry = this.plugin.compendium.getAncestry(this.creatorState.ancestryId || '');
-
-        if (selectedAncestry) {
-            ancestrySetting.addButton(btn => {
-                btn.setIcon('pencil').setTooltip('Edit ancestry').onClick(() => {
-                    new CompendiumCreatorModal(this.app, this.plugin, 'Ancestry', selectedAncestry).open();
-                });
-            });
+        if (this.creatorState.isMixedAncestry) {
+            this.drawMixedAncestryCreator(parent);
+        } else {
+            this.drawSingleAncestryCreator(parent);
         }
 
-        if (selectedAncestry) {
-            const details = parent.createDiv({ cls: 'dh-creator-details' });
-            details.createEl('h4', { text: selectedAncestry.name });
-            renderMarkdown(this.plugin, selectedAncestry.description, details.createDiv());
-
-            const ancestryFeatures: CompendiumFeature[] = selectedAncestry.feats.map(f => ({ name: f.name, description: f.text }));
-            this.drawCreatorFeaturePreview(details, 'Ancestry Features', ancestryFeatures);
-        }
-
-        // --- Community Section (remains the same) ---
         const communityContainer = parent.createDiv();
         new Setting(communityContainer).setName("Community").addDropdown(dd => {
             dd.addOption('', '--- Select ---');
@@ -357,10 +482,88 @@ export class CharacterSheetView extends ItemView {
                 const details = communityContainer.createDiv({ cls: 'dh-creator-details' });
                 details.createEl('h4', { text: community.name });
                 renderMarkdown(this.plugin, community.description, details.createDiv());
-
                 const communityFeatures: CompendiumFeature[] = community.feats.map(f => ({ name: f.name, description: f.text }));
                 this.drawCreatorFeaturePreview(details, 'Community Features', communityFeatures);
             }
+        }
+    }
+
+    private drawSingleAncestryCreator(parent: HTMLElement) {
+        const ancestrySetting = new Setting(parent)
+            .setName("Ancestry")
+            .addDropdown(dd => {
+                dd.addOption('', '--- Select ---');
+                this.plugin.compendium.ancestries.forEach(anc => dd.addOption(anc.name, anc.name));
+                dd.setValue(this.creatorState.ancestryId || '').onChange(value => {
+                    this.creatorState.ancestryId = value;
+                    this.redrawCreatorStep();
+                });
+            });
+
+        const selectedAncestry = this.plugin.compendium.getAncestry(this.creatorState.ancestryId || '');
+        if (selectedAncestry) {
+            ancestrySetting.addButton(btn => {
+                btn.setIcon('pencil').setTooltip('Edit ancestry').onClick(() => {
+                    new CompendiumCreatorModal(this.app, this.plugin, 'Ancestry', selectedAncestry).open();
+                });
+            });
+            const details = parent.createDiv({ cls: 'dh-creator-details' });
+            details.createEl('h4', { text: selectedAncestry.name });
+            renderMarkdown(this.plugin, selectedAncestry.description, details.createDiv());
+            const ancestryFeatures: CompendiumFeature[] = selectedAncestry.feats.map(f => ({ name: f.name, description: f.text }));
+            this.drawCreatorFeaturePreview(details, 'Ancestry Features', ancestryFeatures);
+        }
+    }
+
+    private drawMixedAncestryCreator(parent: HTMLElement) {
+        parent.createEl('h4', { text: 'Mixed Ancestry Details' });
+
+        new Setting(parent)
+            .setName('Mixed Ancestry Name')
+            .setDesc('e.g., Goblin-Orc, Half-Elf')
+            .addText(text => text
+                .setPlaceholder('Enter a name for your heritage')
+                .setValue(this.creatorState.mixedAncestryName || '')
+                .onChange(value => this.creatorState.mixedAncestryName = value));
+
+        new Setting(parent)
+            .setName('First Ancestry')
+            .setDesc('You will gain the first feature from this ancestry.')
+            .addDropdown(dd => {
+                dd.addOption('', '--- Select ---');
+                this.plugin.compendium.ancestries.forEach(anc => dd.addOption(anc.name, anc.name));
+                dd.setValue(this.creatorState.ancestryId || '').onChange(value => {
+                    this.creatorState.ancestryId = value;
+                    this.redrawCreatorStep();
+                });
+            });
+
+        new Setting(parent)
+            .setName('Second Ancestry')
+            .setDesc('You will gain the second feature from this ancestry.')
+            .addDropdown(dd => {
+                dd.addOption('', '--- Select ---');
+                this.plugin.compendium.ancestries.forEach(anc => dd.addOption(anc.name, anc.name));
+                dd.setValue(this.creatorState.ancestryId2 || '').onChange(value => {
+                    this.creatorState.ancestryId2 = value;
+                    this.redrawCreatorStep();
+                });
+            });
+
+        const detailsContainer = parent.createDiv({ cls: 'dh-creator-details' });
+        const selectedAncestry1 = this.plugin.compendium.getAncestry(this.creatorState.ancestryId || '');
+        const selectedAncestry2 = this.plugin.compendium.getAncestry(this.creatorState.ancestryId2 || '');
+
+        if (selectedAncestry1 && selectedAncestry2) {
+            detailsContainer.createEl('h5', { text: 'Your Mixed Ancestry Features' });
+            const features: CompendiumFeature[] = [];
+            if (selectedAncestry1.feats?.[0]) {
+                features.push({ name: `${selectedAncestry1.feats[0].name} (${selectedAncestry1.name})`, description: selectedAncestry1.feats[0].text });
+            }
+            if (selectedAncestry2.feats?.[1]) {
+                features.push({ name: `${selectedAncestry2.feats[1].name} (${selectedAncestry2.name})`, description: selectedAncestry2.feats[1].text });
+            }
+            this.drawCreatorFeaturePreview(detailsContainer, '', features);
         }
     }
 
@@ -369,12 +572,12 @@ export class CharacterSheetView extends ItemView {
 
         const header = suggestionContainer.createDiv({ cls: 'dh-suggestion-header' });
         const iconEl = header.createSpan({ cls: 'dh-suggestion-icon' });
-        setIcon(iconEl, 'star'); // Using a star icon
+        setIcon(iconEl, 'star');
         header.createEl('h5', { text: title });
 
         const list = suggestionContainer.createDiv({ cls: 'dh-suggestion-list' });
         for (const [key, value] of Object.entries(suggestions)) {
-            if (value) { // Only show if there is a suggestion
+            if (value) {
                 const item = list.createDiv({ cls: 'dh-suggestion-item' });
                 item.createSpan({ cls: 'dh-suggestion-key', text: `${key}:` });
                 item.createSpan({ cls: 'dh-suggestion-value', text: value });
@@ -395,7 +598,6 @@ export class CharacterSheetView extends ItemView {
 
         const selectedClass = this.plugin.compendium.getClass(this.creatorState.classId || '');
 
-        // Display spellcasting trait if the subclass has one
         if (this.creatorState.subclassId) {
             const subclass = this.plugin.compendium.getSubclass(this.creatorState.subclassId);
             if (subclass?.spellcast_trait) {
@@ -407,7 +609,6 @@ export class CharacterSheetView extends ItemView {
             }
         }
 
-        // Suggestions Box
         if (selectedClass?.suggested_traits) {
             const traitSuggestions: { [key: string]: string } = {};
             const suggested = selectedClass.suggested_traits.split(',').map(s => s.trim());
@@ -418,7 +619,7 @@ export class CharacterSheetView extends ItemView {
             this.drawSuggestionBox(parent, 'Suggested Traits', traitSuggestions, () => {
                 const traitValues = selectedClass.suggested_traits?.split(',').map(s => parseInt(s.trim()));
                 if (traitValues && traitValues.length === TRAIT_NAMES.length) {
-                    this.creatorState.traits = {}; // Reset traits
+                    this.creatorState.traits = {};
                     TRAIT_NAMES.forEach((name, i) => {
                         if (this.creatorState.traits) {
                             this.creatorState.traits[name] = traitValues[i];
@@ -447,7 +648,6 @@ export class CharacterSheetView extends ItemView {
         const armors = this.plugin.compendium.armors.filter(a => (a as ArmorItem).tier === '1') as ArmorItem[];
         const selectedClass = this.plugin.compendium.getClass(this.creatorState.classId || '');
 
-        // Suggestions Box
         if (selectedClass && (selectedClass.suggested_primary || selectedClass.suggested_secondary || selectedClass.suggested_armor)) {
             const suggestions: { [key: string]: string } = {};
             if (selectedClass.suggested_primary) suggestions['Primary Weapon'] = selectedClass.suggested_primary;
@@ -472,8 +672,6 @@ export class CharacterSheetView extends ItemView {
             });
         }
 
-
-        // --- Weapon Selection ---
         new Setting(parent).setName('Primary Weapon').addDropdown(dd => {
             dd.addOption('', '--- Select ---');
             weapons.filter(w => w.burden === 'Two-Handed').forEach(w => dd.addOption(w.name, `${w.name} (2-Handed)`));
@@ -493,18 +691,17 @@ export class CharacterSheetView extends ItemView {
                 secondaryWeapons.forEach(w => dd.addOption(w.name, w.name));
                 dd.setValue(this.creatorState.startingWeaponIds?.[1] || '').onChange(value => {
                     this.creatorState.startingWeaponIds = value ? [primaryWeapon.name, value] : [primaryWeapon.name];
-                    this.redrawCreatorStep(); // Redraw to update previews
+                    this.redrawCreatorStep();
                 });
             });
         }
 
-        // --- Armor & Potion Selection ---
         new Setting(parent).setName('Armor').addDropdown(dd => {
             dd.addOption('', '--- Select ---');
             armors.forEach(a => dd.addOption(a.name, a.name));
             dd.setValue(this.creatorState.startingArmorId || '').onChange(value => {
                 this.creatorState.startingArmorId = value;
-                this.redrawCreatorStep(); // Redraw to update previews
+                this.redrawCreatorStep();
             });
         });
 
@@ -514,18 +711,13 @@ export class CharacterSheetView extends ItemView {
             });
         });
 
-        // --- PREVIEW: Equipment Features ---
         const equipmentFeatures: CompendiumFeature[] = [];
-
-        // Get armor feature
         if (this.creatorState.startingArmorId) {
             const armor = armors.find(a => a.name === this.creatorState.startingArmorId);
             if (armor && armor.feat_name) {
                 equipmentFeatures.push({ name: armor.feat_name, description: armor.feat_text || '' });
             }
         }
-
-        // Get weapon features
         if (this.creatorState.startingWeaponIds) {
             this.creatorState.startingWeaponIds.forEach(weaponId => {
                 const weapon = weapons.find(w => w.name === weaponId);
@@ -534,8 +726,6 @@ export class CharacterSheetView extends ItemView {
                 }
             });
         }
-
-        // Draw the preview section if any features were found
         if (equipmentFeatures.length > 0) {
             this.drawCreatorFeaturePreview(parent, 'You will gain these Equipment Features', equipmentFeatures);
         }
@@ -600,34 +790,46 @@ export class CharacterSheetView extends ItemView {
     private drawCreatorStep9_FinalDetails(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 9: Final Details & Review' });
 
-        // Character Name & Pronouns
+        const layout = parent.createDiv({ cls: 'dh-step9-layout' });
+        const leftCol = layout.createDiv({ cls: 'dh-step9-col-left' });
+        const rightCol = layout.createDiv({ cls: 'dh-step9-col-right' });
+
+        // --- Left Column: Inputs ---
+        const detailsGroup = leftCol.createDiv({ cls: 'dh-creator-input-group' });
+        detailsGroup.createEl('h4', { text: 'Character Details' });
         if (!this.creatorState.pronouns) this.creatorState.pronouns = { subject: 'they', object: 'them' };
-        new Setting(parent).setName("Character Name").addText(text => text.setPlaceholder("Elara Meadowlight").setValue(this.creatorState.name || '').onChange(value => this.creatorState.name = value));
-        new Setting(parent).setName("Subject Pronoun").addText(text => text.setPlaceholder("e.g., she").setValue(this.creatorState.pronouns?.subject || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.subject = value; }));
-        new Setting(parent).setName("Object Pronoun").addText(text => text.setPlaceholder("e.g., her").setValue(this.creatorState.pronouns?.object || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.object = value; }));
+        new Setting(detailsGroup).setName("Character Name").addText(text => text.setPlaceholder("Elara Meadowlight").setValue(this.creatorState.name || '').onChange(value => this.creatorState.name = value));
+        new Setting(detailsGroup).setName("Subject Pronoun").addText(text => text.setPlaceholder("e.g., she").setValue(this.creatorState.pronouns?.subject || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.subject = value; }));
+        new Setting(detailsGroup).setName("Object Pronoun").addText(text => text.setPlaceholder("e.g., her").setValue(this.creatorState.pronouns?.object || '').onChange(value => { if (this.creatorState.pronouns) this.creatorState.pronouns.object = value; }));
+        new Setting(detailsGroup)
+            .setName("Character Description")
+            .setDesc("A brief description of your character's appearance and personality.")
+            .addTextArea(text => {
+                text.setValue(this.creatorState.description || '')
+                    .onChange(value => this.creatorState.description = value);
+                text.inputEl.rows = 4;
+            });
 
-        // Avatar Section
-        parent.createEl('h4', { text: 'Character Avatar' });
-        parent.createEl('p', { text: 'Add an avatar image for your character. This is optional.' });
-
+        const avatarGroup = leftCol.createDiv({ cls: 'dh-creator-input-group' });
+        avatarGroup.createEl('h4', { text: 'Character Avatar' });
         createAvatarEditor(
             this.app,
-            parent,
+            avatarGroup,
             this.creatorState.avatarUrl || '',
             this.creatorState.avatarTransform,
             (newUrl) => {
                 this.creatorState.avatarUrl = newUrl;
-                this.creatorState.avatarTransform = undefined; // Reset transform on new URL
+                this.creatorState.avatarTransform = undefined;
             },
             (newTransform) => {
                 this.creatorState.avatarTransform = newTransform;
             }
         );
 
-        // Review Section
-        parent.createEl('hr');
-        parent.createEl('h4', { text: 'Character Review' });
-        const reviewEl = parent.createDiv({ cls: 'dh-creator-review' });
+        // --- Right Column: Review ---
+        const reviewCard = rightCol.createDiv({ cls: 'dh-creator-review-card' });
+        reviewCard.createEl('h4', { text: 'Character Summary' });
+
         const { ancestryId, communityId, classId, subclassId, traits, startingArmorId, startingWeaponIds, domainCardIds } = this.creatorState;
         const ancestry = this.plugin.compendium.getAncestry(ancestryId ?? '');
         const community = this.plugin.compendium.getCommunity(communityId ?? '');
@@ -635,39 +837,79 @@ export class CharacterSheetView extends ItemView {
         const subclass = this.plugin.compendium.getSubclass(subclassId ?? '');
         const armor = this.plugin.compendium.armors.find(a => a.name === startingArmorId) as ArmorItem | undefined;
         const weapons = startingWeaponIds ? (this.plugin.compendium.weapons.filter(w => startingWeaponIds.includes(w.name)) as WeaponItem[]) : [];
-        const domains = domainCardIds?.join(', ');
+        const domains = domainCardIds?.map(id => this.plugin.compendium.getAbility(id)?.name).filter(n => n).join(', ');
 
-        reviewEl.createEl('p').innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`;
-        reviewEl.createEl('p').innerHTML = `<strong>Ancestry:</strong> ${ancestry?.name || 'N/A'}`;
-        reviewEl.createEl('p').innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`;
+        // Core Info Section
+        const coreInfoSection = reviewCard.createDiv({ cls: 'dh-review-section' });
+        coreInfoSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`;
+        coreInfoSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Heritage:</strong> ${this.creatorState.isMixedAncestry ? (this.creatorState.mixedAncestryName || 'Mixed') : (ancestry?.name || 'N/A')}`;
+        coreInfoSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`;
 
-        reviewEl.createEl('h5', { text: 'Traits' });
+        // Traits Section
+        const traitsSection = reviewCard.createDiv({ cls: 'dh-review-section' });
+        traitsSection.createEl('h5', { text: 'Traits' });
+        const traitsGrid = traitsSection.createDiv({ cls: 'dh-review-grid' });
         if (traits) {
             Object.entries(traits).forEach(([key, value]) => {
-                if (value !== undefined) reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>${key}:</strong> ${value >= 0 ? '+' : ''}${value}`;
+                if (value !== undefined) traitsGrid.createEl('div', { cls: 'dh-review-item' }).innerHTML = `<strong>${key}:</strong> ${value >= 0 ? '+' : ''}${value}`;
             });
         }
 
-        reviewEl.createEl('h5', { text: 'Equipment' });
-        reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`;
-        reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`;
-        reviewEl.createEl('h5', { text: 'Domain Cards' });
-        reviewEl.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A';
+        // Equipment Section
+        const equipmentSection = reviewCard.createDiv({ cls: 'dh-review-section' });
+        equipmentSection.createEl('h5', { text: 'Equipment' });
+        equipmentSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`;
+        equipmentSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`;
+
+        // Domains Section
+        const domainsSection = reviewCard.createDiv({ cls: 'dh-review-section' });
+        domainsSection.createEl('h5', { text: 'Domain Cards' });
+        domainsSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A';
     }
+
     private async finalizeCharacter(partialChar: Partial<CreatorState>) {
-        if (!partialChar.name || !partialChar.classId || !partialChar.subclassId || !partialChar.ancestryId || !partialChar.communityId || !partialChar.startingArmorId || !partialChar.startingWeaponIds || partialChar.startingWeaponIds.length === 0 || !partialChar.traits || !partialChar.domainCardIds || partialChar.domainCardIds.length !== 2) {
+        if (!partialChar.name || !partialChar.classId || !partialChar.subclassId || !partialChar.communityId || !partialChar.startingArmorId || !partialChar.startingWeaponIds || partialChar.startingWeaponIds.length === 0 || !partialChar.traits || !partialChar.domainCardIds || partialChar.domainCardIds.length !== 2) {
             new Notice("Please complete all required fields on all steps.");
             return;
         }
 
+        let finalAncestryId = partialChar.ancestryId;
+
+        if (partialChar.isMixedAncestry) {
+            if (!partialChar.mixedAncestryName || !partialChar.ancestryId || !partialChar.ancestryId2) {
+                new Notice("For a mixed ancestry, please select two parent ancestries and provide a custom name.");
+                return;
+            }
+            const ancestry1 = this.plugin.compendium.getAncestry(partialChar.ancestryId);
+            const ancestry2 = this.plugin.compendium.getAncestry(partialChar.ancestryId2);
+
+            if (!ancestry1 || !ancestry2 || !ancestry1.feats?.[0] || !ancestry2.feats?.[1]) {
+                new Notice("Could not create mixed ancestry. Please ensure both selected ancestries are valid and have features.");
+                return;
+            }
+
+            const newMixedAncestry: JsonAncestry = {
+                name: partialChar.mixedAncestryName,
+                description: `A unique heritage combining the traits of ${ancestry1.name} and ${ancestry2.name}.`,
+                feats: [ancestry1.feats[0], ancestry2.feats[1]],
+                isCustom: true,
+            };
+
+            await this.plugin.saveCustomCompendiumData('user-ancestries.json', newMixedAncestry);
+            finalAncestryId = newMixedAncestry.name;
+        }
+
+        if (!finalAncestryId) {
+            new Notice("Please select an ancestry.");
+            return;
+        }
+
         const charClass = this.plugin.compendium.getClass(partialChar.classId);
-        const ancestry = this.plugin.compendium.getAncestry(partialChar.ancestryId);
+        const ancestry = this.plugin.compendium.getAncestry(finalAncestryId);
         const community = this.plugin.compendium.getCommunity(partialChar.communityId);
         const subclass = this.plugin.compendium.getSubclass(partialChar.subclassId);
         const rawArmor = this.plugin.compendium.armors.find(a => a.name === partialChar.startingArmorId) as ArmorItem | undefined;
-        const rawWeapons = partialChar.startingWeaponIds
-            .map(name => this.plugin.compendium.weapons.find(w => w.name === name))
-            .filter(w => w) as WeaponItem[];
+        const rawWeapons = partialChar.startingWeaponIds.map(name => this.plugin.compendium.weapons.find(w => w.name === name)).filter(w => w) as WeaponItem[];
 
         if (!charClass || !ancestry || !community || !rawArmor || !subclass || rawWeapons.length === 0) {
             new Notice("Compendium data missing. Cannot create character.");
@@ -681,23 +923,16 @@ export class CharacterSheetView extends ItemView {
 
         const [majorStr, severeStr] = rawArmor.base_thresholds.split(' / ');
         const startingArmor: InventoryItem = {
-            _type: 'armor',
-            instanceId: uuidv4(),
-            quantity: 1,
-            name: rawArmor.name,
-            tier: parseInt(rawArmor.tier),
-            baseScore: parseInt(rawArmor.base_score),
-            baseThresholds: { major: parseInt(majorStr), severe: parseInt(severeStr) },
+            _type: 'armor', instanceId: uuidv4(), quantity: 1, name: rawArmor.name, tier: parseInt(rawArmor.tier),
+            baseScore: parseInt(rawArmor.base_score), baseThresholds: { major: parseInt(majorStr), severe: parseInt(severeStr) },
             features: rawArmor.feat_name ? [{ name: rawArmor.feat_name, description: rawArmor.feat_text || '' }] : [],
-            description: rawArmor.feat_text || '',
-            isCustom: rawArmor.isCustom,
+            description: rawArmor.feat_text || '', isCustom: rawArmor.isCustom,
         };
 
         const standardInventory: InventoryItem[] = [
             { _type: 'item', name: 'Torch', instanceId: uuidv4(), quantity: 1, isCustom: this.plugin.compendium.items.find(i => i.name === 'Torch')?.isCustom },
             { _type: 'item', name: '50ft of Rope', instanceId: uuidv4(), quantity: 1, isCustom: this.plugin.compendium.items.find(i => i.name === '50ft of Rope')?.isCustom },
         ];
-
         if (partialChar.potionChoice === 'health') {
             const potion = this.plugin.compendium.items.find(i => i.name === 'Minor Health Potion');
             standardInventory.push({ _type: 'item', name: 'Minor Health Potion', instanceId: uuidv4(), quantity: 1, isCustom: potion?.isCustom });
@@ -706,98 +941,45 @@ export class CharacterSheetView extends ItemView {
             standardInventory.push({ _type: 'item', name: 'Minor Stamina Potion', instanceId: uuidv4(), quantity: 1, isCustom: potion?.isCustom });
         }
 
-        const startingWeapons: InventoryItem[] = rawWeapons
-            .map(w => {
-                const [damageDice, damageType] = w.damage.split(' ');
-                return ({
-                    _type: 'weapon',
-                    instanceId: uuidv4(),
-                    quantity: 1,
-                    name: w.name,
-                    tier: parseInt(w.tier),
-                    primaryOrSecondary: w.primary_or_secondary as 'Primary' | 'Secondary',
-                    trait: w.trait,
-                    range: w.range,
-                    damage: w.damage,
-                    damageDice: damageDice,
-                    damageType: damageType,
-                    burden: w.burden as 'One-Handed' | 'Two-Handed',
-                    features: w.feat_name ? [{ name: w.feat_name, description: w.feat_text || '' }] : [],
-                    description: w.feat_text || '',
-                    isCustom: w.isCustom,
-                });
+        const startingWeapons: InventoryItem[] = rawWeapons.map(w => {
+            const [damageDice, damageType] = w.damage.split(' ');
+            return ({
+                _type: 'weapon', instanceId: uuidv4(), quantity: 1, name: w.name, tier: parseInt(w.tier),
+                primaryOrSecondary: w.primary_or_secondary as 'Primary' | 'Secondary', trait: w.trait, range: w.range,
+                damage: w.damage, damageDice: damageDice, damageType: damageType, burden: w.burden as 'One-Handed' | 'Two-Handed',
+                features: w.feat_name ? [{ name: w.feat_name, description: w.feat_text || '' }] : [],
+                description: w.feat_text || '', isCustom: w.isCustom,
             });
+        });
 
         const initialInventory: InventoryItem[] = (charClass.items || "").split(', ').map(itemName => {
             const item = this.plugin.compendium.items.find(i => i.name.toLowerCase() === itemName.trim().toLowerCase());
-            return {
-                _type: 'item' as 'item',
-                name: itemName.trim(),
-                instanceId: uuidv4(),
-                quantity: 1,
-                isCustom: item?.isCustom,
-            }
+            return { _type: 'item' as 'item', name: itemName.trim(), instanceId: uuidv4(), quantity: 1, isCustom: item?.isCustom, }
         });
 
-        const finalFeatures: (DomainCard)[] = (partialChar.domainCardIds || [])
-            .map(id => this.plugin.compendium.getAbility(id))
-            .filter(f => f) as DomainCard[];
-
+        const finalFeatures: (DomainCard)[] = (partialChar.domainCardIds || []).map(id => this.plugin.compendium.getAbility(id)).filter(f => f) as DomainCard[];
         const finalEvasion = parseInt(charClass.evasion);
         const finalHp = parseInt(charClass.hp);
 
         const fullChar: Character = {
-            id: uuidv4(),
-            'dg-character': true,
-            _type: 'character',
-            name: partialChar.name,
-            level: 1,
-            proficiency: 1,
+            id: uuidv4(), 'dg-character': true, _type: 'character', name: partialChar.name, level: 1, proficiency: 1,
             pronouns: { ...partialChar.pronouns, _type: 'pronouns' } as Character['pronouns'],
-            ancestryId: ancestry.name,
-            communityId: community.name,
-            classId: charClass.name,
-            subclassId: subclass.name,
-            evasion: finalEvasion,
-            traits: finalTraits,
+            ancestryId: finalAncestryId, communityId: community.name, classId: charClass.name, subclassId: subclass.name,
+            evasion: finalEvasion, traits: finalTraits,
             hitPoints: { _type: 'dynamicResource', max: finalHp, current: 0 },
             stress: { _type: 'dynamicResource', max: 6, current: 0 },
             hope: { _type: 'dynamicResource', max: 6, current: 2 },
             armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: startingArmor.baseScore },
-            avatarUrl: partialChar.avatarUrl || null,
-            avatarTransform: partialChar.avatarTransform,
-            damageThresholds: {
-                _type: 'damageThresholds',
-                major: startingArmor.baseThresholds.major + 1,
-                severe: startingArmor.baseThresholds.severe + 1
-            },
+            avatarUrl: partialChar.avatarUrl || null, avatarTransform: partialChar.avatarTransform,
+            damageThresholds: { _type: 'damageThresholds', major: startingArmor.baseThresholds.major + 1, severe: startingArmor.baseThresholds.severe + 1 },
             gold: { _type: 'gold', handfuls: 1, bags: 0, chests: 0 },
-            experiences: (partialChar.experiences || []).map(exp => ({
-                _type: 'experience',
-                id: uuidv4(),
-                name: exp.name,
-                value: 2,
-            })),
-            features: finalFeatures,
-            vault: [],
-            inventory: [
-                ...standardInventory,
-                ...initialInventory,
-                ...startingWeapons,
-                startingArmor,
-            ],
-            equippedArmorId: startingArmor.instanceId,
-            equippedWeaponIds: startingWeapons.map(w => w.instanceId),
-            background: charClass.backgrounds.map((bg, i) => ({
-                question: bg.question,
-                answer: partialChar.backgroundAnswers?.[i] || ''
-            })),
-            connections: charClass.connections.map((c, i) => ({
-                question: c.question,
-                answer: partialChar.connections?.[i] || ''
-            })),
-            levelUpHistory: {},
-            conditions: [],
+            experiences: (partialChar.experiences || []).map(exp => ({ _type: 'experience', id: uuidv4(), name: exp.name, value: 2, })),
+            features: finalFeatures, vault: [],
+            inventory: [...standardInventory, ...initialInventory, ...startingWeapons, startingArmor],
+            equippedArmorId: startingArmor.instanceId, equippedWeaponIds: startingWeapons.map(w => w.instanceId),
+            background: charClass.backgrounds.map((bg, i) => ({ question: bg.question, answer: partialChar.backgroundAnswers?.[i] || '' })),
+            connections: charClass.connections.map((c, i) => ({ question: c.question, answer: partialChar.connections?.[i] || '' })),
+            levelUpHistory: {}, conditions: [], notes: partialChar.description || '',
         };
 
         await this.plugin.updateCharacter(fullChar);
@@ -823,15 +1005,14 @@ export class CharacterSheetView extends ItemView {
         const left = header.createDiv({ cls: 'dh-header-left' });
 
         const avatar = left.createDiv({ cls: 'dh-avatar' });
-        const resolvedUrl = resolveImageUrl(this.app, data.avatarUrl); // Resolve the URL here
+        const resolvedUrl = resolveImageUrl(this.app, data.avatarUrl);
 
         if (resolvedUrl) {
             if (data.avatarTransform) {
                 const img = new Image();
-                img.src = resolvedUrl; // Use resolved URL
+                img.src = resolvedUrl;
                 img.onload = () => {
-                    // This code runs asynchronously after the image has loaded
-                    if (!data.avatarTransform) return; // Guard against data changing
+                    if (!data.avatarTransform) return;
 
                     const EDITOR_SIZE = 150;
                     const HEADER_SIZE = 70;
@@ -856,7 +1037,7 @@ export class CharacterSheetView extends ItemView {
                     const bgPosX = `calc(50% + ${offsetX}px)`;
                     const bgPosY = `calc(50% + ${offsetY}px)`;
 
-                    avatar.style.backgroundImage = `url("${resolvedUrl}")`; // Use resolved URL
+                    avatar.style.backgroundImage = `url("${resolvedUrl}")`;
                     avatar.style.backgroundSize = `${bgWidth}px ${bgHeight}px`;
                     avatar.style.backgroundPosition = `${bgPosX} ${bgPosY}`;
                     avatar.style.backgroundRepeat = 'no-repeat';
@@ -872,14 +1053,13 @@ export class CharacterSheetView extends ItemView {
         const nameplate = left.createDiv({ cls: 'dh-nameplate' });
         nameplate.createEl('h1', { text: data.name || "Unnamed Character" });
 
-        // Build class string with multiclass support
         let classDisplay = `${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})`;
         if (data.multiclassClassId) {
             const mcClass = this.plugin.compendium.getClass(data.multiclassClassId);
             const mcSubclass = data.multiclassSubclassId ? this.plugin.compendium.getSubclass(data.multiclassSubclassId) : null;
             classDisplay += ` / ${mcClass?.name || 'N/A'} (${mcSubclass?.name || 'N/A'})`;
         }
-        nameplate.createEl('p', { text: `${ancestry?.name || 'N/A'} ${classDisplay}` });
+        nameplate.createEl('p', { text: `${ancestry?.name || data.ancestryId} ${classDisplay}` });
 
         const right = header.createDiv({ cls: 'dh-header-right' });
         if (charClass) {
@@ -978,22 +1158,14 @@ export class CharacterSheetView extends ItemView {
             if (!trait.locked) {
                 box.title = `Click to roll ${name}. Hold Shift for Advantage or Alt for Disadvantage.`;
                 box.addEventListener('click', (event) => {
-                    // Base dice formula
-                    let baseDiceString = `1d12+1d12`;  // Keep the base duality dice separate
-
-                    // Format trait modifier properly using our helper function
+                    let baseDiceString = `1d12+1d12`;
                     const modifierString = formatTraitModifier(trait.value);
-
-                    // Handle advantage/disadvantage using our helper function
                     let rollTitle = `${name} Roll`;
                     const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
                         event,
                         baseDiceString,
                         rollTitle
                     );
-
-                    // Place dice components in this order: base dice, advantage/disadvantage, modifier
-                    console.log(`Rolling trait: ${name}, Base: ${baseDiceString}, Final: ${diceString}${modifierString}`);
                     this.plugin.rollDice(
                         `${diceString}${modifierString}`,
                         newRollTitle,
@@ -1039,21 +1211,13 @@ export class CharacterSheetView extends ItemView {
             rollBox.createDiv({ text: traitName });
             let rollTitle = `${weapon.name} Attack`;
             rollBox.addEventListener('click', (event) => {
-                // Base dice formula
-                let baseDiceString = `1d12+1d12`;  // Keep the base duality dice separate
-
-                // Format trait modifier properly using our helper function
+                let baseDiceString = `1d12+1d12`;
                 const modifierString = formatTraitModifier(traitValue);
-
-                // Handle advantage/disadvantage using our helper function
                 const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
                     event,
                     baseDiceString,
                     rollTitle
                 );
-
-                // Place dice components in this order: base dice, advantage/disadvantage, modifier
-                console.log(`Rolling weapon: ${weapon.name}, Base: ${baseDiceString}, Final: ${diceString}${modifierString}`);
                 this.plugin.rollDice(
                     `${diceString}${modifierString}`,
                     newRollTitle,
@@ -1063,32 +1227,20 @@ export class CharacterSheetView extends ItemView {
         }
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
 
-        // --- PROFICIENCY FIX START ---
-        // The original code displayed the base weapon damage, which was confusing
-        // because the roll correctly included the proficiency bonus. This fix
-        // ensures the displayed damage formula matches the rolled formula.
         const proficiency = character.proficiency;
-
-        // We parse the damage string to separate the dice from the modifier.
-        // This makes applying the proficiency to the number of dice more explicit and robust.
-        const damageString = weapon.damageDice; // e.g., "d8+1" or "d8"
+        const damageString = weapon.damageDice;
         const match = damageString.match(/(d\d+)([+-]\d+)?/);
-
         let damageFormula = '';
 
         if (match) {
-            const diePart = match[1]; // e.g., "d8"
-            const modifierPart = match[2] || ''; // e.g., "+1" or ""
-            // As per Daggerheart rules, proficiency determines the number of dice rolled.
+            const diePart = match[1];
+            const modifierPart = match[2] || '';
             damageFormula = `${proficiency}${diePart}${modifierPart}`;
         } else {
-            // Fallback for any unusual damage formats, though this shouldn't be hit with standard data.
             damageFormula = `${proficiency}${damageString}`;
         }
 
-        damageBox.createDiv({ text: damageFormula }); // Display the full formula including proficiency.
-        // --- PROFICIENCY FIX END ---
-
+        damageBox.createDiv({ text: damageFormula });
         damageBox.createDiv({ text: weapon.damageType });
         damageBox.title = `Click to roll ${damageFormula}`;
         damageBox.addEventListener('click', () => {
@@ -1219,7 +1371,6 @@ export class CharacterSheetView extends ItemView {
             .addEventListener('click', () => {
                 new AddItemModal(this.app, this.plugin, character, (item) => {
                     if (!character.inventory) character.inventory = [];
-                    // Process the raw compendium item into a character inventory item
                     let newItem: InventoryItem;
                     if (item._type === 'armor') {
                         const [major, severe] = item.base_thresholds.split(' / ').map(s => parseInt(s.trim()));
@@ -1331,7 +1482,7 @@ export class CharacterSheetView extends ItemView {
                     }
                 }, () => {
                     character.inventory = character.inventory.filter(i => i.instanceId !== item.instanceId);
-                    this.unequipItem(character, item, false); // Unequip without redrawing
+                    this.unequipItem(character, item, false);
                     this.plugin.updateCharacter(character);
                 }).open();
             });
@@ -1396,7 +1547,6 @@ export class CharacterSheetView extends ItemView {
         const header = section.createDiv({ cls: 'dh-section-header-bar' });
         header.createEl('h3', { text: title });
 
-        // ADD THIS BLOCK to include the manage cards button
         if (addManageButton) {
             const controls = header.createDiv({ cls: 'dh-section-header-controls' });
             const manageBtn = controls.createEl('button', { text: 'Manage Cards' });
@@ -1422,7 +1572,6 @@ export class CharacterSheetView extends ItemView {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
         const metadata = this.getFeatureMetadata(feature as DomainCard);
 
-        // --- Header ---
         const header = card.createDiv({ cls: 'dh-feature-card-header' });
         header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
 
@@ -1437,12 +1586,9 @@ export class CharacterSheetView extends ItemView {
             metaHeader.createSpan({ cls: 'dh-feature-card-type', text: `Level ${metadata.level}` });
         }
 
-        // --- Body ---
         const body = card.createDiv({ cls: 'dh-feature-card-body' });
         renderRollableContent(this.plugin, feature.description, body, feature.name, true);
 
-        // --- Footer & Spellcasting Button ---
-        // Check for spellcasting roll
         if (feature.description.toLowerCase().includes('make a spellcast roll')) {
             const footer = card.createDiv({ cls: 'dh-feature-card-footer dh-feature-card-footer-left' });
             const subclass = this.plugin.compendium.getSubclass(character.subclassId);
@@ -1450,7 +1596,6 @@ export class CharacterSheetView extends ItemView {
 
             if (spellcastingTraitName) {
                 const traitValue = character.traits[spellcastingTraitName]?.value ?? 0;
-                // Create a styled box instead of a plain button
                 const rollBox = footer.createDiv({ cls: 'dh-spellcast-box dh-spellcast-box-inline' });
                 const modSpan = rollBox.createSpan({ cls: 'dh-spellcast-modifier' });
                 modSpan.setText(`${traitValue >= 0 ? '+' : ''}${traitValue}`);
@@ -1458,21 +1603,14 @@ export class CharacterSheetView extends ItemView {
                 rollBox.title = `Click to make a Spellcast roll with ${spellcastingTraitName}`;
 
                 rollBox.addEventListener('click', (event) => {
-                    // Base dice formula
-                    let baseDiceString = `1d12+1d12`;  // Keep the base duality dice separate
-
-                    // Format trait modifier properly using our helper function
+                    let baseDiceString = `1d12+1d12`;
                     const modifierString = formatTraitModifier(traitValue);
-
-                    // Handle advantage/disadvantage using our helper function
                     let rollTitle = `${feature.name} Spellcast`;
                     const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
                         event,
                         baseDiceString,
                         rollTitle
                     );
-
-                    console.log(`Rolling spellcast: ${feature.name}, Base: ${baseDiceString}, Final: ${diceString}${modifierString}`);
                     this.plugin.rollDice(
                         `${diceString}${modifierString}`,
                         newRollTitle,
@@ -1493,14 +1631,7 @@ export class CharacterSheetView extends ItemView {
         return metadata;
     }
 
-    /**
-     * Renders a full section for previewing features, complete with a title bar and a grid of cards.
-     * @param parent - The parent HTMLElement to append the section to.
-     * @param title - The title to display in the section header.
-     * @param features - An array of features to display as cards.
-     */
     private drawCreatorFeaturePreview(parent: HTMLElement, title: string, features: CompendiumFeature[]) {
-        // Don't render anything if there are no features to show.
         if (!features || features.length === 0) return;
 
         const section = parent.createDiv({ cls: 'dh-card-section' });
@@ -1515,21 +1646,13 @@ export class CharacterSheetView extends ItemView {
         });
     }
 
-    /**
-     * Creates a single feature card, styled like the cards in the main character sheet manager.
-     * @param parent - The parent grid HTMLElement to append the card to.
-     * @param feature - The feature to display.
-     */
     private createCreatorPreviewCard(parent: HTMLElement, feature: CompendiumFeature) {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
 
-        // --- Card Header ---
         const header = card.createDiv({ cls: 'dh-feature-card-header' });
         header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
 
-        // --- Card Body ---
         const body = card.createDiv({ cls: 'dh-feature-card-body' });
-        // Use renderRollableContent for consistency. It safely handles markdown and dice roll syntax.
         renderRollableContent(this.plugin, feature.description, body, feature.name, true);
     }
 }

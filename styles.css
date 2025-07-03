@@ -1606,16 +1606,164 @@
 /* -----------------------------------------------------------------------------
    13.5 CHARACTER CREATOR WIZARD
    ----------------------------------------------------------------------------- */
-.dh-creator-nav {
+/* Add this to make the creator view take full height */
+.dh-cs-main:has(.dh-creator-wizard) {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Adjust topbar padding when inside the creator view */
+.dh-cs-main:has(.dh-creator-wizard) > .dh-cs-topbar {
+  padding-left: var(--size-4-3);
+  padding-right: var(--size-4-3);
+}
+
+/* Main wizard container */
+.dh-creator-wizard {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Use flex-grow to fill available space */
+    min-height: 0; /* Prevents flexbox overflow bugs */
+    position: relative;
+    overflow: hidden;
+    background-color: var(--background-primary);
+}
+
+/* Header with Title and Buttons */
+.dh-creator-header {
     display: flex;
     justify-content: space-between;
-    margin-top: var(--size-4-4);
+    align-items: center;
+    padding: var(--size-4-3) var(--size-4-4);
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.dh-creator-header h2 {
+    margin: 0;
+    font-size: var(--font-ui-large);
+}
+
+.dh-creator-nav-buttons {
+    display: flex;
+    gap: var(--size-4-2);
+}
+
+/* Flex container for sidebar and content */
+.dh-creator-layout {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+/* Left Sidebar Navigation */
+.dh-creator-steps-nav {
+    width: 220px;
+    flex-shrink: 0;
+    background-color: var(--background-secondary);
+    border-right: 1px solid var(--background-modifier-border);
+    padding: var(--size-4-3);
+    overflow-y: auto;
+}
+
+.dh-creator-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+    position: relative;
+}
+
+/* Vertical connecting line between step indicators */
+.dh-creator-steps-list::before {
+    content: "";
+    position: absolute;
+    top: 12px; /* Center on the 24px indicator */
+    bottom: 12px;
+    left: 11px; /* Center the line horizontally */
+    width: 2px;
+    background-color: var(--background-modifier-border);
+    z-index: 1;
+}
+
+.dh-creator-step-item {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2);
+    border-radius: var(--radius-m);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    z-index: 2; /* Ensure items are above the connecting line */
+    position: relative;
+}
+
+.dh-creator-step-indicator {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--background-secondary); /* Match nav background to hide the line behind it */
+    border-radius: 50%;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.dh-creator-step-label {
+    font-size: var(--font-ui-medium);
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+}
+
+/* --- Step States --- */
+.dh-creator-step-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-creator-step-item.is-active {
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-creator-step-item.is-active .dh-creator-step-indicator {
+    color: var(--interactive-accent);
+}
+
+.dh-creator-step-item.is-active .dh-creator-step-label {
+    color: var(--text-normal);
+    font-weight: 600;
+}
+
+.dh-creator-step-item.is-completed .dh-creator-step-indicator {
+    color: var(--interactive-success);
+}
+
+.dh-creator-step-item.is-completed .dh-creator-step-label {
+    color: var(--text-normal);
+}
+
+/* --- Right Content Area --- */
+.dh-creator-content-wrapper {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dh-creator-step-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: var(--size-4-4);
 }
 
 .dh-creator-btn {
     min-width: 120px;
 }
 
+/* --- Other creator styles (cards, inputs, etc.) --- */
 .dh-creator-card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -1665,80 +1813,70 @@
     color: var(--text-muted);
     flex-shrink: 0;
 }
+
+/* Suggestion Box Styles */
 .dh-creator-wizard .dh-suggestion-box {
-    background-color: var(--background-secondary); /* Slightly less prominent background */
+    background-color: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
     border-left: 3px solid var(--interactive-accent);
     border-radius: var(--radius-m);
-    padding: var(--size-4-2) var(--size-4-3); /* Reduced padding */
+    padding: var(--size-4-2) var(--size-4-3);
     margin: var(--size-4-3) 0;
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: var(--size-4-4); /* A bit more space between elements */
-    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    gap: var(--size-4-4);
+    flex-wrap: wrap;
 }
-
-/* Header (Icon + Title) */
 .dh-creator-wizard .dh-suggestion-header {
     display: flex;
     align-items: center;
     gap: var(--size-4-2);
-    margin-bottom: 0; /* Removed bottom margin */
+    margin-bottom: 0;
 }
-
 .dh-creator-wizard .dh-suggestion-header h5 {
     margin: 0;
-    font-size: var(--font-ui-medium); /* Smaller title */
+    font-size: var(--font-ui-medium);
     font-weight: 600;
     color: var(--text-normal);
-    white-space: nowrap; /* Prevent title from wrapping */
+    white-space: nowrap;
 }
-
 .dh-creator-wizard .dh-suggestion-icon {
     color: var(--interactive-accent);
 }
-
-/* List of suggested items */
 .dh-creator-wizard .dh-suggestion-list {
     display: flex;
-    flex-direction: row; /* Horizontal layout */
-    flex-wrap: wrap; /* Allow tags to wrap */
-    gap: var(--size-4-2); /* Space between tags */
-    padding-left: 0; /* Remove padding */
-    flex-grow: 1; /* Allow the list to take available space */
-    justify-content: flex-start; /* Align items to the start */
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+    padding-left: 0;
+    flex-grow: 1;
+    justify-content: flex-start;
 }
-
-/* Individual suggestion item (now a tag-like element) */
 .dh-creator-wizard .dh-suggestion-item {
     display: flex;
     gap: var(--size-4-1);
     align-items: center;
-    font-size: var(--font-ui-smaller); /* Smaller font */
+    font-size: var(--font-ui-smaller);
     background-color: var(--background-secondary-alt);
     padding: var(--size-2-1) var(--size-2-2);
     border-radius: var(--radius-s);
 }
-
 .dh-creator-wizard .dh-suggestion-key {
     font-weight: 500;
     color: var(--text-muted);
 }
-
 .dh-creator-wizard .dh-suggestion-value {
     font-weight: 700;
     color: var(--text-normal);
 }
-
-/* Footer (Apply Button) */
 .dh-creator-wizard .dh-suggestion-footer {
-    margin-top: 0; /* Remove top margin */
+    margin-top: 0;
     display: flex;
     justify-content: flex-end;
 }
 
-/* Styling for the spellcasting trait hint remains the same */
+/* Spellcasting Trait Hint */
 .dh-creator-wizard .dh-spellcasting-trait p {
     font-style: italic;
     color: var(--text-accent);
@@ -1748,6 +1886,90 @@
     border: 1px solid var(--background-modifier-border);
     margin-bottom: var(--size-4-3);
 }
+
+/* --- Styles for Step 9: Final Details --- */
+.dh-step9-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: var(--size-4-6);
+    align-items: flex-start;
+}
+
+.dh-creator-input-group {
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-4);
+    margin-bottom: var(--size-4-4);
+    border: 1px solid var(--background-modifier-border);
+}
+
+.dh-creator-input-group h4 {
+    margin-top: 0;
+    margin-bottom: var(--size-4-4);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-2);
+    font-size: var(--font-ui-large);
+    color: var(--text-muted);
+}
+
+/* Review Card Styles */
+.dh-creator-review-card {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--interactive-accent);
+    border-radius: var(--radius-l);
+    padding: var(--size-4-4);
+    position: sticky; /* Keeps it in view while the left side scrolls */
+    top: var(--size-4-4);
+}
+
+.dh-creator-review-card h4 {
+    margin-top: 0;
+    text-align: center;
+    font-size: var(--font-ui-large);
+    color: var(--interactive-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dh-review-section {
+    padding: var(--size-4-3) 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.dh-creator-review-card .dh-review-section:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.dh-creator-review-card .dh-review-section:first-of-type {
+    padding-top: 0;
+}
+
+
+.dh-review-section h5 {
+    margin-top: 0;
+    margin-bottom: var(--size-4-2);
+    font-size: var(--font-ui-medium);
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+.dh-review-item {
+    font-size: var(--font-ui-medium);
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.dh-review-item strong {
+    color: var(--text-normal);
+    font-weight: 500;
+}
+
+.dh-review-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--size-4-1) var(--size-4-4);
+}
+
 
 /* -----------------------------------------------------------------------------
    14. COUNTDOWN POPUP 
@@ -2083,7 +2305,6 @@
 
 /* -----------------------------------------------------------------------------
    15. STATBLOCK PREVIEW POPOVER STYLES
-   Styles for the statblock preview popover
    ----------------------------------------------------------------------------- */
 /* --- Statblock Preview Popover Styles --- */
 .dh-statblock-preview-popover {
@@ -3223,6 +3444,7 @@
     cursor: default;
     user-select: text;
 }
+
 /* --- [RESPONSIVE STYLES] --- */
 
 /* Tablet and smaller desktops */
@@ -3414,7 +3636,7 @@
 .dh-swap-card-controls button {
     background: var(--background-secondary-alt);
     border: none;
-        border-radius: var(--radius-s);
+    border-radius: var(--radius-s);
 padding: 4px 8px;
     cursor: pointer;
     transition:     background 0.15s;
