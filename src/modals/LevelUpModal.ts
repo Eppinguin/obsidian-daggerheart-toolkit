@@ -232,6 +232,35 @@ export class LevelUpModal extends Modal {
         this.redrawDomainCardPreview(domainContainer, selection.domainCardId);
     }
 
+    private getMarkedTraits(upToLevel: number): Set<string> {
+        const markedTraits = new Set<string>();
+        const currentTier = this.getTier(upToLevel);
+
+        // Determine the starting level of the current tier
+        const tierStartLevel = {
+            2: 2,
+            3: 5,
+            4: 8,
+        }[currentTier] || 2;
+
+        // Iterate from the start of the tier up to the level just before the current one
+        for (let l = tierStartLevel; l < upToLevel; l++) {
+            const history = this.tempCharacter.levelUpHistory[l];
+            if (history) {
+                history.advancements.forEach(adv => {
+                    if (adv?.id === 'increase_traits') {
+                        adv.choices.forEach(traitName => {
+                            if (traitName) {
+                                markedTraits.add(traitName);
+                            }
+                        });
+                    }
+                });
+            }
+        }
+        return markedTraits;
+    }
+
     private drawAdvancementDetails(parent: HTMLElement, advancement: LevelUpSelection['advancements'][0], level: number, choiceIndex: number) {
         parent.empty();
         if (!advancement) return;
@@ -241,19 +270,28 @@ export class LevelUpModal extends Modal {
         switch (advancement.id) {
             case 'increase_traits': {
                 parent.addClass('dh-advancement-details');
-                const availableTraits = TRAIT_NAMES;
                 const allSelectedTraitsInLevel = selection.advancements
                     .filter(a => a?.id === 'increase_traits' && a.choices)
                     .flatMap(a => a!.choices)
                     .filter(c => c);
 
+                const markedTraitsFromPreviousLevels = this.getMarkedTraits(level);
+
                 for (let i = 0; i < 2; i++) {
                     const currentChoice = advancement.choices[i];
-                    const filteredAvailableTraits = availableTraits.filter(t => !allSelectedTraitsInLevel.includes(t) || t === currentChoice);
+
+                    const filteredAvailableTraits = TRAIT_NAMES.filter(t =>
+                        (!allSelectedTraitsInLevel.includes(t) && !markedTraitsFromPreviousLevels.has(t)) || t === currentChoice
+                    );
 
                     new Setting(parent).setName(`Trait ${i + 1}`).addDropdown(dd => {
                         dd.addOption('', '---');
                         filteredAvailableTraits.forEach(t => dd.addOption(t, t));
+
+                        if (currentChoice && !filteredAvailableTraits.includes(currentChoice as any)) {
+                            dd.addOption(currentChoice, `${currentChoice} (Marked)`);
+                        }
+
                         dd.setValue(currentChoice ?? '');
                         dd.onChange(value => {
                             advancement.choices[i] = value || '';
@@ -481,12 +519,51 @@ export class LevelUpModal extends Modal {
         return owned;
     }
 
+    private getTier(level: number): number {
+        if (level >= 8) return 4;
+        if (level >= 5) return 3;
+        if (level >= 2) return 2;
+        return 1;
+    }
+
+    private countAdvancementsInTier(advancementId: string, tier: number, history: { [level: number]: LevelUpSelection }): number {
+        const [startLevel, endLevel] = {
+            2: [2, 4],
+            3: [5, 7],
+            4: [8, 10],
+        }[tier] || [0, 0];
+
+        let count = 0;
+        for (let l = startLevel; l <= endLevel; l++) {
+            const levelHistory = history[l];
+            if (levelHistory) {
+                count += levelHistory.advancements.filter(a => a?.id === advancementId).length;
+            }
+        }
+        return count;
+    }
+
     private getAdvancementOptions(level: number): { id: string, name: string }[] {
-        const tier = level >= 8 ? 4 : level >= 5 ? 3 : level >= 2 ? 2 : 1;
+        const tier = this.getTier(level);
         const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
         if (!subclass) return [];
 
-        const options = [
+        const history = this.tempCharacter.levelUpHistory as { [level: number]: LevelUpSelection };
+
+        // Define the limits for each advancement per tier.
+        const tierLimits: { [key: string]: number } = {
+            'increase_traits': 3,
+            'add_hp': 2,
+            'add_stress': 2,
+            'increase_experience': 1,
+            'take_domain_card': 1,
+            'increase_evasion': 1,
+            'upgrade_subclass': tier >= 3 ? 1 : 0, // Tier 2 has this handled separately
+            'increase_proficiency': tier >= 3 ? 1 : 0,
+            'multiclass': tier >= 3 ? 1 : 0,
+        };
+
+        const potentialOptions = [
             { id: 'increase_traits', name: 'Increase two character traits' },
             { id: 'add_hp', name: 'Add 1 Hit Point slot' },
             { id: 'add_stress', name: 'Add 1 Stress slot' },
@@ -495,33 +572,62 @@ export class LevelUpModal extends Modal {
             { id: 'increase_evasion', name: 'Increase Evasion by +1' },
         ];
 
-        const allHistoryAdvancements = Object.values(this.tempCharacter.levelUpHistory).flatMap(h => h.advancements.map(a => a?.id));
-        const multiclassTaken = allHistoryAdvancements.includes('multiclass');
-        const upgradeSubclassCount = allHistoryAdvancements.filter(id => id === 'upgrade_subclass').length;
-        const totalPossibleUpgrades = subclass.specializations.length + subclass.masteries.length;
-
-        if (tier >= 2 && !multiclassTaken && upgradeSubclassCount < totalPossibleUpgrades) {
-            options.push({ id: 'upgrade_subclass', name: this.getAdvancementNameById('upgrade_subclass', level) || 'Upgrade Subclass' });
+        // Tier 2 specific: Enhanced Subclass
+        if (tier === 2) {
+            tierLimits['upgrade_subclass'] = 1;
         }
 
+        // Tier 3+ options
         if (tier >= 3) {
-            options.push({ id: 'increase_proficiency', name: 'Increase Proficiency by +1 (Costs 2 choices)' });
+            potentialOptions.push(
+                { id: 'upgrade_subclass', name: 'Enhanced Subclass' },
+                { id: 'increase_proficiency', name: 'Increase Proficiency by +1 (Costs 2 choices)' },
+                { id: 'multiclass', name: 'Multiclass (Costs 2 choices)' }
+            );
         }
 
-        if (level >= 5 && !multiclassTaken) {
-            options.push({ id: 'multiclass', name: 'Multiclass (Costs 2 choices)' });
+        // Filter options based on tier limits
+        const options = potentialOptions.filter(opt => {
+            const countInTier = this.countAdvancementsInTier(opt.id, tier, history);
+            return countInTier < tierLimits[opt.id];
+        });
+
+        // Handle mutual exclusivity for Enhanced Subclass and Multiclass within the tier
+        const hasTakenSubclassUpgradeInTier = this.countAdvancementsInTier('upgrade_subclass', tier, history) > 0;
+        const hasTakenMulticlassInTier = this.countAdvancementsInTier('multiclass', tier, history) > 0;
+
+        if (hasTakenSubclassUpgradeInTier) {
+            return options.filter(opt => opt.id !== 'multiclass');
+        }
+        if (hasTakenMulticlassInTier) {
+            return options.filter(opt => opt.id !== 'upgrade_subclass');
+        }
+
+        // Final check for subclass upgrade availability (specializations/masteries)
+        const upgradeSubclassOption = options.find(opt => opt.id === 'upgrade_subclass');
+        if (upgradeSubclassOption) {
+            const allHistoryAdvancements = Object.values(history).flatMap(h => h.advancements.map(a => a?.id));
+            const upgradeSubclassCount = allHistoryAdvancements.filter(id => id === 'upgrade_subclass').length;
+            const totalPossibleUpgrades = subclass.specializations.length + subclass.masteries.length;
+            if (upgradeSubclassCount >= totalPossibleUpgrades) {
+                return options.filter(opt => opt.id !== 'upgrade_subclass');
+            }
+            upgradeSubclassOption.name = this.getAdvancementNameById('upgrade_subclass', level) || 'Upgrade Subclass';
         }
 
         return options;
     }
 
+
     private getDomainCardOptions(level: number, exclusions: string[] = []): JsonAbility[] {
         const primaryClass = this.plugin.compendium.getClass(this.character.classId);
         if (!primaryClass) return [];
 
+        const tier = this.getTier(level);
+
         const domainsToSearch: { domain: string, maxLevel: number }[] = [
-            { domain: primaryClass.domain_1.toLowerCase(), maxLevel: level },
-            { domain: primaryClass.domain_2.toLowerCase(), maxLevel: level }
+            { domain: primaryClass.domain_1.toLowerCase(), maxLevel: tier },
+            { domain: primaryClass.domain_2.toLowerCase(), maxLevel: tier }
         ];
 
         let multiclassDomain: string | null = null;
@@ -537,7 +643,7 @@ export class LevelUpModal extends Modal {
         if (multiclassDomain) {
             domainsToSearch.push({
                 domain: multiclassDomain.toLowerCase(),
-                maxLevel: Math.ceil(level / 2)
+                maxLevel: Math.ceil(level / 2) // This rule seems separate from the tier rule, keeping as is.
             });
         }
 
@@ -564,7 +670,7 @@ export class LevelUpModal extends Modal {
             return (
                 !isNaN(abilityLevel) &&
                 abilityLevel > 0 &&
-                abilityLevel <= domainInfo.maxLevel &&
+                abilityLevel <= domainInfo.maxLevel && // Check against tier-limited maxLevel
                 !initialCards.has(ability.name) &&
                 !chosenCardNames.has(ability.name)
             );
