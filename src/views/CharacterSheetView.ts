@@ -11,6 +11,7 @@ import {
     CharacterManagerModal,
     ConfirmationModal,
     ConditionModal,
+    DowntimeModal,
     GoldModal,
     ImportExportModal,
     ItemEditModal,
@@ -172,21 +173,14 @@ export class CharacterSheetView extends ItemView {
 
         const activeChar = this.plugin.getActiveCharacter();
         if (activeChar) {
+            // DOWNTIME AND EDIT BUTTONS ARE REMOVED FROM HERE
+
             const exportBtn = right.createEl('button', { cls: 'dh-export-btn clickable-icon' });
             setIcon(exportBtn, 'upload');
             exportBtn.setAttribute('aria-label', 'Export Character');
             exportBtn.title = 'Export Character';
             exportBtn.addEventListener('click', () => {
                 new ImportExportModal(this.app, this.plugin, 'export', ContentType.CHARACTER, activeChar.id).open();
-            });
-
-            const editBtn = right.createEl('button', { cls: 'clickable-icon' });
-            setIcon(editBtn, 'settings-2');
-            editBtn.ariaLabel = "Edit Character";
-            editBtn.addEventListener('click', () => {
-                new CharacterManagerModal(this.app, this.plugin, activeChar, (updatedChar) => {
-                    this.plugin.updateCharacter(updatedChar);
-                }).open();
             });
 
             const deleteBtn = right.createEl('button', { cls: 'clickable-icon' });
@@ -969,7 +963,7 @@ export class CharacterSheetView extends ItemView {
             hitPoints: { _type: 'dynamicResource', max: finalHp, current: 0 },
             stress: { _type: 'dynamicResource', max: 6, current: 0 },
             hope: { _type: 'dynamicResource', max: 6, current: 2 },
-            armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: startingArmor.baseScore },
+            armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: 0 },
             avatarUrl: partialChar.avatarUrl || null, avatarTransform: partialChar.avatarTransform,
             damageThresholds: { _type: 'damageThresholds', major: startingArmor.baseThresholds.major + 1, severe: startingArmor.baseThresholds.severe + 1 },
             gold: { _type: 'gold', handfuls: 1, bags: 0, chests: 0 },
@@ -1008,6 +1002,7 @@ export class CharacterSheetView extends ItemView {
         const resolvedUrl = resolveImageUrl(this.app, data.avatarUrl);
 
         if (resolvedUrl) {
+            // ... avatar logic is unchanged
             if (data.avatarTransform) {
                 const img = new Image();
                 img.src = resolvedUrl;
@@ -1049,10 +1044,23 @@ export class CharacterSheetView extends ItemView {
             setIcon(avatar, 'user-round');
         }
 
-
         const nameplate = left.createDiv({ cls: 'dh-nameplate' });
-        nameplate.createEl('h1', { text: data.name || "Unnamed Character" });
 
+        // Create a wrapper for the name and edit button
+        const nameWrapper = nameplate.createDiv({ cls: 'dh-name-wrapper' });
+        nameWrapper.createEl('h1', { text: data.name || "Unnamed Character" });
+
+        // Add Edit Button inside the wrapper, next to the h1
+        const editBtn = nameWrapper.createEl('button', { cls: 'dh-edit-character-btn clickable-icon' });
+        setIcon(editBtn, 'settings-2');
+        editBtn.ariaLabel = "Edit Character";
+        editBtn.addEventListener('click', () => {
+            new CharacterManagerModal(this.app, this.plugin, data, (updatedChar) => {
+                this.plugin.updateCharacter(updatedChar);
+            }).open();
+        });
+
+        // Sub-line for class/ancestry info
         let classDisplay = `${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})`;
         if (data.multiclassClassId) {
             const mcClass = this.plugin.compendium.getClass(data.multiclassClassId);
@@ -1062,6 +1070,17 @@ export class CharacterSheetView extends ItemView {
         nameplate.createEl('p', { text: `${ancestry?.name || data.ancestryId} ${classDisplay}` });
 
         const right = header.createDiv({ cls: 'dh-header-right' });
+
+        const downtimeBtn = right.createEl('button', { cls: 'dh-downtime-btn' });
+        setIcon(downtimeBtn, 'bed-double');
+        downtimeBtn.createSpan({ text: 'Downtime' });
+        downtimeBtn.ariaLabel = "Take a Rest";
+        downtimeBtn.addEventListener('click', () => {
+            new DowntimeModal(this.app, this.plugin, data, (updatedChar) => {
+                this.plugin.updateCharacter(updatedChar);
+            }).open();
+        });
+
         if (charClass) {
             const classDomains = [charClass.domain_1, charClass.domain_2];
             if (data.multiclassDomainId) {

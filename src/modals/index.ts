@@ -1,6 +1,7 @@
 // This file serves as a barrel to export all modals from one place.
 export { AddItemModal } from './AddItemModal';
 export { AdversaryReferenceModal } from './AdversaryReferenceModal';
+export { DowntimeModal } from './DowntimeModal';
 export { EncounterLinkModal } from './EncounterLinkModal';
 export { CustomConditionModal } from './CustomConditionModal';
 export { CardSwapModal } from './CardSwapModal';

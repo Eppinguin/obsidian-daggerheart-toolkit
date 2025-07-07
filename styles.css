@@ -76,7 +76,7 @@
 
 .dh-theme-modal .dh-theme-name {
     font-size: var(--font-ui-smaller);
-    font-weight: 500;
+    font-weight: var(--font-medium);
     color: var(--text-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -1491,7 +1491,7 @@
 
 .dh-active-filter-tag .dh-filter-tag-type {
     color: var(--text-muted);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
 }
 
 .dh-active-filter-tag .dh-remove-filter-btn {
@@ -1555,7 +1555,7 @@
     padding: var(--size-2-1) var(--size-4-2);
     border-radius: var(--radius-s);
     font-size: var(--font-ui-smaller);
-    font-weight: 500;
+    font-weight: var(--font-medium);
     white-space: normal;
     word-break: break-word;
 }
@@ -1714,7 +1714,7 @@
 
 .dh-creator-step-label {
     font-size: var(--font-ui-medium);
-    font-weight: 500;
+    font-weight: var(--font-medium);
     color: var(--text-muted);
     transition: color 0.2s ease;
 }
@@ -1734,7 +1734,7 @@
 
 .dh-creator-step-item.is-active .dh-creator-step-label {
     color: var(--text-normal);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
 }
 
 .dh-creator-step-item.is-completed .dh-creator-step-indicator {
@@ -1837,7 +1837,7 @@
 .dh-creator-wizard .dh-suggestion-header h5 {
     margin: 0;
     font-size: var(--font-ui-medium);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--text-normal);
     white-space: nowrap;
 }
@@ -1863,11 +1863,11 @@
     border-radius: var(--radius-s);
 }
 .dh-creator-wizard .dh-suggestion-key {
-    font-weight: 500;
+    font-weight: var(--font-medium);
     color: var(--text-muted);
 }
 .dh-creator-wizard .dh-suggestion-value {
-    font-weight: 700;
+    font-weight: var(--font-bold);
     color: var(--text-normal);
 }
 .dh-creator-wizard .dh-suggestion-footer {
@@ -1949,7 +1949,7 @@
     margin-top: 0;
     margin-bottom: var(--size-4-2);
     font-size: var(--font-ui-medium);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--text-normal);
 }
 
@@ -1961,7 +1961,7 @@
 
 .dh-review-item strong {
     color: var(--text-normal);
-    font-weight: 500;
+    font-weight: var(--font-medium);
 }
 
 .dh-review-grid {
@@ -2492,11 +2492,28 @@
     padding: var(--size-4-3);
     border-bottom: 2px solid var(--dh-sheet-accent);
 }
+.dh-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
 
 .dh-header-left {
     display: flex;
     align-items: center;
     gap: var(--size-4-3);
+}
+
+
+.dh-edit-character-btn {
+    color: var(--dh-sheet-text-muted);
+    opacity: 0.6;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-edit-character-btn:hover {
+    color: var(--dh-sheet-accent);
+    opacity: 1;
 }
 
 .dh-avatar {
@@ -2518,7 +2535,7 @@
 
 .dh-nameplate h1 {
     font-size: 2.2em; /* smaller */
-    font-weight: 700;
+    font-weight: var(--font-bold);
     margin: 0;
     color: var(--dh-sheet-accent);
     text-transform: uppercase;
@@ -2528,15 +2545,61 @@
     margin: 0;
     font-size: var(--font-ui-medium); /* smaller */
     color: var(--dh-sheet-text-muted);
-    font-weight: 500;
+    font-weight: var(--font-medium);
+}
+
+.dh-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+}
+.dh-character-sheet-view .dh-downtime-btn {
+    background-color: var(--dh-sheet-bg-alt);
+    /* color: var(--dh-sheet-text-muted); */
+    border: 1px solid var(--dh-sheet-border);
+    box-shadow: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2) var(--size-4-4);
+    font-weight: var(--font-semibold);
+    font-size: var(--font-ui-small);
+    height: 36px;
+    box-sizing: border-box;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-character-sheet-view .dh-downtime-btn:hover {
+    color: var(--dh-sheet-accent);
+    border-color: var(--dh-sheet-accent);
+    background-color: var(--dh-sheet-bg);
+}
+
+.dh-character-sheet-view .dh-downtime-btn .svg-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--dh-sheet-text-muted);
+    transition: color 0.2s ease-in-out;
+}
+
+.dh-character-sheet-view .dh-downtime-btn:hover .svg-icon {
+    color: var(--dh-sheet-accent);
 }
 
 .dh-domain-placeholder {
     border: 1px solid var(--dh-sheet-border);
     padding: var(--size-4-2) var(--size-4-4);
     background-color: var(--dh-sheet-bg-alt);
-    font-weight: bold;
+    font-weight: var(--font-bold);
     color: var(--dh-sheet-accent);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-medium);
+    height: 36px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
 }
 
 
@@ -2575,7 +2638,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    font-weight: var(--font-bold);
 }
 
 .dh-stat-hex .dh-stat-value {
@@ -2630,7 +2693,7 @@
     margin: 0;
     font-size: var(--font-ui-medium);
     text-transform: uppercase;
-    font-weight: 600;
+    font-weight: var(--font-semibold);
 }
 
 
@@ -2655,7 +2718,7 @@
 .dh-threshold-value {
     display: inline-block;
     font-size: 1.3em;
-    font-weight: bold;
+    font-weight: var(--font-bold);
     color: var(--dh-sheet-text);
     background-color: var(--dh-sheet-bg);
     border-radius: var(--radius-s);
@@ -2691,7 +2754,7 @@
 
 .dh-trait-value-large {
     font-size: 2.2em;
-    font-weight: 700;
+    font-weight: var(--font-bold);
     color: var(--dh-sheet-text);
     border: 2px solid var(--dh-sheet-border);
     border-radius: var(--radius-s);
@@ -2701,7 +2764,7 @@
 }
 .dh-trait-name-large {
     font-size: var(--font-ui-medium);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     text-transform: uppercase;
     margin-bottom: var(--size-4-2);
 }
@@ -2733,7 +2796,7 @@
     font-size: var(--font-ui-small);
     text-transform: uppercase;
     color: var(--dh-sheet-text-muted);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
 }
 .dh-weapon-card-body {
     display: flex;
@@ -2743,7 +2806,7 @@
 }
 .dh-weapon-name {
     font-size: var(--font-ui-medium);
-    font-weight: bold;
+    font-weight: var(--font-bold);
 }
 .dh-weapon-type {
     font-size: var(--font-ui-small);
@@ -2793,7 +2856,7 @@
 .dh-weapon-roll-box div:first-child,
 .dh-weapon-damage-box div:first-child {
     font-size: 1.3em;
-    font-weight: bold;
+    font-weight: var(--font-bold);
     line-height: 1.2;
 }
 
@@ -2844,7 +2907,7 @@
 }
 .dh-level-value {
     font-size: 2.2em;
-    font-weight: bold;
+    font-weight: var(--font-bold);
 }
 
 .dh-experiences {
@@ -2874,7 +2937,7 @@
     background-color: var(--dh-sheet-bg-alt);
     padding: var(--size-2-1) var(--size-4-2);
     border-radius: var(--radius-l);
-    font-weight: bold;
+    font-weight: var(--font-bold);
 }
 
 /* Overriding interactive track for new theme */
@@ -2883,7 +2946,7 @@
 }
 .dh-character-sheet-view .dh-track-label {
     width: auto;
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     font-size: var(--font-ui-medium);
 }
 .dh-character-sheet-view .dh-pips-container {
@@ -2930,7 +2993,7 @@
     padding: var(--size-4-2) var(--size-4-3); 
     cursor: pointer; 
     color: var(--dh-sheet-text-muted); 
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     font-size: var(--font-ui-large);
     text-transform: uppercase;
     border-bottom: 3px solid transparent; 
@@ -2971,7 +3034,7 @@
 .dh-inventory-topbar button {
     background-color: var(--dh-sheet-accent);
     color: var(--dh-sheet-bg);
-    font-weight: bold;
+    font-weight: var(--font-bold);
     border: none;
     padding: var(--size-4-2) var(--size-4-4);
     border-radius: var(--radius-s);
@@ -2992,13 +3055,13 @@
     border-bottom: none;
 }
 .dh-inventory-item.is-header {
-    font-weight: bold;
+    font-weight: var(--font-bold);
     color: var(--dh-sheet-text-muted);
     text-transform: uppercase;
     font-size: var(--font-ui-small);
 }
 .dh-inventory-item-name {
-    font-weight: 500;
+    font-weight: var(--font-medium);
     display: flex;
     align-items: center;
     gap: var(--size-4-2);
@@ -3061,7 +3124,7 @@
 .dh-section-header-bar h3 {
     margin: 0;
     font-size: var(--font-ui-large);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     text-transform: uppercase;
     color: var(--dh-sheet-text-muted);
 }
@@ -3100,7 +3163,7 @@
 
 .dh-feature-card-title {
     font-size: var(--font-ui-large);
-    font-weight: 700;
+    font-weight: var(--font-bold);
     color: var(--dh-sheet-accent);
     text-transform: uppercase;
     flex-grow: 1;
@@ -3114,7 +3177,7 @@
 
 .dh-feature-card-type {
     font-size: var(--font-ui-smaller);
-    font-weight: 500;
+    font-weight: var(--font-medium);
     color: var(--dh-sheet-text-muted);
     background-color: var(--dh-sheet-bg-alt); /* Use alternate bg for tags */
     padding: var(--size-2-1) var(--size-2-2);
@@ -3134,7 +3197,7 @@
 }
 .dh-feature-card-body .dh-feature-cost-text {
     color: var(--dh-sheet-accent);
-    font-weight: bold;
+    font-weight: var(--font-bold);
 }
 
 .dh-feature-card-footer {
@@ -3169,7 +3232,7 @@
 }
 
 .dh-spellcast-modifier {
-    font-weight: 700;
+    font-weight: var(--font-bold);
     margin-right: var(--size-2-1);
     transition: all 0.2s ease;
 }
@@ -3181,7 +3244,7 @@
 
 .dh-spellcast-box div:first-child {
     font-size: 1.4em;
-    font-weight: bold;
+    font-weight: var(--font-bold);
     line-height: 1.2;
 }
 
@@ -3195,7 +3258,7 @@
 }
 
 .dh-feature-card-box .value {
-    font-weight: bold;
+    font-weight: var(--font-bold);
     font-size: 1.2em;
     color: var(--dh-sheet-text);
 }
@@ -3213,7 +3276,7 @@
 .dh-details-section h3 {
     margin: 0 0 var(--size-4-3) 0;
     font-size: var(--font-ui-large);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--dh-sheet-text-muted);
 }
 .dh-detail-card {
@@ -3224,7 +3287,7 @@
 }
 .dh-detail-card h4 {
     margin: 0 0 var(--size-4-2) 0;
-    font-weight: bold;
+    font-weight: var(--font-bold);
     color: var(--dh-sheet-accent);
 }
 .dh-detail-card p {
@@ -3258,7 +3321,7 @@
     display: inline;
     margin: 0;
     font-size: var(--font-ui-large);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--text-normal);
 }
 
@@ -3318,7 +3381,7 @@
 .dh-feature-list-item.is-selected {
     background-color: var(--dh-sheet-purple);
     color: white;
-    font-weight: bold;
+    font-weight: var(--font-bold);
 }
 .dh-modal-footer, .dh-modal-footer-bar {
     display: flex;
@@ -3616,7 +3679,7 @@
 }
 .dh-swap-card-info strong {
     font-size: var(--font-ui-large);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--text-normal);
 }
 .dh-swap-card-meta {
@@ -3772,7 +3835,7 @@ color: var(--text-normal);
     margin-top: var(--size-4-4);
     margin-bottom: var(--size-4-2);
     font-size: var(--font-ui-medium);
-    font-weight: 600;
+    font-weight: var(--font-semibold);
     color: var(--text-muted);
 }
 
@@ -3810,7 +3873,7 @@ color: var(--text-normal);
 
 .dh-domain-card-preview h4 {
     margin-top: 0;
-    font-weight: bold;
+    font-weight: var(--font-bold);
 }
 
 .dh-domain-card-preview p {
@@ -3980,7 +4043,7 @@ color: var(--text-normal);
 }
 
 .dh-import-modal .dh-examples-title {
-    font-weight: bold;
+    font-weight: var(--font-bold);
     margin-bottom: 8px;
     margin-top: 0;
 }
@@ -3992,4 +4055,53 @@ color: var(--text-normal);
 
 .dh-import-modal .dh-url-examples li {
     margin-bottom: 4px;
+}
+
+/* --- Downtime Modal --- */
+.dh-downtime-modal .modal-content {
+    max-width: 550px;
+}
+
+.dh-downtime-modal .setting-item {
+    padding: var(--size-4-2) 0;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-downtime-modal .setting-item:first-of-type {
+    border-top: none;
+}
+
+.dh-downtime-modal .setting-item-description {
+    font-size: var(--font-ui-smaller);
+    opacity: 0.8;
+}
+
+.dh-downtime-modal h3 {
+    margin-top: var(--size-4-4);
+    margin-bottom: var(--size-4-1);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-2);
+    color: var(--text-muted);
+}
+
+.dh-downtime-moves p {
+    color: var(--text-faint);
+    font-style: italic;
+    text-align: center;
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-downtime-modal .setting-item-control .button {
+    margin-left: var(--size-4-2);
+}
+
+.dh-move-selected-count {
+    font-weight: var(--font-bold);
+    color: var(--interactive-accent);
+    margin-right: var(--size-4-2);
+}
+
+.dh-downtime-modal.is-loading .modal-content {
+    opacity: 0.5;
+    pointer-events: none;
 }
