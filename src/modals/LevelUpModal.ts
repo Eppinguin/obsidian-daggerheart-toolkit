@@ -2,9 +2,15 @@
 import { App, Modal, Setting, Notice, TextComponent, ExtraButtonComponent } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
-import { Character, LevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass } from '../../types';
+import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass, JsonFeat } from '../../types';
 import { renderMarkdown } from '../rendering/ui-helpers';
 import { TRAIT_NAMES } from '../constants';
+
+// Add newExperienceId to the type definition for persistent tracking.
+// In a real application, this would be in types.ts
+interface LevelUpSelection extends BaseLevelUpSelection {
+    newExperienceId?: string;
+}
 
 export class LevelUpModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
@@ -12,27 +18,23 @@ export class LevelUpModal extends Modal {
     onSave: (character: Character) => void;
 
     private tempCharacter: Character;
-    private originalCharacter: Character;
+    private originalCharacterState: Character; // A snapshot of the character when the modal was opened.
     private levelUpContainer: HTMLElement;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, onSave: (character: Character) => void) {
         super(app);
         this.plugin = plugin;
         this.character = character;
-        this.originalCharacter = character;
+        // Deep copy for isolated editing and for the "rewind" state.
+        this.originalCharacterState = JSON.parse(JSON.stringify(character));
         this.tempCharacter = JSON.parse(JSON.stringify(character));
         this.onSave = onSave;
         this.modalEl.addClass('dh-level-up-modal');
-
-        // Store the original level up history for comparison
-        this.originalLevelUpHistory = JSON.parse(JSON.stringify(character.levelUpHistory || {}));
 
         if (!this.tempCharacter.levelUpHistory) {
             this.tempCharacter.levelUpHistory = {};
         }
     }
-
-    private readonly originalLevelUpHistory: { [level: number]: LevelUpSelection };
 
     onOpen() {
         const { contentEl } = this;
@@ -48,8 +50,7 @@ export class LevelUpModal extends Modal {
 
         const footer = contentEl.createDiv({ cls: 'dh-modal-footer' });
         footer.createEl('button', { text: 'Save & Apply Changes', cls: 'mod-cta' }).addEventListener('click', () => {
-            this.recalculateAndApplyChanges();
-            this.onSave(this.tempCharacter);
+            this.executeSmartRebuild();
             this.close();
         });
     }
@@ -66,8 +67,10 @@ export class LevelUpModal extends Modal {
             .setTooltip('Decrease Level')
             .onClick(() => {
                 if (this.tempCharacter.level > 1) {
+                    // When decreasing level, remove the history for the level being removed.
+                    delete this.tempCharacter.levelUpHistory[this.tempCharacter.level];
                     this.tempCharacter.level--;
-                    this.onOpen();
+                    this.onOpen(); // Redraw everything
                 }
             });
 
@@ -82,7 +85,7 @@ export class LevelUpModal extends Modal {
             .onClick(() => {
                 if (this.tempCharacter.level < 10) {
                     this.tempCharacter.level++;
-                    this.onOpen();
+                    this.onOpen(); // Redraw everything
                 }
             });
     }
@@ -98,19 +101,25 @@ export class LevelUpModal extends Modal {
         const entryContainer = parent.createDiv({ cls: 'dh-level-entry' });
         entryContainer.createEl('h2', { text: `Level ${level}` });
 
+        // Initialize level up history for the current level if it doesn't exist.
         if (!this.tempCharacter.levelUpHistory[level]) {
             this.tempCharacter.levelUpHistory[level] = {
                 advancements: [null, null],
                 domainCardId: null,
-                newExperienceName: (level === 2 || level === 5 || level === 8) ? `Level ${level} Experience` : undefined
             };
         }
-        // Ensure newExperienceName exists for relevant levels if history is old
-        if ((level === 2 || level === 5 || level === 8) && !this.tempCharacter.levelUpHistory[level].newExperienceName) {
-            this.tempCharacter.levelUpHistory[level].newExperienceName = `Level ${level} Experience`;
+        // Ensure newExperienceName and a persistent ID exist for relevant levels.
+        if (level === 2 || level === 5 || level === 8) {
+            const history = this.tempCharacter.levelUpHistory[level] as LevelUpSelection;
+            if (history.newExperienceName === undefined) {
+                history.newExperienceName = ``;
+            }
+            if (!history.newExperienceId) {
+                history.newExperienceId = uuidv4();
+            }
         }
 
-        const selection = this.tempCharacter.levelUpHistory[level];
+        const selection = this.tempCharacter.levelUpHistory[level] as LevelUpSelection;
 
         // --- Automatic Advancements (Tier Achievements) ---
         if (level === 2 || level === 5 || level === 8) {
@@ -119,7 +128,6 @@ export class LevelUpModal extends Modal {
             const list = autoContainer.createEl('ul');
             list.createEl('li', { text: 'Increase Proficiency by +1' });
 
-            // New Experience Input
             const expLi = list.createEl('li');
             new Setting(expLi)
                 .setName('Gain a new Experience at +2')
@@ -166,10 +174,9 @@ export class LevelUpModal extends Modal {
                         dd.addOption(opt.id, opt.name);
                     });
 
-                    // Defensive patch: if the current value isn't in the options list, add it.
-                    // This ensures the dropdown always displays the saved value correctly.
+                    // If the saved choice is no longer valid, still show it but disabled.
                     if (currentAdvancement?.id && !advancementOptions.some(opt => opt.id === currentAdvancement.id)) {
-                        const optionName = this.getAdvancementNameById(currentAdvancement.id);
+                        const optionName = this.getAdvancementNameById(currentAdvancement.id, level);
                         if (optionName) {
                             dd.addOption(currentAdvancement.id, optionName);
                         }
@@ -178,15 +185,12 @@ export class LevelUpModal extends Modal {
                     dd.setValue(currentAdvancement?.id || '');
 
                     dd.onChange(value => {
-                        // Only reset choices if the advancement type actually changes.
-                        if (currentAdvancement?.id !== value) {
+                        const previousValue = selection.advancements[i]?.id;
+                        if (previousValue !== value) {
                             selection.advancements[i] = value ? { id: value, choices: [] } : null;
-                        } else if (!value) {
-                            selection.advancements[i] = null;
+                            this.validateAndResetSubsequentLevels(level);
                         }
 
-
-                        // If the new choice is costly, nullify the other choice.
                         if (isCostly(value)) {
                             selection.advancements[otherChoiceIndex] = null;
                         }
@@ -232,7 +236,7 @@ export class LevelUpModal extends Modal {
         parent.empty();
         if (!advancement) return;
 
-        const selection = this.tempCharacter.levelUpHistory[level];
+        const selection = this.tempCharacter.levelUpHistory[level] as LevelUpSelection;
 
         switch (advancement.id) {
             case 'increase_traits': {
@@ -266,9 +270,20 @@ export class LevelUpModal extends Modal {
                     .flatMap(a => a!.choices)
                     .filter(c => c);
 
+                // Build a temporary list of experiences available for upgrade at this point in the modal
+                const experiencesAtThisLevel = [...this.originalCharacterState.experiences];
+                for (let l = 2; l <= level; l++) {
+                    const history = this.tempCharacter.levelUpHistory[l] as LevelUpSelection;
+                    if (history?.newExperienceId && history.newExperienceName) {
+                        if (!experiencesAtThisLevel.some(e => e.id === history.newExperienceId)) {
+                            experiencesAtThisLevel.push({ _type: 'experience', id: history.newExperienceId, name: history.newExperienceName, value: 2 });
+                        }
+                    }
+                }
+
                 for (let i = 0; i < 2; i++) {
                     const currentChoice = advancement.choices[i];
-                    const availableExperiences = this.tempCharacter.experiences.filter(e => !allSelectedExpsInLevel.includes(e.id) || e.id === currentChoice);
+                    const availableExperiences = experiencesAtThisLevel.filter(e => !allSelectedExpsInLevel.includes(e.id) || e.id === currentChoice);
 
                     new Setting(parent).setName(`Experience ${i + 1}`).addDropdown(dd => {
                         dd.addOption('', '---');
@@ -306,23 +321,60 @@ export class LevelUpModal extends Modal {
                 this.redrawDomainCardPreview(parent, currentChoice);
                 break;
             }
+            case 'upgrade_subclass': {
+                parent.addClass('dh-advancement-details');
+                const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
+                if (!subclass) break;
+
+                const ownedFeatures = this.getOwnedSubclassFeatures(level);
+                const ownedSpecializations = subclass.specializations.filter(s => ownedFeatures.has(s.name));
+                const ownedMasteries = subclass.masteries.filter(m => ownedFeatures.has(m.name));
+
+                let availableUpgrades: JsonFeat[] = [];
+                let upgradeType = '';
+
+                if (ownedSpecializations.length < subclass.specializations.length) {
+                    upgradeType = 'Specialization';
+                    availableUpgrades = subclass.specializations.filter(s => !ownedFeatures.has(s.name));
+                } else if (ownedMasteries.length < subclass.masteries.length) {
+                    upgradeType = 'Mastery';
+                    availableUpgrades = subclass.masteries.filter(m => !ownedFeatures.has(m.name));
+                }
+
+                if (availableUpgrades.length > 0) {
+                    const currentChoice = advancement.choices[0];
+                    new Setting(parent).setName(`Choose ${upgradeType} Card`).addDropdown(dd => {
+                        dd.addOption('', '---');
+                        availableUpgrades.forEach(feat => dd.addOption(feat.name, feat.name));
+                        dd.setValue(currentChoice ?? '');
+                        dd.onChange(value => {
+                            advancement.choices[0] = value || '';
+                            this.validateAndResetSubsequentLevels(level);
+                            this.drawLevelUpInterface();
+                        });
+                    });
+                    this.redrawDomainCardPreview(parent, currentChoice);
+                } else {
+                    parent.createEl('p', { text: 'No further subclass upgrades available at this time.' });
+                }
+                break;
+            }
             case 'multiclass': {
                 parent.addClass('dh-advancement-details');
-                // Ensure choices is an array of at least 3 elements to avoid errors
                 if (!Array.isArray(advancement.choices) || advancement.choices.length < 3) {
                     advancement.choices = ['', '', ''];
                 }
                 const [selectedClassId, selectedSubclassId, selectedDomainId] = advancement.choices;
 
-                // Class Dropdown
                 new Setting(parent).setName('New Class').addDropdown(dd => {
                     dd.addOption('', '--- Select Class ---');
                     this.plugin.compendium.classes
-                        .filter(c => c.name !== this.originalCharacter.classId) // Exclude primary class
+                        .filter(c => c.name !== this.originalCharacterState.classId)
                         .forEach(c => dd.addOption(c.name, c.name));
                     dd.setValue(selectedClassId ?? '');
                     dd.onChange(value => {
-                        advancement.choices = [value, '', '']; // Reset subclass and domain on class change
+                        advancement.choices = [value, '', ''];
+                        this.validateAndResetSubsequentLevels(level);
                         this.drawLevelUpInterface();
                     });
                 });
@@ -330,7 +382,6 @@ export class LevelUpModal extends Modal {
                 const selectedClass = this.plugin.compendium.getClass(selectedClassId);
 
                 if (selectedClass) {
-                    // Subclass Dropdown
                     const availableSubclasses = [
                         this.plugin.compendium.getSubclass(selectedClass.subclass_1),
                         this.plugin.compendium.getSubclass(selectedClass.subclass_2)
@@ -342,11 +393,11 @@ export class LevelUpModal extends Modal {
                         dd.setValue(selectedSubclassId ?? '');
                         dd.onChange(value => {
                             advancement.choices[1] = value;
+                            this.validateAndResetSubsequentLevels(level);
                             this.drawLevelUpInterface();
                         });
                     });
 
-                    // Domain Dropdown
                     const availableDomains = [selectedClass.domain_1, selectedClass.domain_2];
                     new Setting(parent).setName('New Domain').addDropdown(dd => {
                         dd.addOption('', '--- Select Domain ---');
@@ -354,6 +405,7 @@ export class LevelUpModal extends Modal {
                         dd.setValue(selectedDomainId ?? '');
                         dd.onChange(value => {
                             advancement.choices[2] = value;
+                            this.validateAndResetSubsequentLevels(level);
                             this.drawLevelUpInterface();
                         });
                     });
@@ -363,23 +415,26 @@ export class LevelUpModal extends Modal {
         }
     }
 
-
-    private redrawDomainCardPreview(parent: HTMLElement, cardId: string | null) {
+    private redrawDomainCardPreview(parent: HTMLElement, cardName: string | null) {
         let previewEl = parent.querySelector('.dh-domain-card-preview');
         if (previewEl) {
             previewEl.remove();
         }
-        if (!cardId) return;
+        if (!cardName) return;
 
-        const card = this.plugin.compendium.abilities.find(a => a.name === cardId);
+        const card = this.plugin.compendium.abilities.find(a => a.name === cardName)
+            || this.plugin.compendium.subclasses
+                .flatMap(s => [...s.specializations, ...s.masteries])
+                .find(f => f.name === cardName);
+
         if (card) {
             previewEl = parent.createDiv({ cls: 'dh-domain-card-preview' });
             previewEl.createEl('h4', { text: card.name });
-            renderMarkdown(this.plugin, card.text, previewEl.createDiv());
+            renderMarkdown(this.plugin, (card as JsonAbility).text || (card as JsonFeat).text, previewEl.createDiv());
         }
     }
 
-    private getAdvancementNameById(id: string): string | null {
+    private getAdvancementNameById(id: string, level: number): string | null {
         switch (id) {
             case 'increase_traits': return 'Increase two character traits';
             case 'add_hp': return 'Add 1 Hit Point slot';
@@ -392,12 +447,38 @@ export class LevelUpModal extends Modal {
             case 'upgrade_subclass': {
                 const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
                 if (!subclass) return 'Upgrade Subclass';
-                const hasSpecialization = this.tempCharacter.features.some(f => subclass.specializations.some(s => s.name === f.name))
-                    || Object.values(this.tempCharacter.levelUpHistory).some(h => h.advancements.some(a => a?.id === 'upgrade_subclass'));
-                return `Take ${hasSpecialization ? 'Mastery' : 'Specialization'} card`;
+
+                const ownedFeatures = this.getOwnedSubclassFeatures(level);
+                const ownedSpecializations = subclass.specializations.filter(s => ownedFeatures.has(s.name));
+
+                if (ownedSpecializations.length < subclass.specializations.length) {
+                    return 'Take Specialization card';
+                }
+                return 'Take Mastery card';
             }
             default: return null;
         }
+    }
+
+    private getOwnedSubclassFeatures(currentLevel: number): Set<string> {
+        const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
+        if (!subclass) return new Set();
+
+        const owned = new Set<string>();
+
+        // Add foundation features
+        subclass.foundations.forEach(f => owned.add(f.name));
+
+        // Add features from level up history up to the level *before* the one we're checking
+        for (let l = 2; l < currentLevel; l++) {
+            const history = this.tempCharacter.levelUpHistory[l] as LevelUpSelection;
+            history?.advancements.forEach(adv => {
+                if (adv?.id === 'upgrade_subclass' && adv.choices[0]) {
+                    owned.add(adv.choices[0]);
+                }
+            });
+        }
+        return owned;
     }
 
     private getAdvancementOptions(level: number): { id: string, name: string }[] {
@@ -414,34 +495,21 @@ export class LevelUpModal extends Modal {
             { id: 'increase_evasion', name: 'Increase Evasion by +1' },
         ];
 
-        // --- Check history for unique, one-time choices ---
-        const upgradeSubclassSelection = Object.entries(this.tempCharacter.levelUpHistory).find(([, h]) => h && h.advancements.some(a => a?.id === 'upgrade_subclass'));
-        const multiclassSelection = Object.entries(this.tempCharacter.levelUpHistory).find(([, h]) => h && h.advancements.some(a => a?.id === 'multiclass'));
+        const allHistoryAdvancements = Object.values(this.tempCharacter.levelUpHistory).flatMap(h => h.advancements.map(a => a?.id));
+        const multiclassTaken = allHistoryAdvancements.includes('multiclass');
+        const upgradeSubclassCount = allHistoryAdvancements.filter(id => id === 'upgrade_subclass').length;
+        const totalPossibleUpgrades = subclass.specializations.length + subclass.masteries.length;
 
-        // --- SUBCLASS UPGRADE ---
-        // Determine state by combining base character features with choices made in the modal
-        const hasSpecialization = this.tempCharacter.features.some(f => subclass.specializations.some(s => s.name === f.name)) || !!upgradeSubclassSelection;
-        const hasMastery = this.tempCharacter.features.some(f => subclass.masteries.some(m => m.name === f.name));
-
-        if (tier >= 2 && !hasMastery) {
-            const upgradeLevel = upgradeSubclassSelection ? parseInt(upgradeSubclassSelection[0]) : null;
-            // Show the option if it hasn't been taken yet, OR if it has been taken at the current level
-            if (upgradeLevel === null || upgradeLevel === level) {
-                options.push({ id: 'upgrade_subclass', name: `Take ${hasSpecialization ? 'Mastery' : 'Specialization'} card` });
-            }
+        if (tier >= 2 && !multiclassTaken && upgradeSubclassCount < totalPossibleUpgrades) {
+            options.push({ id: 'upgrade_subclass', name: this.getAdvancementNameById('upgrade_subclass', level) || 'Upgrade Subclass' });
         }
 
         if (tier >= 3) {
             options.push({ id: 'increase_proficiency', name: 'Increase Proficiency by +1 (Costs 2 choices)' });
         }
 
-        // --- MULTICLASS ---
-        if (level >= 5) {
-            const multiclassLevel = multiclassSelection ? parseInt(multiclassSelection[0]) : null;
-            // Show the option if it hasn't been taken yet, OR if it has been taken at the current level
-            if (multiclassLevel === null || multiclassLevel === level) {
-                options.push({ id: 'multiclass', name: 'Multiclass (Costs 2 choices)' });
-            }
+        if (level >= 5 && !multiclassTaken) {
+            options.push({ id: 'multiclass', name: 'Multiclass (Costs 2 choices)' });
         }
 
         return options;
@@ -456,16 +524,13 @@ export class LevelUpModal extends Modal {
             { domain: primaryClass.domain_2.toLowerCase(), maxLevel: level }
         ];
 
-        // FIX: Handle potential undefined value from character type
-        let multiclassDomain: string | null = this.tempCharacter.multiclassDomainId || null;
-        if (!multiclassDomain) {
-            for (let l = 2; l <= level; l++) {
-                const history = this.tempCharacter.levelUpHistory[l];
-                const multiclassAdv = history?.advancements.find(a => a?.id === 'multiclass');
-                if (multiclassAdv && multiclassAdv.choices[2]) {
-                    multiclassDomain = multiclassAdv.choices[2];
-                    break;
-                }
+        let multiclassDomain: string | null = null;
+        for (let l = 2; l <= this.tempCharacter.level; l++) {
+            const history = this.tempCharacter.levelUpHistory[l] as LevelUpSelection;
+            const multiclassAdv = history?.advancements.find(a => a?.id === 'multiclass');
+            if (multiclassAdv && multiclassAdv.choices[2]) {
+                multiclassDomain = multiclassAdv.choices[2];
+                break;
             }
         }
 
@@ -476,272 +541,308 @@ export class LevelUpModal extends Modal {
             });
         }
 
-        const chosenCardIds = new Set<string>(exclusions.filter(e => e));
+        const chosenCardNames = new Set<string>(exclusions.filter(e => e));
         for (let l = 2; l <= this.tempCharacter.level; l++) {
-            const history = this.tempCharacter.levelUpHistory[l];
+            const history = this.tempCharacter.levelUpHistory[l] as LevelUpSelection;
             if (history?.domainCardId) {
-                chosenCardIds.add(history.domainCardId);
+                chosenCardNames.add(history.domainCardId);
             }
             history?.advancements.forEach(adv => {
                 if (adv?.id === 'take_domain_card' && adv.choices[0]) {
-                    chosenCardIds.add(adv.choices[0]);
+                    chosenCardNames.add(adv.choices[0]);
                 }
             });
         }
-        const initialCards = new Set(this.originalCharacter.features.map(f => f.id));
+        const initialCards = new Set(this.originalCharacterState.features.map(f => f.name));
 
         return this.plugin.compendium.abilities.filter(ability => {
             const abilityDomain = ability.domain?.toLowerCase() || '';
             const domainInfo = domainsToSearch.find(d => d.domain === abilityDomain);
-
-            if (!domainInfo) return false; // Not one of the character's domains
+            if (!domainInfo) return false;
 
             const abilityLevel = parseInt(ability.level);
             return (
                 !isNaN(abilityLevel) &&
-                abilityLevel > 0 && // Exclude level 0 cards
-                abilityLevel <= domainInfo.maxLevel && // Check against the correct max level
+                abilityLevel > 0 &&
+                abilityLevel <= domainInfo.maxLevel &&
                 !initialCards.has(ability.name) &&
-                !chosenCardIds.has(ability.name)
+                !chosenCardNames.has(ability.name)
             );
         }).sort((a, b) => parseInt(a.level) - parseInt(b.level) || a.name.localeCompare(b.name));
     }
 
-    private recalculateAndApplyChanges() {
-        const charClass = this.plugin.compendium.getClass(this.tempCharacter.classId);
-        const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
-
-        if (!charClass || !subclass) {
-            new Notice("Critical character data missing. Cannot apply changes.");
-            return;
-        }
-
-        // --- Step 1: Create a pristine Level 1 character state ---
-        // Start with a fresh copy of the original L1 character data, which we assume is stored correctly.
-        // We will rebuild all stats and lists from this baseline.
-        const rebuiltChar: Character = {
-            ...JSON.parse(JSON.stringify(this.originalCharacter)), // Copy IDs, name, etc.
-            level: 1,
-            proficiency: 1,
-            hitPoints: { ...this.originalCharacter.hitPoints, max: parseInt(charClass.hp) },
-            stress: { ...this.originalCharacter.stress, max: 6 },
-            evasion: parseInt(charClass.evasion),
-            damageThresholds: { ...this.originalCharacter.damageThresholds }, // Will be recalculated in the loop
-            multiclassClassId: null,
-            multiclassSubclassId: null,
-            multiclassDomainId: null,
-            // Deep copy the original traits to avoid modifying them, we'll recalculate the values
-            traits: JSON.parse(JSON.stringify(this.originalCharacter.traits)),
-            // Filter features to only include true Level 1 cards (foundations, starting domains)
-            features: this.originalCharacter.features.filter(f => {
-                const isFoundation = subclass.foundations.some(found => found.name === f.name);
-                return f.level === 1 || isFoundation;
-            }),
-            // Initialize/preserve vault array
-            vault: this.originalCharacter.vault || [],
-            // Filter experiences to only include the starting ones (heuristic: they don't have a tier-based name)
-            experiences: this.originalCharacter.experiences.filter(exp => {
-                return ![`Level 2 Experience`, `Level 5 Experience`, `Level 8 Experience`].includes(exp.name) &&
-                    !Object.values(this.originalCharacter.levelUpHistory).some(h => h?.newExperienceName === exp.name);
-            }),
-        };
-
-        // Recalculate L1 Damage Thresholds based on equipped armor
-        const equippedArmor = rebuiltChar.inventory.find(i => i.instanceId === rebuiltChar.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
-        if (equippedArmor) {
-            rebuiltChar.damageThresholds.major = equippedArmor.baseThresholds.major + 1;
-            rebuiltChar.damageThresholds.severe = equippedArmor.baseThresholds.severe + 1;
-        } else {
-            rebuiltChar.damageThresholds.major = 1;
-            rebuiltChar.damageThresholds.severe = 2;
-        }
-
-        // --- Step 2: Apply the NEW level-up history to the pristine L1 character ---
-        for (let level = 2; level <= Math.max(this.tempCharacter.level, this.originalCharacter.level); level++) {
-            // Skip levels beyond current level (handle level decrease)
-            if (level > this.tempCharacter.level) {
-                // If this level was previously chosen, log that we're removing those choices
-                if (this.originalLevelUpHistory[level]) {
-                    new Notice(`Removing advancements from level ${level}`);
-                }
-                continue;
-            }
-
-            rebuiltChar.level = level;
-            rebuiltChar.damageThresholds.major++;
-            rebuiltChar.damageThresholds.severe++;
-
-            if (level === 2 || level === 5 || level === 8) {
-                rebuiltChar.proficiency++;
-                const newExpName = this.tempCharacter.levelUpHistory[level]?.newExperienceName || `Level ${level} Experience`;
-
-                // Only add the experience if it doesn't exist yet
-                if (!rebuiltChar.experiences.some(e => e.name === newExpName)) {
-                    rebuiltChar.experiences.push({ _type: 'experience', id: uuidv4(), name: newExpName, value: 2 });
-                }
-                Object.values(rebuiltChar.traits).forEach(t => t.locked = false);
-            }
-
-            const selection = this.tempCharacter.levelUpHistory[level];
+    private validateAndResetSubsequentLevels(changedLevel: number) {
+        let wasReset = false;
+        for (let level = changedLevel + 1; level <= this.tempCharacter.level; level++) {
+            const selection = this.tempCharacter.levelUpHistory[level] as LevelUpSelection;
             if (!selection) continue;
 
+            const availableAdvancements = this.getAdvancementOptions(level).map(opt => opt.id);
+            const availableCards = this.getDomainCardOptions(level).map(card => card.name);
+
+            let resetReason = '';
+
+            // Validate Advancements
+            for (let i = 0; i < selection.advancements.length; i++) {
+                const adv = selection.advancements[i];
+                if (adv && !availableAdvancements.includes(adv.id)) {
+                    resetReason += `Advancement choice "${this.getAdvancementNameById(adv.id, level)}" is no longer valid. `;
+                    selection.advancements[i] = null;
+                    wasReset = true;
+                }
+            }
+
+            // Validate Domain Card
+            if (selection.domainCardId && !availableCards.includes(selection.domainCardId)) {
+                resetReason += `Domain card "${selection.domainCardId}" is no longer valid. `;
+                selection.domainCardId = null;
+                wasReset = true;
+            }
+        }
+
+        if (wasReset) {
+            new Notice("A change at an earlier level invalidated some of your later choices, which have been reset.", 5000);
+            this.drawLevelUpInterface();
+        }
+    }
+
+    private executeSmartRebuild() {
+        // 1. Start with the current character state to preserve manual changes (e.g., inventory, card loadout)
+        const finalChar: Character = JSON.parse(JSON.stringify(this.originalCharacterState));
+        finalChar.levelUpHistory = this.tempCharacter.levelUpHistory;
+        finalChar.level = this.tempCharacter.level;
+
+        // 2. Rewind: Revert the character to a clean level 1 state, preserving only foundational attributes.
+        this.rewindCharacter(finalChar);
+
+        // 3. Fast-Forward: Apply all mechanical benefits from the new level up history.
+        this.fastForwardCharacter(finalChar, finalChar.levelUpHistory as { [level: number]: LevelUpSelection });
+
+        // 4. Finalize and Save
+        new Notice("Character stats recalculated and applied!");
+        this.onSave(finalChar);
+    }
+
+    private rewindCharacter(char: Character) {
+        const charClass = this.plugin.compendium.getClass(char.classId);
+        const subclass = this.plugin.compendium.getSubclass(char.subclassId);
+        if (!charClass || !subclass) return;
+
+        // --- Experience Rewind ---
+        // Start with a copy of the experiences from the pre-modal state
+        char.experiences = JSON.parse(JSON.stringify(this.originalCharacterState.experiences));
+        const originalHistory = this.originalCharacterState.levelUpHistory;
+        const newExpIds = new Set<string>();
+        for (const level in originalHistory) {
+            const history = originalHistory[level] as LevelUpSelection;
+            if (history.newExperienceId) {
+                newExpIds.add(history.newExperienceId);
+            }
+        }
+        // Remove experiences created during level-ups
+        char.experiences = char.experiences.filter(exp => !newExpIds.has(exp.id));
+        // Revert the +1 bonuses from "increase_experience" advancements
+        for (const level in originalHistory) {
+            const history = originalHistory[level] as LevelUpSelection;
+            history.advancements.forEach(adv => {
+                if (adv?.id === 'increase_experience') {
+                    adv.choices.forEach(expId => {
+                        const experience = char.experiences.find(e => e.id === expId);
+                        if (experience) {
+                            experience.value--;
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- Card Rewind ---
+        const cardsToRemove = new Set<string>();
+        for (const level in originalHistory) {
+            const history = originalHistory[level] as LevelUpSelection;
+            if (history.domainCardId) {
+                cardsToRemove.add(history.domainCardId);
+            }
+            history.advancements.forEach(adv => {
+                if (adv?.id === 'take_domain_card' && adv.choices[0]) {
+                    cardsToRemove.add(adv.choices[0]);
+                }
+                if (adv?.id === 'upgrade_subclass' && adv.choices[0]) {
+                    cardsToRemove.add(adv.choices[0]);
+                }
+                if (adv?.id === 'multiclass' && adv.choices[0]) {
+                    const newClass = this.plugin.compendium.getClass(adv.choices[0]);
+                    const newSubclass = this.plugin.compendium.getSubclass(adv.choices[1]);
+                    if (newClass) {
+                        cardsToRemove.add(newClass.hope_feat_name);
+                        newClass.class_feats.forEach(f => cardsToRemove.add(f.name));
+                    }
+                    if (newSubclass) {
+                        newSubclass.foundations.forEach(f => cardsToRemove.add(f.name));
+                    }
+                }
+            });
+        }
+        char.features = char.features.filter(card => !cardsToRemove.has(card.name));
+        char.vault = char.vault.filter(card => !cardsToRemove.has(card.name));
+
+        // Reset stats to level 1 values
+        char.proficiency = 1;
+        char.hitPoints.max = parseInt(charClass.hp);
+        char.stress.max = 6;
+        char.evasion = parseInt(charClass.evasion);
+
+        // Reset traits to their original values, before any level ups
+        char.traits = JSON.parse(JSON.stringify(this.originalCharacterState.traits));
+        for (const levelHistory of Object.values(this.originalCharacterState.levelUpHistory)) {
+            levelHistory?.advancements.forEach(adv => {
+                if (adv?.id === 'increase_traits') {
+                    adv.choices.forEach(traitName => {
+                        const traitKey = traitName as keyof typeof char.traits;
+                        if (char.traits[traitKey]) {
+                            char.traits[traitKey].value--;
+                            char.traits[traitKey].locked = false;
+                        }
+                    });
+                }
+            });
+        }
+
+        // Reset multiclass info
+        char.multiclassClassId = null;
+        char.multiclassSubclassId = null;
+        char.multiclassDomainId = null;
+    }
+
+    private fastForwardCharacter(char: Character, history: { [level: number]: LevelUpSelection }) {
+        const charClass = this.plugin.compendium.getClass(char.classId);
+        const subclass = this.plugin.compendium.getSubclass(char.subclassId);
+        if (!charClass || !subclass) return;
+
+        // Re-apply level-ups from 2 to the new target level
+        for (let level = 2; level <= char.level; level++) {
+            // Recalculate damage thresholds for each level
+            const equippedArmor = char.inventory.find(i => i.instanceId === char.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
+            if (equippedArmor) {
+                char.damageThresholds.major = equippedArmor.baseThresholds.major + level;
+                char.damageThresholds.severe = equippedArmor.baseThresholds.severe + level;
+            } else {
+                char.damageThresholds.major = level;
+                char.damageThresholds.severe = level * 2;
+            }
+
+            // Apply Tier Achievements
+            if (level === 2 || level === 5 || level === 8) {
+                char.proficiency++;
+                const selectionForExp = history[level];
+                if (selectionForExp?.newExperienceName && selectionForExp.newExperienceId) {
+                    // Update existing experience or add new one
+                    const existingExp = char.experiences.find(e => e.id === selectionForExp.newExperienceId);
+                    if (existingExp) {
+                        existingExp.name = selectionForExp.newExperienceName;
+                    } else {
+                        char.experiences.push({ _type: 'experience', id: selectionForExp.newExperienceId, name: selectionForExp.newExperienceName, value: 2 });
+                    }
+                }
+                if (level === 5 || level === 8) {
+                    Object.values(char.traits).forEach(t => t.locked = false);
+                }
+            }
+
+            const selection = history[level];
+            if (!selection) continue;
+
+            const addCardToLoadoutOrVault = (card: DomainCard) => {
+                if (!card) return;
+                const alreadyHasCard = char.features.some(f => f.name === card.name) || char.vault.some(f => f.name === card.name);
+                if (alreadyHasCard) return;
+
+                if (char.features.length < 5) {
+                    char.features.push(card);
+                } else {
+                    char.vault.push(card);
+                }
+            };
+
+            // Apply Advancements
             selection.advancements.forEach(adv => {
                 if (!adv) return;
                 switch (adv.id) {
-                    case 'add_hp': rebuiltChar.hitPoints.max++; break;
-                    case 'add_stress': rebuiltChar.stress.max++; break;
-                    case 'increase_evasion': rebuiltChar.evasion++; break;
-                    case 'increase_proficiency': rebuiltChar.proficiency++; break;
+                    case 'add_hp': char.hitPoints.max++; break;
+                    case 'add_stress': char.stress.max++; break;
+                    case 'increase_evasion': char.evasion++; break;
+                    case 'increase_proficiency': char.proficiency++; break;
                     case 'increase_traits':
                         adv.choices.forEach(traitName => {
-                            const traitKey = traitName as keyof typeof rebuiltChar.traits;
-                            if (traitName && rebuiltChar.traits[traitKey] && !rebuiltChar.traits[traitKey].locked) {
-                                rebuiltChar.traits[traitKey].value++;
-                                rebuiltChar.traits[traitKey].locked = true;
+                            const traitKey = traitName as keyof typeof char.traits;
+                            if (traitName && char.traits[traitKey] && !char.traits[traitKey].locked) {
+                                char.traits[traitKey].value++;
+                                char.traits[traitKey].locked = true;
                             }
                         });
                         break;
                     case 'increase_experience':
                         adv.choices.forEach(expId => {
-                            const experience = rebuiltChar.experiences.find(e => e.id === expId);
-                            if (experience) experience.value++;
+                            const experience = char.experiences.find(e => e.id === expId);
+                            if (experience) {
+                                experience.value++;
+                            }
                         });
                         break;
                     case 'upgrade_subclass': {
-                        // Check if this level had a different choice before
-                        const originalChoice = this.originalLevelUpHistory[level]?.advancements
-                            .find(a => a?.id === 'upgrade_subclass')?.choices[0];
-                        if (originalChoice) {
-                            // Remove the original card if it exists
-                            rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalChoice);
-                            rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalChoice);
-                        }
-
-                        const hasSpecialization = rebuiltChar.features.some(f => subclass.specializations.some(s => s.name === f.name));
-                        const cardToAdd = !hasSpecialization ? subclass.specializations[0] : subclass.masteries[0];
-                        if (cardToAdd) {
-                            const newCard: DomainCard = { _type: 'domainCard', id: cardToAdd.name, name: cardToAdd.name, description: cardToAdd.text, level: 0, domain: 'Subclass', type: 'Ability', recall: 0 };
-                            if (rebuiltChar.features.length < 5) {
-                                rebuiltChar.features.push(newCard);
-                            } else {
-                                rebuiltChar.vault.push(newCard);
-                                new Notice(`${cardToAdd.name} added to vault because loadout was full.`);
+                        if (adv.choices[0]) {
+                            const featureName = adv.choices[0];
+                            const feature = [...subclass.specializations, ...subclass.masteries].find(f => f.name === featureName);
+                            if (feature) {
+                                const newCard: DomainCard = { _type: 'domainCard', id: feature.name, name: feature.name, description: feature.text, level: 0, domain: 'Subclass', type: 'Ability', recall: 0, isCustom: subclass.isCustom };
+                                addCardToLoadoutOrVault(newCard);
                             }
                         }
                         break;
                     }
                     case 'take_domain_card': {
-                        // Check if this level had a different domain card choice before
-                        const originalChoice = this.originalLevelUpHistory[level]?.advancements
-                            .find(a => a?.id === 'take_domain_card')?.choices[0];
-                        if (originalChoice) {
-                            // Remove the original card if it exists
-                            rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalChoice);
-                            rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalChoice);
-                        }
-
                         if (adv.choices[0]) {
                             const card = this.plugin.compendium.getAbility(adv.choices[0]);
-                            if (card) {
-                                if (rebuiltChar.features.length < 5) {
-                                    rebuiltChar.features.push(card);
-                                } else {
-                                    rebuiltChar.vault.push(card);
-                                    new Notice(`${card.name} added to vault because loadout was full.`);
-                                }
-                            }
+                            if (card) addCardToLoadoutOrVault(card);
                         }
                         break;
                     }
                     case 'multiclass':
                         const [classId, subclassId, domainId] = adv.choices;
-                        // Handle previous multiclass choice removal
-                        const originalChoices = this.originalLevelUpHistory[level]?.advancements
-                            .find(a => a?.id === 'multiclass')?.choices;
-                        if (originalChoices && originalChoices.length >= 3) {
-                            const [originalClassId, originalSubclassId] = originalChoices;
-                            const originalClass = originalClassId ? this.plugin.compendium.getClass(originalClassId) : null;
-                            const originalSubclass = originalSubclassId ? this.plugin.compendium.getSubclass(originalSubclassId) : null;
-
-                            // Remove original class feature
-                            if (originalClass) {
-                                rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalClass.hope_feat_name);
-                                rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalClass.hope_feat_name);
-                            }
-                            // Remove original foundation
-                            if (originalSubclass && originalSubclass.foundations[0]) {
-                                rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalSubclass.foundations[0].name);
-                                rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalSubclass.foundations[0].name);
-                            }
-                        }
-
                         if (classId && subclassId && domainId) {
-                            rebuiltChar.multiclassClassId = classId;
-                            rebuiltChar.multiclassSubclassId = subclassId;
-                            rebuiltChar.multiclassDomainId = domainId;
+                            char.multiclassClassId = classId;
+                            char.multiclassSubclassId = subclassId;
+                            char.multiclassDomainId = domainId;
 
                             const newClass = this.plugin.compendium.getClass(classId);
                             const newSubclass = this.plugin.compendium.getSubclass(subclassId);
 
                             if (newClass) {
-                                const classFeature: DomainCard = { _type: 'domainCard', id: newClass.hope_feat_name, name: newClass.hope_feat_name, description: newClass.hope_feat_text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0 };
-                                if (rebuiltChar.features.length < 5) {
-                                    rebuiltChar.features.push(classFeature);
-                                } else {
-                                    rebuiltChar.vault.push(classFeature);
-                                    new Notice(`${classFeature.name} added to vault because loadout was full.`);
-                                }
+                                const classFeature: DomainCard = { _type: 'domainCard', id: newClass.hope_feat_name, name: newClass.hope_feat_name, description: newClass.hope_feat_text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0, isCustom: newClass.isCustom };
+                                addCardToLoadoutOrVault(classFeature);
+                                newClass.class_feats.forEach(feat => {
+                                    const cfCard: DomainCard = { _type: 'domainCard', id: feat.name, name: feat.name, description: feat.text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0, isCustom: newClass.isCustom };
+                                    addCardToLoadoutOrVault(cfCard);
+                                });
                             }
                             if (newSubclass) {
-                                const foundation = newSubclass.foundations[0];
-                                if (foundation) {
-                                    const foundationCard: DomainCard = { _type: 'domainCard', id: foundation.name, name: foundation.name, description: foundation.text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0 };
-                                    if (rebuiltChar.features.length < 5) {
-                                        rebuiltChar.features.push(foundationCard);
-                                    } else {
-                                        rebuiltChar.vault.push(foundationCard);
-                                        new Notice(`${foundationCard.name} added to vault because loadout was full.`);
-                                    }
-                                }
+                                newSubclass.foundations.forEach(foundation => {
+                                    const foundationCard: DomainCard = { _type: 'domainCard', id: foundation.name, name: foundation.name, description: foundation.text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0, isCustom: newSubclass.isCustom };
+                                    addCardToLoadoutOrVault(foundationCard);
+                                });
                             }
                         }
                         break;
                 }
             });
 
-            // Handle the main domain card selection
-            const originalDomainCard = this.originalLevelUpHistory[level]?.domainCardId;
-            if (originalDomainCard) {
-                // Remove the original card if it exists
-                rebuiltChar.features = rebuiltChar.features.filter(f => f.name !== originalDomainCard);
-                rebuiltChar.vault = rebuiltChar.vault.filter(f => f.name !== originalDomainCard);
-            }
-
+            // Apply Domain Card
             if (selection.domainCardId) {
                 const card = this.plugin.compendium.getAbility(selection.domainCardId);
-                if (card) {
-                    if (rebuiltChar.features.length < 5) {
-                        rebuiltChar.features.push(card);
-                    } else {
-                        rebuiltChar.vault.push(card);
-                        new Notice(`${card.name} added to vault because loadout was full.`);
-                    }
-                }
+                if (card) addCardToLoadoutOrVault(card);
             }
         }
-
-        // --- Step 3: Finalize and save the newly calculated character ---
-        rebuiltChar.hitPoints.current = Math.min(rebuiltChar.hitPoints.current, rebuiltChar.hitPoints.max);
-        rebuiltChar.stress.current = Math.min(rebuiltChar.stress.current, rebuiltChar.stress.max);
-
-        rebuiltChar.levelUpHistory = this.tempCharacter.levelUpHistory;
-        rebuiltChar.level = this.tempCharacter.level;
-
-        this.tempCharacter = rebuiltChar;
-
-        new Notice("Character stats recalculated and applied!");
     }
-
 
     onClose() {
         this.contentEl.empty();
