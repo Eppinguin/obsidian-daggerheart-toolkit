@@ -1,0 +1,3744 @@
+.dh-theme-selector-container {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+}
+
+.dh-theme-card.is-selected-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2);
+    width: 150px;
+    background-color: var(--background-secondary);
+}
+
+.dh-theme-card.is-selected-card .dh-theme-preview {
+    width: 100%;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: var(--size-4-1);
+}
+
+.dh-theme-card.is-selected-card .dh-theme-name {
+    font-size: var(--font-ui-small);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+.dh-theme-modal .modal-content {
+    width: 90vw;
+    max-width: 800px;
+}
+
+.dh-theme-modal .dh-theme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--size-4-3);
+    margin-top: var(--size-4-3);
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+/* Styles for each individual theme card inside the modal grid */
+.dh-theme-modal .dh-theme-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    border: 2px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: var(--background-secondary);
+    overflow: hidden; 
+    min-height: 110px;
+}
+
+.dh-theme-card:hover {
+        border-color: var(--interactive-accent-hover);
+        background-color: var(--background-modifier-hover);
+    }
+
+.dh-theme-card.is-selected {
+        border-color: var(--interactive-accent);
+        box-shadow: 0 0 0 2px var(--interactive-accent);
+    }
+
+/* The image preview of the dice theme */
+.dh-theme-modal .dh-theme-preview {
+    width: 100%;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: var(--size-4-1);
+    border-radius: var(--radius-s);
+    flex-shrink: 0; 
+}
+
+/* The name of the theme */
+.dh-theme-modal .dh-theme-name {
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-medium);
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%; 
+    margin-top: auto; 
+    padding-top: var(--size-4-1);
+}
+
+/* Placeholder for when the theme image is loading */
+.dh-theme-modal .dh-theme-loading-placeholder {
+    width: 100%;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    margin-bottom: var(--size-4-1);
+}
+
+/* Loading indicator at the bottom of the grid */
+.dh-theme-modal .theme-loading-indicator {
+    text-align: center;
+    padding: var(--size-4-3);
+    grid-column: 1 / -1; /* Make it span all columns */
+    color: var(--text-muted);
+}
+
+/* -----------------------------------------------------------------------------
+   1. VARIABLES
+   ----------------------------------------------------------------------------- */
+
+/* -----------------------------------------------------------------------------
+   2. EDITOR STATBLOCK STYLES 
+   ----------------------------------------------------------------------------- */
+.dh-editor-statblock {
+    background-color: #f3f0e9;
+    border: 1px solid #dcdad5;
+    border-radius: 8px;
+    padding: 1em;
+    color: #333;
+    max-width: 550px;
+    box-shadow: none;
+    line-height: var(--line-height-normal);
+    font-size: var(--font-text-size, 16px);
+}
+
+/* Name styling */
+.dh-editor-statblock .dh-name {
+    font-size: 1.5em;
+    font-weight: var(--font-black);
+    color: #111;
+    text-transform: uppercase;
+    margin: 0 0 0.1em 0;
+    padding: 0;
+    line-height: 1.1;
+}
+
+/* Tier and type information */
+.dh-editor-statblock .dh-tier-type {
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-semibold);
+    color: #333;
+    margin: 0.2em 0 0.2em 0;
+}
+
+/* Description styling */
+.dh-editor-statblock .dh-description {
+    font-style: italic;
+    margin-bottom: 0.2em;
+    color: #333;
+}
+
+/* Motives section */
+.dh-editor-statblock .dh-motives {
+    margin-bottom: 0.2em;
+}
+
+.dh-editor-statblock .dh-motives strong {
+    font-weight: var(--font-bold);
+}
+
+/* Stats grid layout */
+.dh-editor-statblock .dh-stats-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em 0.75em;
+    margin: 0.5em 0;
+    border-top: 2px solid #ccc;
+    border-bottom: 2px solid #ccc;
+    align-items: center;
+}
+
+.dh-editor-statblock .dh-stats-grid > span {
+   white-space: nowrap;
+}
+
+.dh-editor-statblock .dh-stats-grid strong {
+   font-weight: var(--font-bold);
+}
+
+.dh-editor-statblock .dh-stat-separator {
+    color: #aaa;
+}
+
+/* Features section */
+.dh-editor-statblock .dh-features-title {
+    font-size: var(--font-ui-larger);
+    font-weight: var(--font-black);
+    color: #111;
+    text-transform: uppercase;
+    padding: 0;
+    border: none;
+    text-align: left;
+    letter-spacing: normal;
+}
+
+.dh-editor-statblock .dh-features-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-indent: -1em;
+}
+
+.dh-editor-statblock .dh-features-list li {
+    background-color: transparent;
+    border: none;
+    margin-bottom: 0.4em;
+    line-height: 1.4;
+    font-size: var(--font-ui-medium);
+    margin-left: 0; 
+}
+
+.dh-editor-statblock .dh-features-list li p {
+    margin: 0;
+    padding-left: 1em;
+}
+
+.dh-editor-statblock .dh-features-list li ul,
+.dh-editor-statblock .dh-features-list li ol {
+    padding-left: 2.5em;
+    margin-top: 0.4em;
+    list-style-position: outside;
+    text-indent: 0;
+}
+
+.dh-editor-statblock .dh-features-list li ul li {
+    list-style-type: disc;
+    display: list-item;
+    margin-left: 0;
+    padding-left: 0.5em;
+}
+
+.dh-editor-statblock .dh-feature-name {
+   font-weight: var(--font-bold);
+   display: inline;
+}
+
+.dh-editor-statblock .dh-feature-description {
+   padding: 0;
+   margin: 0;
+   display: inline;
+   font-size: var(--font-ui-medium);
+   border: none;
+}
+
+.dh-editor-statblock .dh-features-list li > p > em,
+.dh-editor-statblock .dh-features-list li > p:only-child > em {
+   display: block;
+   margin-top: 0.3em;
+   padding-left: 1em;
+}
+
+/* -----------------------------------------------------------------------------
+   3. GENERAL UTILITY AND SHARED STYLES
+   ----------------------------------------------------------------------------- */
+.dh-statblock-error {
+    background-color: var(--background-modifier-error);
+    color: var(--text-error);
+    padding: var(--size-4-2, 10px);
+    border: 1px solid var(--color-red);
+    border-radius: var(--radius-s, 4px);
+    white-space: pre-wrap;
+}
+
+.dh-rollable-dice {
+    color: var(--interactive-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 3px;
+}
+
+.dh-rollable-dice:hover {
+    color: var(--interactive-accent-hover);
+    text-decoration-style: solid;
+}
+
+/* Accessibility helper */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+
+/* -----------------------------------------------------------------------------
+   4. ENCOUNTER BUILDER LAYOUT
+   ----------------------------------------------------------------------------- */
+.dh-encounter-builder-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.dh-top-row {
+    flex-shrink: 0;
+}
+
+.dh-encounter-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+}
+
+.dh-encounter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--size-4-2);
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
+    gap: var(--size-4-4);
+}
+
+.dh-title-fear-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-4);
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.dh-encounter-main-interface {
+    display: flex;
+    flex-grow: 1; 
+    gap: var(--size-4-3, 15px); 
+    overflow: hidden;
+    padding: var(--size-4-2) var(--size-4-2) var(--size-4-2) 0;
+}
+
+.dh-encounter-area {
+    display: flex; 
+    flex-wrap: nowrap; 
+    gap: var(--size-4-3, 15px); 
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: var(--size-4-3);
+    flex-grow: 1;
+    height: calc(100% - var(--size-4-3));
+}
+
+.dh-encounter-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+
+
+/* -----------------------------------------------------------------------------
+   5. BUTTONS AND CONTROLS
+   ----------------------------------------------------------------------------- */
+.dh-icon-button { 
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: var(--size-2-2); 
+    cursor: pointer;
+    border-radius: var(--radius-s);
+}
+
+.dh-icon-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.dh-encounter-controls .dh-icon-button.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.dh-encounter-controls .dh-icon-button.is-active:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+.dh-panel-controls .dh-icon-button { 
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: var(--size-2-1);
+    cursor: pointer;
+    border-radius: var(--radius-s);
+}
+
+.dh-panel-controls .dh-icon-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.dh-add-to-group-button-container {
+    text-align: center;
+    padding: var(--size-4-2, 8px) 0;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-add-to-group-btn {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
+    font-size: var(--font-ui-small);
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.dh-add-to-group-btn:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* -----------------------------------------------------------------------------
+   6. TRACKERS
+   ----------------------------------------------------------------------------- */
+/* Right side trackers container */
+.dh-right-side-trackers {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+    margin-left: auto; 
+}
+
+/* Fear tracker */
+.dh-fear-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-4-1);
+    flex-shrink: 0;
+}
+
+.dh-fear-label {
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+}
+
+.dh-fear-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+}
+
+.dh-fear-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: var(--font-ui-medium);
+}
+
+.dh-fear-btn:hover {
+    background-color: var(--interactive-hover);
+}
+
+.dh-fear-value {
+    min-width: 24px;
+    text-align: center;
+    font-weight: var(--font-bold);
+    font-size: var(--font-ui-medium);
+}
+
+/* Budget tracker */
+.dh-budget-tracker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-4-1);
+    flex-shrink: 0;
+    padding: var(--size-2-2) var(--size-4-2);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.dh-budget-tracker:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+}
+
+.dh-budget-label {
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+}
+
+.dh-budget-value {
+    min-width: 24px;
+    text-align: center;
+    font-weight: var(--font-bold);
+    font-size: var(--font-ui-medium);
+    color: var(--text-normal);
+}
+
+.dh-budget-value.dh-budget-over {
+    color: var(--text-error);
+}
+
+/* Interactive tracks (HP, Stress, etc.) */
+.dh-interactive-track { 
+    display: flex !important; 
+    align-items: center; 
+    margin-bottom: var(--size-4-2, 8px); 
+    min-height: 25px; 
+}
+
+.dh-track-label {
+    font-weight: var(--font-semibold); 
+    margin-right: var(--size-4-1, 5px);
+    width: 45px;
+    text-align: left; 
+    font-size: var(--font-ui-small);
+    color: var(--text-normal); 
+    flex-shrink: 0; 
+    white-space: nowrap; 
+}
+
+.dh-track-controls { 
+    display: flex !important; 
+    align-items: center; 
+    flex-grow: 1; 
+    overflow: hidden; 
+}
+
+.dh-track-btn {
+    background-color: var(--interactive-normal); 
+    color: var(--text-normal);
+    font-weight: var(--font-bold); 
+    cursor: pointer; 
+    border-radius: 50%; 
+    width: 22px; 
+    height: 22px; 
+    font-size: var(--font-ui-small, 14px); 
+    line-height: 20px; 
+    text-align: center; 
+    padding: 0; 
+    margin: 0 var(--size-4-1, 4px); 
+    flex-shrink: 0; 
+    display: inline-flex !important; 
+    align-items: center;
+    justify-content: center;
+}
+
+.dh-track-btn:hover { 
+    background-color: var(--interactive-hover); 
+}
+
+.dh-track-btn:active { 
+    background-color: var(--background-modifier-border-focus); 
+    transform: translateY(1px); 
+}
+
+.dh-track-btn.dh-track-btn-decrement { 
+    padding-bottom: 1px; 
+} 
+
+/* Pips for tracking HP/Stress */
+.dh-pips-container { 
+    display: flex !important; 
+    flex-wrap: wrap !important; 
+    align-items: center; 
+    margin: 0 var(--size-4-1, 4px); 
+    overflow-y: hidden; 
+    position: relative;
+    flex-grow: 1; 
+    gap: var(--size-2-1, 3px); 
+}
+
+.dh-pip {
+    width: 13px; 
+    height: 13px; 
+    border: 1px solid var(--background-modifier-border); 
+    background-color: var(--background-secondary-alt); 
+    cursor: pointer; 
+    box-sizing: border-box; 
+    border-radius: var(--radius-s, 3px); 
+    flex-shrink: 0; 
+}
+
+.dh-pip-marked { 
+    background-color: var(--interactive-accent); 
+    border-color: var(--interactive-accent-hover);
+}
+
+/* -----------------------------------------------------------------------------
+   7. ADVERSARY CARDS AND GROUPS
+   ----------------------------------------------------------------------------- */
+/* Adversary group */
+.dh-adversary-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    flex-shrink: 0;
+    width: 280px;
+    align-items: stretch;
+}
+
+.dh-adversary-group-container { 
+    display: flex;
+    flex-direction: column; 
+    flex-shrink: 0;
+    gap: var(--size-4-2);
+    align-items: stretch; 
+}
+
+.dh-adversary-instance-card {
+    background-color: var(--color-base-25); 
+    color: var(--text-normal); 
+    border: var(--background-primary-alt) solid 1px;
+    border-radius: var(--radius-m, 8px);
+    padding: 0; 
+    width: 300px; 
+    box-shadow: var(--shadow-m);
+    display: flex;
+    flex-direction: column;
+    position: relative; 
+    flex-grow: inherit;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+.dh-remove-instance-btn { 
+    position: absolute;
+    top: var(--size-4-1, 5px); 
+    right: var(--size-4-1, 5px); 
+    background-color: transparent; 
+    color: var(--text-faint); 
+    border: none; 
+    border-radius: var(--radius-s); 
+    width: 20px; 
+    height: 20px; 
+    line-height: 18px; 
+    text-align: center;
+    font-size: var(--font-ui-smaller, 12px); 
+    cursor: pointer;
+    z-index: 10;
+    opacity: 0.6; 
+    transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.dh-remove-instance-btn:hover { 
+    background-color: var(--background-modifier-hover); 
+    color: var(--text-normal);
+    opacity: 1;
+}
+
+/* Card content */
+.dh-instance-card-content { 
+    background-color: var(--background-primary); 
+    border: none; 
+    border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px); 
+    padding: var(--size-4-3, 12px);
+    margin: 0;
+    box-shadow: none;
+    color: var(--text-normal); 
+    flex-grow: 1; 
+    overflow-y: visible;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Card header */
+.dh-instance-card-content .dh-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--size-4-2);
+    padding-bottom: var(--size-4-1, 5px); 
+    margin-bottom: 0; 
+    text-align: left;
+}
+
+.dh-instance-card-content .dh-header .dh-name {
+    font-size: var(--font-ui-medium, 1.15em); 
+    font-weight: var(--font-bold);
+    color: var(--text-normal, #fff); 
+    display: inline;
+    flex-grow: 1;
+    padding-right: 70px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.dh-card-role-text { 
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted); 
+    text-transform: uppercase;
+    margin-bottom: var(--size-4-2, 10px); 
+    padding: var(--size-4-1, 2px) 0; 
+}
+
+/* Card description */
+.dh-instance-card-content .dh-description {
+    font-style: italic;
+    font-size: var(--font-smaller, 0.875em);
+    margin-top: var(--size-4-1);
+    color: var(--text-muted);
+}
+
+/* Card motives */
+.dh-instance-card-content .dh-motives {
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-light);
+    color: var(--text-normal);
+    margin-top: var(--size-4-1);
+    padding-top: var(--size-4-1);
+}
+
+.dh-instance-card-content .dh-motives strong {
+     font-weight: var(--font-bold); 
+}
+
+/* Card stats */
+.dh-instance-card-content .dh-core-stats-line {
+    font-size: var(--font-ui-medium, 13px); 
+    color: var(--text-normal);
+    display: flex;
+    flex-direction: column; 
+    gap: var(--size-4-1, 5px); 
+    padding: var(--size-4-2, 6px) 0;
+    margin-bottom: var(--size-4-2, 8px);
+}
+
+.dh-instance-card-content .dh-attack-details-span strong { 
+    color: var(--text-strong, var(--text-normal)); 
+    font-weight: var(--font-bold);
+} 
+
+/* Card experience */
+.dh-instance-card-content .dh-experience { 
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-light);
+    color: var(--text-normal);
+    margin-top: var(--size-4-1);
+    padding-top: var(--size-4-1);
+}
+
+.dh-instance-card-content .dh-experience strong { 
+    font-weight: var(--font-bold); 
+}
+
+/* Card HP and Stress container */
+.dh-instance-card-content .dh-hp-stress-container {
+    margin-top: var(--size-4-3, 12px);
+    padding-top: var(--size-4-2, 8px);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Card image */
+.dh-card-image-container {
+    width: 100%;
+    height: 120px; 
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: var(--radius-m, 8px) var(--radius-m, 8px) 0 0; 
+    background-color: var(--color-base-20); 
+    position: relative; 
+    padding-top: 0;
+}
+
+.dh-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+}
+
+/* Card header controls */
+.dh-card-header-controls {
+    position: absolute;
+    top: var(--size-4-2);
+    right: var(--size-4-2);
+    display: flex;
+    gap: var(--size-4-1);
+    z-index: 10;
+}
+
+.dh-card-header-controls .dh-icon-button,
+.dh-card-header-controls .dh-drag-handle {
+    background-color: rgba(var(--background-primary-rgb), 0.5);
+    backdrop-filter: blur(2px);
+    color: var(--text-muted);
+    border-radius: var(--radius-s);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: all 0.2s ease-in-out;
+    border: none;
+    padding: 0;
+}
+
+.dh-card-header-controls .dh-icon-button:hover,
+.dh-card-header-controls .dh-drag-handle:hover {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    opacity: 1;
+}
+
+.dh-drag-handle {
+    cursor: grab;
+}
+.dh-drag-handle:active {
+    cursor: grabbing;
+}
+
+
+.dh-card-image-container {
+    padding-top: 0;
+}
+
+/* --- Drag and Drop Styles --- */
+.dh-adversary-group-container.dh-dragging {
+    opacity: 0.5;
+    border: 2px dashed var(--interactive-accent);
+    background: var(--background-modifier-hover);
+}
+
+/* -----------------------------------------------------------------------------
+   8. FEATURES SECTION
+   ----------------------------------------------------------------------------- */
+.dh-instance-features-title { 
+    font-size: var(--font-ui-small, 13px); 
+    font-weight: var(--font-bold);
+    text-align: left;
+    margin-top: var(--size-4-3, 15px); 
+    margin-bottom: var(--size-2-1, 8px); 
+    color: var(--text-muted, #b8c0c8); 
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dh-instance-card-content .dh-features-list { 
+    list-style-type: none; 
+    padding-left: 0; 
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+}
+
+.dh-instance-card-content .dh-feature-item {
+    line-height: var(--line-height-normal);
+}
+
+.dh-instance-card-content .dh-feature-header-container { 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary-alt);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    border: 1px solid var(--background-modifier-border);
+    transition: all 0.2s ease;
+}
+
+.dh-instance-card-content .dh-feature-header-container:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.dh-instance-card-content .dh-feature-header-container.is-expanded {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-color: transparent;
+}
+
+.dh-instance-card-content .dh-feature-name {
+    flex-grow: 1;
+    font-weight: var(--font-bold);
+}
+
+.dh-feature-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    flex-shrink: 0;
+}
+
+.dh-feature-meta .dh-feature-tag {
+    font-size: var(--font-ui-smaller);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    line-height: 1;
+    font-weight: var(--font-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Feature tags by type */
+.dh-feature-tag-cost {
+    font-weight: var(--font-bold);
+}
+
+.dh-feature-tag-stress {
+    background-color: var(--color-purple-faint);
+    color: var(--color-purple-strong);
+}
+
+.dh-feature-tag-fear {
+    background-color: var(--color-cyan-faint);
+    color: var(--color-cyan-strong);
+}
+
+.dh-feature-tag-action {
+    background-color: var(--color-orange-faint);
+    color: var(--color-orange-strong);
+}
+
+.dh-feature-tag-reaction {
+    background-color: var(--color-blue-faint);
+    color: var(--color-blue-strong);
+}
+
+.dh-feature-tag-passive {
+    background-color: var(--color-green-faint);
+    color: var(--color-green-strong);
+}
+
+.dh-feature-cost-text {
+    color: var(--text-accent);
+}
+
+/* Only apply cursor and visual cues to clickable costs */
+.dh-clickable-cost {
+    cursor: pointer;
+    text-decoration: underline dotted;
+    transition: color 0.2s ease;
+}
+
+.dh-clickable-cost:hover {
+    color: var(--text-accent-hover);
+    text-decoration: underline;
+}
+
+/* Feature toggle (expand/collapse) */
+.dh-instance-card-content .dh-feature-toggle {
+    color: var(--text-muted); 
+    transition: transform 0.2s ease;
+}
+
+.dh-feature-header-container.is-expanded .dh-feature-toggle {
+    transform: rotate(0); /* Explicitly set for transition */
+}
+
+/* Feature description */
+.dh-instance-card-content .dh-feature-description {
+    font-size: var(--font-smaller);
+    padding: var(--size-4-3); 
+    color: var(--text-muted); 
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-top: none;
+    border-radius: 0 0 var(--radius-s) var(--radius-s);
+}
+
+.dh-feature-description-hidden {
+    display: none;
+}
+
+
+/* -----------------------------------------------------------------------------
+   9. ADDITIONAL TRACKERS
+   ----------------------------------------------------------------------------- */
+.dh-additional-trackers-container {
+    margin-top: var(--size-4-2, 8px); 
+}
+
+.dh-additional-tracker-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1, 6px); 
+    padding-top: var(--size-4-2);
+    margin-top: var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-additional-tracker-row:last-child {
+    margin-bottom: 0; 
+}
+
+.dh-hp-stress-container > .dh-additional-tracker-row {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.dh-additional-tracker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.dh-additional-tracker-name {
+    font-size: var(--font-ui-medium, 1em);
+    font-weight: var(--font-semibold);
+    color: var(--text-normal); 
+    flex-grow: 1;
+}
+
+.dh-additional-tracker-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    flex-shrink: 0;
+}
+
+.dh-remove-additional-btn {
+    background:none;
+    border: none;
+    color: var(--text-faint); 
+    font-size: var(--font-ui-larger);
+    cursor: pointer;
+    padding: 0 var(--size-4-1, 3px);
+    opacity: 0.6; 
+    transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.dh-remove-additional-btn:hover { 
+    color: var(--color-red); 
+    opacity: 1;
+}
+
+
+/* -----------------------------------------------------------------------------
+   10. CONDITIONS
+   ----------------------------------------------------------------------------- */
+.dh-conditions-container {
+    margin-bottom: var(--size-4-2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1);
+    align-items: center;
+}
+
+.dh-additional-tracker-row .dh-conditions-container {
+    padding: var(--size-4-2) 0 0 0;
+}
+
+.dh-condition-tag {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    padding: var(--size-2-1);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+    display: inline-flex;
+    align-items: center;
+    cursor: default;
+}
+
+.dh-condition-remove {
+    margin-left: var(--size-4-1);
+    cursor: pointer;
+    font-weight: var(--font-bold);
+    opacity: 0.7;
+}
+
+.dh-condition-remove:hover {
+    opacity: 1;
+}
+
+/* Condition list in menus */
+.dh-conditions-list-container {
+    padding: 0;
+    margin: var(--size-4-1) 0 var(--size-4-2) 0;
+}
+
+.dh-condition-tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1);
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+}
+
+.dh-condition-tags-list .dh-empty-text {
+    color: var(--text-faint);
+    font-style: italic;
+}
+
+.dh-condition-tag > span {
+    margin-right: var(--size-4-1);
+}
+
+.dh-remove-condition-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    font-size: var(--font-ui-small);
+}
+
+.dh-remove-condition-btn:hover {
+    color: var(--text-error);
+}
+
+/* --- Condition Modal --- */
+.dh-predefined-conditions-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: var(--size-4-4);
+}
+
+.dh-condition-card {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dh-condition-card:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-condition-card > p {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    margin-top: var(--size-4-1);
+}
+
+/* -----------------------------------------------------------------------------
+   11. COMPENDIUM PANEL
+   ----------------------------------------------------------------------------- */
+.dh-compendium-panel {
+    background-color: var(--background-primary, #333); 
+    border: 1px solid var(--background-modifier-border, #444);
+    border-radius: var(--radius-m, 6px);
+    padding: var(--size-4-2, 10px);
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 280px; 
+    min-width: 240px;
+    height: 100%;
+    color: var(--text-normal, #ccc);
+    transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out, border 0.3s ease-in-out, margin 0.3s ease-in-out; 
+    order: 2;
+}
+
+.dh-compendium-panel.dh-compendium-panel-hidden {
+    flex-basis: 0 !important; 
+    min-width: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important; 
+    border: none !important;
+    margin-left: 0 !important; 
+}
+
+.dh-compendium-panel.dh-compendium-panel-hidden > * {
+    display: none; 
+}
+
+.dh-panel-header { 
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--size-4-2, 10px);
+    padding-bottom: var(--size-4-1, 5px);
+    border-bottom: 1px solid var(--background-modifier-border, #555);
+}
+
+.dh-panel-header h3 {
+    margin: 0;
+    font-size: var(--font-ui-large, 1.2em);
+    color: var(--text-normal, #aaa);
+}
+
+/* Compendium list and entries */
+.dh-compendium-list { 
+    display: flex; 
+    flex-direction: column; 
+    gap: var(--size-4-1, 5px); 
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.dh-compendium-entry {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    padding: var(--size-4-2, 8px); 
+    background-color: var(--background-secondary, #3a3a44);
+    border-radius: var(--radius-s, 4px); 
+    border: 1px solid var(--background-modifier-border, #555);
+    color: var(--text-normal, #ccc);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.dh-compendium-entry:hover {
+    background-color: var(--background-modifier-hover, #4a4a54);
+}
+
+.dh-compendium-entry .dh-add-compendium-btn { 
+    padding: var(--size-4-1, 3px) var(--size-4-2, 8px);
+    font-size: var(--font-ui-small, 0.9em);
+    background-color: var(--interactive-accent); 
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: var(--radius-s, 3px);
+}
+
+.dh-compendium-entry .dh-add-compendium-btn:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+.dh-environment-entry .dh-entry-icon {
+    margin-right: var(--size-4-2);
+    color: var(--text-muted);
+}
+
+/* Active adversaries panel */
+.dh-active-adversaries-panel { 
+    display: flex;
+    flex-direction: column; 
+    flex-grow: 1; 
+    order: 1; 
+    overflow-y: auto;
+}
+
+.dh-active-encounter-title-clickable { 
+    margin: 0;
+    margin-top: 0; 
+    font-size: var(--font-ui-large, 1.2em);
+    color: var(--interactive-accent, #aaa); 
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    transition: color 0.1s ease-in-out;
+}
+
+.dh-active-encounter-title-clickable:hover {
+    color: var(--interactive-accent-hover);
+}
+
+/* Compendium search */
+.dh-compendium-search {
+    width: calc(100% - var(--size-4-2) * 2); 
+    padding: var(--size-4-2);
+    margin-bottom: var(--size-4-3);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+}
+
+.dh-compendium-search:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2); 
+}
+
+/* -----------------------------------------------------------------------------
+   12. FILTERS
+   ----------------------------------------------------------------------------- */
+.dh-filter-controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+}
+
+.dh-filter-section {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    flex-wrap: wrap;
+}
+
+.dh-filter-label {
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+    min-width: 60px;
+}
+
+/* Tier filter buttons */
+.dh-tier-button {
+    padding: var(--size-4-1) var(--size-4-2);
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    min-width: 30px;
+    text-align: center;
+}
+
+.dh-tier-button:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+.dh-tier-button.active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-color: var(--interactive-accent);
+}
+
+.dh-tier-button.active:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* Type select dropdown */
+.dh-type-select {
+    padding: var(--size-4-1) var(--size-4-2);
+    background-color: var(--background-modifier-form-field);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: var(--font-ui-small);
+    flex-grow: 1;
+}
+
+.dh-type-select:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+
+.dh-type-select:focus {
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+    outline: none;
+}
+
+.dh-type-select option {
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    padding: var(--size-4-1);
+}
+
+
+/* -----------------------------------------------------------------------------
+   13. MODALS
+   ----------------------------------------------------------------------------- */
+/* General modal styles */
+.dh-name-modal .modal-title, 
+.dh-manage-encounters-modal .modal-title,
+.dh-add-item-modal .modal-title { 
+    color: var(--text-normal);
+    text-align: center; 
+}
+
+.dh-name-modal .setting-item-info,
+.dh-manage-encounters-modal .setting-item-info { 
+    color: var(--text-normal);
+}
+
+.dh-modal-input {
+    border-color: var(--background-modifier-border-focus);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    width: 100%; 
+}
+
+.dh-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--size-4-4);
+    gap: var(--size-4-2);
+}
+
+.dh-modal-buttons button {
+    min-width: 80px;
+}
+
+.dh-name-modal .setting-item,
+.dh-manage-encounters-modal .setting-item {
+    border: none;
+}
+
+.dh-name-modal .setting-item-control,
+.dh-manage-encounters-modal .setting-item-control {
+    width: 100%;
+}
+
+.dh-name-modal .setting-item-control textarea {
+    width: 100%;
+    min-height: 80px;
+}
+
+.dh-manage-item-buttons {
+    display: flex;
+    gap: var(--size-4-1);
+}
+.dh-manage-item-buttons .dh-icon-button {
+    background-color: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--size-2-1); 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.dh-manage-item-buttons .dh-icon-button:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+.dh-manage-item-buttons .dh-icon-button.dh-delete-btn-confirmable.is-confirming-delete {
+    color: var(--text-error);
+    background-color: rgba(var(--color-red-rgb), 0.1);
+}
+
+/* --- Add Item Modal (Reworked) --- */
+.dh-add-item-modal {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.dh-add-item-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    width: 90vw;
+    max-width: 800px;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+.dh-add-item-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.dh-add-item-modal .dh-modal-topbar {
+    display: flex;
+    gap: var(--size-4-2);
+    align-items: center;
+}
+
+.dh-add-item-modal .dh-modal-topbar .search-input {
+    flex-grow: 1;
+}
+
+.dh-active-filters-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2) 0;
+    min-height: 28px;
+}
+
+.dh-active-filter-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-active-filter-tag .dh-filter-tag-type {
+    color: var(--text-muted);
+    font-weight: var(--font-semibold);
+}
+
+.dh-active-filter-tag .dh-remove-filter-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.dh-active-filter-tag .dh-remove-filter-btn:hover {
+    color: var(--text-error);
+}
+
+.dh-add-item-modal .dh-modal-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+    border-top: 1px solid var(--background-modifier-border);
+    padding-top: var(--size-4-2);
+}
+
+.dh-modal-list-item {
+    padding: var(--size-4-2) var(--size-4-3);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1);
+}
+.dh-modal-list-item:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+
+.dh-modal-item-main h4 {
+    margin: 0;
+    min-width: 0;
+}
+
+.dh-modal-item-details {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 100%;
+    gap: var(--size-4-2);
+    align-items: center;
+}
+
+.dh-item-tag {
+    background-color: var(--background-secondary-alt);
+    color: var(--text-muted);
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-medium);
+    white-space: normal;
+    word-break: break-word;
+}
+
+.dh-item-feature {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 2px;
+}
+.dh-item-feature:hover {
+    color: var(--text-normal);
+}
+
+.dh-item-description {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+    font-style: italic;
+    width: 100%;
+}
+
+.menu-item-icon { 
+    margin-right: var(--size-4-2);
+}
+
+.menu { 
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    box-shadow: var(--shadow-l); 
+}
+.menu-item { 
+    color: var(--text-normal);
+}
+.menu-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+.menu-item.is-checked > .menu-item-icon { 
+    color: var(--interactive-accent);
+}
+.menu-separator { 
+    background-color: var(--background-modifier-border);
+}
+.menu.context-menu .menu-item-icon { 
+    color: var(--text-muted);
+}
+
+
+/* -----------------------------------------------------------------------------
+   14. COUNTDOWN POPUP 
+   ----------------------------------------------------------------------------- */
+.dh-countdowns-popup {
+    position: absolute;
+    z-index: 100;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: var(--shadow-l);
+    padding: var(--size-4-2);
+    width: 350px;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.dh-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+.dh-popup-header h4 {
+    margin: 0;
+    font-size: var(--font-ui-large);
+}
+
+.dh-countdowns-body {
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.dh-countdown-item {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.dh-countdown-name-input {
+    flex-grow: 1;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
+    border-radius: var(--radius-s);
+    padding: var(--size-2-2);
+}
+.dh-countdown-name-input:focus {
+    border-color: var(--interactive-accent);
+}
+
+.dh-countdown-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.dh-countdown-btn {
+    width: 24px;
+    height: 24px;
+    font-size: var(--font-ui-medium);
+}
+
+.dh-countdown-value {
+    font-weight: var(--font-bold);
+    min-width: 20px;
+    text-align: center;
+}
+
+.dh-no-items-message {
+    color: var(--text-muted);
+    text-align: center;
+    padding: var(--size-4-3);
+}
+
+
+/* --- Condition Tag Styles --- */
+
+.dh-conditions-list-container {
+    padding: 0;
+    margin: var(--size-4-1) 0 var(--size-4-2) 0;
+}
+
+.dh-condition-tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1);
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+}
+
+.dh-condition-tags-list .dh-empty-text {
+    color: var(--text-faint);
+    font-style: italic;
+}
+
+.dh-condition-tag > span {
+    margin-right: var(--size-4-1);
+}
+
+.dh-remove-condition-btn {
+    background: none;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    font-size: var(--font-ui-small);
+}
+
+.dh-remove-condition-btn:hover {
+    color: var(--text-error);
+}
+
+.dh-budget-modal h4 {
+    margin-top: var(--size-4-5);
+    margin-bottom: var(--size-4-2);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-1);
+    font-size: var(--font-ui-medium);
+    color: var(--text-muted);
+}
+.dh-budget-modal .setting-item {
+    padding-right: 0;
+}
+
+/* --- Edit Adversary Modal --- */
+
+.dh-edit-adversary-modal-root .modal-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+}
+
+.dh-edit-adversary-modal {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.dh-edit-adversary-modal .modal-header {
+    flex-shrink: 0;
+    padding: var(--modal-padding);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.dh-edit-adversary-modal .modal-header h2 {
+    margin: 0;
+}
+
+.dh-edit-adversary-modal .modal-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: var(--modal-padding);
+}
+
+.dh-edit-adversary-modal .dh-modal-section {
+    margin-bottom: var(--size-4-6);
+}
+
+.dh-edit-adversary-modal .dh-modal-section h3 {
+    margin-top: 0;
+    margin-bottom: var(--size-4-3);
+    font-size: var(--font-ui-large);
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-2);
+    font-weight: var(--font-semibold);
+}
+
+.dh-modal-field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--size-4-4);
+}
+
+.dh-modal-field-grid .setting-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--size-2-1);
+    padding: 0;
+    border: none;
+}
+
+.dh-modal-field-grid .setting-item-info {
+    margin: 0;
+    padding: 0;
+}
+
+.dh-modal-field-grid .setting-item-name {
+    font-weight: var(--font-semibold);
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+}
+
+.dh-modal-field-grid .setting-item-description {
+    font-size: var(--font-ui-smaller);
+    opacity: 0.7;
+    margin-top: -2px;
+}
+
+.dh-modal-field-grid .setting-item-control {
+    width: 100%;
+}
+.dh-modal-field-grid .setting-item-control input[type="text"],
+.dh-modal-field-grid .setting-item-control textarea {
+    width: 100%;
+}
+.dh-modal-field-grid .setting-item-control textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Class to make a grid item span all columns */
+.dh-grid-span-all {
+    grid-column: 1 / -1;
+}
+
+/* Features Editor Specifics */
+.dh-features-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.dh-feature-editor-item {
+    background-color: var(--background-secondary-alt);
+    padding: var(--size-4-3);
+    border-radius: var(--radius-m);
+    border: 1px solid var(--background-modifier-border);
+    position: relative;
+}
+
+.dh-feature-editor-item .setting-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--size-4-2);
+    padding: 0 0 var(--size-2-2) 0;
+    border: none;
+}
+
+.dh-feature-editor-item .setting-item-info {
+    margin-bottom: var(--size-2-2);
+}
+
+.dh-feature-editor-item .setting-item-info .setting-item-name {
+    font-weight: var(--font-bold);
+    color: var(--text-normal);
+}
+
+.dh-feature-editor-item > .setting-item > .setting-item-control {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+}
+.dh-feature-editor-item > .setting-item > .setting-item-control > input {
+    flex: 1 1 150px; 
+}
+
+.dh-feature-remove-btn {
+    position: absolute;
+    top: var(--size-4-1);
+    right: var(--size-4-1);
+    background-color: transparent !important;
+    border: none !important;
+    color: var(--text-faint) !important;
+    box-shadow: none !important;
+    padding: var(--size-2-2);
+}
+.dh-feature-remove-btn:hover {
+    color: var(--text-error) !important;
+    background-color: var(--background-modifier-hover) !important;
+}
+
+/* Description textarea for features */
+.dh-feature-desc-input {
+    width: 100%;
+}
+.dh-feature-desc-input textarea {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+}
+.dh-add-feature-btn {
+    margin-top: var(--size-4-2);
+    width: fit-content;
+    align-self: flex-start;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.dh-edit-adversary-modal .modal-footer {
+    flex-shrink: 0;
+    padding: var(--size-4-3) var(--modal-padding);
+    border-top: 1px solid var(--background-modifier-border);
+    display: flex;
+    justify-content: flex-end;
+    background-color: var(--background-primary);
+}
+
+.dh-edit-adversary-modal .dh-modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--size-4-2);
+}
+
+/* -----------------------------------------------------------------------------
+   15. STATBLOCK PREVIEW POPOVER STYLES
+   ----------------------------------------------------------------------------- */
+.dh-statblock-preview-popover {
+    position: fixed;
+    z-index: 1000;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    width: 420px;
+    max-width: 90vw;
+    max-height: 85vh;
+    opacity: 0;
+    animation: dh-popover-fade-in 0.2s ease-out forwards;
+    transition: opacity 0.2s ease-out;
+    overflow: hidden;
+    pointer-events: all;
+}
+
+@keyframes dh-popover-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dh-statblock-preview-popover .dh-popover-content {
+    padding: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.dh-statblock-preview-popover .dh-popover-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.dh-statblock-preview-popover .dh-popover-content::-webkit-scrollbar-track {
+    background: var(--scrollbar-bg);
+}
+
+.dh-statblock-preview-popover .dh-popover-content::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-bg);
+    border-radius: 4px;
+}
+
+.dh-statblock-preview-popover .dh-popover-content .dh-editor-statblock {
+    max-width: 100%;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+}
+
+/* -----------------------------------------------------------------------------
+   16. THRESHOLDS
+   ----------------------------------------------------------------------------- */
+.dh-threshold-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: var(--size-4-3);
+    position: relative;
+}
+
+.dh-threshold-segment {
+    padding: var(--size-2-1) var(--size-4-2);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex: 1;
+    text-align: center;
+    min-width: 60px;
+}
+
+.dh-threshold-segment:first-child {
+    border-top-left-radius: var(--radius-m);
+    border-bottom-left-radius: var(--radius-m);
+    border-right: none;
+}
+
+.dh-threshold-segment:last-child {
+    border-top-right-radius: var(--radius-m);
+    border-bottom-right-radius: var(--radius-m);
+    border-left: none;
+}
+
+.dh-threshold-major:not(:last-child) {
+    border-left: none;
+    border-right: none;
+}
+
+.dh-threshold-value {
+    font-weight: var(--font-bold);
+    color: var(--text-normal);
+    font-size: var(--font-ui-medium);
+    background-color: var(--background-primary);
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    min-width: 28px;
+    text-align: center;
+    z-index: 1;
+    position: relative;
+    margin: 0 -1px;
+    box-shadow: 0 0 0 2px var(--background-primary);
+}
+
+.dh-threshold-minor {
+    padding-right: var(--size-4-3);
+}
+
+/* --- CHARACTER SHEET VIEW STYLES --- */
+
+:root {
+    --dh-sheet-bg: #17181c;
+    --dh-sheet-bg-alt: #1d1f25;
+    --dh-sheet-border: #333644;
+    --dh-sheet-text: #e6e6e6;
+    --dh-sheet-text-muted: #858999;
+    --dh-sheet-accent: #e5b32a;
+    --dh-sheet-accent-dark: #b98e1c;
+    --dh-sheet-accent-glow: rgba(229, 179, 42, 0.4);
+    --dh-sheet-purple: #8c5cd8;
+}
+
+.dh-character-sheet-view .view-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--dh-sheet-bg);
+    color: var(--dh-sheet-text);
+    font-size: 14px;
+}
+
+.dh-cs-main {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: var(--size-4-3);
+}
+
+.dh-cs-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin-bottom: 8px;
+}
+
+.dh-topbar-left,
+.dh-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dh-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+/* Header */
+.dh-sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--size-4-3);
+    border-bottom: 2px solid var(--dh-sheet-accent);
+}
+.dh-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+.dh-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+}
+
+
+.dh-edit-character-btn {
+    color: var(--dh-sheet-text-muted);
+    opacity: 0.6;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-edit-character-btn:hover {
+    color: var(--dh-sheet-accent);
+    opacity: 1;
+}
+
+.dh-avatar {
+    width: 70px;
+    height: 70px;
+    border: 2px solid var(--dh-sheet-accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--dh-sheet-bg-alt);
+    position: relative;
+    overflow: hidden;
+}
+.dh-avatar > .svg-icon {
+    width: 40px;
+    height: 40px;
+}
+
+.dh-nameplate h1 {
+    font-size: 2.2em;
+    font-weight: var(--font-bold);
+    margin: 0;
+    color: var(--dh-sheet-accent);
+    text-transform: uppercase;
+}
+
+.dh-nameplate p {
+    margin: 0;
+    font-size: var(--font-ui-medium);
+    color: var(--dh-sheet-text-muted);
+    font-weight: var(--font-medium);
+}
+
+.dh-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+}
+.dh-character-sheet-view .dh-downtime-btn {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    box-shadow: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2) var(--size-4-4);
+    font-weight: var(--font-semibold);
+    font-size: var(--font-ui-small);
+    height: 36px;
+    box-sizing: border-box;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-character-sheet-view .dh-downtime-btn:hover {
+    color: var(--dh-sheet-accent);
+    border-color: var(--dh-sheet-accent);
+    background-color: var(--dh-sheet-bg);
+}
+
+.dh-character-sheet-view .dh-downtime-btn .svg-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--dh-sheet-text-muted);
+    transition: color 0.2s ease-in-out;
+}
+
+.dh-character-sheet-view .dh-downtime-btn:hover .svg-icon {
+    color: var(--dh-sheet-accent);
+}
+
+.dh-domain-placeholder {
+    border: 1px solid var(--dh-sheet-border);
+    padding: var(--size-4-2) var(--size-4-4);
+    background-color: var(--dh-sheet-bg-alt);
+    font-weight: var(--font-bold);
+    color: var(--dh-sheet-accent);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-medium);
+    height: 36px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+}
+
+
+/* Main Grid Layout */
+.dh-sheet-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr 240px;
+    gap: var(--size-4-4);
+    padding: 0 var(--size-4-1);
+}
+
+.dh-grid-column-left,
+.dh-grid-column-center,
+.dh-grid-column-right {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-4);
+    min-width: 0;
+}
+
+/* --- Left Column --- */
+.dh-primary-defenses {
+    display: flex;
+    justify-content: space-around;
+    gap: var(--size-4-2);
+}
+
+.dh-stat-hex {
+    width: 95px;
+    height: 110px;
+    background-color: var(--dh-sheet-bg-alt);
+    color: var(--dh-sheet-text);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-bold);
+}
+
+.dh-stat-hex .dh-stat-value {
+    font-size: 2.5em;
+    line-height: 1;
+    color: var(--dh-sheet-accent);
+}
+
+.dh-stat-hex .dh-stat-label {
+    font-size: var(--font-ui-small);
+    text-transform: uppercase;
+    margin-top: var(--size-2-1);
+}
+
+.dh-armor-slots {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+.dh-armor-slots .dh-pips-container {
+    justify-content: center;
+}
+.dh-armor-slots .dh-pip {
+    width: 18px;
+    height: 18px;
+    border-radius: 0;
+    border-color: var(--dh-sheet-accent);
+    background-color: transparent;
+}
+.dh-armor-slots .dh-pip-marked {
+    background-color: var(--dh-sheet-accent);
+}
+
+.dh-damage-and-resources {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+.dh-section-header-box {
+    text-align: center;
+    background-color: var(--dh-sheet-border);
+    padding: var(--size-4-2);
+    border-radius: var(--radius-s);
+    margin: -12px -12px 12px -12px;
+}
+.dh-section-header-box h3 {
+    margin: 0;
+    font-size: var(--font-ui-medium);
+    text-transform: uppercase;
+    font-weight: var(--font-semibold);
+    color: var(--dh-sheet-text-muted);
+}
+
+.dh-thresholds-box {
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+    gap: var(--size-4-2);
+    padding: var(--size-4-2) 0;
+    border-top: 1px solid var(--dh-sheet-border);
+    border-bottom: 1px solid var(--dh-sheet-border);
+}
+.dh-thresholds-box > div {
+    flex-grow: 1;
+}
+.dh-threshold-label {
+    display: block;
+    font-size: var(--font-ui-smaller);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+}
+.dh-threshold-value {
+    display: inline-block;
+    font-size: 1.3em;
+    font-weight: var(--font-bold);
+    color: var(--dh-sheet-text);
+    background-color: var(--dh-sheet-bg);
+    border-radius: var(--radius-s);
+    padding: 0 var(--size-4-2);
+    margin: var(--size-2-1) 0;
+}
+.dh-threshold-desc {
+    display: block;
+    font-size: 0.8em;
+}
+
+
+/* --- Center Column --- */
+.dh-traits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--size-4-3);
+}
+
+.dh-trait-box-large {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.dh-trait-box-large:hover {
+    border-color: var(--dh-sheet-accent);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+}
+
+.dh-trait-value-large {
+    font-size: 2.2em;
+    font-weight: var(--font-bold);
+    color: var(--dh-sheet-text);
+    border: 2px solid var(--dh-sheet-border);
+    border-radius: var(--radius-s);
+    margin: -16px auto 8px auto;
+    width: 50px;
+    background-color: var(--dh-sheet-bg-alt);
+}
+.dh-trait-name-large {
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-semibold);
+    text-transform: uppercase;
+    margin-bottom: var(--size-4-2);
+}
+.dh-trait-skills {
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-2-1);
+}
+
+.dh-active-weapons {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.dh-weapon-card {
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-2);
+    border-radius: var(--radius-s);
+}
+.dh-weapon-card h4 {
+    margin: 0 0 var(--size-4-2) 0;
+    font-size: var(--font-ui-small);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+    font-weight: var(--font-semibold);
+}
+.dh-weapon-card-body {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--size-4-2);
+    flex-wrap: wrap;
+}
+.dh-weapon-name {
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-bold);
+}
+.dh-weapon-type {
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+}
+.dh-weapon-feature {
+    font-size: var(--font-ui-small);
+    font-style: italic;
+    margin-top: var(--size-4-2);
+    padding-top: var(--size-4-2);
+    border-top: 1px dashed var(--dh-sheet-border);
+    width: 100%;
+}
+.dh-weapon-card-right {
+    display: flex;
+    gap: var(--size-4-2);
+    flex-shrink: 0;
+}
+
+.dh-weapon-roll-box, .dh-weapon-damage-box {
+    min-width: 70px;
+    padding: var(--size-4-2) var(--size-4-1);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-s);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-weapon-roll-box:hover,
+.dh-weapon-damage-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+    border-color: var(--dh-sheet-accent);
+}
+
+.dh-weapon-roll-box {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent);
+}
+
+.dh-weapon-roll-box div:first-child,
+.dh-weapon-damage-box div:first-child {
+    font-size: 1.3em;
+    font-weight: var(--font-bold);
+    line-height: 1.2;
+}
+
+.dh-weapon-roll-box div:last-child,
+.dh-weapon-damage-box div:last-child {
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    margin-top: 2px;
+}
+
+.dh-weapon-damage-box div:last-child {
+    color: var(--dh-sheet-text-muted);
+}
+
+/* --- Right Column --- */
+.dh-vitals {
+    display: flex;
+    gap: var(--size-4-3);
+}
+
+.dh-conditions-box.is-clickable, .dh-level-box.is-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-conditions-box.is-clickable:hover, .dh-level-box:hover {
+    background-color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent);
+}
+
+.dh-conditions-box, .dh-level-box {
+    flex-grow: 1;
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-2);
+    text-align: center;
+}
+.dh-vitals h4 {
+    margin: 0 0 var(--size-4-1) 0;
+    font-size: var(--font-ui-small);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+}
+.dh-level-value {
+    font-size: 2.2em;
+    font-weight: var(--font-bold);
+}
+
+.dh-experiences {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+.dh-experience-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-2) var(--size-4-3);
+    border-radius: var(--radius-s);
+}
+.dh-experience-card.is-interactive {
+    cursor: pointer;
+}
+.dh-experience-card.is-interactive:hover {
+    background-color: var(--dh-sheet-border);
+}
+.dh-experience-value {
+    background-color: var(--dh-sheet-bg-alt);
+    padding: var(--size-2-1) var(--size-4-2);
+    border-radius: var(--radius-l);
+    font-weight: var(--font-bold);
+}
+
+.dh-character-sheet-view .dh-interactive-track {
+    align-items: center;
+}
+.dh-character-sheet-view .dh-track-label {
+    width: auto;
+    font-weight: var(--font-semibold);
+    font-size: var(--font-ui-medium);
+}
+.dh-character-sheet-view .dh-pips-container {
+    gap: var(--size-2-2);
+}
+.dh-character-sheet-view .dh-pip {
+    width: 13px;
+    height: 13px;
+    border-width: 2px;
+    border-color: var(--dh-sheet-text-muted);
+    transform: rotate(45deg);
+    border-radius: 0;
+    background-color: transparent;
+}
+.dh-character-sheet-view .dh-pip-marked {
+    background-color: var(--dh-sheet-accent);
+    border-color: var(--dh-sheet-accent);
+}
+.dh-character-sheet-view .dh-track-btn {
+    background-color: var(--dh-sheet-border);
+    color: var(--dh-sheet-text);
+    border-radius: 50%;
+}
+.dh-character-sheet-view .dh-track-btn:hover {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+}
+
+/* --- Manager Section --- */
+.dh-manager-container {
+    margin-top: var(--size-4-4);
+    background-color: var(--dh-sheet-bg-alt);
+    border: 2px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+}
+.dh-manager-tabs { 
+    display: flex; 
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-1) var(--size-4-3);
+    gap: var(--size-4-3);
+    border-bottom: 2px solid var(--dh-sheet-border);
+}
+.dh-manager-tab { 
+    padding: var(--size-4-2) var(--size-4-3); 
+    cursor: pointer; 
+    color: var(--dh-sheet-text-muted); 
+    font-weight: var(--font-semibold);
+    font-size: var(--font-ui-large);
+    text-transform: uppercase;
+    border-bottom: 3px solid transparent; 
+    transition: all 0.2s ease;
+}
+.dh-manager-tab.is-active { 
+    color: var(--dh-sheet-accent); 
+    border-bottom-color: var(--dh-sheet-accent); 
+}
+.dh-manager-tab:hover:not(.is-active) { 
+    color: var(--dh-sheet-text);
+}
+.dh-manager-content { 
+    padding: var(--size-4-4); 
+}
+
+/* Equipment Tab */
+.dh-inventory-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--size-4-3);
+    flex-wrap: wrap;
+    gap: var(--size-4-3);
+}
+
+.dh-inventory-buttons {
+    display: flex;
+    gap: var(--size-4-2);
+}
+
+.dh-gold-tracker {
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-2) var(--size-4-3);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+}
+.dh-inventory-topbar button {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+    font-weight: var(--font-bold);
+    border: none;
+    padding: var(--size-4-2) var(--size-4-4);
+    border-radius: var(--radius-s);
+}
+.dh-inventory-list {
+    display: flex;
+    flex-direction: column;
+}
+.dh-inventory-item {
+    display: grid;
+    grid-template-columns: 1.5fr 0.5fr 2fr 1fr;
+    gap: var(--size-4-3);
+    padding: var(--size-4-2);
+    border-bottom: 1px solid var(--dh-sheet-border);
+    align-items: center;
+}
+.dh-inventory-item:last-child {
+    border-bottom: none;
+}
+.dh-inventory-item.is-header {
+    font-weight: var(--font-bold);
+    color: var(--dh-sheet-text-muted);
+    text-transform: uppercase;
+    font-size: var(--font-ui-small);
+}
+.dh-inventory-item-name {
+    font-weight: var(--font-medium);
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+.dh-inventory-item-name.is-equipped {
+    color: var(--dh-sheet-accent);
+}
+.dh-inventory-item-name .svg-icon {
+    flex-shrink: 0;
+}
+.dh-inventory-item-qty {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    justify-content: center;
+}
+.dh-inventory-item-qty button {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    line-height: 20px;
+}
+.dh-inventory-item-details {
+    color: var(--dh-sheet-text-muted);
+    font-size: var(--font-ui-small);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dh-inventory-item-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--size-4-1);
+}
+.dh-inventory-item-actions button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: var(--size-2-1);
+}
+.dh-inventory-item-actions button:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+
+
+/* Features Tab */
+.dh-card-section {
+    margin-bottom: var(--size-4-5);
+}
+.dh-section-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid var(--dh-sheet-accent);
+    padding-left: var(--size-4-3);
+    margin-bottom: var(--size-4-3);
+}
+.dh-section-header-bar h3 {
+    margin: 0;
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-semibold);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+}
+
+/* --- Feature Card Styles --- */
+.dh-feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: var(--size-4-3);
+}
+
+.dh-feature-card {
+    background-color: var(--dh-sheet-bg);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-feature-card:hover {
+    border-color: var(--dh-sheet-accent);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+}
+
+.dh-feature-card-header {
+    padding: var(--size-4-2) var(--size-4-3);
+    border-bottom: 1px solid var(--dh-sheet-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--size-4-2);
+    flex-wrap: wrap;
+}
+
+.dh-feature-card-title {
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-bold);
+    color: var(--dh-sheet-accent);
+    text-transform: uppercase;
+    flex-grow: 1;
+}
+
+.dh-feature-card-meta-header {
+    display: flex;
+    gap: var(--size-4-2);
+    flex-shrink: 0; 
+}
+
+.dh-feature-card-type {
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-medium);
+    color: var(--dh-sheet-text-muted);
+    background-color: var(--dh-sheet-bg-alt);
+    padding: var(--size-2-1) var(--size-2-2);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-s);
+    text-transform: uppercase;
+}
+
+.dh-feature-card-body {
+    padding: var(--size-4-3);
+    flex-grow: 1;
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+}
+.dh-feature-card-body .dh-rollable-dice {
+    color: var(--dh-sheet-accent);
+}
+.dh-feature-card-body .dh-feature-cost-text {
+    color: var(--dh-sheet-accent);
+    font-weight: var(--font-bold);
+}
+
+.dh-feature-card-footer {
+    border-top: 1px solid var(--dh-sheet-border);
+    background-color: var(--dh-sheet-bg-alt);
+    display: flex;
+    padding: var(--size-4-2);
+    gap: var(--size-4-2);
+}
+
+.dh-feature-card-footer-left {
+    justify-content: flex-start;
+}
+
+.dh-spellcast-box {
+    border-radius: var(--radius-s);
+    display: flex;
+    align-items: center;
+    padding: var(--size-4-2) var(--size-4-2);
+    background-color: var(--dh-sheet-bg);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.dh-spellcast-box-inline {
+    font-size: var(--font-ui-medium);
+        color: var(--dh-sheet-bg);
+    background-color: var(--dh-sheet-accent);
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+}
+
+.dh-spellcast-modifier {
+    font-weight: var(--font-bold);
+    margin-right: var(--size-2-1);
+    transition: all 0.2s ease;
+}
+
+.dh-spellcast-box:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 10px var(--dh-sheet-accent-glow);
+}
+
+.dh-spellcast-box div:first-child {
+    font-size: 1.4em;
+    font-weight: var(--font-bold);
+    line-height: 1.2;
+}
+
+.dh-spellcast-box div:last-child {
+    font-size: 0.8em;
+    text-transform: uppercase;
+}
+
+.dh-feature-card-box {
+    text-align: center;
+}
+
+.dh-feature-card-box .value {
+    font-weight: var(--font-bold);
+    font-size: 1.2em;
+    color: var(--dh-sheet-text);
+}
+
+.dh-feature-card-box .label {
+    font-size: var(--font-ui-smaller);
+    text-transform: uppercase;
+    color: var(--dh-sheet-text-muted);
+}
+
+/* Details Tab */
+.dh-details-section {
+    margin-bottom: var(--size-4-5);
+}
+.dh-details-section h3 {
+    margin: 0 0 var(--size-4-3) 0;
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-semibold);
+    color: var(--dh-sheet-text-muted);
+}
+.dh-detail-card {
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-3);
+    border-radius: var(--radius-m);
+    margin-bottom: var(--size-4-2);
+}
+.dh-detail-card h4 {
+    margin: 0 0 var(--size-4-2) 0;
+    font-weight: var(--font-bold);
+    color: var(--dh-sheet-accent);
+}
+.dh-detail-card p {
+    color: var(--dh-sheet-text-muted);
+}
+.dh-detail-card textarea {
+    width: 100%;
+    min-height: 120px;
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    color: var(--dh-sheet-text);
+    font-family: inherit;
+    font-size: var(--font-ui-medium);
+    resize: vertical;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-detail-card textarea::placeholder {
+    color: var(--dh-sheet-text-muted);
+    opacity: 0.6;
+}
+
+.dh-detail-card textarea:focus {
+    outline: none;
+    border-color: var(--dh-sheet-accent);
+    background-color: var(--dh-sheet-bg);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+}
+
+.dh-background-section .dh-detail-card textarea,
+.dh-connections-section .dh-detail-card textarea {
+    min-height: 42px;
+    height: 42px;
+    resize: none;
+}
+
+/* Character Manager Modal */
+.dh-character-manager-modal.modal {
+    max-width: 800px;
+}
+
+.dh-character-manager-modal .dh-manager-section {
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    margin-bottom: var(--size-4-3);
+    padding: 0;
+}
+
+.dh-character-manager-modal .dh-manager-section summary {
+    padding: var(--size-4-3);
+    cursor: pointer;
+    list-style: none;
+}
+
+.dh-character-manager-modal .dh-manager-section summary::-webkit-details-marker {
+    display: none;
+}
+
+.dh-character-manager-modal .dh-manager-section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-semibold);
+    color: var(--text-normal);
+}
+
+.dh-character-manager-modal .dh-manager-section > div {
+    padding: var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-character-manager-modal .is-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--size-4-2) var(--size-4-4);
+}
+
+.dh-manager-card-editor {
+    background-color: var(--background-secondary) !important;
+}
+
+.dh-manager-card-editor .setting-item-control textarea {
+    min-height: 120px;
+    width: 100%;
+}
+
+.dh-character-manager-modal .setting-item-control textarea {
+    width: 100%;
+}
+
+.dh-character-manager-modal .setting-item-control {
+    flex-wrap: wrap;
+    gap: var(--size-4-2);
+}
+
+.dh-replace-feature-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--size-4-4);
+    margin-top: var(--size-4-3);
+}
+.dh-feature-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: var(--dh-sheet-bg);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+}
+.dh-feature-list-item {
+    padding: var(--size-4-2) var(--size-4-3);
+    border-bottom: 1px solid var(--dh-sheet-border);
+    cursor: pointer;
+}
+.dh-feature-list-item-sub {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+}
+.dh-feature-list-item:last-child { border-bottom: none; }
+.dh-feature-list-item:hover { background-color: var(--dh-sheet-border); }
+.dh-feature-list-item.is-selected {
+    background-color: var(--dh-sheet-purple);
+    color: white;
+    font-weight: var(--font-bold);
+}
+.dh-modal-footer, .dh-modal-footer-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    margin: 0 calc(var(--size-4-3) * -1) calc(var(--size-4-3) * -1);
+}
+
+
+/* ==========================================================================
+   AVATAR STYLES (BACKGROUND-IMAGE IMPLEMENTATION)
+   ========================================================================== */
+
+/* --- 1. AVATAR IN THE CHARACTER SHEET HEADER --- */
+
+/* This is the 70x70 circle that displays the final avatar. */
+.dh-avatar {
+    width: 70px;
+    height: 70px;
+    border: 2px solid var(--dh-sheet-accent);
+    border-radius: 50%;
+    background-color: var(--dh-sheet-bg-alt);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The placeholder user icon */
+.dh-avatar > .svg-icon {
+    width: 40px;
+    height: 40px;
+}
+
+
+/* --- 2. AVATAR EDITOR (Used in Creator & Manager Modal) --- */
+.dh-avatar-editor-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.dh-preview-container {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    border: 2px solid var(--interactive-accent);
+    background-color: var(--background-secondary);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+    cursor: move;
+    user-select: none;
+    /* For displaying error text */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-error);
+}
+
+.dh-preview-container.is-dragging {
+    cursor: grabbing;
+    box-shadow: 0 0 10px var(--interactive-accent);
+}
+
+.dh-avatar-controls-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 220px;
+}
+
+/* This container aligns the "Size:" label next to the slider. */
+.dh-avatar-scale-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.dh-avatar-scale-slider {
+    width: 100%;
+}
+
+.dh-avatar-position-hint {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 0;
+}
+
+/* The reset button */
+.dh-avatar-reset-btn {
+    pointer-events: auto;
+    margin-top: 8px;
+}
+
+/* A utility class for displaying error text (e.g., "Invalid URL") */
+.dh-error-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 10px;
+    color: var(--text-error);
+    font-size: var(--font-ui-small);
+    cursor: default;
+    user-select: text;
+}
+
+/* --- [RESPONSIVE STYLES] --- */
+
+/* Tablet and smaller desktops */
+@media (max-width: 900px) {
+    .dh-sheet-grid {
+        grid-template-columns: 1fr;
+    }
+    .dh-grid-column-center {
+        order: -1; 
+    }
+}
+
+/* Mobile phones */
+@media (max-width: 600px) {
+    .dh-character-sheet-view .view-content {
+        font-size: 13px;
+    }
+
+    .dh-cs-main {
+        padding: var(--size-4-2);
+    }
+    
+    .dh-sheet-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--size-4-3);
+    }
+
+    .dh-nameplate h1 {
+        font-size: 1.8em;
+    }
+
+    .dh-primary-defenses {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .dh-vitals {
+        flex-direction: column;
+    }
+
+    .dh-traits-grid {
+        /* 2 columns for traits on mobile */
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dh-inventory-item {
+        grid-template-columns: 1fr 50px; 
+        gap: var(--size-2-2) var(--size-4-3);
+    }
+    .dh-inventory-item-desc {
+        grid-column: 1 / 2;
+        padding-left: var(--size-4-2);
+    }
+    .dh-replace-feature-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dh-conditions-box.is-clickable {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dh-conditions-box.is-clickable:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-add-item-modal .modal-actions-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.dh-add-item-modal .modal-actions-container button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.dh-add-item-modal .modal-actions-container button:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* --- Card Swap Modal --- */
+.dh-card-swap-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.dh-card-swap-modal .modal-content {
+    width: 90vw;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+.dh-modal-content-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    max-width: 100%;
+}
+
+.dh-card-manage-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.dh-card-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    max-width: 100%;
+}
+
+.dh-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.dh-swap-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--background-primary);
+    border: 1.5px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
+    padding: var(--size-4-3);
+    margin-bottom: var(--size-4-2);
+    transition: box-shadow 0.2s;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+.dh-swap-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+}
+.dh-swap-card-header {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+}
+.dh-swap-card-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+}
+.dh-swap-card-info strong {
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-semibold);
+    color: var(--text-normal);
+}
+.dh-swap-card-meta {
+    display: flex;
+    gap: var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    margin-top: var(--size-4-1);
+}
+.dh-swap-card-controls {
+    display: flex;
+    flex-direction: row;
+    gap: var(--size-4-1);
+    align-items: flex-start;
+    margin-left: var(--size-4-2);
+}
+.dh-swap-card-controls button {
+    background: var(--background-secondary-alt);
+    border: none;
+    border-radius: var(--radius-s);
+padding: 4px 8px;
+    cursor: pointer;
+    transition:     background 0.15s;
+color: var(--text-normal);
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+    }
+.dh-swap-card-controls button:hover {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.dh-swap-card-controls .mod-warning {
+    background: var(--background-modifier-error);
+    color: var(--text-on-accent);
+}
+.dh-swap-card-desc {
+    margin-top: var(--size-4-2);
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+.dh-modal-tabs {
+    display: flex;
+    gap: var(--size-4-1);
+    border-bottom: 1px solid var(--background-modifier-border);
+    margin: 0 calc(var(--modal-padding) * -1) var(--modal-padding);
+    padding: 0 var(--modal-padding);
+}
+
+.dh-modal-tab {
+    padding: var(--size-4-2) var(--size-4-3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    color: var(--text-muted);
+}
+
+.dh-modal-tab.is-active,
+.dh-modal-tab:hover {
+    color: var(--text-normal);
+}
+
+.dh-modal-tab.is-active {
+    border-bottom-color: var(--interactive-accent);
+}
+
+.dh-modal-content-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    min-height: 0;
+    margin: 0 calc(var(--modal-padding) * -1);
+    padding: 0 var(--modal-padding);
+}
+
+.dh-card-manage-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--size-4-4);
+    height: 100%;
+}
+
+/* --- Card Swap Modal Customizations --- */
+.dh-compendium-actions {
+    display: flex;
+    justify-content: center;
+    padding: var(--size-4-2) 0;
+    margin-top: var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-add-item-modal {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.dh-add-item-modal .modal-content {
+    width: 90vw;
+    max-width: 100%;
+    overflow-x: hidden;
+    padding: var(--size-4-3);
+}
+
+.dh-add-item-modal * {
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+/* --- Level Up Modal --- */
+.dh-level-up-modal .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 85vh;
+    margin-top: auto;
+    margin-bottom: auto;
+    padding: var(--modal-padding); 
+    max-width: 800px; 
+}
+
+.dh-level-up-modal .setting-item {
+    border-top: none;
+}
+
+.dh-level-up-container {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0 var(--size-4-3);
+    margin: var(--size-4-3) calc(var(--size-4-3) * -1);
+    min-height: 0;
+}
+
+.dh-level-entry {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-level-entry h2 {
+    margin-top: 0;
+    color: var(--interactive-accent);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-2);
+}
+
+.dh-level-entry h3 {
+    margin-top: var(--size-4-4);
+    margin-bottom: var(--size-4-2);
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+}
+
+.dh-advancement-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.dh-advancement-choice {
+    background-color: var(--background-primary-alt);
+    padding: 0 var(--size-4-2);
+    border-radius: var(--radius-s);
+}
+
+.dh-advancement-choice .setting-item {
+    border-bottom: none;
+    padding: var(--size-4-2) 0;
+}
+
+.dh-advancement-details {
+    padding-left: var(--size-4-4);
+    border-left: 2px solid var(--background-modifier-border);
+    margin-bottom: var(--size-4-2);
+    padding-top: var(--size-4-2);
+}
+
+.dh-domain-card-preview {
+    background-color: var(--background-primary);
+    border-radius: var(--radius-s);
+    padding: var(--size-4-3);
+    margin-top: var(--size-4-2);
+    border: 1px solid var(--background-modifier-border);
+}
+
+.dh-domain-card-preview h4 {
+    margin-top: 0;
+    font-weight: var(--font-bold);
+}
+
+.dh-domain-card-preview p {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+}
+
+/* Level up button on character sheet */
+.dh-level-box.is-clickable {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-level-box.is-clickable:hover {
+    background-color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent);
+}
+
+.dh-level-up-modal .setting-item-control .button-group {
+    display: flex;
+    align-items: center;
+}
+.dh-level-up-modal .setting-item-control .button-group .button {
+    margin: 0 5px;
+}
+
+.dh-automatic-advancements {
+    background-color: var(--background-secondary-alt);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-automatic-advancements h3 {
+    margin-top: 0;
+    margin-bottom: var(--size-4-2);
+    color: var(--interactive-accent);
+}
+
+.dh-automatic-advancements ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+/* Adjust the Setting component for better alignment */
+.dh-automatic-advancements .setting-item {
+    padding: 0;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-4);
+}
+
+.dh-automatic-advancements .setting-item-control input[type="text"] {
+    width: 100%;
+}
+
+.dh-level-entry h3 {
+    font-size: var(--font-ui-large);
+}
+
+/* Fixed header styles for Level Up modal */
+.dh-level-up-modal .modal-content > h1,
+.dh-level-up-modal .modal-content > .setting-item,
+.dh-level-up-modal .modal-content > p {
+    margin: 0;
+    padding: 0 var(--size-4-3);
+    flex-shrink: 0;
+}
+
+.dh-level-up-modal .modal-content > h1 {
+    margin-top: var(--size-4-3);
+    margin-bottom: var(--size-4-2);
+}
+
+.dh-level-up-modal .modal-content > p {
+    margin-bottom: var(--size-4-3);
+    color: var(--text-muted);
+}
+
+/* --- Styles for Export/Import --- */
+
+.dh-export-btn,
+.dh-import-btn {
+    color: var(--text-normal);
+    border: none;
+    padding: 4px;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    margin-left: 8px;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dh-export-btn:hover,
+.dh-import-btn:hover {
+    color: var(--interactive-accent);
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-export-modal,
+.dh-import-modal {
+    width: 600px;
+    max-width: 90vw;
+}
+
+.dh-export-preview {
+    max-height: 300px;
+    overflow: auto;
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    padding: var(--size-4-2);
+    margin-top: var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-import-modal textarea {
+    width: 100%;
+    height: 200px;
+    font-family: monospace;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--background-modifier-border);
+    padding: var(--size-4-2);
+    background-color: var(--background-secondary);
+    resize: vertical;
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-export-modal pre {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.dh-export-modal code {
+    white-space: pre-wrap;
+}
+
+.dh-import-modal .url-input-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+}
+
+.dh-import-modal .url-input-container input {
+    flex-grow: 1;
+}
+
+.dh-import-modal .url-input-container button {
+    white-space: nowrap;
+}
+
+.dh-import-modal .dh-url-examples {
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    padding: 12px;
+    margin: 8px 0;
+    font-size: var(--font-ui-small);
+}
+
+.dh-import-modal .dh-examples-title {
+    font-weight: var(--font-bold);
+    margin-bottom: 8px;
+    margin-top: 0;
+}
+
+.dh-import-modal .dh-url-examples ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.dh-import-modal .dh-url-examples li {
+    margin-bottom: 4px;
+}
+
+/* --- Downtime Modal --- */
+.dh-downtime-modal .modal-content {
+    max-width: 550px;
+}
+
+.dh-downtime-modal .setting-item {
+    padding: var(--size-4-2) 0;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-downtime-modal .setting-item:first-of-type {
+    border-top: none;
+}
+
+.dh-downtime-modal .setting-item-description {
+    font-size: var(--font-ui-smaller);
+    opacity: 0.8;
+}
+
+.dh-downtime-modal h3 {
+    margin-top: var(--size-4-4);
+    margin-bottom: var(--size-4-1);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: var(--size-4-2);
+    color: var(--text-muted);
+}
+
+.dh-downtime-moves p {
+    color: var(--text-faint);
+    font-style: italic;
+    text-align: center;
+    margin-bottom: var(--size-4-3);
+}
+
+.dh-downtime-modal .setting-item-control .button {
+    margin-left: var(--size-4-2);
+}
+
+.dh-move-selected-count {
+    font-weight: var(--font-bold);
+    color: var(--interactive-accent);
+    margin-right: var(--size-4-2);
+}
+
+.dh-downtime-modal.is-loading .modal-content {
+    opacity: 0.5;
+    pointer-events: none;
+}

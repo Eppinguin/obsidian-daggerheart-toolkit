@@ -35,7 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 data.json
 Daggerheart-Compendium.json
-styles.css
 User-Adversaries.json
 characters.json
 user-abilities.json
