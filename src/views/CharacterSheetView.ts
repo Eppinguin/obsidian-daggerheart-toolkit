@@ -1,5 +1,4 @@
-// src/views/CharacterSheetView.ts
-import { ItemView, WorkspaceLeaf, Notice, setIcon, TFile } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, setIcon, TFile, MarkdownRenderer } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
@@ -61,6 +60,7 @@ function resolveImageUrl(app: any, url: string | null | undefined): string | nul
 export class CharacterSheetView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
     private activeManagerTab: ManagerTab = 'abilities';
+    private isEditingDetails = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
@@ -78,9 +78,25 @@ export class CharacterSheetView extends ItemView {
     }
 
     draw() {
+        if (this.isEditingDetails) {
+            return;
+        }
+
         const container = this.containerEl.children[1];
         const mainContent = container.querySelector('.dh-cs-main');
         const scrollPosition = mainContent ? mainContent.scrollTop : 0;
+
+        const activeEl = document.activeElement as HTMLElement;
+        let focusedInfo: { id: string; selectionStart: number; selectionEnd: number } | null = null;
+        if (activeEl && activeEl.matches('.dh-details-section textarea') && activeEl.id) {
+            const textarea = activeEl as HTMLTextAreaElement;
+            focusedInfo = {
+                id: textarea.id,
+                selectionStart: textarea.selectionStart,
+                selectionEnd: textarea.selectionEnd,
+            };
+        }
+
         container.empty();
         const main = container.createDiv({ cls: 'dh-cs-main' });
         this.drawTopBar(main);
@@ -91,6 +107,18 @@ export class CharacterSheetView extends ItemView {
             new CharacterCreator(this.plugin, this, main);
         }
         main.scrollTop = scrollPosition;
+
+        if (focusedInfo) {
+            const newEl = container.querySelector(`#${focusedInfo.id}`) as HTMLTextAreaElement;
+            if (newEl) {
+                newEl.focus();
+                try {
+                    newEl.setSelectionRange(focusedInfo.selectionStart, focusedInfo.selectionEnd);
+                } catch (e) {
+                    console.error("Could not restore selection range.", e);
+                }
+            }
+        }
     }
 
     private drawTopBar(parent: HTMLElement) {
@@ -174,7 +202,6 @@ export class CharacterSheetView extends ItemView {
         const resolvedUrl = resolveImageUrl(this.app, data.avatarUrl);
 
         if (resolvedUrl) {
-            // ... avatar logic is unchanged
             if (data.avatarTransform) {
                 const img = new Image();
                 img.src = resolvedUrl;
@@ -218,11 +245,9 @@ export class CharacterSheetView extends ItemView {
 
         const nameplate = left.createDiv({ cls: 'dh-nameplate' });
 
-        // Create a wrapper for the name and edit button
         const nameWrapper = nameplate.createDiv({ cls: 'dh-name-wrapper' });
         nameWrapper.createEl('h1', { text: data.name || "Unnamed Character" });
 
-        // Add Edit Button inside the wrapper, next to the h1
         const editBtn = nameWrapper.createEl('button', { cls: 'dh-edit-character-btn clickable-icon' });
         setIcon(editBtn, 'settings-2');
         editBtn.ariaLabel = "Edit Character";
@@ -232,7 +257,6 @@ export class CharacterSheetView extends ItemView {
             }).open();
         });
 
-        // Sub-line for class/ancestry info
         let classDisplay = `${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})`;
         if (data.multiclassClassId) {
             const mcClass = this.plugin.compendium.getClass(data.multiclassClassId);
@@ -710,22 +734,100 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawDetailsManager(parent: HTMLElement, data: Character) {
+        const createEditableMarkdownField = (
+            container: HTMLElement,
+            initialValue: string,
+            updateLogic: (value: string) => void,
+            isSingleLine: boolean = false
+        ) => {
+            const contentDiv = container.createDiv({ cls: 'dh-markdown-content' });
+            if (isSingleLine) {
+                contentDiv.addClass('is-single-line');
+            }
+
+            const renderView = () => {
+                contentDiv.empty();
+                const valueToRender = initialValue || (isSingleLine ? "" : "_Click to edit..._");
+                MarkdownRenderer.render(this.app, valueToRender, contentDiv, '', this);
+            };
+
+            const switchToEditMode = () => {
+                this.isEditingDetails = true;
+                contentDiv.empty();
+                const editorContainer = contentDiv.createDiv({ cls: 'dh-markdown-editor-container' });
+                const editorEl = editorContainer.createEl('textarea', { text: initialValue });
+                editorEl.focus();
+
+                const saveAndExit = () => {
+                    document.removeEventListener('click', handleOutsideClick, true);
+                    const newValue = editorEl.value;
+                    updateLogic(newValue);
+                    this.isEditingDetails = false;
+                    this.plugin.updateCharacter(data);
+                };
+
+                const handleOutsideClick = (e: MouseEvent) => {
+                    if (!editorContainer.contains(e.target as Node)) {
+                        saveAndExit();
+                    }
+                };
+
+                setTimeout(() => document.addEventListener('click', handleOutsideClick, true), 0);
+
+                editorEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        saveAndExit();
+                    }
+                });
+            };
+
+            contentDiv.addEventListener('click', (event: MouseEvent) => {
+                const target = event.target as HTMLElement;
+                const link = target.closest('a.internal-link');
+
+                if (link) {
+                    event.preventDefault();
+                    const linkText = link.getAttribute('data-href');
+                    if (linkText) {
+                        this.app.workspace.openLinkText(linkText, '', event.ctrlKey || event.metaKey);
+                    }
+                    return;
+                }
+
+                if (!contentDiv.querySelector('textarea')) {
+                    switchToEditMode();
+                }
+            });
+
+            renderView();
+        };
+
+        // Description Section
+        const descriptionSection = parent.createDiv({ cls: 'dh-details-section' });
+        descriptionSection.createEl('h3', { text: 'Character Description' });
+        const descriptionCard = descriptionSection.createDiv({ cls: 'dh-detail-card' });
+        createEditableMarkdownField(descriptionCard, data.notes || '', (value) => { data.notes = value; });
+
+        // Background Section
         if (data.background && data.background.length > 0) {
-            const backgroundSection = parent.createDiv({ cls: 'dh-details-section' });
+            const backgroundSection = parent.createDiv({ cls: 'dh-details-section dh-background-section' });
             backgroundSection.createEl('h3', { text: 'Background' });
-            data.background.forEach(bg => {
+            data.background.forEach((bg) => {
                 const card = backgroundSection.createDiv({ cls: 'dh-detail-card' });
                 card.createEl('h4', { text: bg.question });
-                renderMarkdown(this.plugin, bg.answer || '_No answer provided._', card.createDiv());
+                createEditableMarkdownField(card, bg.answer || '', (value) => { bg.answer = value; }, true);
             });
         }
+
+        // Connections Section
         if (data.connections && data.connections.length > 0) {
-            const connectionSection = parent.createDiv({ cls: 'dh-details-section' });
+            const connectionSection = parent.createDiv({ cls: 'dh-details-section dh-connections-section' });
             connectionSection.createEl('h3', { text: 'Connections' });
-            data.connections.forEach(conn => {
+            data.connections.forEach((conn) => {
                 const card = connectionSection.createDiv({ cls: 'dh-detail-card' });
                 card.createEl('h4', { text: conn.question });
-                renderMarkdown(this.plugin, conn.answer || '_No answer provided._', card.createDiv());
+                createEditableMarkdownField(card, conn.answer || '', (value) => { conn.answer = value; }, true);
             });
         }
     }

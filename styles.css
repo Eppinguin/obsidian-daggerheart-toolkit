@@ -2909,6 +2909,38 @@
 .dh-detail-card p {
     color: var(--dh-sheet-text-muted);
 }
+.dh-detail-card textarea {
+    width: 100%;
+    min-height: 120px;
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    color: var(--dh-sheet-text);
+    font-family: inherit;
+    font-size: var(--font-ui-medium);
+    resize: vertical;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-detail-card textarea::placeholder {
+    color: var(--dh-sheet-text-muted);
+    opacity: 0.6;
+}
+
+.dh-detail-card textarea:focus {
+    outline: none;
+    border-color: var(--dh-sheet-accent);
+    background-color: var(--dh-sheet-bg);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
+}
+
+.dh-background-section .dh-detail-card textarea,
+.dh-connections-section .dh-detail-card textarea {
+    min-height: 42px;
+    height: 42px;
+    resize: none;
+}
 
 /* Character Manager Modal */
 .dh-character-manager-modal.modal {
