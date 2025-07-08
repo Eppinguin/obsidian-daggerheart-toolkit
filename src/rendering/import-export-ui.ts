@@ -1,6 +1,6 @@
 // src/rendering/import-export-ui.ts
 import { setIcon } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { ContentType, CONTENT_TYPE_INFO } from '../services/export-import';
 import { ImportExportModal } from '../modals/ImportExportModal';
 

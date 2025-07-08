@@ -1,6 +1,6 @@
 import { App, Modal, Setting, Notice, TextAreaComponent, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { Character, DomainCard, Experience, JsonAncestry, Trait } from '../../types';
 import { createAvatarEditor } from '../views/components/AvatarEditor';
 import { TRAIT_NAMES } from '../constants';

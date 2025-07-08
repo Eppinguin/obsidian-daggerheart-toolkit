@@ -1,5 +1,5 @@
 import { App, ItemView, WorkspaceLeaf, Notice, Menu, setIcon, Modal } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { StatblockData, AdversaryInstance, SavedEncounter, Countdown, Condition } from '../../types';
 import { renderStatblockCard } from '../rendering/statblock';
 import {

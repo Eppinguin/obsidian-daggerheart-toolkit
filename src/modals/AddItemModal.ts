@@ -1,5 +1,5 @@
 import { App, Modal, Setting, Menu, MenuItem, TextComponent, setIcon } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { Character, CompendiumItem, WeaponItem, ArmorItem } from '../../types';
 
 export class AddItemModal extends Modal {

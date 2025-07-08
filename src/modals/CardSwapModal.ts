@@ -1,5 +1,5 @@
 import { App, Modal, Setting, Notice, setIcon, Menu } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { Character, DomainCard, JsonAbility } from '../../types';
 import { renderMarkdown } from '../rendering/ui-helpers';
 import { CreateCardModal } from './CreateCardModal';

@@ -1,5 +1,5 @@
 import { App, Modal, Setting, ButtonComponent, TextComponent, Notice } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 
 export class NameEncounterModal extends Modal {
     plugin: DaggerheartStatblockPlugin;

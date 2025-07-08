@@ -1,4 +1,4 @@
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { Notice } from 'obsidian';
 
 /**

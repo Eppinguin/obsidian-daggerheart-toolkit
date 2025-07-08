@@ -1,5 +1,5 @@
 import { App, Notice, SuggestModal } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { CompendiumCreatorModal } from './CompendiumCreatorModal';
 import { CreateCardModal } from './CreateCardModal';
 import { EditAdversaryModal } from './EditAdversaryModal';

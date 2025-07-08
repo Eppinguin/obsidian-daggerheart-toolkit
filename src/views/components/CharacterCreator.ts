@@ -1,7 +1,7 @@
 // src/views/components/CharacterCreator.ts
 import { App, Notice, Setting, TFile } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
-import DaggerheartStatblockPlugin from '../../../main';
+import DaggerheartStatblockPlugin from '../../main';
 import {
     Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform
 } from '../../../types';

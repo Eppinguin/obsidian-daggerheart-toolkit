@@ -1,7 +1,7 @@
 // src/services/export-import.ts
 import { Notice, TFile, TFolder, requestUrl } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 
 /**
  * A generic data exporter/importer for Daggerheart content

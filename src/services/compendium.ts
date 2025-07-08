@@ -21,7 +21,7 @@ import {
     StatblockFeature,
     InventoryItem
 } from '../../types';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { v4 as uuidv4 } from 'uuid';
 
 const DATA_PATH = "data";

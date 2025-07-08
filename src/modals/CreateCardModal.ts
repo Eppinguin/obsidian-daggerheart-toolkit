@@ -1,5 +1,5 @@
 import { App, Modal, Setting, Notice } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { JsonAbility } from '../../types';
 import { SaveChoiceModal } from './SaveChoiceModal';
 

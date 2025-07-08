@@ -1,7 +1,7 @@
 // src/modals/LevelUpModal.ts
 import { App, Modal, Setting, Notice, TextComponent, ExtraButtonComponent } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass, JsonFeat } from '../../types';
 import { renderMarkdown } from '../rendering/ui-helpers';
 import { TRAIT_NAMES } from '../constants';

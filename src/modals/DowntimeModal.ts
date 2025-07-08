@@ -1,6 +1,6 @@
 import { App, Modal, Setting, Notice } from 'obsidian';
 import { Character } from '../../types';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 
 type RestType = 'short' | 'long';
 type DowntimeMove = {

@@ -1,5 +1,5 @@
 import { App, FuzzySuggestModal } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { SavedEncounter } from '../../types';
 
 export class EncounterLinkModal extends FuzzySuggestModal<SavedEncounter> {

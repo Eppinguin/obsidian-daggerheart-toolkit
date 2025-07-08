@@ -1,28 +1,28 @@
 import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu, DropdownComponent } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter } from './types';
-import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/views/EncounterBuilderView';
-import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './src/views/CharacterSheetView';
-import { DaggerheartCompendium } from './src/services/compendium';
-import { renderStatblockCard } from './src/rendering/statblock';
-import { createInteractiveTrack } from './src/rendering/ui-helpers';
-import { ContentType } from './src/services/export-import';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter } from '../types';
+import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './views/EncounterBuilderView';
+import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './views/CharacterSheetView';
+import { DaggerheartCompendium } from './services/compendium';
+import { renderStatblockCard } from './rendering/statblock';
+import { createInteractiveTrack } from './rendering/ui-helpers';
+import { ContentType } from './services/export-import';
 import {
     AdversaryReferenceModal,
     EncounterLinkModal,
     CompendiumEntryTypeSuggester,
     ImportExportModal
-} from './src/modals/index';
-import * as dddice from './src/services/dddice-service';
-import type { ITheme } from './src/services/dddice-service';
-import { DddiceActivationModal } from './src/services/dddice-activation';
-import { displayRollNotice } from './src/services/dice-helpers';
+} from './modals/index';
+import * as dddice from './services/dddice-service';
+import type { ITheme } from './services/dddice-service';
+import { DddiceActivationModal } from './services/dddice-activation';
+import { displayRollNotice } from './services/dice-helpers';
 
-import './src/styles/import-export.css';
-import './src/styles/dddice-activation.css';
-import './src/styles/character-creator.css';
-import './src/styles/manage-encounters.css';
-import './styles.css';
+// import './src/styles/import-export.css';
+// import './src/styles/dddice-activation.css';
+// import './src/styles/character-creator.css';
+// import './src/styles/manage-encounters.css';
+// import './styles.css';
 
 declare module "obsidian" {
     interface Workspace {

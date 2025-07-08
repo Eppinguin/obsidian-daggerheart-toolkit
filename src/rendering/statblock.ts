@@ -1,6 +1,6 @@
 import { Notice, setIcon } from 'obsidian';
 import { StatblockData, AdversaryInstance } from '../../types';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { createInteractiveTrack, renderRollableContent, renderMarkdown } from './ui-helpers';
 
 function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: StatblockData, containerEl: HTMLElement) {

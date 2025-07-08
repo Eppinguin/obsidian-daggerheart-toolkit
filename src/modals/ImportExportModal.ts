@@ -1,6 +1,6 @@
 // src/modals/ImportExportModal.ts
 import { App, Modal, Setting, Notice, TextAreaComponent, ButtonComponent, TextComponent, DropdownComponent } from 'obsidian';
-import DaggerheartStatblockPlugin from '../../main';
+import DaggerheartStatblockPlugin from '../main';
 import { ContentType, ContentTypeInfo, CONTENT_TYPE_INFO, ExportedData, exportToJsonString, copyToClipboard, saveToFile, importFromJsonString, fetchJsonFromUrl } from '../services/export-import';
 import { isValidCharacterData, isValidContentData, isValidEncounterData } from '../services/content-validators';
 import { v4 as uuidv4 } from 'uuid';

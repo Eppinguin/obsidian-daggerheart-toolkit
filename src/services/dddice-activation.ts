@@ -1,6 +1,6 @@
 import { Modal, Setting, Notice } from 'obsidian';
 import { ThreeDDiceAPI } from 'dddice-js';
-import DaggerheartStatblockPlugin from 'main';
+import DaggerheartStatblockPlugin from 'src/main';
 import * as dddice from './dddice-service';
 
 export class DddiceActivationModal extends Modal {
