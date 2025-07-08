@@ -45,7 +45,7 @@ jobs:
           cp -r data/* ${{ github.workspace }}/daggerheart-toolkit/data/
 
           # Create an empty .gitkeep file in user_compendium to ensure it's included
-          touch ${{ github.workspace }}/daggerheart-toolkit/user_compendium/.gitkeep
+          # touch ${{ github.workspace }}/daggerheart-toolkit/user_compendium/.gitkeep
 
           cd ${{ github.workspace }}
           tag="${GITHUB_REF#refs/tags/}"
