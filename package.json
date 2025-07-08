@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "node esbuild.config.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-        "release": "npm run build && git add . && git commit -m \"Release %npm_package_version%\" && git tag %npm_package_version% && git push && git push --tags"
+        "release": "pnpm run build && git add . && git commit -m \"Release $npm_package_version\" && git tag $npm_package_version && git push && git push --tags"
     },
     "keywords": [],
     "author": "",
@@ -17,11 +17,11 @@
         "@types/uuid": "^10.0.0",
         "esbuild": "^0.17.17",
         "obsidian": "latest",
+        "tslib": "^2.8.1",
         "typescript": "^5.0.4"
     },
     "dependencies": {
         "dddice-js": "0.19.34-974",
-        "js-yaml": "^4.1.0",
-        "tslib": "^2.8.1"
+        "js-yaml": "^4.1.0"
     }
 }
