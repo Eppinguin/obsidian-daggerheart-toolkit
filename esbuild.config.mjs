@@ -50,10 +50,7 @@ const commonConfig = {
     logLevel: 'info',
     sourcemap: isProduction ? false : 'inline',
     treeShaking: true,
-    plugins: [copyDataPlugin],
-    loader: {
-        '.css': 'text',  // Handle CSS files as text
-    },
+    plugins: [copyDataPlugin]
 };
 
 if (isProduction) {

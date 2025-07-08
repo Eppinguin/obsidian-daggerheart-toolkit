@@ -22,7 +22,7 @@ import './src/styles/import-export.css';
 import './src/styles/dddice-activation.css';
 import './src/styles/character-creator.css';
 import './src/styles/manage-encounters.css';
-import './styles.css';
+import './src/styles/base.css';
 
 declare module "obsidian" {
     interface Workspace {
