@@ -1,8 +1,3 @@
-/* Import component styles */
-@import url('src/styles/import-export.css');
-
-/* --- Styles for dddice Theme Selection --- */
-
 .dh-theme-selector-container {
     display: flex;
     align-items: center;
@@ -29,24 +24,33 @@
 
 .dh-theme-card.is-selected-card .dh-theme-name {
     font-size: var(--font-ui-small);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
 }
 
-/* Modal specific styles */
 .dh-theme-modal .modal-content {
-    max-width: 800px;
     width: 90vw;
+    max-width: 800px;
 }
 
 .dh-theme-modal .dh-theme-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: var(--size-4-2);
+    gap: var(--size-4-3);
     margin-top: var(--size-4-3);
     max-height: 70vh;
     overflow-y: auto;
+    padding: 2px;
 }
 
+/* Styles for each individual theme card inside the modal grid */
 .dh-theme-modal .dh-theme-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     border: 2px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
     padding: var(--size-4-2);
@@ -54,26 +58,31 @@
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     background-color: var(--background-secondary);
+    overflow: hidden; 
+    min-height: 110px;
 }
 
-.dh-theme-modal .dh-theme-card:hover {
-    border-color: var(--interactive-accent-hover);
-    background-color: var(--background-modifier-hover);
-}
+.dh-theme-card:hover {
+        border-color: var(--interactive-accent-hover);
+        background-color: var(--background-modifier-hover);
+    }
 
-.dh-theme-modal .dh-theme-card.is-selected {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px var(--interactive-accent);
-}
+.dh-theme-card.is-selected {
+        border-color: var(--interactive-accent);
+        box-shadow: 0 0 0 2px var(--interactive-accent);
+    }
 
+/* The image preview of the dice theme */
 .dh-theme-modal .dh-theme-preview {
     width: 100%;
     height: 60px;
     object-fit: contain;
     margin-bottom: var(--size-4-1);
     border-radius: var(--radius-s);
+    flex-shrink: 0; 
 }
 
+/* The name of the theme */
 .dh-theme-modal .dh-theme-name {
     font-size: var(--font-ui-smaller);
     font-weight: var(--font-medium);
@@ -81,18 +90,37 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    width: 100%; 
+    margin-top: auto; 
+    padding-top: var(--size-4-1);
 }
 
+/* Placeholder for when the theme image is loading */
+.dh-theme-modal .dh-theme-loading-placeholder {
+    width: 100%;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--background-secondary);
+    border-radius: var(--radius-s);
+    margin-bottom: var(--size-4-1);
+}
+
+/* Loading indicator at the bottom of the grid */
+.dh-theme-modal .theme-loading-indicator {
+    text-align: center;
+    padding: var(--size-4-3);
+    grid-column: 1 / -1; /* Make it span all columns */
+    color: var(--text-muted);
+}
 
 /* -----------------------------------------------------------------------------
    1. VARIABLES
    ----------------------------------------------------------------------------- */
-/* Colors and themes are inherited from Obsidian's CSS variables system */
-
 
 /* -----------------------------------------------------------------------------
    2. EDITOR STATBLOCK STYLES 
-   Styles that apply to statblocks rendered from code blocks in the editor
    ----------------------------------------------------------------------------- */
 .dh-editor-statblock {
     background-color: #f3f0e9;
@@ -146,7 +174,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5em 0.75em;
-    /* padding: 0.75em 0; */
     margin: 0.5em 0;
     border-top: 2px solid #ccc;
     border-bottom: 2px solid #ccc;
@@ -163,7 +190,6 @@
 
 .dh-editor-statblock .dh-stat-separator {
     color: #aaa;
-    /* margin: 0 0.25em; */
 }
 
 /* Features section */
@@ -194,13 +220,11 @@
     margin-left: 0; 
 }
 
-/* Add hanging indentation for paragraphs */
 .dh-editor-statblock .dh-features-list li p {
     margin: 0;
     padding-left: 1em;
 }
 
-/* Ensure bullet points are properly indented */
 .dh-editor-statblock .dh-features-list li ul,
 .dh-editor-statblock .dh-features-list li ol {
     padding-left: 2.5em;
@@ -229,7 +253,6 @@
    border: none;
 }
 
-/* Style for italic prompt paragraphs */
 .dh-editor-statblock .dh-features-list li > p > em,
 .dh-editor-statblock .dh-features-list li > p:only-child > em {
    display: block;
@@ -239,9 +262,7 @@
 
 /* -----------------------------------------------------------------------------
    3. GENERAL UTILITY AND SHARED STYLES
-   Common styles used across the plugin
    ----------------------------------------------------------------------------- */
-/* Error message display */
 .dh-statblock-error {
     background-color: var(--background-modifier-error);
     color: var(--text-error);
@@ -251,7 +272,6 @@
     white-space: pre-wrap;
 }
 
-/* Rollable dice styling */
 .dh-rollable-dice {
     color: var(--interactive-accent);
     cursor: pointer;
@@ -281,13 +301,12 @@
 
 /* -----------------------------------------------------------------------------
    4. ENCOUNTER BUILDER LAYOUT
-   Main layout components for the encounter builder UI
    ----------------------------------------------------------------------------- */
 .dh-encounter-builder-container {
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow: hidden; /* Hide overflow at container level */
+    overflow: hidden;
 }
 
 .dh-top-row {
@@ -298,7 +317,7 @@
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    overflow: hidden; /* Prevent any scrolling at wrapper level */
+    overflow: hidden;
     position: relative;
     height: 100%;
 }
@@ -325,7 +344,7 @@
     display: flex;
     flex-grow: 1; 
     gap: var(--size-4-3, 15px); 
-    overflow: hidden; /* Control scrolling on child elements */
+    overflow: hidden;
     padding: var(--size-4-2) var(--size-4-2) var(--size-4-2) 0;
 }
 
@@ -333,12 +352,12 @@
     display: flex; 
     flex-wrap: nowrap; 
     gap: var(--size-4-3, 15px); 
-    align-items: stretch; /* Stretch items to fill height */
-    overflow-x: auto; /* Only horizontal scrolling */
-    overflow-y: hidden; /* Prevent vertical scrolling */
-    padding-bottom: var(--size-4-3); /* Ensure space for scrollbar */
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: var(--size-4-3);
     flex-grow: 1;
-    height: calc(100% - var(--size-4-3)); /* Account for padding */
+    height: calc(100% - var(--size-4-3));
 }
 
 .dh-encounter-controls {
@@ -350,7 +369,6 @@
 
 /* -----------------------------------------------------------------------------
    5. BUTTONS AND CONTROLS
-   General button and control styles used throughout the plugin
    ----------------------------------------------------------------------------- */
 .dh-icon-button { 
     background-color: transparent;
@@ -389,7 +407,6 @@
     color: var(--text-normal);
 }
 
-/* Add to group button */
 .dh-add-to-group-button-container {
     text-align: center;
     padding: var(--size-4-2, 8px) 0;
@@ -413,14 +430,13 @@
 
 /* -----------------------------------------------------------------------------
    6. TRACKERS
-   Budget, fear, and other tracker styles
    ----------------------------------------------------------------------------- */
 /* Right side trackers container */
 .dh-right-side-trackers {
     display: flex;
     align-items: center;
     gap: var(--size-4-3);
-    margin-left: auto; /* Pushes this container to the right */
+    margin-left: auto; 
 }
 
 /* Fear tracker */
@@ -588,7 +604,6 @@
 
 /* -----------------------------------------------------------------------------
    7. ADVERSARY CARDS AND GROUPS
-   Styles for adversary cards and group containers
    ----------------------------------------------------------------------------- */
 /* Adversary group */
 .dh-adversary-group {
@@ -597,18 +612,17 @@
     gap: var(--size-4-2);
     flex-shrink: 0;
     width: 280px;
-    align-items: stretch; /* Stretch items to fill width */
+    align-items: stretch;
 }
 
 .dh-adversary-group-container { 
     display: flex;
     flex-direction: column; 
     flex-shrink: 0;
-    gap: var(--size-4-2); /* Add spacing between cards */
-    align-items: stretch; /* Stretch to fill width */
+    gap: var(--size-4-2);
+    align-items: stretch; 
 }
 
-/* Adversary cards */
 .dh-adversary-instance-card {
     background-color: var(--color-base-25); 
     color: var(--text-normal); 
@@ -660,7 +674,7 @@
     box-shadow: none;
     color: var(--text-normal); 
     flex-grow: 1; 
-    overflow-y: visible; /* Content can extend beyond, parent will scroll */
+    overflow-y: visible;
     display: flex;
     flex-direction: column;
 }
@@ -669,7 +683,7 @@
 .dh-instance-card-content .dh-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start; /* Changed from center to allow for text wrapping */
+    align-items: flex-start;
     gap: var(--size-4-2);
     padding-bottom: var(--size-4-1, 5px); 
     margin-bottom: 0; 
@@ -683,8 +697,8 @@
     display: inline;
     flex-grow: 1;
     padding-right: 70px;
-    word-break: break-word; /* Allow words to break if they're too long */
-    overflow-wrap: break-word; /* Ensure long words wrap correctly */
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .dh-card-role-text { 
@@ -757,7 +771,7 @@
 .dh-card-image-container {
     width: 100%;
     height: 120px; 
-    flex-shrink: 0; /* Prevent the image container from shrinking */
+    flex-shrink: 0;
     overflow: hidden;
     border-radius: var(--radius-m, 8px) var(--radius-m, 8px) 0 0; 
     background-color: var(--color-base-20); 
@@ -813,7 +827,6 @@
 }
 
 
-/* Ensure the image container doesn't overlap the controls */
 .dh-card-image-container {
     padding-top: 0;
 }
@@ -827,7 +840,6 @@
 
 /* -----------------------------------------------------------------------------
    8. FEATURES SECTION
-   Styles for features in cards
    ----------------------------------------------------------------------------- */
 .dh-instance-features-title { 
     font-size: var(--font-ui-small, 13px); 
@@ -972,7 +984,6 @@
 
 /* -----------------------------------------------------------------------------
    9. ADDITIONAL TRACKERS
-   Styles for additional trackers in cards (beyond HP/Stress)
    ----------------------------------------------------------------------------- */
 .dh-additional-trackers-container {
     margin-top: var(--size-4-2, 8px); 
@@ -991,7 +1002,6 @@
     margin-bottom: 0; 
 }
 
-/* This is the first tracker row, it shouldn't have a top border/margin */
 .dh-hp-stress-container > .dh-additional-tracker-row {
     margin-top: 0;
     padding-top: 0;
@@ -1038,7 +1048,6 @@
 
 /* -----------------------------------------------------------------------------
    10. CONDITIONS
-   Styles for condition tags and containers
    ----------------------------------------------------------------------------- */
 .dh-conditions-container {
     margin-bottom: var(--size-4-2);
@@ -1055,7 +1064,7 @@
 .dh-condition-tag {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
-    padding: var(--size-2-1) var(--size-4-2);
+    padding: var(--size-2-1);
     border-radius: var(--radius-s);
     font-size: var(--font-ui-smaller);
     display: inline-flex;
@@ -1144,7 +1153,6 @@
 
 /* -----------------------------------------------------------------------------
    11. COMPENDIUM PANEL
-   Styles for the compendium panel and its contents
    ----------------------------------------------------------------------------- */
 .dh-compendium-panel {
     background-color: var(--background-primary, #333); 
@@ -1280,7 +1288,6 @@
 
 /* -----------------------------------------------------------------------------
    12. FILTERS
-   Styles for filter controls in the compendium
    ----------------------------------------------------------------------------- */
 .dh-filter-controls {
     display: flex;
@@ -1303,7 +1310,7 @@
     font-weight: var(--font-semibold);
     color: var(--text-muted);
     font-size: var(--font-ui-small);
-    min-width: 60px; /* Align labels */
+    min-width: 60px;
 }
 
 /* Tier filter buttons */
@@ -1365,7 +1372,6 @@
 
 /* -----------------------------------------------------------------------------
    13. MODALS
-   Styles for various modals used in the plugin
    ----------------------------------------------------------------------------- */
 /* General modal styles */
 .dh-name-modal .modal-title, 
@@ -1452,7 +1458,6 @@
     padding: var(--size-4-3);
 }
 
-/* Ensure all content inside the modal respects container width */
 .dh-add-item-modal * {
     max-width: 100%;
     box-sizing: border-box;
@@ -1475,7 +1480,7 @@
     flex-wrap: wrap;
     gap: var(--size-4-2);
     padding: var(--size-4-2) 0;
-    min-height: 28px; /* Prevent layout shift when empty */
+    min-height: 28px;
 }
 
 .dh-active-filter-tag {
@@ -1606,7 +1611,6 @@
 /* -----------------------------------------------------------------------------
    13.5 CHARACTER CREATOR WIZARD
    ----------------------------------------------------------------------------- */
-/* Add this to make the creator view take full height */
 .dh-cs-main:has(.dh-creator-wizard) {
   padding: 0;
   overflow: hidden;
@@ -1614,7 +1618,6 @@
   flex-direction: column;
 }
 
-/* Adjust topbar padding when inside the creator view */
 .dh-cs-main:has(.dh-creator-wizard) > .dh-cs-topbar {
   padding-left: var(--size-4-3);
   padding-right: var(--size-4-3);
@@ -1624,8 +1627,8 @@
 .dh-creator-wizard {
     display: flex;
     flex-direction: column;
-    flex-grow: 1; /* Use flex-grow to fill available space */
-    min-height: 0; /* Prevents flexbox overflow bugs */
+    flex-grow: 1;
+    min-height: 0;
     position: relative;
     overflow: hidden;
     background-color: var(--background-primary);
@@ -1679,9 +1682,9 @@
 .dh-creator-steps-list::before {
     content: "";
     position: absolute;
-    top: 12px; /* Center on the 24px indicator */
+    top: 12px;
     bottom: 12px;
-    left: 11px; /* Center the line horizontally */
+    left: 11px;
     width: 2px;
     background-color: var(--background-modifier-border);
     z-index: 1;
@@ -1695,7 +1698,7 @@
     border-radius: var(--radius-m);
     cursor: pointer;
     transition: background-color 0.2s ease;
-    z-index: 2; /* Ensure items are above the connecting line */
+    z-index: 2;
     position: relative;
 }
 
@@ -1706,7 +1709,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--background-secondary); /* Match nav background to hide the line behind it */
+    background-color: var(--background-secondary);
     border-radius: 50%;
     color: var(--text-muted);
     transition: all 0.2s ease;
@@ -1918,7 +1921,7 @@
     border: 1px solid var(--interactive-accent);
     border-radius: var(--radius-l);
     padding: var(--size-4-4);
-    position: sticky; /* Keeps it in view while the left side scrolls */
+    position: sticky;
     top: var(--size-4-4);
 }
 
@@ -1973,7 +1976,6 @@
 
 /* -----------------------------------------------------------------------------
    14. COUNTDOWN POPUP 
-   Styles for the countdown popup and its contents
    ----------------------------------------------------------------------------- */
 .dh-countdowns-popup {
     position: absolute;
@@ -2063,19 +2065,16 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--size-4-1);
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
 }
 
-.dh-condition-tag {
-    display: inline-flex;
-    align-items: center;
-    background-color: var(--background-modifier-hover);
-    border: 1px solid var(--background-modifier-border-hover);
-    color: var(--text-normal);
-    border-radius: var(--radius-s);
-    padding: var(--size-2-1) var(--size-2-2);
-    font-size: var(--font-ui-smaller);
-    cursor: default;
+.dh-condition-tags-list .dh-empty-text {
+    color: var(--text-faint);
+    font-style: italic;
 }
+
 .dh-condition-tag > span {
     margin-right: var(--size-4-1);
 }
@@ -2090,6 +2089,7 @@
     line-height: 1;
     font-size: var(--font-ui-small);
 }
+
 .dh-remove-condition-btn:hover {
     color: var(--text-error);
 }
@@ -2109,7 +2109,6 @@
 /* --- Edit Adversary Modal --- */
 
 .dh-edit-adversary-modal-root .modal-content {
-    /* Allow content to grow and establish a flex context for the body */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -2133,7 +2132,6 @@
 }
 
 .dh-edit-adversary-modal .modal-body {
-    /* The body will scroll, not the whole modal content */
     flex-grow: 1;
     overflow-y: auto;
     padding: var(--modal-padding);
@@ -2153,19 +2151,17 @@
     font-weight: var(--font-semibold);
 }
 
-/* Use grid for the main form fields for a clean, responsive layout */
 .dh-modal-field-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: var(--size-4-4);
 }
 
-/* Style each form field (Setting) for a "label on top" design */
 .dh-modal-field-grid .setting-item {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--size-2-1); /* Space between label and input */
+    gap: var(--size-2-1);
     padding: 0;
     border: none;
 }
@@ -2176,7 +2172,7 @@
 }
 
 .dh-modal-field-grid .setting-item-name {
-    font-weight: var(--font-semibold); /* Bolder label */
+    font-weight: var(--font-semibold);
     font-size: var(--font-ui-small);
     color: var(--text-normal);
 }
@@ -2184,7 +2180,7 @@
 .dh-modal-field-grid .setting-item-description {
     font-size: var(--font-ui-smaller);
     opacity: 0.7;
-    margin-top: -2px; /* Pull it closer to the name */
+    margin-top: -2px;
 }
 
 .dh-modal-field-grid .setting-item-control {
@@ -2236,14 +2232,13 @@
     color: var(--text-normal);
 }
 
-/* For the side-by-side Name/Type inputs in features */
 .dh-feature-editor-item > .setting-item > .setting-item-control {
     display: flex;
     flex-wrap: wrap;
     gap: var(--size-4-2);
 }
 .dh-feature-editor-item > .setting-item > .setting-item-control > input {
-    flex: 1 1 150px; /* Allow growing, shrinking, with a base size */
+    flex: 1 1 150px; 
 }
 
 .dh-feature-remove-btn {
@@ -2306,7 +2301,6 @@
 /* -----------------------------------------------------------------------------
    15. STATBLOCK PREVIEW POPOVER STYLES
    ----------------------------------------------------------------------------- */
-/* --- Statblock Preview Popover Styles --- */
 .dh-statblock-preview-popover {
     position: fixed;
     z-index: 1000;
@@ -2354,7 +2348,6 @@
     border-radius: 4px;
 }
 
-/* Make sure the statblock in the popover doesn't have its own scrollbar */
 .dh-statblock-preview-popover .dh-popover-content .dh-editor-statblock {
     max-width: 100%;
     box-shadow: none;
@@ -2387,27 +2380,23 @@
     min-width: 60px;
 }
 
-/* First segment styling (Minor) */
 .dh-threshold-segment:first-child {
     border-top-left-radius: var(--radius-m);
     border-bottom-left-radius: var(--radius-m);
     border-right: none;
 }
 
-/* Last segment styling (Severe or Major) */
 .dh-threshold-segment:last-child {
     border-top-right-radius: var(--radius-m);
     border-bottom-right-radius: var(--radius-m);
     border-left: none;
 }
 
-/* Middle segment styling (Major when Severe exists) */
 .dh-threshold-major:not(:last-child) {
     border-left: none;
     border-right: none;
 }
 
-/* Threshold value styling */
 .dh-threshold-value {
     font-weight: var(--font-bold);
     color: var(--text-normal);
@@ -2424,14 +2413,11 @@
     box-shadow: 0 0 0 2px var(--background-primary);
 }
 
-/* Minor segment additional styling */
 .dh-threshold-minor {
     padding-right: var(--size-4-3);
 }
 
-/* Character Sheet Styles */
-/* --- [REFACTORED] CHARACTER SHEET VIEW STYLES --- */
-/* This section contains the new styles to match the screenshot layout. */
+/* --- CHARACTER SHEET VIEW STYLES --- */
 
 :root {
     --dh-sheet-bg: #17181c;
@@ -2452,7 +2438,7 @@
     height: 100%;
     background-color: var(--dh-sheet-bg);
     color: var(--dh-sheet-text);
-    font-size: 14px; /* Reduced base font size */
+    font-size: 14px;
 }
 
 .dh-cs-main {
@@ -2517,24 +2503,24 @@
 }
 
 .dh-avatar {
-    width: 70px; /* smaller */
-    height: 70px; /* smaller */
+    width: 70px;
+    height: 70px;
     border: 2px solid var(--dh-sheet-accent);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: var(--dh-sheet-bg-alt);
-    position: relative; /* Add for positioning context */
-    overflow: hidden; /* Add to crop the image */
+    position: relative;
+    overflow: hidden;
 }
 .dh-avatar > .svg-icon {
-    width: 40px; /* smaller */
-    height: 40px; /* smaller */
+    width: 40px;
+    height: 40px;
 }
 
 .dh-nameplate h1 {
-    font-size: 2.2em; /* smaller */
+    font-size: 2.2em;
     font-weight: var(--font-bold);
     margin: 0;
     color: var(--dh-sheet-accent);
@@ -2543,7 +2529,7 @@
 
 .dh-nameplate p {
     margin: 0;
-    font-size: var(--font-ui-medium); /* smaller */
+    font-size: var(--font-ui-medium);
     color: var(--dh-sheet-text-muted);
     font-weight: var(--font-medium);
 }
@@ -2555,7 +2541,6 @@
 }
 .dh-character-sheet-view .dh-downtime-btn {
     background-color: var(--dh-sheet-bg-alt);
-    /* color: var(--dh-sheet-text-muted); */
     border: 1px solid var(--dh-sheet-border);
     box-shadow: none;
     display: inline-flex;
@@ -2606,7 +2591,6 @@
 /* Main Grid Layout */
 .dh-sheet-grid {
     display: grid;
-    /* Adjusted column widths for a more compact layout */
     grid-template-columns: 240px 1fr 240px;
     gap: var(--size-4-4);
     padding: 0 var(--size-4-1);
@@ -2618,7 +2602,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--size-4-4);
-    min-width: 0; /* Prevents grid blowout */
+    min-width: 0;
 }
 
 /* --- Left Column --- */
@@ -2629,8 +2613,8 @@
 }
 
 .dh-stat-hex {
-    width: 95px; /* smaller */
-    height: 110px; /* smaller */
+    width: 95px;
+    height: 110px;
     background-color: var(--dh-sheet-bg-alt);
     color: var(--dh-sheet-text);
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
@@ -2642,13 +2626,13 @@
 }
 
 .dh-stat-hex .dh-stat-value {
-    font-size: 2.5em; /* smaller */
+    font-size: 2.5em;
     line-height: 1;
     color: var(--dh-sheet-accent);
 }
 
 .dh-stat-hex .dh-stat-label {
-    font-size: var(--font-ui-small); /* smaller */
+    font-size: var(--font-ui-small);
     text-transform: uppercase;
     margin-top: var(--size-2-1);
 }
@@ -2663,8 +2647,8 @@
     justify-content: center;
 }
 .dh-armor-slots .dh-pip {
-    width: 18px; /* smaller */
-    height: 18px; /* smaller */
+    width: 18px;
+    height: 18px;
     border-radius: 0;
     border-color: var(--dh-sheet-accent);
     background-color: transparent;
@@ -2694,8 +2678,8 @@
     font-size: var(--font-ui-medium);
     text-transform: uppercase;
     font-weight: var(--font-semibold);
+    color: var(--dh-sheet-text-muted);
 }
-
 
 .dh-thresholds-box {
     display: flex;
@@ -2734,7 +2718,7 @@
 /* --- Center Column --- */
 .dh-traits-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* responsive traits */
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: var(--size-4-3);
 }
 
@@ -2802,7 +2786,7 @@
     display: flex;
     justify-content: space-between;
     gap: var(--size-4-2);
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+    flex-wrap: wrap;
 }
 .dh-weapon-name {
     font-size: var(--font-ui-medium);
@@ -2818,7 +2802,7 @@
     margin-top: var(--size-4-2);
     padding-top: var(--size-4-2);
     border-top: 1px dashed var(--dh-sheet-border);
-    width: 100%; /* Ensure it takes full width when wrapped */
+    width: 100%;
 }
 .dh-weapon-card-right {
     display: flex;
@@ -2872,8 +2856,6 @@
 .dh-weapon-damage-box div:last-child {
     color: var(--dh-sheet-text-muted);
 }
-/* END STYLING FIX */
-
 
 /* --- Right Column --- */
 .dh-vitals {
@@ -2940,7 +2922,6 @@
     font-weight: var(--font-bold);
 }
 
-/* Overriding interactive track for new theme */
 .dh-character-sheet-view .dh-interactive-track {
     align-items: center;
 }
@@ -2953,8 +2934,8 @@
     gap: var(--size-2-2);
 }
 .dh-character-sheet-view .dh-pip {
-    width: 13px; /* smaller */
-    height: 13px; /* smaller */
+    width: 13px;
+    height: 13px;
     border-width: 2px;
     border-color: var(--dh-sheet-text-muted);
     transform: rotate(45deg);
@@ -2975,7 +2956,7 @@
     color: var(--dh-sheet-bg);
 }
 
-/* --- Manager Section (REWORKED) --- */
+/* --- Manager Section --- */
 .dh-manager-container {
     margin-top: var(--size-4-4);
     background-color: var(--dh-sheet-bg-alt);
@@ -3129,7 +3110,7 @@
     color: var(--dh-sheet-text-muted);
 }
 
-/* --- [REWORKED] Feature Card Styles --- */
+/* --- Feature Card Styles --- */
 .dh-feature-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -3172,14 +3153,14 @@
 .dh-feature-card-meta-header {
     display: flex;
     gap: var(--size-4-2);
-    flex-shrink: 0; /* Prevent tags from shrinking on smaller card sizes */
+    flex-shrink: 0; 
 }
 
 .dh-feature-card-type {
     font-size: var(--font-ui-smaller);
     font-weight: var(--font-medium);
     color: var(--dh-sheet-text-muted);
-    background-color: var(--dh-sheet-bg-alt); /* Use alternate bg for tags */
+    background-color: var(--dh-sheet-bg-alt);
     padding: var(--size-2-1) var(--size-2-2);
     border: 1px solid var(--dh-sheet-border);
     border-radius: var(--radius-s);
@@ -3188,7 +3169,7 @@
 
 .dh-feature-card-body {
     padding: var(--size-4-3);
-    flex-grow: 1; /* Allows body to take up available space */
+    flex-grow: 1;
     font-size: var(--font-ui-small);
     color: var(--dh-sheet-text-muted);
 }
@@ -3304,17 +3285,17 @@
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
     margin-bottom: var(--size-4-3);
-    padding: 0; /* Remove padding from details element */
+    padding: 0;
 }
 
 .dh-character-manager-modal .dh-manager-section summary {
     padding: var(--size-4-3);
     cursor: pointer;
-    list-style: none; /* Hide default triangle */
+    list-style: none;
 }
 
 .dh-character-manager-modal .dh-manager-section summary::-webkit-details-marker {
-    display: none; /* Hide default triangle in Chrome */
+    display: none;
 }
 
 .dh-character-manager-modal .dh-manager-section summary h2 {
@@ -3406,13 +3387,10 @@
     border: 2px solid var(--dh-sheet-accent);
     border-radius: 50%;
     background-color: var(--dh-sheet-bg-alt);
-    /* Default styles for when an image is loading or not set */
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
-    /* For flexbox layout in the header */
     flex-shrink: 0;
-    /* For centering the placeholder icon */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3434,7 +3412,6 @@
     margin-bottom: 10px;
 }
 
-/* This is the 150x150 circular preview area. */
 .dh-preview-container {
     width: 150px;
     height: 150px;
@@ -3460,13 +3437,12 @@
     box-shadow: 0 0 10px var(--interactive-accent);
 }
 
-/* This is the new container that sits BELOW the preview circle. */
 .dh-avatar-controls-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    width: 220px; /* Give the controls a max width */
+    width: 220px;
 }
 
 /* This container aligns the "Size:" label next to the slider. */
@@ -3490,7 +3466,7 @@
 
 /* The reset button */
 .dh-avatar-reset-btn {
-    pointer-events: auto; /* Make button clickable */
+    pointer-events: auto;
     margin-top: 8px;
 }
 
@@ -3513,17 +3489,17 @@
 /* Tablet and smaller desktops */
 @media (max-width: 900px) {
     .dh-sheet-grid {
-        grid-template-columns: 1fr; /* Stack columns */
+        grid-template-columns: 1fr;
     }
     .dh-grid-column-center {
-        order: -1; /* Move traits to the top */
+        order: -1; 
     }
 }
 
 /* Mobile phones */
 @media (max-width: 600px) {
     .dh-character-sheet-view .view-content {
-        font-size: 13px; /* Further reduce font size on mobile */
+        font-size: 13px;
     }
 
     .dh-cs-main {
@@ -3541,7 +3517,7 @@
     }
 
     .dh-primary-defenses {
-        flex-wrap: wrap; /* Allow hexes to wrap */
+        flex-wrap: wrap;
         justify-content: center;
     }
     
@@ -3555,7 +3531,7 @@
     }
 
     .dh-inventory-item {
-        grid-template-columns: 1fr 50px; /* Stack name/desc */
+        grid-template-columns: 1fr 50px; 
         gap: var(--size-2-2) var(--size-4-3);
     }
     .dh-inventory-item-desc {
@@ -3576,7 +3552,6 @@
     background-color: var(--background-modifier-hover);
 }
 
-/* Specific styles for the modal actions container and buttons to fix alignment */
 .dh-add-item-modal .modal-actions-container {
     display: flex;
     gap: 8px;
@@ -3598,7 +3573,6 @@
 }
 
 /* --- Card Swap Modal --- */
-/* Apply strict overflow control to all elements inside the modal */
 .dh-card-swap-modal * {
     max-width: 100%;
     box-sizing: border-box;
@@ -3608,14 +3582,12 @@
 
 .dh-card-swap-modal .modal-content {
     width: 90vw;
-    /* max-width: 500px;  */
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
     padding: var(--size-4-3);
 }
 
-/* Make sure the modal content container doesn't overflow */
 .dh-modal-content-container {
     flex-grow: 1;
     overflow-y: auto;
@@ -3759,7 +3731,6 @@ color: var(--text-normal);
 
 .dh-card-manage-container {
     display: grid;
-    /* Changed to single column layout */
     grid-template-columns: 1fr;
     gap: var(--size-4-4);
     height: 100%;
@@ -3774,7 +3745,6 @@ color: var(--text-normal);
     border-top: 1px solid var(--background-modifier-border);
 }
 
-/* Prevent horizontal scrolling in the AddItemModal */
 .dh-add-item-modal {
     max-width: 100%;
     overflow-x: hidden;
@@ -3797,11 +3767,11 @@ color: var(--text-normal);
 .dh-level-up-modal .modal-content {
     display: flex;
     flex-direction: column;
-    max-height: 85vh; /* Changed from inherit */
+    max-height: 85vh;
     margin-top: auto;
     margin-bottom: auto;
-    padding: var(--modal-padding); /* Changed from auto */
-    max-width: 800px; /* Changed from 100% */
+    padding: var(--modal-padding); 
+    max-width: 800px; 
 }
 
 .dh-level-up-modal .setting-item {
@@ -3860,7 +3830,7 @@ color: var(--text-normal);
     padding-left: var(--size-4-4);
     border-left: 2px solid var(--background-modifier-border);
     margin-bottom: var(--size-4-2);
-    padding-top: var(--size-4-2); /* Added padding */
+    padding-top: var(--size-4-2);
 }
 
 .dh-domain-card-preview {

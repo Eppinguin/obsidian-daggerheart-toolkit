@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu, DropdownComponent } from 'obsidian';
 import * as YAML from 'js-yaml';
 import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './src/views/EncounterBuilderView';
@@ -14,7 +14,8 @@ import {
     ImportExportModal
 } from './src/modals/index';
 import * as dddice from './src/services/dddice-service';
-import { ITheme, ThreeDDice } from 'dddice-js';
+import type { ITheme } from './src/services/dddice-service';
+import { DddiceActivationModal } from './src/services/dddice-activation';
 import { displayRollNotice } from './src/services/dice-helpers';
 
 declare module "obsidian" {
@@ -48,18 +49,18 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;
     compendium: DaggerheartCompendium;
     isDiceRollerEnabled: boolean = false;
-    private dddiceInstance: ThreeDDice | undefined;
-    private dddiceCanvas: HTMLCanvasElement | null = null;
-    private boundDddiceClear: (() => void) | null = null;
     private characters: Character[] = [];
     private activeCharacterId: string | null = null;
+    public settingsTab: DaggerheartSettingTab | null = null;
 
     async onload() {
-        console.log('Loading Daggerheart Plugin');
         await this.loadSettings();
         this.activeCharacterId = this.settings.activeCharacterId;
 
-        this.handleDddiceInitialization();
+        // Load all additional CSS files
+        this.loadStylesheets();
+
+        this.initializeDddiceIfNeeded();
 
         this.compendium = new DaggerheartCompendium(this);
         await this.compendium.load();
@@ -133,7 +134,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             },
         });
 
-        this.addSettingTab(new DaggerheartSettingTab(this.app, this));
+        this.settingsTab = new DaggerheartSettingTab(this.app, this);
+        this.addSettingTab(this.settingsTab);
     }
 
     async processStatblock(source: string, el: HTMLElement) {
@@ -313,58 +315,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
-    // --- DDDICE RENDERER MANAGEMENT ---
-
-    handleDddiceInitialization() {
-        this.destroyDddiceInstance();
-
-        const { diceProvider, dddice } = this.settings;
-        if (diceProvider !== 'dddice' || !dddice.apiKey || !dddice.renderInObsidian || !dddice.room) {
-            return;
-        }
-
-        try {
-            this.dddiceCanvas = document.body.createEl('canvas', { attr: { id: 'dddice-canvas' } });
-            this.dddiceCanvas.style.cssText = 'top:0px; left:0; position:fixed; pointer-events:none; z-index:95; width:100vw; height:100vh;';
-
-            this.dddiceInstance = new ThreeDDice().initialize(this.dddiceCanvas, dddice.apiKey, undefined, 'Daggerheart-Obsidian');
-            this.dddiceInstance.connect(dddice.room);
-            this.dddiceInstance.start();
-
-            this.boundDddiceClear = () => {
-                if (this.dddiceInstance && !this.dddiceInstance.isDiceThrowing) {
-                    this.dddiceInstance.clear();
-                }
-            };
-
-            document.body.addEventListener('click', this.boundDddiceClear);
-
-            console.log("dddice renderer initialized.");
-        } catch (e) {
-            console.error("Failed to initialize dddice renderer:", e);
-            this.destroyDddiceInstance();
-        }
-    }
-
-    destroyDddiceInstance() {
-        if (this.dddiceInstance) {
-            this.dddiceInstance.stop();
-            if (this.dddiceInstance.api) {
-                this.dddiceInstance.api.disconnect();
-            }
-            this.dddiceInstance = undefined;
-        }
-        if (this.dddiceCanvas) {
-            if (this.boundDddiceClear) {
-                document.body.removeEventListener('click', this.boundDddiceClear);
-                this.boundDddiceClear = null;
-            }
-            this.dddiceCanvas.remove();
-            this.dddiceCanvas = null;
-        }
-    }
-
-
     private async ensureUserCompendiumFolderExists() {
         const path = `${this.manifest.dir}/${USER_COMPENDIUM_FOLDER}`;
         if (!(await this.app.vault.adapter.exists(path))) {
@@ -446,7 +396,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     public async rollDice(diceString: string, context: string, traitName?: string): Promise<number | null> {
         if (this.settings.diceProvider === 'dddice') {
-            return await dddice.rollWithDddice(this.settings.dddice, diceString, context, this.dddiceInstance, traitName);
+            return await dddice.rollWithDddice(this.settings.dddice, diceString, context, traitName);
         } else {
             if (!this.settings.enableDiceRoller || !this.isDiceRollerEnabled) {
                 new Notice("Dice Roller integration is not enabled in plugin settings.");
@@ -514,12 +464,26 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     async saveSettings() {
-        await this.saveData(this.settings);
-        this.handleDddiceInitialization();
+        // Create a copy of the settings without the rooms and themes arrays to avoid storing them
+        const settingsToSave = Object.assign({}, this.settings);
+
+        // Remove transient properties
+        if (settingsToSave.dddice) {
+            const { rooms, themes, ...dddiceToSave } = settingsToSave.dddice;
+            settingsToSave.dddice = dddiceToSave;
+        }
+
+        await this.saveData(settingsToSave);
+        this.initializeDddiceIfNeeded();
+
+        // Refresh the settings tab if it exists
+        if (this.settingsTab) {
+            this.settingsTab.display();
+        }
     }
 
     onunload() {
-        this.destroyDddiceInstance();
+        dddice.destroyDddiceRenderer();
         if (this.settings.enableEncounterView) {
             this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
         }
@@ -527,17 +491,217 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             this.app.workspace.detachLeavesOfType(CHARACTER_SHEET_VIEW_TYPE);
         }
     }
+
+    public initializeDddiceIfNeeded() {
+        const { diceProvider, dddice: dddiceSettings } = this.settings;
+        if (diceProvider === 'dddice' && dddiceSettings.apiKey && dddiceSettings.renderInObsidian && dddiceSettings.room) {
+            dddice.initializeDddiceRenderer(dddiceSettings);
+        }
+    }
+
+    private loadStylesheets() {
+        try {
+            const cssFiles = [
+                'src/styles/import-export.css',
+                'src/styles/dddice-activation.css'
+            ];
+
+            for (const cssFile of cssFiles) {
+                const cssPath = `${this.manifest.dir}/${cssFile}`;
+
+                this.app.vault.adapter.exists(cssPath).then(exists => {
+                    if (exists) {
+                        this.app.vault.adapter.read(cssPath).then(content => {
+                            this.registerDomEvent(document, "click", () => { });
+                            const styleEl = document.createElement('style');
+                            styleEl.textContent = content;
+                            document.head.appendChild(styleEl);
+                            this.register(() => styleEl.remove());
+                        }).catch(error => {
+                            console.error(`Failed to load ${cssFile}:`, error);
+                        });
+                    } else {
+                        console.warn(`CSS file not found: ${cssFile}`);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load stylesheets:', error);
+        }
+    }
 }
 
 class DaggerheartSettingTab extends PluginSettingTab {
     plugin: DaggerheartStatblockPlugin;
     private isDddiceConnecting: boolean = false;
+    private _isPreloading: boolean = false;
 
-    constructor(app: App, plugin: DaggerheartStatblockPlugin) { super(app, plugin); this.plugin = plugin; }
+    // Make these public for access from ThemeSelectionModal
+    public dddiceRoomsCacheTimestamp: number = 0;
+    public dddiceThemesCacheTimestamp: number = 0;
+    public readonly CACHE_TTL = 60 * 1000; // 1 minute cache TTL
 
-    display(): void {
+    // UI refresh tracking
+    private _dddiceDropdownsToRefresh: DropdownComponent[] = [];
+    private _themeSelectorsToRefresh: string[] = []; // settingKeys
+    private _dddiceObserverInterval: number | null = null;
+
+    constructor(app: App, plugin: DaggerheartStatblockPlugin) {
+        super(app, plugin);
+        this.plugin = plugin;
+
+        // Initialize UI refresh trackers
+        this._dddiceDropdownsToRefresh = [];
+        this._themeSelectorsToRefresh = [];
+        this._dddiceObserverInterval = null;
+
+        // Start the UI refresh observer
+        this.startDddiceDataObserver();
+    } public async preloadDddiceData(loadAllThemes: boolean = false): Promise<void> {
+        if (!this.plugin.settings.dddice.apiKey) return;
+
+        const now = Date.now();
+        this._isPreloading = true;
+
+        try {
+            const dddiceApi = dddice.initializeDddiceApi(this.plugin.settings.dddice.apiKey);
+            let dataUpdated = false;
+
+            const selectedRoomSlug = this.plugin.settings.dddice.room;
+            const roomCacheExpired = now - this.dddiceRoomsCacheTimestamp > this.CACHE_TTL;
+
+            if (selectedRoomSlug) {
+                if (!this.plugin.settings.dddice.rooms) {
+                    this.plugin.settings.dddice.rooms = [];
+                }
+
+                // Fetch the selected room for immediate display
+                const room = await dddice.fetchDddiceRoom(dddiceApi, selectedRoomSlug);
+
+                if (room) {
+                    // Update the room in the array if it exists, otherwise add it
+                    const existingRoomIndex = this.plugin.settings.dddice.rooms.findIndex(r => r.slug === room.slug);
+
+                    if (existingRoomIndex >= 0) {
+                        this.plugin.settings.dddice.rooms[existingRoomIndex] = {
+                            slug: room.slug,
+                            name: room.name
+                        };
+                    } else {
+                        this.plugin.settings.dddice.rooms.push({
+                            slug: room.slug,
+                            name: room.name
+                        });
+                    }
+
+                    dataUpdated = true;
+                }
+            }
+
+            if (!this.plugin.settings.dddice.rooms || this.plugin.settings.dddice.rooms.length <= 1 || roomCacheExpired) {
+                const allRooms = await dddice.fetchDddiceRooms(dddiceApi);
+
+                if (allRooms && allRooms.length > 0) {
+                    // Create a map of existing rooms by slug for quick lookup
+                    const existingRoomsMap = new Map(
+                        this.plugin.settings.dddice.rooms?.map(r => [r.slug, r]) || []
+                    );
+
+                    // Create a new array with all unique rooms
+                    const updatedRooms = allRooms.map(room => ({
+                        slug: room.slug,
+                        name: room.name
+                    }));
+
+                    // Remove any duplicates by using a Map
+                    const uniqueRooms = Array.from(
+                        new Map(updatedRooms.map(r => [r.slug, r])).values()
+                    );
+
+                    this.plugin.settings.dddice.rooms = uniqueRooms;
+                    this.dddiceRoomsCacheTimestamp = now;
+                    dataUpdated = true;
+                }
+            }
+
+            // For themes, we'll only check if we need to reload selected themes
+            // unless loadAllThemes is true
+            const selectedThemeIds = [
+                this.plugin.settings.dddice.theme,
+                this.plugin.settings.dddice.hopeTheme,
+                this.plugin.settings.dddice.fearTheme
+            ].filter(id => id);
+
+            // Initialize themes array if it doesn't exist
+            if (!this.plugin.settings.dddice.themes) {
+                this.plugin.settings.dddice.themes = [];
+            }
+
+            const existingThemes = this.plugin.settings.dddice.themes || [];
+            const missingThemeIds = selectedThemeIds.filter(id =>
+                !existingThemes.some(theme => theme?.id === id)
+            );
+
+            const needsSelectedThemesReload = missingThemeIds.length > 0;
+            const needsAllThemesReload = loadAllThemes &&
+                (existingThemes.length === 0 || (now - this.dddiceThemesCacheTimestamp > this.CACHE_TTL));
+
+            const needsThemesReload = needsSelectedThemesReload || needsAllThemesReload;
+
+            if (needsThemesReload) {
+                if (needsAllThemesReload) {
+                    const themes = await dddice.fetchDddiceThemes(dddiceApi);
+                    this.plugin.settings.dddice.themes = themes;
+                    this.dddiceThemesCacheTimestamp = now;
+                    dataUpdated = true;
+                } else if (needsSelectedThemesReload) {
+                    const fetchedThemes = await Promise.all(
+                        missingThemeIds.map(async (themeId) => {
+                            if (themeId) {
+                                return await dddice.fetchDddiceTheme(dddiceApi, themeId);
+                            }
+                            return null;
+                        })
+                    );
+
+                    const validThemes = fetchedThemes.filter((theme: ITheme | null): theme is ITheme => theme !== null);
+
+                    if (validThemes.length > 0) {
+                        const themesMap = new Map(
+                            existingThemes.map((theme: ITheme) => [theme.id, theme])
+                        );
+
+                        validThemes.forEach((theme: ITheme) => {
+                            themesMap.set(theme.id, theme);
+                        });
+
+                        this.plugin.settings.dddice.themes = Array.from(themesMap.values());
+                        dataUpdated = true;
+                    }
+                }
+            }
+
+            if (dataUpdated) {
+                this.display();
+            }
+        } catch (e) {
+            console.error("Error preloading dddice data:", e);
+        } finally {
+            this._isPreloading = false;
+        }
+    }
+
+    async display(): Promise<void> {
         const { containerEl } = this;
         containerEl.empty();
+
+        let startingPreload = false;
+
+        if (this.plugin.settings.diceProvider === 'dddice' && !this._isPreloading) {
+            this._isPreloading = true;
+            startingPreload = true;
+        }
+
         containerEl.createEl('h2', { text: 'Daggerheart Settings' });
 
         // Feature Toggle Settings
@@ -592,6 +756,17 @@ class DaggerheartSettingTab extends PluginSettingTab {
         this.renderCompendiumSettings(containerEl);
         this.renderEncounterViewSettings(containerEl);
         this.renderIntegrationSettings(containerEl);
+
+        // Start preload after the UI is built if needed
+        if (startingPreload) {
+            setTimeout(() => {
+                this.preloadDddiceData(false).catch(error => {
+                    console.error("Error during dddice data preload:", error);
+                }).finally(() => {
+                    this._isPreloading = false;
+                });
+            }, 0);
+        }
     }
 
     renderCompendiumSettings(containerEl: HTMLElement) {
@@ -708,59 +883,23 @@ class DaggerheartSettingTab extends PluginSettingTab {
     }
 
     renderDddiceSettings(containerEl: HTMLElement) {
-        new Setting(containerEl)
-            .setName('dddice API Key')
-            .setDesc(createFragment((frag) => {
-                frag.appendText('Your dddice.com API key. Get one from your ');
-                frag.createEl('a', { text: 'account page', attr: { href: 'https://dddice.com/account/developer', target: '_blank' } });
-                frag.appendText('.');
-            }))
-            .addText(text => text
-                .setPlaceholder('Enter your API key')
-                .setValue(this.plugin.settings.dddice.apiKey)
-                .onChange(async (value) => {
-                    this.plugin.settings.dddice.apiKey = value.trim();
-                    await this.plugin.saveSettings();
-                }))
+        const apiKeyDesc = createFragment((frag) => {
+            frag.createEl('p', { text: 'Connect to dddice to roll 3D dice and share with friends.' });
+        });
+
+        const connectSection = containerEl.createEl('div', { cls: 'dddice-connect-section' });
+
+        new Setting(connectSection)
+            .setName('Connect to dddice')
+            .setDesc(apiKeyDesc)
             .addButton(button => button
-                .setButtonText(this.isDddiceConnecting ? "Connecting..." : "Connect & Fetch Data")
-                .setDisabled(this.isDddiceConnecting)
-                .onClick(async () => {
-                    this.isDddiceConnecting = true;
-                    this.display();
-
-                    try {
-                        const apiKey = this.plugin.settings.dddice.apiKey;
-                        if (!apiKey) {
-                            new Notice("Please enter a dddice API key.");
-                            return;
-                        }
-
-                        const dddiceApi = dddice.initializeDddiceApi(apiKey);
-                        const [rooms, themes] = await Promise.all([
-                            dddice.fetchDddiceRooms(dddiceApi),
-                            dddice.fetchDddiceThemes(dddiceApi)
-                        ]);
-
-                        this.plugin.settings.dddice.rooms = rooms.map(r => ({ slug: r.slug, name: r.name }));
-                        this.plugin.settings.dddice.themes = themes;
-
-                        if (!this.plugin.settings.dddice.rooms.some(r => r.slug === this.plugin.settings.dddice.room)) {
-                            this.plugin.settings.dddice.room = null;
-                        }
-
-                        await this.plugin.saveSettings();
-                        new Notice("Successfully connected to dddice!");
-                    } catch (e) {
-                        new Notice("Failed to connect to dddice. Check API key and console.", 4000);
-                        console.error(e);
-                    } finally {
-                        this.isDddiceConnecting = false;
-                        this.display();
-                    }
+                .setButtonText('Activate with dddice.com')
+                .setCta()
+                .onClick(() => {
+                    new DddiceActivationModal(this.plugin).open();
                 }));
 
-        const isConnected = this.plugin.settings.dddice.apiKey && this.plugin.settings.dddice.themes.length > 0;
+        const isConnected = this.plugin.settings.dddice.apiKey;
         if (isConnected) {
             new Setting(containerEl)
                 .setName('Render dice in Obsidian')
@@ -776,8 +915,99 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 .setName('dddice Room')
                 .setDesc('Select the room to send dice rolls to.')
                 .addDropdown(dropdown => {
-                    dropdown.addOption('', 'Select a room...');
-                    this.plugin.settings.dddice.rooms.forEach(room => dropdown.addOption(room.slug, room.name));
+                    const hasRooms = this.plugin.settings.dddice.rooms && this.plugin.settings.dddice.rooms.length > 0;
+                    const isLoading = !hasRooms;
+
+                    dropdown.addOption('', isLoading ? 'Loading rooms...' : 'Select a room...');
+
+                    if (hasRooms) {
+                        dropdown.selectEl.options.length = 1;
+
+                        const availableRooms = this.plugin.settings.dddice.rooms || [];
+                        availableRooms.forEach(room =>
+                            dropdown.addOption(room.slug, room.name));
+
+                        dropdown.setValue(this.plugin.settings.dddice.room || '');
+                    }
+
+                    // Add this dropdown to the refresh list
+                    if (!hasRooms || (this.plugin.settings.dddice.room &&
+                        !this.plugin.settings.dddice.rooms?.some(r => r.slug === this.plugin.settings.dddice.room))) {
+                        this._dddiceDropdownsToRefresh.push(dropdown);
+                    }
+
+                    // Load rooms when the dropdown is clicked if not already loaded or if cache is expired
+                    let isLoadingRooms = false;
+
+                    dropdown.selectEl.addEventListener('mousedown', async (e) => {
+                        // Check if we need to load or reload the rooms
+                        const now = Date.now();
+                        const needsReload =
+                            !this.plugin.settings.dddice.rooms ||
+                            this.plugin.settings.dddice.rooms.length === 0 ||
+                            (now - this.dddiceRoomsCacheTimestamp > this.CACHE_TTL);
+
+                        if (needsReload) {
+                            if (isLoadingRooms) return;
+
+                            e.preventDefault();
+                            e.stopPropagation();
+                            isLoadingRooms = true;
+
+                            // Show loading option
+                            dropdown.selectEl.options.length = 0;
+                            dropdown.addOption('', 'Loading rooms...');
+
+                            try {
+                                const dddiceApi = dddice.initializeDddiceApi(this.plugin.settings.dddice.apiKey);
+
+                                if (this.plugin.settings.dddice.room) {
+                                    const room = await dddice.fetchDddiceRoom(dddiceApi, this.plugin.settings.dddice.room);
+
+                                    if (room) {
+                                        if (!this.plugin.settings.dddice.rooms) {
+                                            this.plugin.settings.dddice.rooms = [];
+                                        }
+
+                                        this.plugin.settings.dddice.rooms = this.plugin.settings.dddice.rooms
+                                            .filter(r => r.slug !== room.slug);
+
+                                        this.plugin.settings.dddice.rooms.push({
+                                            slug: room.slug,
+                                            name: room.name
+                                        });
+                                    }
+                                }
+
+                                // Then fetch all rooms to populate the dropdown
+                                const rooms = await dddice.fetchDddiceRooms(dddiceApi);
+
+                                // Cache the rooms temporarily and update the timestamp
+                                this.plugin.settings.dddice.rooms = rooms.map(r => ({ slug: r.slug, name: r.name }));
+                                this.dddiceRoomsCacheTimestamp = now;
+
+                                // Rebuild dropdown options
+                                dropdown.selectEl.options.length = 0;
+                                dropdown.addOption('', 'Select a room...');
+                                this.plugin.settings.dddice.rooms.forEach(room =>
+                                    dropdown.addOption(room.slug, room.name));
+
+                                // Set the current value
+                                dropdown.setValue(this.plugin.settings.dddice.room || '');
+
+                                // Simulate a click to open the dropdown now that it's loaded
+                                dropdown.selectEl.click();
+                            } catch (e) {
+                                console.error("Failed to load dddice rooms:", e);
+                                dropdown.selectEl.options.length = 0;
+                                dropdown.addOption('', 'Failed to load rooms');
+                                new Notice("Failed to load dddice rooms.");
+                            } finally {
+                                isLoadingRooms = false;
+                            }
+                        }
+                    });
+
                     dropdown.setValue(this.plugin.settings.dddice.room || '')
                         .onChange(async (value) => {
                             this.plugin.settings.dddice.room = value;
@@ -796,32 +1026,167 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         const themeContainer = setting.controlEl.createDiv({ cls: 'dh-theme-selector-container' });
 
-        const selectedTheme = this.plugin.settings.dddice.themes.find(t => t.id === this.plugin.settings.dddice[settingKey]);
+        // Get the currently selected theme ID
+        const selectedThemeId = this.plugin.settings.dddice[settingKey];
 
+        // Create a card that will show the selected theme or a placeholder
         const card = themeContainer.createDiv({ cls: 'dh-theme-card is-selected-card' });
-        if (selectedTheme) {
-            const previewUrl = getThemePreviewUrl(selectedTheme);
-            if (previewUrl) {
-                card.createEl('img', {
-                    attr: { src: previewUrl, alt: selectedTheme.name || 'Theme preview' },
-                    cls: 'dh-theme-preview'
-                });
-            } else {
-                card.createDiv({ text: 'No Preview', cls: 'dh-theme-name' });
-            }
-            card.createDiv({ text: selectedTheme.name, cls: 'dh-theme-name' });
-        } else {
-            card.createDiv({ text: 'Select a theme', cls: 'dh-theme-name' });
-        }
 
-        const changeButton = themeContainer.createEl('button', { text: 'Change' });
-        changeButton.addEventListener('click', () => {
+        // Make the card clickable to open the theme selection modal
+        card.addClass('clickable');
+        card.addEventListener('click', () => {
+            // Open the modal immediately - it will handle lazy loading
             new ThemeSelectionModal(this.app, this.plugin, settingKey, (themeId) => {
                 this.plugin.settings.dddice[settingKey] = themeId;
                 this.plugin.saveSettings();
                 this.display();
             }).open();
         });
+
+        // If we have themes loaded and a theme is selected, show it
+        const themes = this.plugin.settings.dddice.themes || [];
+        let selectedTheme = themes.find(t => t?.id === selectedThemeId);
+
+        if (selectedTheme) {
+            const previewUrl = getThemePreviewUrl(selectedTheme);
+            if (previewUrl) {
+                // Create a loading placeholder first
+                const loadingPlaceholder = card.createDiv({ cls: 'dh-theme-loading-placeholder' });
+                loadingPlaceholder.setText('Loading...');
+
+                // Then create the image
+                const img = card.createEl('img', {
+                    attr: { src: previewUrl, alt: selectedTheme.name || 'Theme preview' },
+                    cls: 'dh-theme-preview'
+                });
+
+                // Remove placeholder when image loads
+                img.onload = () => {
+                    loadingPlaceholder.remove();
+                };
+
+                // Show "No image" if there's an error
+                img.onerror = () => {
+                    loadingPlaceholder.setText('No image');
+                };
+            } else {
+                card.createDiv({ text: 'No Preview', cls: 'dh-theme-loading-placeholder' });
+            }
+            card.createDiv({ text: selectedTheme.name, cls: 'dh-theme-name' });
+        } else if (selectedThemeId) {
+            // If we have a theme ID but no theme loaded yet, show a loading state
+            card.createDiv({ text: 'Loading theme...', cls: 'dh-theme-loading-placeholder' });
+            card.createDiv({ text: 'Loading...', cls: 'dh-theme-name' });
+
+            // Add this theme to the refresh list
+            if (!this._themeSelectorsToRefresh.includes(settingKey)) {
+                this._themeSelectorsToRefresh.push(settingKey);
+            }
+
+            // Try to load just the selected themes if needed
+            if (this.plugin.settingsTab) {
+                // Trigger theme loading in the background - only for selected themes
+                this.plugin.settingsTab.preloadDddiceData(false);
+            }
+        } else {
+            card.createDiv({ text: 'Select a theme', cls: 'dh-theme-loading-placeholder' });
+            card.createDiv({ text: 'No theme selected', cls: 'dh-theme-name' });
+        }        // Refresh after a short delay if the theme is loading
+        if (selectedThemeId && !selectedTheme) {
+            // The theme is already being tracked for refresh via the _themeSelectorsToRefresh array
+            // We'll rely on the observer to update the UI when data is available
+
+            // Also check if themes have been loaded since we started rendering
+            const newThemes = this.plugin.settings.dddice.themes || [];
+            const refreshedTheme = newThemes.find(t => t?.id === selectedThemeId);
+
+            if (refreshedTheme) {
+                // Clear the card and update it with the loaded theme
+                card.empty();
+                const previewUrl = getThemePreviewUrl(refreshedTheme);
+                if (previewUrl) {
+                    // Create a loading placeholder first
+                    const loadingPlaceholder = card.createDiv({ cls: 'dh-theme-loading-placeholder' });
+                    loadingPlaceholder.setText('Loading...');
+
+                    // Then create the image
+                    const img = card.createEl('img', {
+                        attr: { src: previewUrl, alt: refreshedTheme.name || 'Theme preview' },
+                        cls: 'dh-theme-preview'
+                    });
+
+                    // Remove placeholder when image loads
+                    img.onload = () => {
+                        loadingPlaceholder.remove();
+                    };
+
+                    // Show "No image" if there's an error
+                    img.onerror = () => {
+                        loadingPlaceholder.setText('No image');
+                    };
+                } else {
+                    card.createDiv({ text: 'No Preview', cls: 'dh-theme-loading-placeholder' });
+                }
+                card.createDiv({ text: refreshedTheme.name, cls: 'dh-theme-name' });
+            }
+        }
+    }
+
+    private refreshDddiceRoomDropdown(dropdown: DropdownComponent) {
+        if (!this.plugin.settings.dddice.rooms || this.plugin.settings.dddice.rooms.length === 0) {
+            // If no rooms are available, show loading state
+            dropdown.selectEl.options.length = 0;
+            dropdown.addOption('', 'Loading rooms...');
+            return;
+        }
+
+        // Clear existing options
+        dropdown.selectEl.options.length = 0;
+        dropdown.addOption('', 'Select a room...');
+
+        // Add available rooms
+        this.plugin.settings.dddice.rooms.forEach(room =>
+            dropdown.addOption(room.slug, room.name));
+
+        // Set current value
+        dropdown.setValue(this.plugin.settings.dddice.room || '');
+    }
+
+    private startDddiceDataObserver() {
+        if (this._dddiceObserverInterval) {
+            clearInterval(this._dddiceObserverInterval);
+        }
+
+        this._dddiceObserverInterval = window.setInterval(() => {
+            if (this._dddiceDropdownsToRefresh.length > 0) {
+                const dropdowns = [...this._dddiceDropdownsToRefresh];
+                this._dddiceDropdownsToRefresh = [];
+
+                dropdowns.forEach(dropdown => {
+                    this.refreshDddiceRoomDropdown(dropdown);
+                });
+            }
+
+            if (this._themeSelectorsToRefresh.length > 0) {
+                this._themeSelectorsToRefresh = [];
+                if (!this._isPreloading) {
+                    this.display();
+                }
+            }
+        }, 200);
+    }
+
+    hide(): void {
+        if (this._dddiceObserverInterval) {
+            clearInterval(this._dddiceObserverInterval);
+            this._dddiceObserverInterval = null;
+        }
+
+        // Clear any pending refreshes
+        this._dddiceDropdownsToRefresh = [];
+        this._themeSelectorsToRefresh = [];
+
+        super.hide();
     }
 }
 
@@ -829,6 +1194,15 @@ class ThemeSelectionModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     settingKey: 'theme' | 'hopeTheme' | 'fearTheme';
     onSelect: (themeId: string) => void;
+    private themeGrid: HTMLElement;
+    private loadMoreButton: HTMLElement | null = null;
+    private isLoadingMore: boolean = false;
+    private dddiceApi: any;
+    private currentPage: number = 1;
+    private hasMorePages: boolean = true;
+    private loadingEl: HTMLElement | null = null;
+    private bottomLoadingEl: HTMLElement | null = null;
+    private autoLoadTimeout: number | null = null;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin, settingKey: 'theme' | 'hopeTheme' | 'fearTheme', onSelect: (themeId: string) => void) {
         super(app);
@@ -837,45 +1211,296 @@ class ThemeSelectionModal extends Modal {
         this.onSelect = onSelect;
     }
 
-    onOpen() {
+    async onOpen() {
         const { contentEl } = this;
         contentEl.empty();
         contentEl.addClass('dh-theme-modal');
         contentEl.createEl('h2', { text: `Select ${this.settingKey.replace('Theme', '')} Theme` });
 
-        const themeGrid = contentEl.createDiv({ cls: 'dh-theme-grid' });
-        const themes = this.plugin.settings.dddice.themes;
+        this.themeGrid = contentEl.createDiv({ cls: 'dh-theme-grid' });
 
-        if (themes.length === 0) {
-            themeGrid.createEl('p', { text: 'No themes found. Please connect to dddice first.' });
+        // Add the bottom loading indicator right away
+        this.addBottomLoadingIndicator();
+
+        try {
+            // Initialize the dddice API - do this immediately
+            this.dddiceApi = dddice.initializeDddiceApi(this.plugin.settings.dddice.apiKey);
+
+            // Check if we already have the currently selected theme loaded
+            const selectedThemeId = this.plugin.settings.dddice[this.settingKey];
+            let existingThemes = this.plugin.settings.dddice.themes || [];
+
+            // Display any existing themes immediately while we load more
+            if (existingThemes.length > 0) {
+                this.displayThemes(existingThemes);
+            }
+
+            const selectedTheme = selectedThemeId ? existingThemes.find(t => t?.id === selectedThemeId) : undefined;
+
+            // If the selected theme isn't loaded yet, fetch it first
+            if (selectedThemeId && !selectedTheme) {
+                const theme = await dddice.fetchDddiceTheme(this.dddiceApi, selectedThemeId);
+                if (theme) {
+                    // Make sure we don't have duplicates
+                    existingThemes = existingThemes.filter(t => t?.id !== theme.id);
+                    existingThemes.push(theme);
+                    this.plugin.settings.dddice.themes = existingThemes;
+
+                    // Display the selected theme
+                    this.displayThemes([theme]);
+                }
+            }
+
+            // Load the first page of themes
+            const { themes, hasMore } = await dddice.fetchDddiceThemesPage(this.dddiceApi, true);
+            this.hasMorePages = hasMore;
+
+            // Merge new themes with existing themes, avoiding duplicates
+            const mergedThemes = [...existingThemes];
+            const newThemes = [];
+            for (const theme of themes) {
+                if (!mergedThemes.some(t => t?.id === theme.id)) {
+                    mergedThemes.push(theme);
+                    newThemes.push(theme);
+                }
+            }
+
+            this.plugin.settings.dddice.themes = mergedThemes;
+
+            // Display only the newly loaded themes (existing ones were already displayed)
+            if (newThemes.length > 0) {
+                this.displayThemes(newThemes);
+            }
+
+            // If no themes were found, show a message
+            if (mergedThemes.length === 0) {
+                this.themeGrid.createEl('p', { text: 'No themes found. Please connect to dddice first.' });
+                this.removeBottomLoadingIndicator();
+            } else if (this.hasMorePages) {
+                // Schedule the next automatic load if we have more pages
+                this.scheduleNextLoad();
+            } else {
+                // Remove the loading indicator if there are no more pages
+                this.removeBottomLoadingIndicator();
+            }
+        } catch (e) {
+            console.error("Failed to load themes in modal:", e);
+            if (this.bottomLoadingEl) {
+                this.bottomLoadingEl.setText('Failed to load themes. Please try again.');
+            } else {
+                this.themeGrid.createEl('p', { text: 'Failed to load themes. Please try again.', cls: 'theme-loading-indicator' });
+            }
+        }
+    }
+
+    displayThemes(themes: any[]) {
+        if (!themes || themes.length === 0) {
             return;
         }
 
         themes.forEach(theme => {
-            const card = themeGrid.createDiv({ cls: 'dh-theme-card' });
+            // Skip if this theme is already displayed
+            if (this.themeGrid.querySelector(`[data-theme-id="${theme.id}"]`)) {
+                return;
+            }
+
+            const card = this.themeGrid.createDiv({
+                cls: 'dh-theme-card',
+                attr: { 'data-theme-id': theme.id }
+            });
+
             if (this.plugin.settings.dddice[this.settingKey] === theme.id) {
                 card.addClass('is-selected');
             }
 
             const previewUrl = getThemePreviewUrl(theme);
             if (previewUrl) {
-                card.createEl('img', {
-                    attr: { src: previewUrl, alt: theme.name || 'Theme preview' },
+                const img = card.createEl('img', {
+                    attr: { alt: theme.name || 'Theme preview' },
                     cls: 'dh-theme-preview'
                 });
+
+                // Add loading state and handle loading
+                const loadingPlaceholder = card.createDiv({ cls: 'dh-theme-loading-placeholder' });
+                loadingPlaceholder.setText('Loading...');
+
+                img.onload = () => {
+                    loadingPlaceholder.remove();
+                };
+
+                img.onerror = () => {
+                    loadingPlaceholder.setText('No image');
+                };
+
+                // Set the src after adding the event handlers to ensure they fire
+                img.src = previewUrl;
             } else {
                 card.createDiv({ text: 'No Preview', cls: 'dh-theme-name' });
             }
+
             card.createDiv({ text: theme.name, cls: 'dh-theme-name' });
 
             card.onClickEvent(() => {
+                // Highlight the selected card
+                this.themeGrid.querySelectorAll('.dh-theme-card').forEach(el => {
+                    el.removeClass('is-selected');
+                });
+                card.addClass('is-selected');
+
                 this.onSelect(theme.id);
+
+                // Update the parent UI immediately if possible
+                if (this.plugin.settingsTab) {
+                    this.plugin.settingsTab.display();
+                }
+
                 this.close();
             });
         });
     }
 
+    addLoadMoreButton() {
+        if (this.loadMoreButton) {
+            this.loadMoreButton.remove();
+        }
+
+        this.loadMoreButton = this.contentEl.createEl('button', {
+            text: 'Load More Themes',
+            cls: 'load-more-button'
+        });
+
+        this.loadMoreButton.addEventListener('click', async () => {
+            if (this.isLoadingMore) return;
+
+            this.isLoadingMore = true;
+            this.loadMoreButton!.setText('Loading...');
+            this.loadMoreButton!.setAttr('disabled', 'true');
+
+            try {
+                const { themes, hasMore } = await dddice.fetchDddiceThemesPage(this.dddiceApi, false);
+                this.hasMorePages = hasMore;
+
+                // Update the existing themes
+                const existingThemes = this.plugin.settings.dddice.themes || [];
+                const mergedThemes = [...existingThemes];
+                const newThemes = [];
+
+                for (const theme of themes) {
+                    if (!mergedThemes.some(t => t?.id === theme.id)) {
+                        mergedThemes.push(theme);
+                        newThemes.push(theme);
+                    }
+                }
+
+                this.plugin.settings.dddice.themes = mergedThemes;
+
+                // Display only the new themes
+                this.displayThemes(newThemes);
+
+                if (this.hasMorePages) {
+                    this.loadMoreButton!.setText('Load More Themes');
+                    this.loadMoreButton!.removeAttribute('disabled');
+                } else {
+                    this.loadMoreButton!.remove();
+                    this.loadMoreButton = null;
+                }
+            } catch (e) {
+                console.error("Failed to load more themes:", e);
+                this.loadMoreButton!.setText('Failed to Load More - Try Again');
+                this.loadMoreButton!.removeAttribute('disabled');
+            } finally {
+                this.isLoadingMore = false;
+            }
+        });
+    }
+
+    // Add a loading indicator at the bottom of the theme grid
+    addBottomLoadingIndicator() {
+        if (this.bottomLoadingEl) {
+            this.bottomLoadingEl.remove();
+        }
+
+        this.bottomLoadingEl = this.contentEl.createEl('p', {
+            text: 'Loading more themes...',
+            cls: 'theme-loading-indicator bottom-loading-indicator'
+        });
+    }
+
+    // Remove the bottom loading indicator
+    removeBottomLoadingIndicator() {
+        if (this.bottomLoadingEl) {
+            this.bottomLoadingEl.remove();
+            this.bottomLoadingEl = null;
+        }
+    }
+
+    // Schedule the next automatic load
+    scheduleNextLoad() {
+        if (this.autoLoadTimeout) {
+            window.clearTimeout(this.autoLoadTimeout);
+        }
+
+        this.autoLoadTimeout = window.setTimeout(() => {
+            this.loadNextPage();
+        }, 500); // Small delay to allow rendering
+    }
+
+    // Load the next page of themes
+    async loadNextPage() {
+        if (this.isLoadingMore || !this.hasMorePages) return;
+
+        this.isLoadingMore = true;
+
+        try {
+            if (this.bottomLoadingEl) {
+                this.bottomLoadingEl.setText('Loading more themes...');
+            } else {
+                this.addBottomLoadingIndicator();
+            }
+
+            const { themes, hasMore } = await dddice.fetchDddiceThemesPage(this.dddiceApi, false);
+            this.hasMorePages = hasMore;
+
+            // Update the existing themes
+            const existingThemes = this.plugin.settings.dddice.themes || [];
+            const mergedThemes = [...existingThemes];
+            const newThemes = [];
+
+            for (const theme of themes) {
+                if (!mergedThemes.some(t => t?.id === theme.id)) {
+                    mergedThemes.push(theme);
+                    newThemes.push(theme);
+                }
+            }
+
+            this.plugin.settings.dddice.themes = mergedThemes;
+
+            this.displayThemes(newThemes);
+
+            if (this.hasMorePages) {
+                this.scheduleNextLoad();
+            } else {
+                this.removeBottomLoadingIndicator();
+            }
+        } catch (e) {
+            console.error("Failed to load more themes:", e);
+            if (this.bottomLoadingEl) {
+                this.bottomLoadingEl.setText('Failed to load more themes. Retrying...');
+                // Try again after a delay
+                this.scheduleNextLoad();
+            }
+        } finally {
+            this.isLoadingMore = false;
+        }
+    }
+
     onClose() {
+        // Clean up any pending timeouts
+        if (this.autoLoadTimeout) {
+            window.clearTimeout(this.autoLoadTimeout);
+            this.autoLoadTimeout = null;
+        }
+
         let { contentEl } = this;
         contentEl.empty();
     }

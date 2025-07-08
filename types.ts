@@ -182,8 +182,8 @@ export interface DddiceSettings {
     hopeTheme: string | null;
     fearTheme: string | null;
     renderInObsidian: boolean;
-    rooms: DddiceRoom[];
-    themes: ITheme[];
+    rooms?: DddiceRoom[];
+    themes?: ITheme[];
 }
 
 export interface EncounterBudgetConfig { playerCount: number; isEasier: boolean; isHarder: boolean; isDamageBoosted: boolean; useLowerTier: boolean; }
@@ -252,7 +252,5 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
         hopeTheme: null,
         fearTheme: null,
         renderInObsidian: true,
-        rooms: [],
-        themes: [],
     },
 };

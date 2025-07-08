@@ -1,7 +1,85 @@
-import { ThreeDDiceAPI, IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, ThreeDDice, IApiResponse, IRoll } from 'dddice-js';
 import { Notice } from 'obsidian';
 import { DddiceSettings } from 'types';
 import { displayRollNotice } from './dice-helpers';
+import { ThreeDDiceAPI, ThreeDDice } from 'dddice-js';
+import type { IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, IApiResponse, IRoll } from 'dddice-js';
+
+// Re-export types that are needed by the UI
+export type { IRoom, ITheme };
+
+// Private variable to hold the singleton dddice instance
+let _dddiceInstance: ThreeDDice | undefined;
+let _dddiceCanvas: HTMLCanvasElement | null = null;
+let _boundDddiceClear: (() => void) | null = null;
+
+/**
+ * Initialize or reinitialize the dddice renderer.
+ * @param settings The dddice settings object.
+ * @returns The initialized ThreeDDice instance if successful, undefined otherwise.
+ */
+export function initializeDddiceRenderer(settings: DddiceSettings): ThreeDDice | undefined {
+    destroyDddiceRenderer();
+
+    if (!settings.apiKey || !settings.renderInObsidian || !settings.room) {
+        return undefined;
+    }
+
+    try {
+        // Create the canvas for rendering
+        _dddiceCanvas = document.body.createEl('canvas', { attr: { id: 'dddice-canvas' } });
+        _dddiceCanvas.style.cssText = 'top:0px; left:0; position:fixed; pointer-events:none; z-index:95; width:100vw; height:100vh;';
+
+        // Initialize the dddice instance
+        _dddiceInstance = new ThreeDDice().initialize(_dddiceCanvas, settings.apiKey, undefined, 'Daggerheart-Obsidian');
+        _dddiceInstance.connect(settings.room);
+        _dddiceInstance.start();
+
+        // Set up the clear handler
+        _boundDddiceClear = () => {
+            if (_dddiceInstance && !_dddiceInstance.isDiceThrowing) {
+                _dddiceInstance.clear();
+            }
+        };
+        document.body.addEventListener('click', _boundDddiceClear);
+
+        console.log("dddice renderer initialized.");
+        return _dddiceInstance;
+    } catch (e) {
+        console.error("Failed to initialize dddice renderer:", e);
+        destroyDddiceRenderer();
+        return undefined;
+    }
+}
+
+/**
+ * Clean up and destroy the dddice renderer instance.
+ */
+export function destroyDddiceRenderer(): void {
+    if (_dddiceInstance) {
+        _dddiceInstance.stop();
+        if (_dddiceInstance.api) {
+            _dddiceInstance.api.disconnect();
+        }
+        _dddiceInstance = undefined;
+    }
+
+    if (_dddiceCanvas) {
+        if (_boundDddiceClear) {
+            document.body.removeEventListener('click', _boundDddiceClear);
+            _boundDddiceClear = null;
+        }
+        _dddiceCanvas.remove();
+        _dddiceCanvas = null;
+    }
+}
+
+/**
+ * Get the current dddice instance if initialized.
+ * @returns The current ThreeDDice instance or undefined if not initialized.
+ */
+export function getDddiceInstance(): ThreeDDice | undefined {
+    return _dddiceInstance;
+}
 
 /**
  * Initializes the dddice API with the provided key for data fetching.
@@ -33,6 +111,51 @@ export async function fetchDddiceRooms(api: ThreeDDiceAPI): Promise<IRoom[]> {
 }
 
 /**
+ * Fetches a single page of themes (dice boxes) from the dddice API.
+ * @param api The initialized ThreeDDiceAPI instance.
+ * @param isFirstPage Whether to fetch the first page or the next page.
+ * @returns A promise that resolves to an object with the fetched themes and a hasMore flag.
+ */
+export async function fetchDddiceThemesPage(api: ThreeDDiceAPI, isFirstPage: boolean = true): Promise<{ themes: ITheme[], hasMore: boolean }> {
+    try {
+        let response;
+        if (isFirstPage) {
+            response = await api.diceBox.list();
+        } else {
+            response = await api.diceBox.next();
+        }
+
+        const themes = response?.data || [];
+
+        // Determine if there are more pages
+        // For the dddice API, we can check if the next() call would return more results
+        // by attempting a peek at the next page without actually consuming it
+        let hasMore = false;
+
+        if (themes.length > 0) {
+            // Check if there are more pages available
+            // The exact check depends on the API's response structure
+            // This is a simplified check - if we got results, assume there might be more
+            // until we get an empty page
+
+            // Try to access any pagination info that might be in the response
+            // If not available, assume there's more if we got a full page
+            hasMore = themes.length >= 10; // Assuming 10 is a typical page size
+
+            // For a more accurate check, we'd need to know how the API indicates
+            // there are more pages. Update this logic based on API documentation.
+        }
+
+        console.log(`Fetched ${themes.length} themes, hasMore: ${hasMore}`);
+        return { themes, hasMore };
+    } catch (e) {
+        new Notice('Failed to fetch dddice themes page.');
+        console.error("dddice API Error fetching themes page:", e);
+        return { themes: [], hasMore: false };
+    }
+}
+
+/**
  * Fetches all available themes (dice boxes) from the dddice API, handling pagination.
  * @param api The initialized ThreeDDiceAPI instance.
  * @returns A promise that resolves to an array of ITheme objects.
@@ -59,6 +182,28 @@ export async function fetchDddiceThemes(api: ThreeDDiceAPI): Promise<ITheme[]> {
         new Notice('Failed to fetch dddice themes.');
         console.error("dddice API Error fetching themes:", e);
         return [];
+    }
+}
+
+export async function fetchDddiceRoom(api: ThreeDDiceAPI, roomSlug: string): Promise<IRoom | null> {
+    try {
+        const response = await api.room.get(roomSlug);
+        return response?.data || null;
+    } catch (e) {
+        new Notice(`Failed to fetch dddice room with slug: ${roomSlug}`);
+        console.error("dddice API Error fetching room:", e);
+        return null;
+    }
+}
+
+export async function fetchDddiceTheme(api: ThreeDDiceAPI, themeId: string): Promise<ITheme | null> {
+    try {
+        const response = await api.theme.get(themeId);
+        return response?.data || null;
+    } catch (e) {
+        new Notice(`Failed to fetch dddice theme with ID: ${themeId}`);
+        console.error("dddice API Error fetching theme:", e);
+        return null;
     }
 }
 
@@ -102,7 +247,7 @@ function parseGenericDiceString(notation: string): IDiceRoll[] {
  * Sends a dice roll request to the dddice API and returns the total value.
  * @returns A promise that resolves to the total roll value, or null if an error occurs.
  */
-export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString: string, context: string, dddiceInstance?: ThreeDDice, traitName?: string): Promise<number | null> {
+export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString: string, context: string, traitName?: string): Promise<number | null> {
     const { apiKey, room, theme, hopeTheme, fearTheme, renderInObsidian } = dddiceSettings;
     if (!apiKey || !room || !theme || !hopeTheme || !fearTheme) {
         new Notice("dddice is not fully configured. Please set API Key, Room, and all dice themes in the plugin settings.");
@@ -125,7 +270,7 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
         } else if (diceString.includes('-1d6')) {
             const randomD6Value = Math.floor(Math.random() * 6) + 1;
             disadvantageValue = randomD6Value;
-            dicePayload.push({ type: 'mod', value: -randomD6Value, label: 'Disadvantage (d6)' });
+            dicePayload.push({ type: 'd6', theme: theme || undefined, label: 'Disadvantage' });
         }
         const endModifierMatch = diceString.match(/([+-]\d+)$/);
         if (endModifierMatch) {
@@ -145,8 +290,12 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
 
     return new Promise((resolve) => {
         try {
-            if (renderInObsidian && dddiceInstance) {
-                const rollPromise = dddiceInstance.roll(dicePayload, rollOptions);
+            if (renderInObsidian && _dddiceInstance) {
+                const disadvantageIndex = dicePayload.findIndex(d => d.label?.includes('Disadvantage'));
+                if (disadvantageIndex !== -1) {
+                    rollOptions.operator = { "*": { "-1": [2] } };
+                }
+                const rollPromise = _dddiceInstance.roll(dicePayload, rollOptions);
                 rollPromise.then((result: IApiResponse<'roll', IRoll>) => {
                     if (result?.data) {
                         handleRollResult(result.data, context, isDaggerheartActionRoll, diceString, modifierMatch, disadvantageValue, traitName);
@@ -160,14 +309,14 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
                     } else {
                         resolve(null);
                     }
-                }).catch(e => {
+                }).catch((e: unknown) => {
                     console.error("dddice Roll Promise Error:", e);
                     resolve(null);
                 });
             } else {
-                const dddiceApi = dddiceInstance?.api ?? initializeDddiceApi(apiKey);
+                const dddiceApi = _dddiceInstance?.api ?? initializeDddiceApi(apiKey);
                 if (room) dddiceApi.connect(room);
-                dddiceApi.roll.create(dicePayload, rollOptions).then(roll => {
+                dddiceApi.roll.create(dicePayload, rollOptions).then((roll: IApiResponse<'roll', IRoll>) => {
                     if (roll.data) {
                         handleRollResult(roll.data, context, isDaggerheartActionRoll, diceString, modifierMatch, disadvantageValue, traitName);
                         if (typeof roll.data.total_value === 'number') {
@@ -180,7 +329,7 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
                     } else {
                         resolve(null);
                     }
-                }).catch(e => {
+                }).catch((e: unknown) => {
                     console.error("dddice API Roll Error:", e);
                     resolve(null);
                 });

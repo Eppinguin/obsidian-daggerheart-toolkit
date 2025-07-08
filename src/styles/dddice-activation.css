@@ -1,0 +1,105 @@
+.dddice-activation-modal {
+    text-align: center;
+    padding: 20px;
+    max-width: 500px;
+}
+
+.dddice-instructions {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.dddice-instructions p {
+    margin-bottom: 8px;
+    font-size: 16px;
+}
+
+.dddice-link {
+    font-size: 22px;
+    font-weight: bold;
+    color: var(--text-accent);
+    text-decoration: underline;
+    margin-bottom: 20px;
+    display: block;
+}
+
+.dddice-code-container {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.dddice-code-box {
+    background-color: var(--background-secondary);
+    border-radius: 4px;
+    margin: 5px;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.dddice-timer {
+    margin: 10px 0;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.dddice-separator {
+    position: relative;
+    text-align: center;
+    margin: 30px 0;
+}
+
+.dddice-separator::before,
+.dddice-separator::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background-color: var(--background-modifier-border);
+}
+
+.dddice-separator::before {
+    left: 0;
+}
+
+.dddice-separator::after {
+    right: 0;
+}
+
+.dddice-separator span {
+    background-color: var(--background-primary);
+    padding: 0 10px;
+    position: relative;
+    z-index: 1;
+    color: var(--text-muted);
+}
+
+.dddice-guest-button-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.dddice-guest-button-container .setting-item {
+    border: none;
+    padding: 0;
+    justify-content: center;
+    width: 100%;
+}
+
+.dddice-guest-button-container .setting-item-control {
+    justify-content: center;
+    width: 100%;
+}
+
+.dddice-guest-button-container .setting-item-control button {
+    min-width: 200px;
+}
