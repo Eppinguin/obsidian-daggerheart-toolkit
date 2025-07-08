@@ -36,7 +36,7 @@ jobs:
           mkdir -p ${{ github.workspace }}/daggerheart-toolkit/user_compendium
           
           # Copy main files
-          cp main.js manifest.json main.css${{ github.workspace }}/daggerheart-toolkit/
+          cp main.js manifest.json ${{ github.workspace }}/daggerheart-toolkit/
           
           # Copy data directory
           cp -r data/* ${{ github.workspace }}/daggerheart-toolkit/data/
