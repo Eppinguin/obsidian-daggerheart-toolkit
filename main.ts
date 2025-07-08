@@ -18,6 +18,12 @@ import type { ITheme } from './src/services/dddice-service';
 import { DddiceActivationModal } from './src/services/dddice-activation';
 import { displayRollNotice } from './src/services/dice-helpers';
 
+import './src/styles/import-export.css';
+import './src/styles/dddice-activation.css';
+import './src/styles/character-creator.css';
+import './src/styles/manage-encounters.css';
+import './styles.css';
+
 declare module "obsidian" {
     interface Workspace {
         on(name: 'daggerheart-character-update', callback: () => void, ctx?: any): EventRef;
@@ -56,9 +62,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
         this.activeCharacterId = this.settings.activeCharacterId;
-
-        // Load all additional CSS files
-        this.loadStylesheets();
 
         this.initializeDddiceIfNeeded();
 
@@ -496,39 +499,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         const { diceProvider, dddice: dddiceSettings } = this.settings;
         if (diceProvider === 'dddice' && dddiceSettings.apiKey && dddiceSettings.renderInObsidian && dddiceSettings.room) {
             dddice.initializeDddiceRenderer(dddiceSettings);
-        }
-    }
-
-    private loadStylesheets() {
-        try {
-            const cssFiles = [
-                'src/styles/import-export.css',
-                'src/styles/dddice-activation.css',
-                'src/styles/character-creator.css',
-                'src/styles/manage-encounters.css',
-            ];
-
-            for (const cssFile of cssFiles) {
-                const cssPath = `${this.manifest.dir}/${cssFile}`;
-
-                this.app.vault.adapter.exists(cssPath).then(exists => {
-                    if (exists) {
-                        this.app.vault.adapter.read(cssPath).then(content => {
-                            this.registerDomEvent(document, "click", () => { });
-                            const styleEl = document.createElement('style');
-                            styleEl.textContent = content;
-                            document.head.appendChild(styleEl);
-                            this.register(() => styleEl.remove());
-                        }).catch(error => {
-                            console.error(`Failed to load ${cssFile}:`, error);
-                        });
-                    } else {
-                        console.warn(`CSS file not found: ${cssFile}`);
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('Failed to load stylesheets:', error);
         }
     }
 }
