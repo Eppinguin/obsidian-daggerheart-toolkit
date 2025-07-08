@@ -22,6 +22,7 @@
     },
     "dependencies": {
         "dddice-js": "0.19.34-974",
-        "js-yaml": "^4.1.0"
+        "js-yaml": "^4.1.0",
+        "uuid": "^10.0.0"
     }
 }
