@@ -31,11 +31,11 @@ jobs:
 
       - name: Package plugin
         run: |
-          mkdir ${{ github.workspace }}/dist
-          cp main.js manifest.json styles.css ${{ github.workspace }}/dist/
+          mkdir ${{ github.workspace }}/daggerheart-toolkit
+          cp main.js manifest.json styles.css ${{ github.workspace }}/daggerheart-toolkit/
           cd ${{ github.workspace }}
           tag="${GITHUB_REF#refs/tags/}"
-          zip -r daggerheart-toolkit-$tag.zip dist/
+          zip -r daggerheart-toolkit-$tag.zip daggerheart-toolkit/
 
       - name: Create release
         env:
