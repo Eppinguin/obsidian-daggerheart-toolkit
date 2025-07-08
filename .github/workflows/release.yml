@@ -31,8 +31,19 @@ jobs:
 
       - name: Package plugin
         run: |
-          mkdir ${{ github.workspace }}/daggerheart-toolkit
-          cp main.js manifest.json styles.css ${{ github.workspace }}/daggerheart-toolkit/
+          mkdir -p ${{ github.workspace }}/daggerheart-toolkit
+          mkdir -p ${{ github.workspace }}/daggerheart-toolkit/data
+          mkdir -p ${{ github.workspace }}/daggerheart-toolkit/user_compendium
+          
+          # Copy main files
+          cp main.js manifest.json main.css${{ github.workspace }}/daggerheart-toolkit/
+          
+          # Copy data directory
+          cp -r data/* ${{ github.workspace }}/daggerheart-toolkit/data/
+          
+          # Create an empty .gitkeep file in user_compendium to ensure it's included
+          touch ${{ github.workspace }}/daggerheart-toolkit/user_compendium/.gitkeep
+          
           cd ${{ github.workspace }}
           tag="${GITHUB_REF#refs/tags/}"
           zip -r daggerheart-toolkit-$tag.zip daggerheart-toolkit/
@@ -46,4 +57,4 @@ jobs:
           gh release create "$tag" \
             --title="$tag" \
             --draft \
-            main.js manifest.json styles.css daggerheart-toolkit-$tag.zip
+            daggerheart-toolkit-$tag.zip
