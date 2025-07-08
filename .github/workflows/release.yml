@@ -29,6 +29,14 @@ jobs:
           pnpm install
           pnpm run build
 
+      - name: Package plugin
+        run: |
+          mkdir ${{ github.workspace }}/dist
+          cp main.js manifest.json styles.css ${{ github.workspace }}/dist/
+          cd ${{ github.workspace }}
+          tag="${GITHUB_REF#refs/tags/}"
+          zip -r daggerheart-toolkit-$tag.zip dist/
+
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,4 +46,4 @@ jobs:
           gh release create "$tag" \
             --title="$tag" \
             --draft \
-            main.js manifest.json styles.css
+            main.js manifest.json styles.css daggerheart-toolkit-$tag.zip
