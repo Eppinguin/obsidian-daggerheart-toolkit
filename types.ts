@@ -122,6 +122,7 @@ export interface Character {
     conditions: Condition[];
     avatarUrl?: string | null;
     avatarTransform?: AvatarTransform;
+    accentColor?: string;
 }
 
 export interface Trait { _type: 'trait'; value: number; locked: boolean; }

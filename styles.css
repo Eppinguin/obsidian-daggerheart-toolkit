@@ -2469,7 +2469,7 @@
 .dh-weapon-roll-box {
     background-color: var(--dh-sheet-accent);
     color: var(--dh-sheet-bg);
-    border-color: var(--dh-sheet-accent-dark);
+    border-color: var(--dh-sheet-accent);
 }
 
 .dh-weapon-roll-box div:first-child,

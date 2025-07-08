@@ -37,6 +37,7 @@ type CreatorState = {
     avatarTransform?: AvatarTransform;
     selectedClassItem: string | null;
     customClassItem?: string;
+    accentColor?: string;
 };
 
 export class CharacterCreator {
@@ -77,6 +78,7 @@ export class CharacterCreator {
             additionalItems: [],
             selectedClassItem: null,
             customClassItem: '',
+            accentColor: '#e5b32a',
         };
     }
 
@@ -938,11 +940,21 @@ export class CharacterCreator {
                 text.inputEl.rows = 4;
             });
 
-        const avatarGroup = leftCol.createDiv({ cls: 'dh-creator-input-group' });
-        avatarGroup.createEl('h4', { text: 'Character Avatar' });
+        const visualGroup = leftCol.createDiv({ cls: 'dh-creator-input-group' });
+        visualGroup.createEl('h4', { text: 'Character Visuals' });
+
+        new Setting(visualGroup)
+            .setName('Accent Color')
+            .setDesc('Choose a personal color for your character sheet.')
+            .addColorPicker(picker => picker
+                .setValue(this.creatorState.accentColor || '#e5b32a')
+                .onChange(value => {
+                    this.creatorState.accentColor = value;
+                }));
+
         createAvatarEditor(
             this.app,
-            avatarGroup,
+            visualGroup,
             this.creatorState.avatarUrl || '',
             this.creatorState.avatarTransform,
             (newUrl) => {
@@ -1085,7 +1097,6 @@ export class CharacterCreator {
         // Add class item if one was selected
         if (partialChar.selectedClassItem) {
             const itemName = partialChar.selectedClassItem;
-            // Item name is already capitalized during selection, so we can use it directly
             const item = this.plugin.compendium.items.find(i => i.name.toLowerCase() === itemName.trim().toLowerCase());
             initialInventory.push({
                 _type: 'item' as 'item',
@@ -1095,7 +1106,6 @@ export class CharacterCreator {
                 isCustom: item?.isCustom
             });
         } else if (partialChar.customClassItem && partialChar.customClassItem.trim()) {
-            // Add custom class item if provided, ensuring first letter is capitalized
             const customItemName = partialChar.customClassItem.trim();
             const capitalizedCustomItemName = customItemName.charAt(0).toUpperCase() + customItemName.slice(1);
             initialInventory.push({
@@ -1130,6 +1140,7 @@ export class CharacterCreator {
             background: charClass.backgrounds.map((bg, i) => ({ question: bg.question, answer: partialChar.backgroundAnswers?.[i] || '' })),
             connections: charClass.connections.map((c, i) => ({ question: c.question, answer: partialChar.connections?.[i] || '' })),
             levelUpHistory: {}, conditions: [], notes: partialChar.description || '',
+            accentColor: partialChar.accentColor || '#e5b32a',
         };
 
         await this.plugin.updateCharacter(fullChar);

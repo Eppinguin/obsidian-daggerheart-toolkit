@@ -182,12 +182,27 @@ export class CharacterSheetView extends ItemView {
 
     private drawCharacterSheet(parent: HTMLElement, data: Character) {
         const sheet = parent.createDiv({ cls: 'dh-sheet' });
+
+        sheet.style.setProperty('--dh-sheet-accent', data.accentColor || '#e5b32a');
+        const accentColor = data.accentColor || '#e5b32a';
+        const accentGlow = this.hexToRgba(accentColor, 0.4);
+        sheet.style.setProperty('--dh-sheet-accent-glow', accentGlow);
+
+
         this.drawSheetHeader(sheet, data);
         const mainGrid = sheet.createDiv({ cls: 'dh-sheet-grid' });
         this.drawLeftColumn(mainGrid, data);
         this.drawCenterColumn(mainGrid, data);
         this.drawRightColumn(mainGrid, data);
         this.drawManager(sheet, data);
+    }
+
+    private hexToRgba(hex: string, alpha: number): string {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
     private drawSheetHeader(parent: HTMLElement, data: Character) {

@@ -108,6 +108,13 @@ export class CharacterManagerModal extends Modal {
                 .setValue(this.tempCharacter.name)
                 .onChange(value => this.tempCharacter.name = value));
 
+        new Setting(parent)
+            .setName('Accent Color')
+            .setDesc('A personal color for the character sheet.')
+            .addColorPicker(picker => picker
+                .setValue(this.tempCharacter.accentColor || '#e5b32a')
+                .onChange(value => this.tempCharacter.accentColor = value));
+
         const grid = parent.createDiv({ cls: 'is-grid' });
         new Setting(grid)
             .setName('Level')
