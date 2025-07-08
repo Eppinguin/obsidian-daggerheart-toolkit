@@ -503,7 +503,9 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         try {
             const cssFiles = [
                 'src/styles/import-export.css',
-                'src/styles/dddice-activation.css'
+                'src/styles/dddice-activation.css',
+                'src/styles/character-creator.css',
+                'src/styles/manage-encounters.css',
             ];
 
             for (const cssFile of cssFiles) {

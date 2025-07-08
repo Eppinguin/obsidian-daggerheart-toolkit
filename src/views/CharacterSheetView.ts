@@ -58,6 +58,7 @@ type CreatorState = {
     domainCardIds: string[];
     potionChoice: 'health' | 'stamina';
     connections: string[];
+    additionalItems?: InventoryItem[];
     avatarUrl?: string;
     avatarTransform?: AvatarTransform;
 };
@@ -116,6 +117,7 @@ export class CharacterSheetView extends ItemView {
             avatarUrl: '',
             avatarTransform: undefined,
             isMixedAncestry: false,
+            additionalItems: [],
         };
     }
 
@@ -705,6 +707,212 @@ export class CharacterSheetView extends ItemView {
             });
         });
 
+        // Add Item button
+        const addItemContainer = parent.createDiv({ cls: 'dh-add-item-container' });
+        const addItemButton = addItemContainer.createEl('button', { cls: 'mod-cta', text: 'Add Additional Item' });
+        addItemButton.addEventListener('click', () => {
+            // Create a temporary character object for the modal
+            const tempChar: Character = {
+                id: 'temp-character',
+                'dg-character': true,
+                _type: 'character',
+                name: this.creatorState.name || 'New Character',
+                level: 1,
+                proficiency: 1,
+                pronouns: { _type: 'pronouns', subject: 'they', object: 'them' },
+                ancestryId: this.creatorState.ancestryId || '',
+                communityId: this.creatorState.communityId || '',
+                classId: this.creatorState.classId || '',
+                subclassId: this.creatorState.subclassId || '',
+                evasion: 0,
+                traits: {} as any,
+                hitPoints: { _type: 'dynamicResource', max: 0, current: 0 },
+                stress: { _type: 'dynamicResource', max: 0, current: 0 },
+                hope: { _type: 'dynamicResource', max: 0, current: 0 },
+                armorSlots: { _type: 'dynamicResource', max: 0, current: 0 },
+                damageThresholds: { _type: 'damageThresholds', major: 0, severe: 0 },
+                gold: { _type: 'gold', handfuls: 0, bags: 0, chests: 0 },
+                experiences: [],
+                features: [],
+                vault: [],
+                inventory: this.creatorState.additionalItems || [],
+                equippedArmorId: null,
+                equippedWeaponIds: [],
+                levelUpHistory: {},
+                conditions: [],
+            };
+
+            // Open AddItemModal
+            new AddItemModal(
+                this.app,
+                this.plugin,
+                tempChar,
+                (item: CompendiumItem) => {
+                    // Convert CompendiumItem to InventoryItem for the specified item
+                    let inventoryItem: InventoryItem;
+
+                    if (item._type === 'weapon') {
+                        const [damageDice, damageType] = (item.damage || 'd6').split(' ');
+                        inventoryItem = {
+                            _type: 'weapon',
+                            instanceId: uuidv4(),
+                            quantity: 1,
+                            name: item.name,
+                            tier: parseInt(item.tier || '1'),
+                            trait: item.trait || 'Strength',
+                            range: item.range || 'Melee',
+                            damage: item.damage || 'd6',
+                            burden: (item.burden || 'One-Handed') as 'One-Handed' | 'Two-Handed',
+                            primaryOrSecondary: (item.primary_or_secondary || 'Primary') as 'Primary' | 'Secondary',
+                            damageDice,
+                            damageType: damageType || 'phy',
+                            features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
+                            description: item.feat_text,
+                            isCustom: item.isCustom
+                        };
+                    } else if (item._type === 'armor') {
+                        const [major, severe] = (item.base_thresholds || '1 / 2').split('/').map(s => parseInt(s.trim()));
+                        inventoryItem = {
+                            _type: 'armor',
+                            instanceId: uuidv4(),
+                            quantity: 1,
+                            name: item.name,
+                            tier: parseInt(item.tier || '1'),
+                            baseScore: parseInt(item.base_score || '1'),
+                            baseThresholds: { major, severe },
+                            features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
+                            description: item.feat_text,
+                            isCustom: item.isCustom
+                        };
+                    } else if (item._type === 'consumable') {
+                        inventoryItem = {
+                            _type: 'consumable',
+                            instanceId: uuidv4(),
+                            quantity: 1,
+                            name: item.name,
+                            roll: item.roll || '',
+                            description: item.description,
+                            isCustom: item.isCustom
+                        };
+                    } else {
+                        inventoryItem = {
+                            _type: 'item',
+                            instanceId: uuidv4(),
+                            quantity: 1,
+                            name: item.name,
+                            description: item.description,
+                            isCustom: item.isCustom
+                        };
+                    }
+
+                    // Add to character's additional items
+                    if (!this.creatorState.additionalItems) {
+                        this.creatorState.additionalItems = [];
+                    }
+                    this.creatorState.additionalItems.push(inventoryItem);
+
+                    // Redraw to show the added items
+                    this.redrawCreatorStep();
+                },
+                () => {
+                    // Custom item creation
+                    new ItemEditModal(
+                        this.app,
+                        this.plugin,
+                        tempChar,
+                        null, // This means we're creating a new item
+                        (item: InventoryItem) => {
+                            if (!this.creatorState.additionalItems) {
+                                this.creatorState.additionalItems = [];
+                            }
+                            this.creatorState.additionalItems.push(item);
+                            this.redrawCreatorStep();
+                        }
+                    ).open();
+                }
+            ).open();
+        });
+
+        // Display additional items if any
+        if (this.creatorState.additionalItems && this.creatorState.additionalItems.length > 0) {
+            const additionalItemsSection = parent.createDiv({ cls: 'dh-additional-items-section' });
+            additionalItemsSection.createEl('h4', { text: 'Additional Items' });
+
+            const itemsList = additionalItemsSection.createEl('ul', { cls: 'dh-additional-items-list' });
+
+            this.creatorState.additionalItems.forEach((item, index) => {
+                const itemEl = itemsList.createEl('li', { cls: 'dh-additional-item' });
+
+                // Create header for item with name and remove button
+                const itemHeader = itemEl.createDiv({ cls: 'dh-item-header' });
+
+                // Item name and type badge
+                const nameContainer = itemHeader.createDiv({ cls: 'dh-item-name-container' });
+                nameContainer.createEl('span', { text: item.name, cls: 'dh-item-name' });
+                nameContainer.createEl('span', {
+                    text: item._type.charAt(0).toUpperCase() + item._type.slice(1),
+                    cls: 'dh-item-type-badge'
+                });
+
+                // Additional info based on type
+                if (item._type === 'weapon') {
+                    nameContainer.createEl('span', {
+                        text: `T${item.tier} ${item.trait} ${item.range}`,
+                        cls: 'dh-item-details'
+                    });
+                } else if (item._type === 'armor') {
+                    nameContainer.createEl('span', {
+                        text: `T${item.tier} AS: ${item.baseScore}`,
+                        cls: 'dh-item-details'
+                    });
+                }
+
+                // Remove button
+                const removeBtn = itemHeader.createEl('button', { cls: 'dh-remove-item-btn' });
+                setIcon(removeBtn, 'trash');
+                removeBtn.addEventListener('click', () => {
+                    this.creatorState.additionalItems?.splice(index, 1);
+                    this.redrawCreatorStep();
+                });
+
+                // Add description if present
+                if (item.description) {
+                    itemEl.createEl('div', {
+                        text: item.description,
+                        cls: 'dh-item-description'
+                    });
+                }
+
+                // Add features if present
+                if ('features' in item && item.features && item.features.length > 0) {
+                    const featureContainer = itemEl.createDiv({
+                        cls: 'dh-item-feature',
+                        attr: {
+                            style: 'cursor: default;'
+                        }
+                    });
+
+                    item.features.forEach((feature: CompendiumFeature) => {
+                        const nameEl = featureContainer.createEl('span', {
+                            text: feature.name,
+                            cls: 'dh-item-feature-name'
+                        });
+                        // Ensure no title attribute that would cause a question mark cursor
+                        nameEl.removeAttribute('title');
+                        nameEl.removeAttribute('aria-label');
+
+                        const descEl = featureContainer.createEl('div', {
+                            text: feature.description,
+                            cls: 'dh-item-feature-description'
+                        });
+                        // Ensure no title attribute that would cause a question mark cursor
+                        descEl.removeAttribute('title');
+                        descEl.removeAttribute('aria-label');
+                    });
+                }
+            });
+        }
+
         const equipmentFeatures: CompendiumFeature[] = [];
         if (this.creatorState.startingArmorId) {
             const armor = armors.find(a => a.name === this.creatorState.startingArmorId);
@@ -969,7 +1177,7 @@ export class CharacterSheetView extends ItemView {
             gold: { _type: 'gold', handfuls: 1, bags: 0, chests: 0 },
             experiences: (partialChar.experiences || []).map(exp => ({ _type: 'experience', id: uuidv4(), name: exp.name, value: 2, })),
             features: finalFeatures, vault: [],
-            inventory: [...standardInventory, ...initialInventory, ...startingWeapons, startingArmor],
+            inventory: [...standardInventory, ...initialInventory, ...startingWeapons, startingArmor, ...(partialChar.additionalItems || [])],
             equippedArmorId: startingArmor.instanceId, equippedWeaponIds: startingWeapons.map(w => w.instanceId),
             background: charClass.backgrounds.map((bg, i) => ({ question: bg.question, answer: partialChar.backgroundAnswers?.[i] || '' })),
             connections: charClass.connections.map((c, i) => ({ question: c.question, answer: partialChar.connections?.[i] || '' })),
