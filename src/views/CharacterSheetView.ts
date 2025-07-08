@@ -61,6 +61,8 @@ type CreatorState = {
     additionalItems?: InventoryItem[];
     avatarUrl?: string;
     avatarTransform?: AvatarTransform;
+    selectedClassItem: string | null;
+    customClassItem?: string;
 };
 
 function resolveImageUrl(app: App, url: string | null | undefined): string | null {
@@ -118,6 +120,8 @@ export class CharacterSheetView extends ItemView {
             avatarTransform: undefined,
             isMixedAncestry: false,
             additionalItems: [],
+            selectedClassItem: null,
+            customClassItem: '',
         };
     }
 
@@ -701,17 +705,71 @@ export class CharacterSheetView extends ItemView {
             });
         });
 
+        if (selectedClass && selectedClass.items) {
+            parent.createEl('h4', { text: 'Class Item', cls: 'setting-item-heading' });
+
+            const classItems = selectedClass.items.split(/\sor\s/).map(item => {
+                const trimmedItem = item.trim();
+                return trimmedItem.charAt(0).toUpperCase() + trimmedItem.slice(1);
+            });
+
+            const classItemContainer = parent.createDiv({ cls: 'dh-creator-card-grid' });
+
+            classItems.forEach(itemName => {
+                const itemCard = classItemContainer.createDiv({ cls: 'dh-creator-card' + (this.creatorState.selectedClassItem === itemName ? ' is-selected' : '') });
+                itemCard.createEl('strong', { text: itemName });
+
+                itemCard.addEventListener('click', () => {
+                    this.creatorState.selectedClassItem = itemName;
+                    this.creatorState.customClassItem = '';
+                    this.redrawCreatorStep();
+                });
+            });
+
+            const customCard = classItemContainer.createDiv({ cls: 'dh-creator-card' + (this.creatorState.customClassItem ? ' is-selected' : '') });
+            customCard.createEl('strong', { text: 'Custom Item' });
+
+            const customInput = customCard.createEl('input', {
+                type: 'text',
+                placeholder: 'Enter your own item',
+                value: this.creatorState.customClassItem || ''
+            });
+
+            customInput.addEventListener('click', (e) => {
+                // Prevent the card click handler from firing
+                e.stopPropagation();
+            });
+
+            customInput.addEventListener('input', (e) => {
+                const target = e.target as HTMLInputElement;
+                this.creatorState.customClassItem = target.value;
+                this.creatorState.selectedClassItem = null;
+                if (target.value) {
+                    customCard.classList.add('is-selected');
+                } else {
+                    customCard.classList.remove('is-selected');
+                }
+            });
+
+            customCard.addEventListener('click', () => {
+                customInput.focus();
+                this.creatorState.selectedClassItem = null;
+                if (this.creatorState.customClassItem) {
+                    customCard.classList.add('is-selected');
+                }
+                this.redrawCreatorStep();
+            });
+        }
+
         new Setting(parent).setName('Starting Potion').addDropdown(dd => {
             dd.addOption('health', 'Minor Health Potion').addOption('stamina', 'Minor Stamina Potion').setValue(this.creatorState.potionChoice || 'health').onChange(value => {
                 this.creatorState.potionChoice = value as 'health' | 'stamina';
             });
         });
 
-        // Add Item button
         const addItemContainer = parent.createDiv({ cls: 'dh-add-item-container' });
         const addItemButton = addItemContainer.createEl('button', { cls: 'mod-cta', text: 'Add Additional Item' });
         addItemButton.addEventListener('click', () => {
-            // Create a temporary character object for the modal
             const tempChar: Character = {
                 id: 'temp-character',
                 'dg-character': true,
@@ -742,13 +800,11 @@ export class CharacterSheetView extends ItemView {
                 conditions: [],
             };
 
-            // Open AddItemModal
             new AddItemModal(
                 this.app,
                 this.plugin,
                 tempChar,
                 (item: CompendiumItem) => {
-                    // Convert CompendiumItem to InventoryItem for the specified item
                     let inventoryItem: InventoryItem;
 
                     if (item._type === 'weapon') {
@@ -805,22 +861,19 @@ export class CharacterSheetView extends ItemView {
                         };
                     }
 
-                    // Add to character's additional items
                     if (!this.creatorState.additionalItems) {
                         this.creatorState.additionalItems = [];
                     }
                     this.creatorState.additionalItems.push(inventoryItem);
 
-                    // Redraw to show the added items
                     this.redrawCreatorStep();
                 },
                 () => {
-                    // Custom item creation
                     new ItemEditModal(
                         this.app,
                         this.plugin,
                         tempChar,
-                        null, // This means we're creating a new item
+                        null,
                         (item: InventoryItem) => {
                             if (!this.creatorState.additionalItems) {
                                 this.creatorState.additionalItems = [];
@@ -833,7 +886,6 @@ export class CharacterSheetView extends ItemView {
             ).open();
         });
 
-        // Display additional items if any
         if (this.creatorState.additionalItems && this.creatorState.additionalItems.length > 0) {
             const additionalItemsSection = parent.createDiv({ cls: 'dh-additional-items-section' });
             additionalItemsSection.createEl('h4', { text: 'Additional Items' });
@@ -843,10 +895,8 @@ export class CharacterSheetView extends ItemView {
             this.creatorState.additionalItems.forEach((item, index) => {
                 const itemEl = itemsList.createEl('li', { cls: 'dh-additional-item' });
 
-                // Create header for item with name and remove button
                 const itemHeader = itemEl.createDiv({ cls: 'dh-item-header' });
 
-                // Item name and type badge
                 const nameContainer = itemHeader.createDiv({ cls: 'dh-item-name-container' });
                 nameContainer.createEl('span', { text: item.name, cls: 'dh-item-name' });
                 nameContainer.createEl('span', {
@@ -1154,10 +1204,32 @@ export class CharacterSheetView extends ItemView {
             });
         });
 
-        const initialInventory: InventoryItem[] = (charClass.items || "").split(', ').map(itemName => {
+        const initialInventory: InventoryItem[] = [];
+
+        // Add class item if one was selected
+        if (partialChar.selectedClassItem) {
+            const itemName = partialChar.selectedClassItem;
+            // Item name is already capitalized during selection, so we can use it directly
             const item = this.plugin.compendium.items.find(i => i.name.toLowerCase() === itemName.trim().toLowerCase());
-            return { _type: 'item' as 'item', name: itemName.trim(), instanceId: uuidv4(), quantity: 1, isCustom: item?.isCustom, }
-        });
+            initialInventory.push({
+                _type: 'item' as 'item',
+                name: itemName.trim(),
+                instanceId: uuidv4(),
+                quantity: 1,
+                isCustom: item?.isCustom
+            });
+        } else if (partialChar.customClassItem && partialChar.customClassItem.trim()) {
+            // Add custom class item if provided, ensuring first letter is capitalized
+            const customItemName = partialChar.customClassItem.trim();
+            const capitalizedCustomItemName = customItemName.charAt(0).toUpperCase() + customItemName.slice(1);
+            initialInventory.push({
+                _type: 'item' as 'item',
+                name: capitalizedCustomItemName,
+                instanceId: uuidv4(),
+                quantity: 1,
+                isCustom: true
+            });
+        }
 
         const finalFeatures: (DomainCard)[] = (partialChar.domainCardIds || []).map(id => this.plugin.compendium.getAbility(id)).filter(f => f) as DomainCard[];
         const finalEvasion = parseInt(charClass.evasion);

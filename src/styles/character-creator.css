@@ -173,6 +173,8 @@
     background-color: var(--background-secondary);
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    min-height: 70px;
 }
 
 .dh-creator-card:hover {
@@ -526,4 +528,27 @@
 .dh-item-feature-name span {
     text-decoration: none !important;
     border-bottom: none !important;
+}
+
+/* Class item input styles */
+.dh-creator-card input[type="text"] {
+    width: 100%;
+    margin-top: 8px;
+    padding: 6px 8px;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-small);
+    color: var(--text-normal);
+}
+
+.dh-creator-card input[type="text"]:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+.dh-creator-card.is-selected input[type="text"] {
+    border-color: var(--interactive-accent);
+    background-color: var(--background-primary);
 }
