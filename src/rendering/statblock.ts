@@ -142,13 +142,15 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
 
             let title = `${feature.name}`;
             if (feature.type) title += ` - ${feature.type}`;
-            const strongEl = p.createEl('strong', { text: `${title}: ` });
+            const strongEl = p.createEl('strong');
             strongEl.style.fontStyle = 'italic';
+            renderRollableContent(plugin, `${title}: `, strongEl, feature.name);
 
             let description = feature.description || '';
 
             const descSpan = p.createSpan({ cls: 'dh-feature-description' });
-            if (description.includes('d20') || description.includes('d6') || description.includes('Mark stress') || description.includes('Spend fear')) {
+            // Also check for countdown in the description to ensure it's processed
+            if (description.includes('d20') || description.includes('d6') || description.includes('Mark stress') || description.includes('Spend fear') || description.toLowerCase().includes('countdown')) {
                 renderRollableContent(plugin, description, descSpan, feature.name);
             } else {
                 renderMarkdown(plugin, description, descSpan);
@@ -228,7 +230,8 @@ function renderEnvironmentInstance(
             const isExpanded = plugin.settings.showFeatureDetailsOnCards;
             const header = li.createDiv({ cls: `dh-feature-header-container${isExpanded ? ' is-expanded' : ''}` });
             const nameSpan = header.createSpan({ cls: 'dh-feature-name' });
-            nameSpan.createEl('strong', { text: feature.name });
+            const strongEl = nameSpan.createEl('strong');
+            renderRollableContent(plugin, feature.name, strongEl, feature.name);
             const metaContainer = header.createDiv({ cls: 'dh-feature-meta' });
             if (feature.parsedCost) {
                 const costTag = metaContainer.createSpan({ text: feature.parsedCost, cls: 'dh-feature-tag dh-feature-tag-cost' });
@@ -369,7 +372,8 @@ function renderAdversaryInstance(
             const isExpanded = plugin.settings.showFeatureDetailsOnCards;
             const header = li.createDiv({ cls: `dh-feature-header-container${isExpanded ? ' is-expanded' : ''}` });
             const nameSpan = header.createSpan({ cls: 'dh-feature-name' });
-            nameSpan.createEl('strong', { text: feature.name });
+            const strongEl = nameSpan.createEl('strong');
+            renderRollableContent(plugin, feature.name, strongEl, feature.name);
             const metaContainer = header.createDiv({ cls: 'dh-feature-meta' });
             if (feature.parsedCost) {
                 const costTag = metaContainer.createSpan({ text: feature.parsedCost, cls: 'dh-feature-tag dh-feature-tag-cost' });

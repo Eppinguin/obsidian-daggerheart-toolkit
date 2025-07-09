@@ -14,7 +14,7 @@ export const EVENT_REQUEST_CONDITION_MENU = 'dh-request-condition-menu';
 export const EVENT_REMOVE_CONDITION = 'dh-remove-condition';
 export const EVENT_REMOVE_INSTANCE = 'dh-remove-instance';
 export const EVENT_EDIT_INSTANCE = 'dh-edit-instance';
+export const EVENT_CREATE_COUNTDOWN = 'dh-create-countdown';
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
 export const TRAIT_NAMES: (keyof Character['traits'])[] = ['Strength', 'Agility', 'Finesse', 'Instinct', 'Presence', 'Knowledge'];
-

@@ -1,5 +1,6 @@
 import DaggerheartStatblockPlugin from '../main';
 import { Notice } from 'obsidian';
+import { EVENT_CREATE_COUNTDOWN } from '../constants';
 
 /**
  * Renders basic markdown formatting for descriptions.
@@ -86,7 +87,7 @@ export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string,
  * @param isCharacterContext Whether this is being rendered in a character sheet context (vs. encounter/statblock).
  */
 export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement, context: string, isCharacterContext: boolean = false) {
-    const pattern = /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear))/gi;
+    const pattern = /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear))|\b(Countdown\s*\((Loop\s+)?(.*?)\))/gi;
     let lastIndex = 0;
     let match;
 
@@ -103,6 +104,9 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
 
         const dicePart = match[1];
         const costPart = match[2];
+        const countdownPart = match[3];
+        const countdownLoop = match[4];
+        const countdownValue = match[5];
 
         if (dicePart && isRollable) {
             const diceString = dicePart.replace(/\s/g, '');
@@ -176,7 +180,49 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
                     });
                 }
             }
-        } else {
+        } else if (countdownPart && countdownValue) {
+            const countdownEl = containerEl.createSpan({
+                text: countdownPart,
+                cls: 'dh-rollable-dice',
+                title: `Click to create a Countdown`
+            });
+
+            countdownEl.addEventListener('click', async (e) => {
+                e.stopPropagation();
+
+                let finalValue: number | null = null;
+                const trimmedValue = countdownValue.trim();
+                const cleanName = context.replace(countdownPart, '').trim();
+                const diceContext = `${cleanName} Countdown`;
+
+                const diceRegex = /^\d+d\d+(?:\s*[+-]\s*\d+)*$/i;
+                if (diceRegex.test(trimmedValue)) {
+                    if (isRollable) {
+                        finalValue = await plugin.rollDice(trimmedValue, diceContext);
+                    } else {
+                        new Notice('Dice roller not configured. Cannot roll for countdown.');
+                        return;
+                    }
+                } else if (!isNaN(parseInt(trimmedValue, 10))) {
+                    finalValue = parseInt(trimmedValue, 10);
+                }
+
+                if (finalValue !== null) {
+                    const countdownName = `${cleanName}${countdownLoop ? ` (${countdownLoop.trim()})` : ''}`;
+                    containerEl.dispatchEvent(new CustomEvent(EVENT_CREATE_COUNTDOWN, {
+                        detail: {
+                            name: countdownName || 'Countdown',
+                            value: finalValue
+                        },
+                        bubbles: true,
+                        composed: true
+                    }));
+                } else {
+                    new Notice(`Invalid countdown value: "${countdownValue}"`);
+                }
+            });
+        }
+        else {
             containerEl.appendText(match[0]);
         }
 

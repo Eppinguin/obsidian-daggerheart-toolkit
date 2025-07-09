@@ -499,7 +499,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
 
         await this.saveData(settingsToSave);
-        this.initializeDddiceIfNeeded();
 
         // Refresh the settings tab if it exists
         if (this.settingsTab) {

@@ -8,6 +8,7 @@ import {
 } from '../modals/index';
 import { DAGGERHEART_CONDITIONS } from 'src/constants';
 import { ContentType } from '../services/export-import';
+import { EVENT_CREATE_COUNTDOWN } from 'src/constants';
 
 
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
@@ -41,6 +42,7 @@ export class EncounterBuilderView extends ItemView {
     private boundHandleDragOver: (e: DragEvent) => void;
     private boundHandleDrop: (e: DragEvent) => void;
     private boundHandleDragEnd: (e: DragEvent) => void;
+    private boundHandleCreateCountdownEvent: (e: Event) => void;
 
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
@@ -53,6 +55,7 @@ export class EncounterBuilderView extends ItemView {
         this.boundHandleDragOver = this.handleDragOver.bind(this);
         this.boundHandleDrop = this.handleDrop.bind(this);
         this.boundHandleDragEnd = this.handleDragEnd.bind(this);
+        this.boundHandleCreateCountdownEvent = this.handleCreateCountdownEvent.bind(this);
     }
 
     getViewType(): string { return ENCOUNTER_BUILDER_VIEW_TYPE; }
@@ -101,6 +104,7 @@ export class EncounterBuilderView extends ItemView {
         this.uiContainer.addEventListener('dh-remove-condition', this.boundHandleRemoveConditionEvent);
         this.uiContainer.addEventListener('dh-remove-instance', this.boundHandleRemoveInstanceEvent);
         this.uiContainer.addEventListener('dh-edit-instance', this.boundHandleEditInstanceEvent);
+        this.uiContainer.addEventListener(EVENT_CREATE_COUNTDOWN, this.boundHandleCreateCountdownEvent);
     }
 
     async setState(state: any, result: any) {
@@ -505,11 +509,22 @@ export class EncounterBuilderView extends ItemView {
         removeBtn.addEventListener('click', () => this.handleRemoveCountdown(countdown.id));
     }
 
-    async handleAddCountdown(isDefault: boolean = false) {
-        const newCountdown: Countdown = { id: `dh-countdown-${Date.now()}`, name: isDefault ? 'Default Countdown' : `Countdown ${this.plugin.settings.countdowns.length + 1}`, value: 0 };
+    async handleAddCountdown(isDefault: boolean = false, name?: string, value?: number) {
+        const newCountdown: Countdown = {
+            id: `dh-countdown-${Date.now()}`,
+            name: name || (isDefault ? 'Default Countdown' : `Countdown ${this.plugin.settings.countdowns.length + 1}`),
+            value: value ?? 0
+        };
         this.plugin.settings.countdowns.push(newCountdown);
         await this.plugin.saveSettings();
-        if (!isDefault) this.updateCountdownsPopup();
+
+        if (!isDefault) {
+            if (!this.isCountdownsPopupVisible) {
+                this.toggleCountdownsPopup();
+            } else {
+                this.updateCountdownsPopup();
+            }
+        }
     }
 
     async handleRemoveCountdown(id: string) {
@@ -834,6 +849,14 @@ export class EncounterBuilderView extends ItemView {
         this.removeInstanceFromEncounter((e as CustomEvent).detail.instanceId);
     }
 
+    private async handleCreateCountdownEvent(e: Event) {
+        const { name, value } = (e as CustomEvent).detail;
+        if (typeof name !== 'string' || typeof value !== 'number') return;
+
+        await this.handleAddCountdown(false, name, value);
+        new Notice(`Countdown "${name}" created with value ${value}.`);
+    }
+
     removeGroupFromEncounter(groupId: string) {
         if (!groupId) return;
 
@@ -1047,6 +1070,7 @@ export class EncounterBuilderView extends ItemView {
             this.uiContainer.removeEventListener('dh-remove-condition', this.boundHandleRemoveConditionEvent);
             this.uiContainer.removeEventListener('dh-remove-instance', this.boundHandleRemoveInstanceEvent);
             this.uiContainer.removeEventListener('dh-edit-instance', this.boundHandleEditInstanceEvent);
+            this.uiContainer.removeEventListener(EVENT_CREATE_COUNTDOWN, this.boundHandleCreateCountdownEvent);
             const encounterArea = this.uiContainer.querySelector('.dh-encounter-area');
             if (encounterArea) {
                 encounterArea.removeEventListener('dragstart', this.boundHandleDragStart);
