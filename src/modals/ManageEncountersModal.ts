@@ -1,7 +1,8 @@
 import { App, Modal, ButtonComponent, setIcon, Notice } from 'obsidian';
 import { EncounterBuilderView } from '../views/EncounterBuilderView';
 import { ContentType } from '../services/export-import';
-import { ImportExportModal } from '../modals/ImportExportModal';
+import { ImportExportModal } from './ImportExportModal';
+import { SavedEncounter } from '../types';
 
 export class ManageEncountersModal extends Modal {
     view: EncounterBuilderView;
@@ -17,10 +18,11 @@ export class ManageEncountersModal extends Modal {
         contentEl.addClass('dh-manage-encounters-modal');
         contentEl.createEl("h2", { text: "Manage Saved Encounters" });
         const listEl = contentEl.createDiv({ cls: "dh-manage-list" });
-        if (this.view.plugin.settings.savedEncounters.length === 0) {
+        const savedEncounters = this.view.plugin.getSavedEncounters();
+        if (savedEncounters.length === 0) {
             listEl.createEl("p", { text: "No saved encounters." });
         } else {
-            this.view.plugin.settings.savedEncounters.forEach(savedEncounter => {
+            savedEncounters.forEach((savedEncounter: SavedEncounter) => {
                 const entryEl = listEl.createDiv({ cls: "dh-manage-list-item" });
                 const nameContainer = entryEl.createDiv({ cls: "dh-manage-item-name-container" });
                 nameContainer.createSpan({ text: savedEncounter.name, cls: "dh-manage-item-name" });
