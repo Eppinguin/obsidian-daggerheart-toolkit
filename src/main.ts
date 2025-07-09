@@ -56,6 +56,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     compendium: DaggerheartCompendium;
     isDiceRollerEnabled: boolean = false;
     private characters: Character[] = [];
+    private encounters: SavedEncounter[] = [];
     private activeCharacterId: string | null = null;
     public settingsTab: DaggerheartSettingTab | null = null;
 
@@ -68,6 +69,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         this.compendium = new DaggerheartCompendium(this);
         await this.compendium.load();
         await this.loadCharacters();
+        await this.loadEncounters();
 
         this.isDiceRollerEnabled = this.settings.enableDiceRoller && !!(this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api;
 
@@ -194,7 +196,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     private async loadCharacters() {
-        const path = `${this.manifest.dir}/characters.json`;
+        const path = `${this.manifest.dir}/user_data/characters.json`;
         if (await this.app.vault.adapter.exists(path)) {
             try {
                 const data = await this.app.vault.adapter.read(path);
@@ -212,8 +214,28 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     private async saveCharacters() {
-        const path = `${this.manifest.dir}/characters.json`;
+        const path = `${this.manifest.dir}/user_data/characters.json`;
         await this.app.vault.adapter.write(path, JSON.stringify(this.characters, null, 2));
+    }
+
+    private async loadEncounters() {
+        const path = `${this.manifest.dir}/user_data/encounters.json`;
+        if (await this.app.vault.adapter.exists(path)) {
+            try {
+                const data = await this.app.vault.adapter.read(path);
+                this.encounters = JSON.parse(data);
+            } catch (e) {
+                console.error("Daggerheart: Error loading encounters.json. It might be corrupted.", e);
+                this.encounters = [];
+            }
+        } else {
+            this.encounters = [];
+        }
+    }
+
+    private async saveEncounters() {
+        const path = `${this.manifest.dir}/user_data/encounters.json`;
+        await this.app.vault.adapter.write(path, JSON.stringify(this.encounters, null, 2));
     }
 
     public getCharacters(): Character[] { return this.characters; }
@@ -256,7 +278,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
      * @returns Array of saved encounters
      */
     getSavedEncounters(): SavedEncounter[] {
-        return this.settings.savedEncounters || [];
+        return this.encounters;
     }
 
     /**
@@ -265,7 +287,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
      * @returns The encounter or undefined if not found
      */
     getSavedEncounter(id: string): SavedEncounter | undefined {
-        return this.settings.savedEncounters.find(e => e.id === id);
+        return this.encounters.find(e => e.id === id);
     }
 
     /**
@@ -273,13 +295,13 @@ export default class DaggerheartStatblockPlugin extends Plugin {
      * @param encounter The encounter to update
      */
     async updateSavedEncounter(encounter: SavedEncounter): Promise<void> {
-        const index = this.settings.savedEncounters.findIndex(e => e.id === encounter.id);
+        const index = this.encounters.findIndex(e => e.id === encounter.id);
         if (index >= 0) {
-            this.settings.savedEncounters[index] = encounter;
+            this.encounters[index] = encounter;
         } else {
-            this.settings.savedEncounters.push(encounter);
+            this.encounters.push(encounter);
         }
-        await this.saveSettings();
+        await this.saveEncounters();
         this.app.workspace.trigger('daggerheart-encounter-update');
     }
 
@@ -288,8 +310,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
      * @param id The ID of the encounter to remove
      */
     async removeSavedEncounter(id: string): Promise<void> {
-        this.settings.savedEncounters = this.settings.savedEncounters.filter(e => e.id !== id);
-        await this.saveSettings();
+        this.encounters = this.encounters.filter(e => e.id !== id);
+        await this.saveEncounters();
         this.app.workspace.trigger('daggerheart-encounter-update');
     }
 

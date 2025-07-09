@@ -14,7 +14,7 @@ export class EncounterLinkModal extends FuzzySuggestModal<SavedEncounter> {
     }
 
     getItems(): SavedEncounter[] {
-        return this.plugin.settings.savedEncounters;
+        return this.plugin.getSavedEncounters();
     }
 
     getItemText(item: SavedEncounter): string {

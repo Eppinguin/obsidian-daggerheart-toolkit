@@ -59,7 +59,7 @@ export class EncounterBuilderView extends ItemView {
 
     getDisplayText(): string {
         if (this.currentEncounterId) {
-            const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+            const currentEncounter = this.plugin.getSavedEncounter(this.currentEncounterId);
             return currentEncounter ? `Encounter: ${currentEncounter.name}` : "Daggerheart Encounters";
         }
         return "Daggerheart Encounters";
@@ -107,7 +107,8 @@ export class EncounterBuilderView extends ItemView {
         if (state) {
             if (state.currentEncounterId) {
                 this.currentEncounterId = state.currentEncounterId;
-                if (!this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId)) {
+                // Check if the encounter exists
+                if (this.currentEncounterId && !this.plugin.getSavedEncounter(this.currentEncounterId)) {
                     this.currentEncounterId = null;
                 }
             }
@@ -144,11 +145,12 @@ export class EncounterBuilderView extends ItemView {
     }
 
     ensureActiveEncounter() {
-        if (this.plugin.settings.savedEncounters.length === 0) {
+        const savedEncounters = this.plugin.getSavedEncounters();
+        if (savedEncounters.length === 0) {
             this.handleNewEncounter(true, "My First Encounter");
-        } else if (!this.currentEncounterId || !this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId)) {
-            this.currentEncounterId = this.plugin.settings.savedEncounters[0]?.id || null;
-            if (!this.currentEncounterId && this.plugin.settings.savedEncounters.length > 0) {
+        } else if (!this.currentEncounterId || !savedEncounters.find(e => e.id === this.currentEncounterId)) {
+            this.currentEncounterId = savedEncounters[0]?.id || null;
+            if (!this.currentEncounterId && savedEncounters.length > 0) {
                 this.handleNewEncounter(true, "My First Encounter");
             }
         }
@@ -159,7 +161,7 @@ export class EncounterBuilderView extends ItemView {
 
     loadItemsForCurrentEncounter() {
         if (this.currentEncounterId) {
-            const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+            const encounter = this.plugin.getSavedEncounter(this.currentEncounterId);
             this.activeEncounterItems = encounter ? JSON.parse(JSON.stringify(encounter.adversaries)) : [];
         } else {
             this.activeEncounterItems = [];
@@ -174,10 +176,13 @@ export class EncounterBuilderView extends ItemView {
 
     async autoSaveCurrentEncounter() {
         if (this.currentEncounterId) {
-            const encounterIndex = this.plugin.settings.savedEncounters.findIndex(e => e.id === this.currentEncounterId);
-            if (encounterIndex !== -1) {
-                this.plugin.settings.savedEncounters[encounterIndex].adversaries = JSON.parse(JSON.stringify(this.activeEncounterItems));
-                await this.plugin.saveSettings();
+            const encounter = this.plugin.getSavedEncounter(this.currentEncounterId);
+            if (encounter) {
+                const updatedEncounter = {
+                    ...encounter,
+                    adversaries: JSON.parse(JSON.stringify(this.activeEncounterItems))
+                };
+                await this.plugin.updateSavedEncounter(updatedEncounter);
             }
         }
     }
@@ -186,9 +191,11 @@ export class EncounterBuilderView extends ItemView {
         const menu = new Menu();
         menu.addItem((item) => item.setTitle("Create New Encounter...").setIcon("plus-circle").onClick(() => this.handleNewEncounter()));
         menu.addItem((item) => item.setTitle("Manage Saved Encounters...").setIcon("settings").onClick(() => new ManageEncountersModal(this.app, this).open()));
-        if (this.plugin.settings.savedEncounters.length > 0) {
+
+        const savedEncounters = this.plugin.getSavedEncounters();
+        if (savedEncounters.length > 0) {
             menu.addSeparator();
-            this.plugin.settings.savedEncounters.forEach((savedEncounter) => {
+            savedEncounters.forEach((savedEncounter) => {
                 menu.addItem((item) => {
                     item.setTitle(savedEncounter.name)
                         .setIcon(savedEncounter.id === this.currentEncounterId ? "check" : "")
@@ -325,7 +332,7 @@ export class EncounterBuilderView extends ItemView {
         if (!this.uiContainer) return;
         this.uiContainer.empty();
         const containerWrapper = this.uiContainer.createDiv({ cls: "dh-encounter-wrapper" });
-        const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+        const currentEncounter = this.currentEncounterId ? this.plugin.getSavedEncounter(this.currentEncounterId) : null;
 
         const header = containerWrapper.createDiv({ cls: "dh-encounter-header" });
         const titleAndTrackersWrapper = header.createDiv({ cls: 'dh-title-fear-wrapper' });
@@ -616,7 +623,7 @@ export class EncounterBuilderView extends ItemView {
     }
 
     handleNewEncounter(isDefaultCreation: boolean = false, defaultName?: string) {
-        const existingNames = this.plugin.settings.savedEncounters.map(e => e.name);
+        const existingNames = this.plugin.getSavedEncounters().map(e => e.name);
         let newEncounterNameBase = defaultName || "New Encounter";
         let newEncounterName = newEncounterNameBase;
         let counter = 1;
@@ -628,8 +635,7 @@ export class EncounterBuilderView extends ItemView {
     saveNewEncounter(name: string) {
         const newId = `dh-encounter-${Date.now()}`;
         const newEncounter: SavedEncounter = { id: newId, name: name, adversaries: [], adversaryGroupOrder: [] };
-        this.plugin.settings.savedEncounters.push(newEncounter);
-        this.plugin.saveSettings();
+        this.plugin.updateSavedEncounter(newEncounter);
         this.currentEncounterId = newId;
         this.loadItemsForCurrentEncounter();
         new Notice(`Encounter "${name}" created and activated.`);
@@ -638,12 +644,12 @@ export class EncounterBuilderView extends ItemView {
     }
 
     handleRenameEncounter(encounterId: string) {
-        const encounterToRename = this.plugin.settings.savedEncounters.find(e => e.id === encounterId);
+        const encounterToRename = this.plugin.getSavedEncounter(encounterId);
         if (!encounterToRename) return;
-        const existingNames = this.plugin.settings.savedEncounters.map(e => e.name).filter(name => name !== encounterToRename.name);
+        const existingNames = this.plugin.getSavedEncounters().map(e => e.name).filter(name => name !== encounterToRename.name);
         new NameEncounterModal(this.app, this.plugin, "Rename Encounter", existingNames, encounterToRename.name, (newName) => {
-            encounterToRename.name = newName;
-            this.plugin.saveSettings();
+            const updatedEncounter = { ...encounterToRename, name: newName };
+            this.plugin.updateSavedEncounter(updatedEncounter);
             new Notice(`Encounter renamed to "${newName}".`);
             this.drawUI();
             if (encounterId === this.currentEncounterId) this.leaf.setEphemeralState(this.getState());
@@ -652,7 +658,7 @@ export class EncounterBuilderView extends ItemView {
 
     loadEncounter(encounterId: string) {
         if (this.currentEncounterId === encounterId) return;
-        const encounterToLoad = this.plugin.settings.savedEncounters.find(e => e.id === encounterId);
+        const encounterToLoad = this.plugin.getSavedEncounter(encounterId);
         if (encounterToLoad) {
             this.currentEncounterId = encounterToLoad.id;
             this.loadItemsForCurrentEncounter();
@@ -665,11 +671,10 @@ export class EncounterBuilderView extends ItemView {
     }
 
     async handleDeleteEncounter(encounterId: string) {
-        const encounterIndex = this.plugin.settings.savedEncounters.findIndex(e => e.id === encounterId);
-        if (encounterIndex === -1) return;
-        const encounterName = this.plugin.settings.savedEncounters[encounterIndex].name;
-        this.plugin.settings.savedEncounters.splice(encounterIndex, 1);
-        await this.plugin.saveSettings();
+        const encounterToDelete = this.plugin.getSavedEncounter(encounterId);
+        if (!encounterToDelete) return;
+        const encounterName = encounterToDelete.name;
+        await this.plugin.removeSavedEncounter(encounterId);
         if (this.currentEncounterId === encounterId) {
             this.currentEncounterId = null;
             this.ensureActiveEncounter();
@@ -762,8 +767,11 @@ export class EncounterBuilderView extends ItemView {
         if (this.draggedGroupId) {
             const encounterArea = this.uiContainer?.querySelector('.dh-encounter-area') as HTMLElement;
             const newOrderedIds = Array.from(encounterArea.querySelectorAll('.dh-adversary-group-container')).map(el => el.getAttribute('data-group-id')).filter((id): id is string => id !== null);
-            const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
-            if (currentEncounter) { currentEncounter.adversaryGroupOrder = newOrderedIds; this.plugin.saveSettings(); }
+            const currentEncounter = this.currentEncounterId ? this.plugin.getSavedEncounter(this.currentEncounterId) : null;
+            if (currentEncounter) {
+                const updatedEncounter = { ...currentEncounter, adversaryGroupOrder: newOrderedIds };
+                this.plugin.updateSavedEncounter(updatedEncounter);
+            }
         }
     }
 
@@ -833,11 +841,18 @@ export class EncounterBuilderView extends ItemView {
 
         this.activeEncounterItems = this.activeEncounterItems.filter(inst => inst.groupId !== groupId);
 
-        const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+        const encounter = this.currentEncounterId ? this.plugin.getSavedEncounter(this.currentEncounterId) : null;
         if (encounter?.adversaryGroupOrder) {
             const groupIndex = encounter.adversaryGroupOrder.indexOf(groupId);
             if (groupIndex > -1) {
-                encounter.adversaryGroupOrder.splice(groupIndex, 1);
+                const updatedGroupOrder = [...encounter.adversaryGroupOrder];
+                updatedGroupOrder.splice(groupIndex, 1);
+                const updatedEncounter = {
+                    ...encounter,
+                    adversaryGroupOrder: updatedGroupOrder,
+                    adversaries: this.activeEncounterItems
+                };
+                this.plugin.updateSavedEncounter(updatedEncounter);
             }
         }
 
@@ -853,7 +868,7 @@ export class EncounterBuilderView extends ItemView {
 
             // If there are no more groups, show the empty message
             if (this.activeEncounterItems.length === 0) {
-                const currentEncounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+                const currentEncounter = this.currentEncounterId ? this.plugin.getSavedEncounter(this.currentEncounterId) : null;
                 const emptyText = currentEncounter ? `Encounter "${currentEncounter.name}" is empty. Add adversaries or environments.` : "No active encounter or encounter is empty.";
                 encounterArea.createEl("p", { text: emptyText });
             }
@@ -924,11 +939,22 @@ export class EncounterBuilderView extends ItemView {
 
     addItemToActiveEncounter(baseItem: StatblockData) {
         if (!this.currentEncounterId) { new Notice("Error: No active encounter. Please create or load an encounter first."); return; }
-        const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+        const encounter = this.plugin.getSavedEncounter(this.currentEncounterId);
         if (!encounter) return;
         const newGroupId = `${baseItem.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
         this.createNewInstanceFromTemplate(baseItem, newGroupId);
-        if (!encounter.adversaryGroupOrder) encounter.adversaryGroupOrder = [];
+
+        // Create a copy of the encounter with updated group order
+        const updatedGroupOrder = encounter.adversaryGroupOrder ? [...encounter.adversaryGroupOrder] : [];
+        updatedGroupOrder.push(newGroupId);
+
+        // Update the encounter
+        const updatedEncounter = {
+            ...encounter,
+            adversaryGroupOrder: updatedGroupOrder,
+            adversaries: this.activeEncounterItems
+        };
+        this.plugin.updateSavedEncounter(updatedEncounter);
         encounter.adversaryGroupOrder.push(newGroupId);
         this.autoSaveCurrentEncounter();
 
@@ -984,12 +1010,21 @@ export class EncounterBuilderView extends ItemView {
         const groupId = removedInstance.groupId;
         this.activeEncounterItems.splice(instanceToRemoveIndex, 1);
         const isGroupEmpty = !this.activeEncounterItems.some(inst => inst.groupId === groupId);
-        if (isGroupEmpty) {
-            const encounter = this.plugin.settings.savedEncounters.find(e => e.id === this.currentEncounterId);
+        if (isGroupEmpty && this.currentEncounterId) {
+            const encounter = this.plugin.getSavedEncounter(this.currentEncounterId);
             if (encounter?.adversaryGroupOrder) {
                 const groupIndex = encounter.adversaryGroupOrder.indexOf(groupId);
                 if (groupIndex > -1) {
-                    encounter.adversaryGroupOrder.splice(groupIndex, 1);
+                    const updatedGroupOrder = [...encounter.adversaryGroupOrder];
+                    updatedGroupOrder.splice(groupIndex, 1);
+
+                    // Update the encounter
+                    const updatedEncounter = {
+                        ...encounter,
+                        adversaryGroupOrder: updatedGroupOrder,
+                        adversaries: this.activeEncounterItems
+                    };
+                    this.plugin.updateSavedEncounter(updatedEncounter);
                 }
             }
         }

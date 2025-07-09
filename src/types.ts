@@ -192,7 +192,6 @@ export interface EncounterBudgetConfig { playerCount: number; isEasier: boolean;
 export interface DaggerheartPluginSettings {
     activeCharacterId: string | null;
     compendiumFolder: string;
-    savedEncounters: SavedEncounter[];
     useSrdAdversaries: boolean;
     useSrdEnvironments: boolean;
     userCompendiumFile: string;
@@ -222,7 +221,6 @@ export interface DaggerheartPluginSettings {
 export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     activeCharacterId: null,
     compendiumFolder: '',
-    savedEncounters: [],
     useSrdAdversaries: true,
     useSrdEnvironments: true,
     userCompendiumFile: 'User-Adversaries.json',

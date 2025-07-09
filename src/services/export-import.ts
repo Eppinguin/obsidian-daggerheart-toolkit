@@ -63,7 +63,7 @@ export const CONTENT_TYPE_INFO: Record<ContentType, ContentTypeInfo> = {
         displayName: 'Encounter',
         description: 'Export or import saved encounters',
         icon: 'swords',
-        collection: 'savedEncounters'
+        collection: 'encounters'
     },
     [ContentType.ADVERSARY]: {
         type: ContentType.ADVERSARY,

@@ -36,8 +36,6 @@ yarn-error.log*
 data.json
 styles.css
 Daggerheart-Compendium.json
-User-Adversaries.json
-characters.json
-user-abilities.json
 user_compendium/
+user_data/
 main.css

@@ -25,7 +25,7 @@ import DaggerheartStatblockPlugin from '../main';
 import { v4 as uuidv4 } from 'uuid';
 
 const DATA_PATH = "data";
-const USER_DATA_PATH = "user_compendium";
+const USER_DATA_PATH = "user_data";
 
 export class DaggerheartCompendium {
     private plugin: DaggerheartStatblockPlugin;
