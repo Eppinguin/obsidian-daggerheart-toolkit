@@ -4,6 +4,7 @@ import DaggerheartStatblockPlugin from '../main';
 import { Character, DomainCard, Experience, JsonAncestry, Trait } from '../types';
 import { createAvatarEditor } from '../views/components/AvatarEditor';
 import { TRAIT_NAMES } from '../constants';
+import { CardSwapModal } from './CardSwapModal';
 
 /**
  * A modal for freely editing all aspects of a character sheet.
@@ -14,6 +15,7 @@ export class CharacterManagerModal extends Modal {
     character: Character;
     onSave: (character: Character) => void;
     private tempCharacter: Character;
+    private sectionStates: { [title: string]: boolean } = {};
 
     // State for mixed ancestry editing
     private isMixedAncestry: boolean = false;
@@ -93,9 +95,20 @@ export class CharacterManagerModal extends Modal {
         this.contentEl.empty();
     }
 
-    private createCollapsibleSection(parent: HTMLElement, title: string, isOpen: boolean = false): HTMLElement {
+    private saveSectionStates() {
+        const sections = this.contentEl.querySelectorAll('details.dh-manager-section');
+        sections.forEach(section => {
+            const detailsElement = section as HTMLDetailsElement;
+            const titleEl = detailsElement.querySelector('summary > h2');
+            if (titleEl && titleEl.textContent) {
+                this.sectionStates[titleEl.textContent] = detailsElement.open;
+            }
+        });
+    }
+
+    private createCollapsibleSection(parent: HTMLElement, title: string, defaultOpen: boolean = false): HTMLElement {
         const details = parent.createEl('details', { cls: 'dh-manager-section' });
-        details.open = isOpen;
+        details.open = this.sectionStates[title] ?? defaultOpen;
         const summary = details.createEl('summary');
         summary.createEl('h2', { text: title });
         return details.createDiv();
@@ -194,6 +207,7 @@ export class CharacterManagerModal extends Modal {
                     } else {
                         this.tempCharacter.ancestryId = this.originalAncestryId;
                     }
+                    this.saveSectionStates();
                     this.onOpen();
                 }));
 
@@ -221,6 +235,7 @@ export class CharacterManagerModal extends Modal {
                     .onChange(value => {
                         this.tempCharacter.classId = value;
                         this.tempCharacter.subclassId = '';
+                        this.saveSectionStates();
                         this.onOpen();
                     });
             });
@@ -314,89 +329,117 @@ export class CharacterManagerModal extends Modal {
     private drawFeatures(parent: HTMLElement) {
         const container = parent.createDiv();
 
-        const redraw = () => {
-            container.empty();
-            if (!this.tempCharacter.vault) { this.tempCharacter.vault = []; }
-            const allCards = [...this.tempCharacter.features, ...this.tempCharacter.vault];
+        new Setting(container)
+            .setName('Domain Cards')
+            .setDesc('Manage your character\'s available domain cards, including your loadout and vault.')
+            .addButton(btn => btn
+                .setButtonText('Manage Cards & Loadout')
+                .setCta()
+                .onClick(() => {
+                    this.saveSectionStates();
+                    new CardSwapModal(this.app, this.plugin, this.tempCharacter, (updatedChar) => {
+                        this.onOpen();
+                    }).open();
+                }));
 
-            if (allCards.length === 0) {
-                container.createEl('p', { text: 'No features or cards.' });
+        const cardListsContainer = container.createDiv({ cls: 'dh-manager-card-lists' });
+
+        if (!this.tempCharacter.features) this.tempCharacter.features = [];
+        if (!this.tempCharacter.vault) this.tempCharacter.vault = [];
+
+        // Loadout List
+        const loadoutSection = cardListsContainer.createDiv();
+        loadoutSection.createEl('h4', { text: `Loadout (${this.tempCharacter.features.length}/5)` });
+        const loadoutList = this.createDropZone(loadoutSection, 'loadout');
+        if (this.tempCharacter.features.length === 0) {
+            loadoutList.createEl('p', { text: 'No cards in loadout.', cls: 'dh-empty-text' });
+        } else {
+            this.tempCharacter.features.forEach(card => {
+                this.createCardSummary(loadoutList, card, 'loadout');
+            });
+        }
+
+        // Vault List
+        const vaultSection = cardListsContainer.createDiv();
+        vaultSection.createEl('h4', { text: `Vault (${this.tempCharacter.vault.length})` });
+        const vaultList = this.createDropZone(vaultSection, 'vault');
+        if (this.tempCharacter.vault.length === 0) {
+            vaultList.createEl('p', { text: 'No cards in vault.', cls: 'dh-empty-text' });
+        } else {
+            this.tempCharacter.vault.forEach(card => {
+                this.createCardSummary(vaultList, card, 'vault');
+            });
+        }
+    }
+
+    private createDropZone(parent: HTMLElement, type: 'loadout' | 'vault'): HTMLElement {
+        const dropZone = parent.createDiv({ cls: 'dh-manager-card-list' });
+        dropZone.dataset.listType = type;
+
+        dropZone.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            const sourceListType = event.dataTransfer?.getData('source-list');
+            if (sourceListType && sourceListType !== type) {
+                dropZone.addClass('is-drop-target');
+            }
+        });
+
+        dropZone.addEventListener('dragleave', (event) => {
+            dropZone.removeClass('is-drop-target');
+        });
+
+        dropZone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropZone.removeClass('is-drop-target');
+
+            const cardId = event.dataTransfer?.getData('text/plain');
+            const sourceListType = event.dataTransfer?.getData('source-list');
+            const targetListType = type;
+
+            if (!cardId || sourceListType === targetListType) return;
+
+            if (targetListType === 'loadout' && this.tempCharacter.features.length >= 5) {
+                new Notice('Loadout is full (5 cards maximum).');
+                return;
             }
 
-            allCards.forEach(card => {
-                const cardDetails = container.createEl('details', { cls: 'dh-manager-section' });
-                const summaryEl = cardDetails.createEl('summary');
-                const h2El = summaryEl.createEl('h2', { text: card.name });
-                const cardContainer = cardDetails.createDiv();
-                cardContainer.addClass('dh-manager-card-editor');
+            const sourceList = sourceListType === 'loadout' ? this.tempCharacter.features : this.tempCharacter.vault;
+            const targetList = targetListType === 'loadout' ? this.tempCharacter.features : this.tempCharacter.vault;
 
-                new Setting(cardContainer)
-                    .setName('Name')
-                    .addText(text => text.setValue(card.name).onChange(val => {
-                        card.name = val;
-                        h2El.setText(val);
-                    }));
+            const cardIndex = sourceList.findIndex(c => c.id === cardId);
+            if (cardIndex > -1) {
+                const [cardToMove] = sourceList.splice(cardIndex, 1);
+                targetList.push(cardToMove);
+                this.saveSectionStates(); // Save state before re-rendering
+                this.onOpen(); // Re-render the modal
+            }
+        });
 
-                new Setting(cardContainer)
-                    .setName('Description')
-                    .addTextArea(text => text.setValue(card.description).onChange(val => card.description = val));
+        return dropZone;
+    }
 
-                const grid = cardContainer.createDiv({ cls: 'is-grid' });
-                new Setting(grid).setName('Level').addText(text => text.setValue(String(card.level)).onChange(val => card.level = parseInt(val) || 0));
-                new Setting(grid).setName('Domain').addText(text => text.setValue(card.domain).onChange(val => card.domain = val));
-                new Setting(grid).setName('Type').addText(text => text.setValue(card.type).onChange(val => card.type = val));
-                new Setting(grid).setName('Recall Cost').addText(text => text.setValue(String(card.recall)).onChange(val => card.recall = parseInt(val) || 0));
+    private createCardSummary(parent: HTMLElement, card: DomainCard, listType: 'loadout' | 'vault') {
+        const cardEl = parent.createDiv({ cls: 'dh-manager-card-summary' });
+        cardEl.draggable = true;
 
-                const isInLoadout = this.tempCharacter.features.some(f => f.id === card.id);
-                const locationToggle = new Setting(cardContainer)
-                    .setName('Location')
-                    .setDesc(isInLoadout ? 'In Loadout' : 'In Vault')
-                    .addToggle(toggle => toggle
-                        .setValue(isInLoadout)
-                        .onChange(inLoadout => {
-                            if (inLoadout) {
-                                const cardIndex = this.tempCharacter.vault.findIndex(c => c.id === card.id);
-                                if (cardIndex > -1) {
-                                    const [movedCard] = this.tempCharacter.vault.splice(cardIndex, 1);
-                                    this.tempCharacter.features.push(movedCard);
-                                }
-                            } else {
-                                const cardIndex = this.tempCharacter.features.findIndex(c => c.id === card.id);
-                                if (cardIndex > -1) {
-                                    const [movedCard] = this.tempCharacter.features.splice(cardIndex, 1);
-                                    this.tempCharacter.vault.push(movedCard);
-                                }
-                            }
-                            locationToggle.setDesc(inLoadout ? 'In Loadout' : 'In Vault');
-                        })
-                    );
+        cardEl.createEl('strong', { text: card.name });
+        const metaEl = cardEl.createDiv({ cls: 'dh-manager-card-meta' });
+        metaEl.createSpan({ text: `Lvl ${card.level}` });
+        metaEl.createSpan({ text: card.domain });
+        metaEl.createSpan({ text: card.type });
 
-                new Setting(cardContainer).addButton(btn => btn
-                    .setButtonText('Delete Card')
-                    .setWarning()
-                    .onClick(() => {
-                        this.tempCharacter.features = this.tempCharacter.features.filter(f => f.id !== card.id);
-                        this.tempCharacter.vault = this.tempCharacter.vault.filter(v => v.id !== card.id);
-                        redraw();
-                    }));
-            });
+        cardEl.addEventListener('dragstart', (event) => {
+            if (event.dataTransfer) {
+                event.dataTransfer.setData('text/plain', card.id);
+                event.dataTransfer.setData('source-list', listType);
+                event.dataTransfer.effectAllowed = 'move';
+            }
+            setTimeout(() => cardEl.addClass('is-dragging'), 0);
+        });
 
-            new Setting(parent).addButton(btn => btn.setButtonText("Add New Card").onClick(() => {
-                const newCard: DomainCard = {
-                    _type: 'domainCard',
-                    id: uuidv4(),
-                    name: 'New Card',
-                    description: '',
-                    level: 1,
-                    domain: '',
-                    type: 'Ability',
-                    recall: 0,
-                };
-                this.tempCharacter.vault.push(newCard);
-                redraw();
-            })).settingEl.style.borderTop = 'none';
-        };
-        redraw();
+        cardEl.addEventListener('dragend', (event) => {
+            cardEl.removeClass('is-dragging');
+        });
     }
 
     private drawDetails(parent: HTMLElement) {
