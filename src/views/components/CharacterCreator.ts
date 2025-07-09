@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
     Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform
-} from '../../../types';
+} from '../../types';
 import { AddItemModal, CompendiumCreatorModal, ItemEditModal } from '../../modals';
 import { renderMarkdown, renderRollableContent } from '../../rendering/ui-helpers';
 import { createAvatarEditor } from "./AvatarEditor";

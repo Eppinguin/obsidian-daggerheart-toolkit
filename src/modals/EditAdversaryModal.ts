@@ -1,6 +1,6 @@
 import { App, Modal, Setting, ButtonComponent, Notice } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
-import { AdversaryInstance, StatblockData } from '../../types';
+import { AdversaryInstance, StatblockData } from '../types';
 import { SaveChoiceModal } from './SaveChoiceModal';
 
 export class EditAdversaryModal extends Modal {

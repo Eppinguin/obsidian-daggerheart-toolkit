@@ -1,7 +1,7 @@
 // src/views/components/AvatarEditor.ts
 
 import { Setting, App, TFile } from "obsidian";
-import { AvatarTransform } from "types";
+import { AvatarTransform } from "src/types";
 
 /**
  * Resolves an internal or external link to a usable image URL.

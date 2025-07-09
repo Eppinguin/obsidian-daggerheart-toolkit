@@ -16,7 +16,7 @@ import {
     JsonWeapon,
     JsonArmor,
     JsonConsumable,
-} from '../../types';
+} from '../types';
 
 enum SuggesterState {
     MAIN,

@@ -1,5 +1,5 @@
 import { App, Modal, Setting } from 'obsidian';
-import { Character } from '../../types';
+import { Character } from '../types';
 
 export class GoldModal extends Modal {
     private goldHandfuls: number = 0;

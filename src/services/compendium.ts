@@ -20,7 +20,7 @@ import {
     StatblockHpStress,
     StatblockFeature,
     InventoryItem
-} from '../../types';
+} from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { v4 as uuidv4 } from 'uuid';
 

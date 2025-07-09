@@ -1,6 +1,6 @@
 // src/modals/ExperienceModal.ts
 import { App, Modal, Setting } from 'obsidian';
-import { Character, Experience } from '../../types';
+import { Character, Experience } from '../types';
 
 export class ExperienceModal extends Modal {
     private experienceName: string = '';

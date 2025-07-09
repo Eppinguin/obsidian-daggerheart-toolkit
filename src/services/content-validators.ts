@@ -1,6 +1,6 @@
 // src/services/content-validators.ts
 import { ContentType } from './export-import';
-import { Character, SavedEncounter } from '../../types';
+import { Character, SavedEncounter } from '../types';
 
 /**
  * Validates that data is a valid character

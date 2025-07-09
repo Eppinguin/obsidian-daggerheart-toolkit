@@ -1,5 +1,5 @@
 import { App, Modal, Setting, Notice } from 'obsidian';
-import { Character, Condition } from '../../types';
+import { Character, Condition } from '../types';
 import { DAGGERHEART_CONDITIONS } from '../constants';
 
 export class ConditionModal extends Modal {

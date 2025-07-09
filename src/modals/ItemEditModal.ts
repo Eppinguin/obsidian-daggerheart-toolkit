@@ -1,7 +1,7 @@
 import { App, Modal, Setting, ButtonComponent, Notice } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
-import { Character, InventoryItem, CompendiumItem, WeaponItem, ArmorItem, JsonArmor, JsonWeapon, JsonItem, JsonConsumable } from '../../types';
+import { Character, InventoryItem, CompendiumItem, WeaponItem, ArmorItem, JsonArmor, JsonWeapon, JsonItem, JsonConsumable } from '../types';
 import { ConfirmationModal } from './ConfirmationModal';
 import { SaveChoiceModal } from './SaveChoiceModal';
 

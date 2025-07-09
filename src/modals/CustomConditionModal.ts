@@ -1,5 +1,5 @@
 import { App, Modal, Setting, ButtonComponent, Notice } from 'obsidian';
-import { Condition } from '../../types';
+import { Condition } from '../types';
 
 export class CustomConditionModal extends Modal {
     onSubmit: (condition: Condition) => void;

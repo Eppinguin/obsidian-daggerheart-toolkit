@@ -4,7 +4,7 @@ import DaggerheartStatblockPlugin from '../main';
 import { ContentType, ContentTypeInfo, CONTENT_TYPE_INFO, ExportedData, exportToJsonString, copyToClipboard, saveToFile, importFromJsonString, fetchJsonFromUrl } from '../services/export-import';
 import { isValidCharacterData, isValidContentData, isValidEncounterData } from '../services/content-validators';
 import { v4 as uuidv4 } from 'uuid';
-import { Character, SavedEncounter } from '../../types';
+import { Character, SavedEncounter } from '../types';
 
 /**
  * Modal for unified import/export of all content types

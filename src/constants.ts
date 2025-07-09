@@ -1,5 +1,5 @@
-import { Condition } from '../types';
-import { Character } from '../types';
+import { Condition } from './types';
+import { Character } from './types';
 
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
 

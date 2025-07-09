@@ -1,5 +1,5 @@
 import { Notice } from 'obsidian';
-import { DddiceSettings } from 'types';
+import { DddiceSettings } from 'src/types';
 import { displayRollNotice } from './dice-helpers';
 import { ThreeDDiceAPI, ThreeDDice } from 'dddice-js';
 import type { IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, IApiResponse, IRoll } from 'dddice-js';

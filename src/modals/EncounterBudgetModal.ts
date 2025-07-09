@@ -1,6 +1,6 @@
 import { App, Modal, Setting, ButtonComponent } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
-import { EncounterBudgetConfig } from '../../types';
+import { EncounterBudgetConfig } from '../types';
 
 export class EncounterBudgetModal extends Modal {
     plugin: DaggerheartStatblockPlugin;

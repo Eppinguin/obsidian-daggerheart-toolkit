@@ -1,6 +1,6 @@
 import { App, FuzzySuggestModal } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
-import { StatblockData } from '../../types';
+import { StatblockData } from '../types';
 
 export class AdversaryReferenceModal extends FuzzySuggestModal<StatblockData> {
     plugin: DaggerheartStatblockPlugin;
