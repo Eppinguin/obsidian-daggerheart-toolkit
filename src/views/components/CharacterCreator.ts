@@ -1,5 +1,5 @@
 // src/views/components/CharacterCreator.ts
-import { App, Notice, Setting, TFile } from 'obsidian';
+import { App, Notice, Setting, TFile, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
@@ -104,30 +104,19 @@ export class CharacterCreator {
             const stepItems = stepsNav.querySelectorAll('.dh-creator-step-item');
             stepItems.forEach((item, idx) => {
                 item.classList.remove('is-active', 'is-completed');
-                // FIX: Cast the result to HTMLElement to satisfy setIcon's type requirement.
                 const indicator = item.querySelector('.dh-creator-step-indicator') as HTMLElement;
-
-                // This is the new logic to check for actual completion
                 const isCompleted = this.isStepCompleted(idx);
 
                 if (indicator) {
+                    indicator.empty(); // Clear previous icon
                     if (idx === this.creatorStep) {
                         item.classList.add('is-active');
-                        this.app.workspace.containerEl.createEl('span', { attr: { 'data-icon': 'circle-dot' } }, el => {
-                            indicator.empty();
-                            indicator.appendChild(el);
-                        });
+                        setIcon(indicator, 'circle-dot');
                     } else if (isCompleted) {
                         item.classList.add('is-completed');
-                        this.app.workspace.containerEl.createEl('span', { attr: { 'data-icon': 'check-circle' } }, el => {
-                            indicator.empty();
-                            indicator.appendChild(el);
-                        });
+                        setIcon(indicator, 'check-circle');
                     } else {
-                        this.app.workspace.containerEl.createEl('span', { attr: { 'data-icon': 'circle' } }, el => {
-                            indicator.empty();
-                            indicator.appendChild(el);
-                        });
+                        setIcon(indicator, 'circle');
                     }
                 }
             });
@@ -203,7 +192,7 @@ export class CharacterCreator {
         stepLabels.forEach((label, idx) => {
             const stepItem = stepsList.createDiv({ cls: 'dh-creator-step-item' });
             const indicator = stepItem.createDiv({ cls: 'dh-creator-step-indicator' });
-            this.app.workspace.containerEl.createEl('span', { attr: { 'data-icon': 'circle' } }, el => indicator.appendChild(el));
+            setIcon(indicator, 'circle'); // Default icon
             const stepLabel = stepItem.createDiv({ cls: 'dh-creator-step-label' });
             stepLabel.textContent = label;
 
@@ -450,7 +439,7 @@ export class CharacterCreator {
 
         const header = suggestionContainer.createDiv({ cls: 'dh-suggestion-header' });
         const iconEl = header.createSpan({ cls: 'dh-suggestion-icon' });
-        this.app.workspace.containerEl.createEl('span', { attr: { 'data-icon': 'star' } }, el => iconEl.appendChild(el));
+        setIcon(iconEl, 'star');
         header.createEl('h5', { text: title });
 
         const list = suggestionContainer.createDiv({ cls: 'dh-suggestion-list' });
@@ -797,7 +786,7 @@ export class CharacterCreator {
 
                 // Remove button
                 const removeBtn = itemHeader.createEl('button', { cls: 'dh-remove-item-btn' });
-                this.app.workspace.containerEl.createEl('span', { attr: { 'data-icon': 'trash' } }, el => removeBtn.appendChild(el));
+                setIcon(removeBtn, 'trash');
                 removeBtn.addEventListener('click', () => {
                     this.creatorState.additionalItems?.splice(index, 1);
                     this.redrawCreatorStep();

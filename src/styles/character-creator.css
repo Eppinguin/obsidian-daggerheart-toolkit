@@ -74,7 +74,7 @@
     position: absolute;
     top: 12px;
     bottom: 12px;
-    left: 11px;
+    left: 11px; /* (24px indicator width / 2) - (2px line width / 2) = 11px */
     width: 2px;
     background-color: var(--background-modifier-border);
     z-index: 1;
@@ -99,10 +99,11 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--background-secondary);
+    background-color: var(--background-secondary); /* Hides the line passing through */
     border-radius: 50%;
     color: var(--text-muted);
     transition: all 0.2s ease;
+    z-index: 3; /* Ensure indicator is above the line */
 }
 
 .dh-creator-step-label {
@@ -117,12 +118,16 @@
     background-color: var(--background-modifier-hover);
 }
 
+/* Active Step */
 .dh-creator-step-item.is-active {
     background-color: var(--background-modifier-hover);
 }
 
 .dh-creator-step-item.is-active .dh-creator-step-indicator {
     color: var(--interactive-accent);
+    background-color: var(--background-primary);
+    border: 1px solid var(--interactive-accent);
+    box-sizing: border-box;
 }
 
 .dh-creator-step-item.is-active .dh-creator-step-label {
@@ -130,13 +135,16 @@
     font-weight: var(--font-semibold);
 }
 
+/* Completed Step */
 .dh-creator-step-item.is-completed .dh-creator-step-indicator {
     color: var(--interactive-success);
+    border-color: transparent;
 }
 
 .dh-creator-step-item.is-completed .dh-creator-step-label {
     color: var(--text-normal);
 }
+
 
 /* --- Right Content Area --- */
 .dh-creator-content-wrapper {
