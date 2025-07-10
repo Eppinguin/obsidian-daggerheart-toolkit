@@ -327,6 +327,9 @@ export class CharacterSheetView extends ItemView {
         if (equippedArmor?.features?.some(f => f.name.toLowerCase().includes('heavy'))) {
             armorEvasionMod = equippedArmor.features.some(f => f.name.toLowerCase().includes('very heavy')) ? -2 : -1;
         }
+        else if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("flexible"))) {
+            armorEvasionMod = 1;
+        }
         const finalEvasion = data.evasion + armorEvasionMod;
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
