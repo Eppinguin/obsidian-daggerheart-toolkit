@@ -323,14 +323,23 @@ export class CharacterSheetView extends ItemView {
     private drawPrimaryDefenses(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-primary-defenses' });
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
+        const equippedWeapons = data.inventory.filter((i2) => data.equippedWeaponIds && data.equippedWeaponIds.includes(i2.instanceId) && i2._type === "weapon");
         let armorEvasionMod = 0;
-        if (equippedArmor?.features?.some(f => f.name.toLowerCase().includes('heavy'))) {
-            armorEvasionMod = equippedArmor.features.some(f => f.name.toLowerCase().includes('very heavy')) ? -2 : -1;
+        let weaponEvasionMod = 0;
+        if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("heavy"))) {
+          armorEvasionMod = equippedArmor.features.some((f2) => f2.name.toLowerCase().includes("very heavy")) ? -2 : -1;
+        } else if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("flexible"))) {
+          armorEvasionMod = 1;
         }
-        else if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("flexible"))) {
-            armorEvasionMod = 1;
+        if (equippedWeapons.length === 0) {      
+        } else {
+          equippedWeapons.forEach((weapon) => {
+            if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("heavy")) || weapon?.features?.some((f2) => f2.name.toLowerCase().includes("massive"))) {
+              weaponEvasionMod = -1;
+            }
+          });
         }
-        const finalEvasion = data.evasion + armorEvasionMod;
+        const finalEvasion = data.evasion + armorEvasionMod + weaponEvasionMod;
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
         evasionBox.createEl('span', { text: 'Evasion', cls: 'dh-stat-label' });
