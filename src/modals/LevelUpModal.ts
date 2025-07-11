@@ -623,11 +623,11 @@ export class LevelUpModal extends Modal {
         const primaryClass = this.plugin.compendium.getClass(this.character.classId);
         if (!primaryClass) return [];
 
-        const tier = this.getTier(level);
+        //const tier = this.getTier(level);
 
         const domainsToSearch: { domain: string, maxLevel: number }[] = [
-            { domain: primaryClass.domain_1.toLowerCase(), maxLevel: tier },
-            { domain: primaryClass.domain_2.toLowerCase(), maxLevel: tier }
+            { domain: primaryClass.domain_1.toLowerCase(), maxLevel: level },
+            { domain: primaryClass.domain_2.toLowerCase(), maxLevel: level }
         ];
 
         let multiclassDomain: string | null = null;
