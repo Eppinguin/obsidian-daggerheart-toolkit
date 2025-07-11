@@ -337,6 +337,9 @@ export class CharacterSheetView extends ItemView {
             if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("heavy")) || weapon?.features?.some((f2) => f2.name.toLowerCase().includes("massive"))) {
               weaponEvasionMod = -1;
             }
+            else if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("barrier"))) {
+              weaponEvasionMod = weaponEvasionMod - 1;
+            }
           });
         }
         const finalEvasion = data.evasion + armorEvasionMod + weaponEvasionMod;
@@ -364,13 +367,48 @@ export class CharacterSheetView extends ItemView {
 
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
 
+        const domainFeatures = data.features.filter((f2) => f2.domain !== "Multiclass");
         if (!equippedArmor) {
+          if (domainFeatures.length === 0) {      
+          } else {
             finalMajorThreshold = data.level;
             finalSevereThreshold = data.level * 2;
+            domainFeatures.forEach((feature) => {
+              if (feature.name.toLowerCase().includes("bare bones")) {
+                if (data.level<2) {
+                  finalMajorThreshold = 9 + data.level;
+                  finalSevereThreshold = 19 + data.level;
+                }
+                else if (data.level<5) {
+                  finalMajorThreshold = 11 + data.level;
+                  finalSevereThreshold = 24 + data.level;
+                }
+                else if (data.level<8) {
+                  finalMajorThreshold = 13 + data.level;
+                  finalSevereThreshold = 31 + data.level;
+                }
+                else {
+                  finalMajorThreshold = 15 + data.level;
+                  finalSevereThreshold = 38 + data.level;
+                }
+              }
+            });
+          }     
         } else {
-            finalMajorThreshold = equippedArmor.baseThresholds.major + data.level;
-            finalSevereThreshold = equippedArmor.baseThresholds.severe + data.level;
+          finalMajorThreshold = equippedArmor.baseThresholds.major + data.level;
+          finalSevereThreshold = equippedArmor.baseThresholds.severe + data.level;
+          if (domainFeatures.length === 0) {      
+          } else {
+            domainFeatures.forEach((feature) => {
+              if (feature.name.toLowerCase().includes("fortified armor")) {
+                finalMajorThreshold = finalMajorThreshold + 2;
+                finalSevereThreshold = finalSevereThreshold + 2;
+              }
+            });
+          }
         }
+        //add modifiers for Thresholds here
+        //guardian stalwart feature, bladedomain vitality and galapa shell
         const minor = thresholdsBox.createDiv();
         minor.createEl('span', { cls: 'dh-threshold-label', text: 'Minor Damage' });
         minor.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 1 HP` });
