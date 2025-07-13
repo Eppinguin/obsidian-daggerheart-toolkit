@@ -963,8 +963,15 @@ export class CharacterSheetView extends ItemView {
 
         if (feature.description.toLowerCase().includes('make a spellcast roll')) {
             const footer = card.createDiv({ cls: 'dh-feature-card-footer dh-feature-card-footer-left' });
-            const subclass = this.plugin.compendium.getSubclass(character.subclassId);
-            const spellcastingTraitName = subclass?.spellcast_trait as keyof Character['traits'] | undefined;
+
+            let spellcastingTraitName: keyof Character['traits'] | undefined;
+            if (character.spellCastTrait) {
+                spellcastingTraitName = character.spellCastTrait as keyof Character['traits'];
+            } else {
+                // Fallback for backward compatibility with older characters
+                const subclass = this.plugin.compendium.getSubclass(character.subclassId);
+                spellcastingTraitName = subclass?.spellcast_trait as keyof Character['traits'] | undefined;
+            }
 
             if (spellcastingTraitName) {
                 const traitValue = character.traits[spellcastingTraitName]?.value ?? 0;
