@@ -464,12 +464,64 @@ export class CharacterSheetView extends ItemView {
         header.createEl('h3', { text: 'Active Weapons' });
         const equippedWeapons = data.inventory.filter(i => data.equippedWeaponIds && data.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as (InventoryItem & { _type: 'weapon' })[];
         if (equippedWeapons.length === 0) {
-            container.createDiv({ cls: 'dh-weapon-card' }).createDiv({ text: 'No weapons equipped.', cls: 'dh-empty-text' });
+            this.createUnarmedAttackCard(container, 'Unarmed', data);
         } else {
             equippedWeapons.forEach((weapon, index) => {
                 this.createWeaponCard(container, weapon, index === 0 ? 'Primary' : 'Secondary', data);
             });
         }
+    }
+
+    private createUnarmedAttackCard(parent: HTMLElement, type: string, character: Character) {
+        const card = parent.createDiv({ cls: 'dh-weapon-card' });
+        card.createEl('h4', { text: type });
+        const body = card.createDiv({ cls: 'dh-weapon-card-body' });
+
+        const left = body.createDiv();
+        left.createDiv({ cls: 'dh-weapon-name', text: 'Unarmed Attack' });
+        left.createDiv({ cls: 'dh-weapon-type', text: `Melee` });
+
+        const right = body.createDiv({ cls: 'dh-weapon-card-right' });
+
+        const createRollBox = (traitName: 'Strength' | 'Finesse') => {
+            const trait = character.traits[traitName];
+            if (trait) {
+                const rollBox = right.createDiv({ cls: 'dh-weapon-roll-box' });
+                const traitValue = trait.value;
+                const traitDisplay = `${traitValue >= 0 ? '+' : ''}${traitValue}`;
+                rollBox.createDiv({ text: traitDisplay });
+                rollBox.createDiv({ text: traitName });
+                const rollTitle = `Unarmed Attack (${traitName})`;
+                rollBox.title = `Click to roll ${traitName}. Hold Shift for Advantage or Alt for Disadvantage.`;
+                rollBox.addEventListener('click', (event) => {
+                    let baseDiceString = `1d12+1d12`;
+                    const modifierString = formatTraitModifier(traitValue);
+                    const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
+                        event,
+                        baseDiceString,
+                        rollTitle
+                    );
+                    this.plugin.rollDice(
+                        `${diceString}${modifierString}`,
+                        newRollTitle,
+                        traitName
+                    );
+                });
+            }
+        };
+
+        createRollBox('Strength');
+        createRollBox('Finesse');
+
+        const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
+        const proficiency = character.proficiency;
+        const damageFormula = `${proficiency}d4`;
+        damageBox.createDiv({ text: damageFormula });
+        damageBox.createDiv({ text: "Damage" });
+        damageBox.title = `Click to roll ${damageFormula}`;
+        damageBox.addEventListener('click', () => {
+            this.plugin.rollDice(damageFormula, `Unarmed Damage`);
+        });
     }
 
     private createWeaponCard(parent: HTMLElement, weapon: InventoryItem & { _type: 'weapon' }, type: 'Primary' | 'Secondary', character: Character) {
