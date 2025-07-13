@@ -2,7 +2,7 @@
 import { App, Modal, Setting, Notice, TextComponent, ExtraButtonComponent } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
-import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass, JsonFeat } from '../types';
+import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass, JsonFeat, InherentFeature } from '../types';
 import { renderMarkdown } from '../rendering/ui-helpers';
 import { TRAIT_NAMES } from '../constants';
 
@@ -659,7 +659,7 @@ export class LevelUpModal extends Modal {
                 }
             });
         }
-        const initialCards = new Set(this.originalCharacterState.features.map(f => f.name));
+        const initialCards = new Set(this.originalCharacterState.loadout.map(f => f.name));
 
         return this.plugin.compendium.abilities.filter(ability => {
             const abilityDomain = ability.domain?.toLowerCase() || '';
@@ -762,8 +762,10 @@ export class LevelUpModal extends Modal {
             });
         }
 
-        // --- Card Rewind ---
+        // --- Card & Feature Rewind ---
         const cardsToRemove = new Set<string>();
+        const featuresToRemove = new Set<string>();
+
         for (const level in originalHistory) {
             const history = originalHistory[level] as LevelUpSelection;
             if (history.domainCardId) {
@@ -774,23 +776,25 @@ export class LevelUpModal extends Modal {
                     cardsToRemove.add(adv.choices[0]);
                 }
                 if (adv?.id === 'upgrade_subclass' && adv.choices[0]) {
-                    cardsToRemove.add(adv.choices[0]);
+                    featuresToRemove.add(adv.choices[0]);
                 }
                 if (adv?.id === 'multiclass' && adv.choices[0]) {
                     const newClass = this.plugin.compendium.getClass(adv.choices[0]);
                     const newSubclass = this.plugin.compendium.getSubclass(adv.choices[1]);
                     if (newClass) {
-                        cardsToRemove.add(newClass.hope_feat_name);
-                        newClass.class_feats.forEach(f => cardsToRemove.add(f.name));
+                        featuresToRemove.add(newClass.hope_feat_name);
+                        newClass.class_feats.forEach(f => featuresToRemove.add(f.name));
                     }
                     if (newSubclass) {
-                        newSubclass.foundations.forEach(f => cardsToRemove.add(f.name));
+                        newSubclass.foundations.forEach(f => featuresToRemove.add(f.name));
                     }
                 }
             });
         }
-        char.features = char.features.filter(card => !cardsToRemove.has(card.name));
+        char.loadout = char.loadout.filter(card => !cardsToRemove.has(card.name));
         char.vault = char.vault.filter(card => !cardsToRemove.has(card.name));
+        char.features = char.features.filter(feature => !featuresToRemove.has(feature.name));
+
 
         // Reset stats to level 1 values
         char.proficiency = 1;
@@ -860,14 +864,21 @@ export class LevelUpModal extends Modal {
 
             const addCardToLoadoutOrVault = (card: DomainCard) => {
                 if (!card) return;
-                const alreadyHasCard = char.features.some(f => f.name === card.name) || char.vault.some(f => f.name === card.name);
+                const alreadyHasCard = char.loadout.some(f => f.name === card.name) || char.vault.some(f => f.name === card.name);
                 if (alreadyHasCard) return;
 
-                if (char.features.length < 5) {
-                    char.features.push(card);
+                if (char.loadout.length < 5) {
+                    char.loadout.push(card);
                 } else {
                     char.vault.push(card);
                 }
+            };
+
+            const addInherentFeature = (feature: InherentFeature) => {
+                if (!feature) return;
+                const alreadyHasFeature = char.features.some(f => f.name === feature.name);
+                if (alreadyHasFeature) return;
+                char.features.push(feature);
             };
 
             // Apply Advancements
@@ -900,8 +911,8 @@ export class LevelUpModal extends Modal {
                             const featureName = adv.choices[0];
                             const feature = [...subclass.specializations, ...subclass.masteries].find(f => f.name === featureName);
                             if (feature) {
-                                const newCard: DomainCard = { _type: 'domainCard', id: feature.name, name: feature.name, description: feature.text, level: 0, domain: 'Subclass', type: 'Ability', recall: 0, isCustom: subclass.isCustom };
-                                addCardToLoadoutOrVault(newCard);
+                                const newFeature: InherentFeature = { id: feature.name, name: feature.name, description: feature.text, source: 'Subclass' };
+                                addInherentFeature(newFeature);
                             }
                         }
                         break;
@@ -924,17 +935,17 @@ export class LevelUpModal extends Modal {
                             const newSubclass = this.plugin.compendium.getSubclass(subclassId);
 
                             if (newClass) {
-                                const classFeature: DomainCard = { _type: 'domainCard', id: newClass.hope_feat_name, name: newClass.hope_feat_name, description: newClass.hope_feat_text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0, isCustom: newClass.isCustom };
-                                addCardToLoadoutOrVault(classFeature);
+                                const hopeFeature: InherentFeature = { id: newClass.hope_feat_name, name: newClass.hope_feat_name, description: newClass.hope_feat_text, source: 'Class' };
+                                addInherentFeature(hopeFeature);
                                 newClass.class_feats.forEach(feat => {
-                                    const cfCard: DomainCard = { _type: 'domainCard', id: feat.name, name: feat.name, description: feat.text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0, isCustom: newClass.isCustom };
-                                    addCardToLoadoutOrVault(cfCard);
+                                    const classFeat: InherentFeature = { id: feat.name, name: feat.name, description: feat.text, source: 'Class' };
+                                    addInherentFeature(classFeat);
                                 });
                             }
                             if (newSubclass) {
                                 newSubclass.foundations.forEach(foundation => {
-                                    const foundationCard: DomainCard = { _type: 'domainCard', id: foundation.name, name: foundation.name, description: foundation.text, level: 0, domain: 'Multiclass', type: 'Ability', recall: 0, isCustom: newSubclass.isCustom };
-                                    addCardToLoadoutOrVault(foundationCard);
+                                    const foundationFeature: InherentFeature = { id: foundation.name, name: foundation.name, description: foundation.text, source: 'Subclass' };
+                                    addInherentFeature(foundationFeature);
                                 });
                             }
                         }

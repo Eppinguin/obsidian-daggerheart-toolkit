@@ -3,7 +3,7 @@ import { App, Notice, Setting, TFile, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
-    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform
+    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform, InherentFeature
 } from '../../types';
 import { AddItemModal, CompendiumCreatorModal, ItemEditModal } from '../../modals';
 import { renderMarkdown, renderRollableContent } from '../../rendering/ui-helpers';
@@ -659,6 +659,7 @@ export class CharacterCreator {
                 gold: { _type: 'gold', handfuls: 0, bags: 0, chests: 0 },
                 experiences: [],
                 features: [],
+                loadout: [],
                 vault: [],
                 inventory: this.creatorState.additionalItems || [],
                 equippedArmorId: null,
@@ -1106,7 +1107,17 @@ export class CharacterCreator {
             });
         }
 
-        const finalFeatures: (DomainCard)[] = (partialChar.domainCardIds || []).map(id => this.plugin.compendium.getAbility(id)).filter(f => f) as DomainCard[];
+        // Create the list of InherentFeatures
+        const finalFeatures: InherentFeature[] = [];
+        charClass.class_feats.forEach(f => finalFeatures.push({ id: f.name, name: f.name, description: f.text, source: 'Class' }));
+        finalFeatures.push({ id: charClass.hope_feat_name, name: charClass.hope_feat_name, description: charClass.hope_feat_text, source: 'Class' });
+        subclass.foundations.forEach(f => finalFeatures.push({ id: f.name, name: f.name, description: f.text, source: 'Subclass' }));
+        ancestry.feats.forEach(f => finalFeatures.push({ id: f.name, name: f.name, description: f.text, source: 'Ancestry' }));
+        community.feats.forEach(f => finalFeatures.push({ id: f.name, name: f.name, description: f.text, source: 'Community' }));
+
+        // Create the starting loadout of DomainCards
+        const finalLoadout: DomainCard[] = (partialChar.domainCardIds || []).map(id => this.plugin.compendium.getAbility(id)).filter((f): f is DomainCard => !!f);
+
         const finalEvasion = parseInt(charClass.evasion);
         const finalHp = parseInt(charClass.hp);
 
@@ -1123,7 +1134,9 @@ export class CharacterCreator {
             damageThresholds: { _type: 'damageThresholds', major: startingArmor.baseThresholds.major + 1, severe: startingArmor.baseThresholds.severe + 1 },
             gold: { _type: 'gold', handfuls: 1, bags: 0, chests: 0 },
             experiences: (partialChar.experiences || []).map(exp => ({ _type: 'experience', id: uuidv4(), name: exp.name, value: 2, })),
-            features: finalFeatures, vault: [],
+            features: finalFeatures,
+            loadout: finalLoadout,
+            vault: [],
             inventory: [...standardInventory, ...initialInventory, ...startingWeapons, startingArmor, ...(partialChar.additionalItems || [])],
             equippedArmorId: startingArmor.instanceId, equippedWeaponIds: startingWeapons.map(w => w.instanceId),
             background: charClass.backgrounds.map((bg, i) => ({ question: bg.question, answer: partialChar.backgroundAnswers?.[i] || '' })),

@@ -1,7 +1,7 @@
 import { App, Modal, Setting, Notice, TextAreaComponent, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
-import { Character, DomainCard, Experience, JsonAncestry, Trait } from '../types';
+import { Character, DomainCard, Experience, InherentFeature, JsonAncestry, Trait } from '../types';
 import { createAvatarEditor } from '../views/components/AvatarEditor';
 import { TRAIT_NAMES } from '../constants';
 import { CardSwapModal } from './CardSwapModal';
@@ -55,7 +55,7 @@ export class CharacterManagerModal extends Modal {
         this.drawTraits(this.createCollapsibleSection(contentEl, 'Traits'));
         this.drawHeritageAndClass(this.createCollapsibleSection(contentEl, 'Heritage & Class'));
         this.drawExperiences(this.createCollapsibleSection(contentEl, 'Experiences'));
-        this.drawFeatures(this.createCollapsibleSection(contentEl, 'Features & Cards'));
+        this.drawCardsAndFeatures(this.createCollapsibleSection(contentEl, 'Features & Cards'));
         this.drawDetails(this.createCollapsibleSection(contentEl, 'Background & Connections'));
         this.drawInventory(this.createCollapsibleSection(contentEl, 'Gold & Notes'));
 
@@ -326,7 +326,7 @@ export class CharacterManagerModal extends Modal {
         redraw();
     }
 
-    private drawFeatures(parent: HTMLElement) {
+    private drawCardsAndFeatures(parent: HTMLElement) {
         const container = parent.createDiv();
 
         new Setting(container)
@@ -344,17 +344,17 @@ export class CharacterManagerModal extends Modal {
 
         const cardListsContainer = container.createDiv({ cls: 'dh-manager-card-lists' });
 
-        if (!this.tempCharacter.features) this.tempCharacter.features = [];
+        if (!this.tempCharacter.loadout) this.tempCharacter.loadout = [];
         if (!this.tempCharacter.vault) this.tempCharacter.vault = [];
 
         // Loadout List
         const loadoutSection = cardListsContainer.createDiv();
-        loadoutSection.createEl('h4', { text: `Loadout (${this.tempCharacter.features.length}/5)` });
+        loadoutSection.createEl('h4', { text: `Loadout (${this.tempCharacter.loadout.length}/5)` });
         const loadoutList = this.createDropZone(loadoutSection, 'loadout');
-        if (this.tempCharacter.features.length === 0) {
+        if (this.tempCharacter.loadout.length === 0) {
             loadoutList.createEl('p', { text: 'No cards in loadout.', cls: 'dh-empty-text' });
         } else {
-            this.tempCharacter.features.forEach(card => {
+            this.tempCharacter.loadout.forEach(card => {
                 this.createCardSummary(loadoutList, card, 'loadout');
             });
         }
@@ -368,6 +368,21 @@ export class CharacterManagerModal extends Modal {
         } else {
             this.tempCharacter.vault.forEach(card => {
                 this.createCardSummary(vaultList, card, 'vault');
+            });
+        }
+
+        // Inherent Features (Read-only)
+        const featuresSection = container.createDiv({ cls: 'dh-manager-readonly-features' });
+        featuresSection.createEl('h3', { text: 'Inherent Features' });
+        if (!this.tempCharacter.features || this.tempCharacter.features.length === 0) {
+            featuresSection.createEl('p', { text: 'No inherent features found.', cls: 'dh-empty-text' });
+        } else {
+            const featuresList = featuresSection.createEl('ul');
+            this.tempCharacter.features.forEach(feature => {
+                const item = featuresList.createEl('li');
+                item.createEl('strong', { text: feature.name });
+                item.createSpan({ text: ` (${feature.source})` });
+                item.createEl('div', { text: feature.description, cls: 'dh-manager-feature-desc' });
             });
         }
     }
@@ -398,13 +413,13 @@ export class CharacterManagerModal extends Modal {
 
             if (!cardId || sourceListType === targetListType) return;
 
-            if (targetListType === 'loadout' && this.tempCharacter.features.length >= 5) {
+            if (targetListType === 'loadout' && this.tempCharacter.loadout.length >= 5) {
                 new Notice('Loadout is full (5 cards maximum).');
                 return;
             }
 
-            const sourceList = sourceListType === 'loadout' ? this.tempCharacter.features : this.tempCharacter.vault;
-            const targetList = targetListType === 'loadout' ? this.tempCharacter.features : this.tempCharacter.vault;
+            const sourceList = sourceListType === 'loadout' ? this.tempCharacter.loadout : this.tempCharacter.vault;
+            const targetList = targetListType === 'loadout' ? this.tempCharacter.loadout : this.tempCharacter.vault;
 
             const cardIndex = sourceList.findIndex(c => c.id === cardId);
             if (cardIndex > -1) {

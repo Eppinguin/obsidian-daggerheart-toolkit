@@ -69,6 +69,14 @@ export type AllCompendiumData =
 export interface CompendiumFeature { name: string; description: string; }
 export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; recall: number; description: string; isCustom?: boolean; }
 
+// ADD this new interface for permanent features
+export interface InherentFeature {
+    id: string;
+    name: string;
+    description: string;
+    source: 'Class' | 'Subclass' | 'Ancestry' | 'Community';
+}
+
 // Base Item types with _type property
 export type ArmorItem = JsonArmor & { _type: 'armor'; };
 export type WeaponItem = JsonWeapon & { _type: 'weapon'; };
@@ -111,8 +119,10 @@ export interface Character {
     damageThresholds: DamageThresholds;
     gold: Gold;
     experiences: Experience[];
-    features: (DomainCard)[]; // This is the LOADOUT
-    vault: (DomainCard)[]; // ADD THIS LINE for the VAULT
+    features: InherentFeature[];
+    loadout: DomainCard[];
+    vault: DomainCard[];
+
     inventory: InventoryItem[];
     equippedArmorId: string | null;
     equippedWeaponIds: string[];

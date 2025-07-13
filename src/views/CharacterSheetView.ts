@@ -2,7 +2,7 @@ import { ItemView, WorkspaceLeaf, Notice, setIcon, TFile, MarkdownRenderer } fro
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
 import {
-    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, ArmorItem, WeaponItem, AvatarTransform
+    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, ArmorItem, WeaponItem, AvatarTransform, InherentFeature
 } from '../types';
 import {
     AddItemModal,
@@ -323,24 +323,24 @@ export class CharacterSheetView extends ItemView {
     private drawPrimaryDefenses(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-primary-defenses' });
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
-        const equippedWeapons = data.inventory.filter((i2) => data.equippedWeaponIds && data.equippedWeaponIds.includes(i2.instanceId) && i2._type === "weapon");
+        const equippedWeapons = data.inventory.filter((i2) => data.equippedWeaponIds && data.equippedWeaponIds.includes(i2.instanceId) && i2._type === "weapon") as (InventoryItem & { _type: 'weapon' })[];
         let armorEvasionMod = 0;
         let weaponEvasionMod = 0;
         if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("heavy"))) {
-          armorEvasionMod = equippedArmor.features.some((f2) => f2.name.toLowerCase().includes("very heavy")) ? -2 : -1;
+            armorEvasionMod = equippedArmor.features.some((f2) => f2.name.toLowerCase().includes("very heavy")) ? -2 : -1;
         } else if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("flexible"))) {
-          armorEvasionMod = 1;
+            armorEvasionMod = 1;
         }
-        if (equippedWeapons.length === 0) {      
+        if (equippedWeapons.length === 0) {
         } else {
-          equippedWeapons.forEach((weapon) => {
-            if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("heavy")) || weapon?.features?.some((f2) => f2.name.toLowerCase().includes("massive"))) {
-              weaponEvasionMod = -1;
-            }
-            else if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("barrier"))) {
-              weaponEvasionMod = weaponEvasionMod - 1;
-            }
-          });
+            equippedWeapons.forEach((weapon) => {
+                if (weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("heavy")) || weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("massive"))) {
+                    weaponEvasionMod = -1;
+                }
+                else if (weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("barrier"))) {
+                    weaponEvasionMod = weaponEvasionMod - 1;
+                }
+            });
         }
         const finalEvasion = data.evasion + armorEvasionMod + weaponEvasionMod;
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
@@ -367,45 +367,45 @@ export class CharacterSheetView extends ItemView {
 
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
 
-        const domainFeatures = data.features.filter((f2) => f2.domain !== "Multiclass");
+        const domainCards = data.loadout.filter((f2) => f2.domain !== "Multiclass");
         if (!equippedArmor) {
-          if (domainFeatures.length === 0) {      
-          } else {
-            finalMajorThreshold = data.level;
-            finalSevereThreshold = data.level * 2;
-            domainFeatures.forEach((feature) => {
-              if (feature.name.toLowerCase().includes("bare bones")) {
-                if (data.level<2) {
-                  finalMajorThreshold = 9 + data.level;
-                  finalSevereThreshold = 19 + data.level;
-                }
-                else if (data.level<5) {
-                  finalMajorThreshold = 11 + data.level;
-                  finalSevereThreshold = 24 + data.level;
-                }
-                else if (data.level<8) {
-                  finalMajorThreshold = 13 + data.level;
-                  finalSevereThreshold = 31 + data.level;
-                }
-                else {
-                  finalMajorThreshold = 15 + data.level;
-                  finalSevereThreshold = 38 + data.level;
-                }
-              }
-            });
-          }     
+            if (domainCards.length === 0) {
+            } else {
+                finalMajorThreshold = data.level;
+                finalSevereThreshold = data.level * 2;
+                domainCards.forEach((feature) => {
+                    if (feature.name.toLowerCase().includes("bare bones")) {
+                        if (data.level < 2) {
+                            finalMajorThreshold = 9 + data.level;
+                            finalSevereThreshold = 19 + data.level;
+                        }
+                        else if (data.level < 5) {
+                            finalMajorThreshold = 11 + data.level;
+                            finalSevereThreshold = 24 + data.level;
+                        }
+                        else if (data.level < 8) {
+                            finalMajorThreshold = 13 + data.level;
+                            finalSevereThreshold = 31 + data.level;
+                        }
+                        else {
+                            finalMajorThreshold = 15 + data.level;
+                            finalSevereThreshold = 38 + data.level;
+                        }
+                    }
+                });
+            }
         } else {
-          finalMajorThreshold = equippedArmor.baseThresholds.major + data.level;
-          finalSevereThreshold = equippedArmor.baseThresholds.severe + data.level;
-          if (domainFeatures.length === 0) {      
-          } else {
-            domainFeatures.forEach((feature) => {
-              if (feature.name.toLowerCase().includes("fortified armor")) {
-                finalMajorThreshold = finalMajorThreshold + 2;
-                finalSevereThreshold = finalSevereThreshold + 2;
-              }
-            });
-          }
+            finalMajorThreshold = equippedArmor.baseThresholds.major + data.level;
+            finalSevereThreshold = equippedArmor.baseThresholds.severe + data.level;
+            if (domainCards.length === 0) {
+            } else {
+                domainCards.forEach((feature) => {
+                    if (feature.name.toLowerCase().includes("fortified armor")) {
+                        finalMajorThreshold = finalMajorThreshold + 2;
+                        finalSevereThreshold = finalSevereThreshold + 2;
+                    }
+                });
+            }
         }
         //add modifiers for Thresholds here
         //guardian stalwart feature, bladedomain vitality and galapa shell
@@ -585,7 +585,7 @@ export class CharacterSheetView extends ItemView {
     private drawManager(parent: HTMLElement, data: Character) {
         const managerContainer = parent.createDiv({ cls: 'dh-manager-container' });
         const tabs = managerContainer.createDiv({ cls: 'dh-manager-tabs' });
-        this.createManagerTab(tabs, 'abilities', 'Effects & Features');
+        this.createManagerTab(tabs, 'abilities', 'Abilities');
         this.createManagerTab(tabs, 'inventory', 'Equipment');
         this.createManagerTab(tabs, 'details', 'Details');
         const content = managerContainer.createDiv({ cls: 'dh-manager-content' });
@@ -777,25 +777,64 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawAbilitiesManager(parent: HTMLElement, data: Character) {
-        const charClass = this.plugin.compendium.getClass(data.classId);
-        const ancestry = this.plugin.compendium.getAncestry(data.ancestryId);
-        const community = this.plugin.compendium.getCommunity(data.communityId);
+        // Draw the swappable Domain Cards section
+        this.drawDomainCardSection(parent, 'Domain Cards', data.loadout, data);
 
-        const hopeFeat: CompendiumFeature = charClass ? { name: charClass.hope_feat_name, description: charClass.hope_feat_text } : { name: '', description: '' };
-        const classFeats: CompendiumFeature[] = charClass ? charClass.class_feats.map(f => ({ name: f.name, description: f.text })) : [];
-        const ancestryFeats: CompendiumFeature[] = ancestry ? ancestry.feats.map(f => ({ name: f.name, description: f.text })) : [];
-        const communityFeats: CompendiumFeature[] = community ? community.feats.map(f => ({ name: f.name, description: f.text })) : [];
+        // Draw the read-only Inherent Features section
+        this.drawInherentFeaturesSection(parent, data);
+    }
 
-        const domainFeatures = data.features.filter(f => f.domain !== 'Multiclass');
-        const multiclassFeatures = data.features.filter(f => f.domain === 'Multiclass');
+    private drawDomainCardSection(parent: HTMLElement, title: string, cards: DomainCard[], character: Character) {
+        const section = parent.createDiv({ cls: 'dh-card-section' });
+        const header = section.createDiv({ cls: 'dh-section-header-bar' });
+        header.createEl('h3', { text: title });
 
-        this.drawFeatureSection(parent, 'Domain & Class Features', domainFeatures, data);
-        if (multiclassFeatures.length > 0) {
-            this.drawFeatureSection(parent, 'Multiclass Features', multiclassFeatures, data, false);
+        const controls = header.createDiv({ cls: 'dh-section-header-controls' });
+        const manageBtn = controls.createEl('button', { text: 'Manage Cards' });
+        setIcon(manageBtn, 'book-copy');
+        manageBtn.addEventListener('click', () => {
+            new CardSwapModal(this.app, this.plugin, character, (updatedChar) => {
+                this.plugin.updateCharacter(updatedChar);
+            }).open();
+        });
+
+        const grid = section.createDiv({ cls: 'dh-feature-grid' });
+        if (cards.length > 0) {
+            cards.forEach(card => {
+                if (card) this.createFeatureCard(grid, card, character);
+            });
+        } else {
+            grid.createDiv({ text: 'No cards in loadout.', cls: 'dh-empty-text' })
         }
-        if (ancestry) this.drawFeatureSection(parent, 'Heritage Features', ancestryFeats, data, false);
-        if (community) this.drawFeatureSection(parent, 'Community Features', communityFeats, data, false);
-        if (charClass) this.drawFeatureSection(parent, 'Core Class Features', [...classFeats, hopeFeat], data, false);
+    }
+
+    private drawInherentFeaturesSection(parent: HTMLElement, character: Character) {
+        const section = parent.createDiv({ cls: 'dh-card-section' });
+        const header = section.createDiv({ cls: 'dh-section-header-bar' });
+        header.createEl('h3', { text: 'Features' });
+
+        const groupedFeatures = character.features.reduce((acc, feature) => {
+            const source = feature.source;
+            if (!acc[source]) {
+                acc[source] = [];
+            }
+            acc[source].push(feature);
+            return acc;
+        }, {} as Record<InherentFeature['source'], InherentFeature[]>);
+
+        const sourceOrder: InherentFeature['source'][] = ['Class', 'Subclass', 'Ancestry', 'Community'];
+
+        for (const source of sourceOrder) {
+            const features = groupedFeatures[source];
+            if (features && features.length > 0) {
+                const groupContainer = section.createDiv({ cls: 'dh-feature-group' });
+                groupContainer.createEl('h4', { text: source, cls: 'dh-feature-group-title' });
+                const grid = groupContainer.createDiv({ cls: 'dh-feature-grid' });
+                features.forEach(feat => {
+                    this.createFeatureCard(grid, feat, character);
+                });
+            }
+        }
     }
 
     private drawDetailsManager(parent: HTMLElement, data: Character) {
@@ -899,36 +938,9 @@ export class CharacterSheetView extends ItemView {
 
     private createExperienceCard(parent: HTMLElement, title: string, subtext: string, isInteractive: boolean = false) { const card = parent.createDiv({ cls: `dh-experience-card ${isInteractive ? 'is-interactive' : ''}` }); card.createDiv({ cls: 'dh-card-title', text: title }); if (subtext) card.createSpan({ cls: 'dh-experience-value', text: subtext }); return card; }
 
-    private drawFeatureSection(parent: HTMLElement, title: string, features: (CompendiumFeature | DomainCard | undefined)[], character: Character, addManageButton: boolean = true) {
-        if (!features.some(f => f) && !addManageButton) return;
-        const section = parent.createDiv({ cls: 'dh-card-section' });
-        const header = section.createDiv({ cls: 'dh-section-header-bar' });
-        header.createEl('h3', { text: title });
-
-        if (addManageButton) {
-            const controls = header.createDiv({ cls: 'dh-section-header-controls' });
-            const manageBtn = controls.createEl('button', { text: 'Manage Cards' });
-            setIcon(manageBtn, 'book-copy');
-            manageBtn.addEventListener('click', () => {
-                new CardSwapModal(this.app, this.plugin, character, (updatedChar) => {
-                    this.plugin.updateCharacter(updatedChar);
-                }).open();
-            });
-        }
-
-        const grid = section.createDiv({ cls: 'dh-feature-grid' });
-        if (features.length > 0) {
-            features.forEach(feat => {
-                if (feat) this.createFeatureCard(grid, feat, character);
-            });
-        } else {
-            grid.createDiv({ text: 'No cards in loadout.', cls: 'dh-empty-text' })
-        }
-    }
-
-    private createFeatureCard(parent: HTMLElement, feature: CompendiumFeature | DomainCard, character: Character) {
+    private createFeatureCard(parent: HTMLElement, feature: InherentFeature | DomainCard, character: Character) {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
-        const metadata = this.getFeatureMetadata(feature as DomainCard);
+        const metadata = this.getFeatureMetadata(feature);
 
         const header = card.createDiv({ cls: 'dh-feature-card-header' });
         header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
@@ -979,12 +991,13 @@ export class CharacterSheetView extends ItemView {
         }
     }
 
-    private getFeatureMetadata(feature: DomainCard): { level?: number; domain?: string; type?: string; } {
+    private getFeatureMetadata(feature: InherentFeature | DomainCard): { level?: number; domain?: string; type?: string; } {
         const metadata: { level?: number; domain?: string; type?: string; } = {};
-        if (feature && feature._type === 'domainCard') {
-            metadata.level = feature.level;
-            metadata.domain = feature.domain;
-            metadata.type = feature.type;
+        if (feature && 'domain' in feature) { // This is a simple check for DomainCard
+            const card = feature as DomainCard;
+            metadata.level = card.level;
+            metadata.domain = card.domain;
+            metadata.type = card.type;
         }
         return metadata;
     }

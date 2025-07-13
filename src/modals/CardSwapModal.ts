@@ -30,6 +30,9 @@ export class CardSwapModal extends Modal {
         if (!this.character.vault) {
             this.character.vault = [];
         }
+        if (!this.character.loadout) {
+            this.character.loadout = [];
+        }
 
         const charClass = this.plugin.compendium.getClass(this.character.classId);
         if (charClass) {
@@ -87,12 +90,12 @@ export class CardSwapModal extends Modal {
         const container = parent.createDiv({ cls: 'dh-card-manage-container' });
 
         const loadoutContainer = container.createDiv({ cls: 'dh-card-column' });
-        loadoutContainer.createEl('h3', { text: `Loadout (${this.character.features.length}/5)` });
+        loadoutContainer.createEl('h3', { text: `Loadout (${this.character.loadout.length}/5)` });
         const loadoutList = loadoutContainer.createDiv({ cls: 'dh-card-list dh-scrollable-content' });
-        if (this.character.features.length === 0) {
+        if (this.character.loadout.length === 0) {
             loadoutList.createDiv({ text: 'No cards in loadout.', cls: 'dh-empty-text' });
         } else {
-            this.character.features.forEach(card => this.createCardInList(loadoutList, card, 'loadout'));
+            this.character.loadout.forEach(card => this.createCardInList(loadoutList, card, 'loadout'));
         }
 
         const vaultContainer = container.createDiv({ cls: 'dh-card-column' });
@@ -139,8 +142,8 @@ export class CardSwapModal extends Modal {
 
                     const nameToFind = oldName || card.name;
                     if (location === 'loadout') {
-                        const index = this.character.features.findIndex(f => f.name === nameToFind);
-                        if (index > -1) this.character.features[index] = updatedDomainCard;
+                        const index = this.character.loadout.findIndex(f => f.name === nameToFind);
+                        if (index > -1) this.character.loadout[index] = updatedDomainCard;
                     } else {
                         const index = this.character.vault.findIndex(v => v.name === nameToFind);
                         if (index > -1) this.character.vault[index] = updatedDomainCard;
@@ -214,7 +217,7 @@ export class CardSwapModal extends Modal {
     private redrawCompendiumList() {
         this.listContainer.empty();
         const allCards = this.plugin.compendium.abilities;
-        const ownedCardIds = [...this.character.features.map(f => f.id), ...this.character.vault.map(v => v.id)];
+        const ownedCardIds = [...this.character.loadout.map(f => f.id), ...this.character.vault.map(v => v.id)];
 
         const availableCards = allCards
             .filter(card => !ownedCardIds.includes(card.name))
@@ -291,11 +294,11 @@ export class CardSwapModal extends Modal {
 
     private addCardFromCompendium(card: DomainCard, destination: 'loadout' | 'vault') {
         if (destination === 'loadout') {
-            if (this.character.features.length >= 5) {
+            if (this.character.loadout.length >= 5) {
                 new Notice('Loadout is full. Move a card to the vault first.');
                 return;
             }
-            this.character.features.push(card);
+            this.character.loadout.push(card);
         } else {
             if (!this.character.vault) {
                 this.character.vault = [];
@@ -315,7 +318,7 @@ export class CardSwapModal extends Modal {
 
     private moveCard(cardId: string, direction: 'vault-to-loadout' | 'loadout-to-vault') {
         if (direction === 'vault-to-loadout') {
-            if (this.character.features.length >= 5) {
+            if (this.character.loadout.length >= 5) {
                 new Notice('Loadout is full. Move a card to the vault first.');
                 return;
             }
@@ -336,12 +339,12 @@ export class CardSwapModal extends Modal {
                     new Notice(`Paid ${cost} Stress to recall ${cardToMove.name}.`);
                 }
 
-                this.character.features.push(cardToMove);
+                this.character.loadout.push(cardToMove);
             }
         } else {
-            const cardIndex = this.character.features.findIndex(c => c.id === cardId);
+            const cardIndex = this.character.loadout.findIndex(c => c.id === cardId);
             if (cardIndex > -1) {
-                const [cardToMove] = this.character.features.splice(cardIndex, 1);
+                const [cardToMove] = this.character.loadout.splice(cardIndex, 1);
                 if (!this.character.vault) {
                     this.character.vault = [];
                 }
