@@ -1125,6 +1125,7 @@ export class CharacterCreator {
             id: uuidv4(), 'dg-character': true, _type: 'character', name: partialChar.name, level: 1, proficiency: 1,
             pronouns: { ...partialChar.pronouns, _type: 'pronouns' } as Character['pronouns'],
             ancestryId: finalAncestryId, communityId: community.name, classId: charClass.name, subclassId: subclass.name,
+            spellCastTrait: subclass.spellcast_trait || null,
             evasion: finalEvasion, traits: finalTraits,
             hitPoints: { _type: 'dynamicResource', max: finalHp, current: 0 },
             stress: { _type: 'dynamicResource', max: 6, current: 0 },

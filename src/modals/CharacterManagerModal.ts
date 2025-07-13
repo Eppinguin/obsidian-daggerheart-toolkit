@@ -263,6 +263,11 @@ export class CharacterManagerModal extends Modal {
                     .onChange(value => {
                         this.tempCharacter.classId = value;
                         this.tempCharacter.subclassId = '';
+                        const newClass = this.plugin.compendium.getClass(value);
+                        const newSubclass = this.plugin.compendium.getSubclass('');
+                        if (!this.tempCharacter.multiclassClassId) {
+                            this.tempCharacter.spellCastTrait = newSubclass?.spellcast_trait || null;
+                        }
                         this.saveSectionStates();
                         this.onOpen();
                     });
@@ -280,7 +285,56 @@ export class CharacterManagerModal extends Modal {
                     });
                 }
                 dd.setValue(this.tempCharacter.subclassId)
-                    .onChange(value => this.tempCharacter.subclassId = value);
+                    .onChange(value => {
+                        this.tempCharacter.subclassId = value;
+                        const newSubclass = this.plugin.compendium.getSubclass(value);
+
+                        // If single-classed, automatically update the spellcasting trait.
+                        if (!this.tempCharacter.multiclassClassId) {
+                            this.tempCharacter.spellCastTrait = newSubclass?.spellcast_trait || null;
+                        } else {
+                            // If multiclassed, re-evaluate available traits and reset if necessary.
+                            const primarySubclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
+                            const multiSubclass = this.plugin.compendium.getSubclass(this.tempCharacter.multiclassSubclassId || '');
+                            const suggestedTraits = new Set<string>();
+                            if (primarySubclass?.spellcast_trait) suggestedTraits.add(primarySubclass.spellcast_trait);
+                            if (multiSubclass?.spellcast_trait) suggestedTraits.add(multiSubclass.spellcast_trait);
+
+                            if (!this.tempCharacter.spellCastTrait || !suggestedTraits.has(this.tempCharacter.spellCastTrait)) {
+                                this.tempCharacter.spellCastTrait = Array.from(suggestedTraits)[0] || null;
+                            }
+                        }
+                        this.saveSectionStates();
+                        this.onOpen();
+                    });
+            });
+
+        const primarySubclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
+        const multiSubclass = this.tempCharacter.multiclassSubclassId ? this.plugin.compendium.getSubclass(this.tempCharacter.multiclassSubclassId) : null;
+
+        const suggestedTraits = new Set<string>();
+        if (primarySubclass?.spellcast_trait) {
+            suggestedTraits.add(primarySubclass.spellcast_trait);
+        }
+        if (multiSubclass?.spellcast_trait) {
+            suggestedTraits.add(multiSubclass.spellcast_trait);
+        }
+
+        new Setting(grid)
+            .setName('Primary Spellcasting Trait')
+            .setDesc('Choose the trait for your spellcasting rolls. Your subclass(es) suggest certain traits.')
+            .addDropdown(dd => {
+                dd.addOption('', '--- Not Set ---');
+                TRAIT_NAMES.forEach(trait => {
+                    const isSuggested = suggestedTraits.has(trait);
+                    const label = isSuggested ? `${trait} (Rules Suggestion)` : trait;
+                    dd.addOption(trait, label);
+                });
+
+                dd.setValue(this.tempCharacter.spellCastTrait || '')
+                    .onChange(value => {
+                        this.tempCharacter.spellCastTrait = value || null;
+                    });
             });
     }
 

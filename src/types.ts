@@ -108,6 +108,7 @@ export interface Character {
     multiclassClassId?: string | null;
     multiclassSubclassId?: string | null;
     multiclassDomainId?: string | null;
+    spellCastTrait?: string | null;
     evasion: number;
     traits: { Strength: Trait; Agility: Trait; Finesse: Trait; Instinct: Trait; Presence: Trait; Knowledge: Trait; };
     hitPoints: DynamicResource;

@@ -399,10 +399,10 @@ export class LevelUpModal extends Modal {
             }
             case 'multiclass': {
                 parent.addClass('dh-advancement-details');
-                if (!Array.isArray(advancement.choices) || advancement.choices.length < 3) {
-                    advancement.choices = ['', '', ''];
+                if (!Array.isArray(advancement.choices) || advancement.choices.length < 4) {
+                    advancement.choices = ['', '', '', ''];
                 }
-                const [selectedClassId, selectedSubclassId, selectedDomainId] = advancement.choices;
+                const [selectedClassId, selectedSubclassId, selectedDomainId, selectedTrait] = advancement.choices;
 
                 new Setting(parent).setName('New Class').addDropdown(dd => {
                     dd.addOption('', '--- Select Class ---');
@@ -411,7 +411,7 @@ export class LevelUpModal extends Modal {
                         .forEach(c => dd.addOption(c.name, c.name));
                     dd.setValue(selectedClassId ?? '');
                     dd.onChange(value => {
-                        advancement.choices = [value, '', ''];
+                        advancement.choices = [value, '', '', ''];
                         this.validateAndResetSubsequentLevels(level);
                         this.drawLevelUpInterface();
                     });
@@ -431,6 +431,7 @@ export class LevelUpModal extends Modal {
                         dd.setValue(selectedSubclassId ?? '');
                         dd.onChange(value => {
                             advancement.choices[1] = value;
+                            advancement.choices[3] = '';
                             this.validateAndResetSubsequentLevels(level);
                             this.drawLevelUpInterface();
                         });
@@ -447,6 +448,52 @@ export class LevelUpModal extends Modal {
                             this.drawLevelUpInterface();
                         });
                     });
+
+                    // Spellcasting Trait Choice
+                    const selectedNewSubclass = this.plugin.compendium.getSubclass(selectedSubclassId);
+                    const originalSubclass = this.plugin.compendium.getSubclass(this.originalCharacterState.subclassId);
+
+                    if (selectedNewSubclass && originalSubclass) {
+                        const availableTraits = new Set<string>();
+                        if (originalSubclass.spellcast_trait) availableTraits.add(originalSubclass.spellcast_trait);
+                        if (selectedNewSubclass.spellcast_trait) availableTraits.add(selectedNewSubclass.spellcast_trait);
+
+                        if (availableTraits.size > 0) {
+                            new Setting(parent)
+                                .setName('Primary Spellcasting Trait')
+                                .addDropdown(dd => {
+                                    availableTraits.forEach(trait => dd.addOption(trait, trait));
+
+                                    let defaultTrait = selectedTrait;
+                                    if (!defaultTrait) {
+                                        let maxScore = -Infinity;
+                                        const charForCalc: Character = JSON.parse(JSON.stringify(this.originalCharacterState));
+                                        this.rewindCharacter(charForCalc);
+                                        this.fastForwardCharacter(charForCalc, this.tempCharacter.levelUpHistory as any);
+
+                                        for (const trait of availableTraits) {
+                                            const score = charForCalc.traits[trait as keyof typeof charForCalc.traits]?.value ?? -Infinity;
+                                            if (score > maxScore) {
+                                                maxScore = score;
+                                                defaultTrait = trait;
+                                            }
+                                        }
+                                    }
+                                    if (!defaultTrait && availableTraits.size > 0) {
+                                        defaultTrait = Array.from(availableTraits)[0];
+                                    }
+
+                                    if (defaultTrait && !advancement.choices[3]) {
+                                        advancement.choices[3] = defaultTrait;
+                                    }
+
+                                    dd.setValue(advancement.choices[3] || '');
+                                    dd.onChange(value => {
+                                        advancement.choices[3] = value;
+                                    });
+                                });
+                        }
+                    }
                 }
                 break;
             }
@@ -818,10 +865,11 @@ export class LevelUpModal extends Modal {
             });
         }
 
-        // Reset multiclass info
+        // Reset multiclass info and spellcasting trait
         char.multiclassClassId = null;
         char.multiclassSubclassId = null;
         char.multiclassDomainId = null;
+        char.spellCastTrait = subclass.spellcast_trait || null;
     }
 
     private fastForwardCharacter(char: Character, history: { [level: number]: LevelUpSelection }) {
@@ -925,11 +973,12 @@ export class LevelUpModal extends Modal {
                         break;
                     }
                     case 'multiclass':
-                        const [classId, subclassId, domainId] = adv.choices;
+                        const [classId, subclassId, domainId, chosenTrait] = adv.choices;
                         if (classId && subclassId && domainId) {
                             char.multiclassClassId = classId;
                             char.multiclassSubclassId = subclassId;
                             char.multiclassDomainId = domainId;
+                            char.spellCastTrait = chosenTrait || char.spellCastTrait;
 
                             const newClass = this.plugin.compendium.getClass(classId);
                             const newSubclass = this.plugin.compendium.getSubclass(subclassId);
