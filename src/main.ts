@@ -18,12 +18,6 @@ import type { ITheme } from './services/dddice-service';
 import { DddiceActivationModal } from './services/dddice-activation';
 import { displayRollNotice } from './services/dice-helpers';
 
-// import './src/styles/import-export.css';
-// import './src/styles/dddice-activation.css';
-// import './src/styles/character-creator.css';
-// import './src/styles/manage-encounters.css';
-// import './styles.css';
-
 declare module "obsidian" {
     interface Workspace {
         on(name: 'daggerheart-character-update', callback: () => void, ctx?: any): EventRef;
@@ -35,7 +29,7 @@ declare module "obsidian" {
     }
 }
 
-const USER_COMPENDIUM_FOLDER = 'user_compendium';
+const USER_COMPENDIUM_FOLDER = 'user_data';
 
 function getThemePreviewUrl(theme: ITheme): string | undefined {
     const preview = theme?.preview;

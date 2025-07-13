@@ -113,13 +113,18 @@ export class DaggerheartCompendium {
         const path = `${this.plugin.manifest.dir}/${USER_DATA_PATH}/${fileName}`;
         if (await this.plugin.app.vault.adapter.exists(path)) {
             try {
-                const data = await this.plugin.app.vault.adapter.read(path);
+                let data = await this.plugin.app.vault.adapter.read(path);
                 if (data.trim() === '') return [];
+                if (data.charCodeAt(0) === 0xFEFF) {
+                    data = data.slice(1);
+                }
+
                 const items = JSON.parse(data) as T[];
                 items.forEach(item => item.isCustom = true);
                 return items;
             } catch (e) {
                 new Notice(`Could not read user file: ${fileName}. Check console for details.`);
+                console.error(e);
                 return [];
             }
         }
