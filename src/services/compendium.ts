@@ -17,8 +17,6 @@ import {
     ArmorItem,
     WeaponItem,
     ConsumableItem,
-    StatblockHpStress,
-    StatblockFeature,
     InventoryItem
 } from '../types';
 import DaggerheartStatblockPlugin from '../main';
@@ -54,11 +52,12 @@ export class DaggerheartCompendium {
         const srdSubclasses = await this.loadSrdFile<JsonSubclass>('subclasses.json');
         const srdAbilities = await this.loadSrdFile<JsonAbility>('abilities.json');
 
-        const userAncestries = await this.loadUserFile<JsonAncestry>('user-ancestries.json');
-        const userClasses = await this.loadUserFile<JsonClass>('user-classes.json');
-        const userSubclasses = await this.loadUserFile<JsonSubclass>('user-subclasses.json');
-        const userAbilities = await this.loadUserFile<JsonAbility>('user-abilities.json');
-        const userCommunities = await this.loadUserFile<JsonCommunity>('user-communities.json');
+        // Use settings to load user files
+        const userAncestries = await this.loadUserFile<JsonAncestry>(this.plugin.settings.userAncestriesFile);
+        const userClasses = await this.loadUserFile<JsonClass>(this.plugin.settings.userClassesFile);
+        const userSubclasses = await this.loadUserFile<JsonSubclass>(this.plugin.settings.userSubclassesFile);
+        const userAbilities = await this.loadUserFile<JsonAbility>(this.plugin.settings.userAbilitiesFile);
+        const userCommunities = await this.loadUserFile<JsonCommunity>(this.plugin.settings.userCommunitiesFile);
 
         this.ancestries = this.mergeData(srdAncestries, userAncestries);
         this.communities = this.mergeData(srdCommunities, userCommunities);
@@ -68,19 +67,19 @@ export class DaggerheartCompendium {
 
         this.armors = this.mergeData(
             (await this.loadSrdFile<JsonArmor>('armor.json')).map(a => ({ ...a, _type: 'armor' })),
-            (await this.loadUserFile<ArmorItem>('user-armor.json'))
+            (await this.loadUserFile<ArmorItem>(this.plugin.settings.userArmorFile))
         );
         this.weapons = this.mergeData(
             (await this.loadSrdFile<JsonWeapon>('weapons.json')).map(w => ({ ...w, _type: 'weapon' })),
-            (await this.loadUserFile<WeaponItem>('user-weapons.json'))
+            (await this.loadUserFile<WeaponItem>(this.plugin.settings.userWeaponsFile))
         );
         this.items = this.mergeData(
             (await this.loadSrdFile<JsonItem>('items.json')).map(i => ({ ...i, _type: 'item' })),
-            (await this.loadUserFile<GenericItem>('user-items.json'))
+            (await this.loadUserFile<GenericItem>(this.plugin.settings.userItemsFile))
         );
         this.consumables = this.mergeData(
             (await this.loadSrdFile<JsonConsumable>('consumables.json')).map(c => ({ ...c, _type: 'consumable' })),
-            (await this.loadUserFile<ConsumableItem>('user-consumables.json'))
+            (await this.loadUserFile<ConsumableItem>(this.plugin.settings.userConsumablesFile))
         );
 
         const itemsMap = new Map<string, StatblockData>();
@@ -92,10 +91,10 @@ export class DaggerheartCompendium {
             const srdEnvironments = await this.loadSrdFile<any>('environments.json');
             srdEnvironments.forEach(raw => this.parseAndAddStatblock(raw, 'environment', itemsMap));
         }
-        const userAdversaries = await this.loadUserFile<StatblockData>('user-adversaries.json');
-        userAdversaries.forEach(item => itemsMap.set(item.name.toLowerCase(), item));
-        const userEnvironments = await this.loadUserFile<StatblockData>('user-environments.json');
-        userEnvironments.forEach(item => itemsMap.set(item.name.toLowerCase(), item));
+        // Load user statblocks from the generic compendium file
+        const userStatblocks = await this.loadUserFile<StatblockData>(this.plugin.settings.userCompendiumFile);
+        userStatblocks.forEach(item => itemsMap.set(item.name.toLowerCase(), item));
+
         const mdAdversaries = await this.loadMarkdownStatblocks();
         mdAdversaries.forEach(item => itemsMap.set(item.name.toLowerCase(), item));
         this.statblocks = Array.from(itemsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
@@ -110,6 +109,7 @@ export class DaggerheartCompendium {
     }
 
     private async loadUserFile<T extends { isCustom?: boolean }>(fileName: string): Promise<T[]> {
+        if (!fileName) return [];
         const path = `${this.plugin.manifest.dir}/${USER_DATA_PATH}/${fileName}`;
         if (await this.plugin.app.vault.adapter.exists(path)) {
             try {
@@ -172,9 +172,9 @@ export class DaggerheartCompendium {
 
     private parseAndAddStatblock(srd: any, category: 'adversary' | 'environment', map: Map<string, StatblockData>) {
         try {
-            const features: StatblockFeature[] = (srd.feats || []).map((feat: any) => ({
+            const features: { name: string; type: string; description: string; }[] = (srd.feats || []).map((feat: any) => ({
                 name: feat.name,
-                type: feat.type || 'Passive', // Use SRD type if available, otherwise default.
+                type: feat.type || 'Passive',
                 description: feat.text,
             }));
 
@@ -186,7 +186,7 @@ export class DaggerheartCompendium {
                 tier: srd.tier,
                 type: srd.type,
                 description: srd.description,
-                motives_tactics: srd.motives_and_tactics || srd.motives_tactics, // Check for both keys
+                motives_tactics: srd.motives_and_tactics || srd.motives_tactics,
                 impulses: srd.impulses,
                 potential_adversaries: srd.potential_adversaries,
                 difficulty: srd.difficulty,

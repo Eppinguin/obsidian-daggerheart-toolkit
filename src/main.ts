@@ -1,6 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu, DropdownComponent } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter } from './types';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter, AllCompendiumData } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './views/EncounterBuilderView';
 import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './views/CharacterSheetView';
 import { DaggerheartCompendium } from './services/compendium';
@@ -67,7 +67,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         this.isDiceRollerEnabled = this.settings.enableDiceRoller && !!(this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api;
 
-        // Register views conditionally based on settings
         if (this.settings.enableEncounterView) {
             this.registerView(ENCOUNTER_BUILDER_VIEW_TYPE, (leaf: WorkspaceLeaf) => new EncounterBuilderView(leaf, this));
             this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => this.activateEncounterBuilderView());
@@ -79,7 +78,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             this.addRibbonIcon('user-round', 'Open Daggerheart Characters', () => this.activateCharacterSheetView());
             this.addCommand({ id: 'open-daggerheart-character-sheet', name: 'Open Characters', callback: () => this.activateCharacterSheetView() });
 
-            // Add export and import commands
             this.addCommand({
                 id: 'export-daggerheart-content',
                 name: 'Export Daggerheart Content',
@@ -93,28 +91,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 name: 'Import Daggerheart Content',
                 callback: () => {
                     new ImportExportModal(this.app, this, 'import').open();
-                }
-            });
-
-            // Keep the character-specific commands for backward compatibility
-            this.addCommand({
-                id: 'export-daggerheart-character',
-                name: 'Export Character',
-                callback: () => {
-                    const activeChar = this.getActiveCharacter();
-                    if (activeChar) {
-                        new ImportExportModal(this.app, this, 'export', ContentType.CHARACTER, activeChar.id).open();
-                    } else {
-                        new Notice('No character selected. Please open the character sheet and select a character first.');
-                    }
-                }
-            });
-
-            this.addCommand({
-                id: 'import-daggerheart-character',
-                name: 'Import Character',
-                callback: () => {
-                    new ImportExportModal(this.app, this, 'import', ContentType.CHARACTER).open();
                 }
             });
         }
@@ -267,27 +243,14 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         this.app.workspace.trigger('daggerheart-character-update');
     }
 
-    /**
-     * Get all saved encounters
-     * @returns Array of saved encounters
-     */
     getSavedEncounters(): SavedEncounter[] {
         return this.encounters;
     }
 
-    /**
-     * Get a saved encounter by ID
-     * @param id The encounter ID
-     * @returns The encounter or undefined if not found
-     */
     getSavedEncounter(id: string): SavedEncounter | undefined {
         return this.encounters.find(e => e.id === id);
     }
 
-    /**
-     * Update a saved encounter
-     * @param encounter The encounter to update
-     */
     async updateSavedEncounter(encounter: SavedEncounter): Promise<void> {
         const index = this.encounters.findIndex(e => e.id === encounter.id);
         if (index >= 0) {
@@ -299,10 +262,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         this.app.workspace.trigger('daggerheart-encounter-update');
     }
 
-    /**
-     * Remove a saved encounter
-     * @param id The ID of the encounter to remove
-     */
     async removeSavedEncounter(id: string): Promise<void> {
         this.encounters = this.encounters.filter(e => e.id !== id);
         await this.saveEncounters();
@@ -363,7 +322,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             }
         }
 
-        dataToSave.isCustom = true; // Ensure flag is set on save
+        dataToSave.isCustom = true;
 
         const existingIndex = compendium.findIndex(c => c.name.toLowerCase() === dataToSave.name.toLowerCase());
         if (existingIndex > -1) {
@@ -376,6 +335,52 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         await this.app.vault.adapter.write(path, JSON.stringify(compendium, null, 2));
         await this.triggerCompendiumUpdate();
+    }
+
+    public async addCustomCompendiumItem(contentType: ContentType, data: AllCompendiumData) {
+        let fileName: string | null = null;
+
+        switch (contentType) {
+            case ContentType.ADVERSARY:
+            case ContentType.ENVIRONMENT:
+                fileName = this.settings.userCompendiumFile;
+                break;
+            case ContentType.ABILITY:
+                fileName = this.settings.userAbilitiesFile;
+                break;
+            case ContentType.CLASS:
+                fileName = this.settings.userClassesFile;
+                break;
+            case ContentType.SUBCLASS:
+                fileName = this.settings.userSubclassesFile;
+                break;
+            case ContentType.ANCESTRY:
+                fileName = this.settings.userAncestriesFile;
+                break;
+            case ContentType.COMMUNITY:
+                fileName = this.settings.userCommunitiesFile;
+                break;
+            case ContentType.ARMOR:
+                fileName = this.settings.userArmorFile;
+                break;
+            case ContentType.WEAPON:
+                fileName = this.settings.userWeaponsFile;
+                break;
+            case ContentType.ITEM:
+                fileName = this.settings.userItemsFile;
+                break;
+            case ContentType.CONSUMABLE:
+                fileName = this.settings.userConsumablesFile;
+                break;
+            default:
+                new Notice(`Cannot import type "${contentType}" as it has no configured save location.`);
+                console.error(`Unhandled content type in addCustomCompendiumItem: ${contentType}`);
+                return;
+        }
+
+        if (fileName) {
+            await this.saveCustomCompendiumData(fileName, data);
+        }
     }
 
     public async renameCustomCompendiumEntry(fileName: string, oldName: string, newData: any) {
@@ -394,7 +399,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             }
         }
 
-        newData.isCustom = true; // Ensure flag is set on rename
+        newData.isCustom = true;
 
         const existingIndex = compendium.findIndex(c => c.name.toLowerCase() === oldName.toLowerCase());
 
@@ -476,17 +481,13 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
-    // --- SETTINGS & UNLOADING ---
-
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
 
     async saveSettings() {
-        // Create a copy of the settings without the rooms and themes arrays to avoid storing them
         const settingsToSave = Object.assign({}, this.settings);
 
-        // Remove transient properties
         if (settingsToSave.dddice) {
             const { rooms, themes, ...dddiceToSave } = settingsToSave.dddice;
             settingsToSave.dddice = dddiceToSave;
@@ -494,7 +495,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         await this.saveData(settingsToSave);
 
-        // Refresh the settings tab if it exists
         if (this.settingsTab) {
             this.settingsTab.display();
         }
@@ -523,14 +523,12 @@ class DaggerheartSettingTab extends PluginSettingTab {
     private isDddiceConnecting: boolean = false;
     private _isPreloading: boolean = false;
 
-    // Make these public for access from ThemeSelectionModal
     public dddiceRoomsCacheTimestamp: number = 0;
     public dddiceThemesCacheTimestamp: number = 0;
-    public readonly CACHE_TTL = 60 * 1000; // 1 minute cache TTL
+    public readonly CACHE_TTL = 60 * 1000;
 
-    // UI refresh tracking
     private _dddiceDropdownsToRefresh: DropdownComponent[] = [];
-    private _themeSelectorsToRefresh: string[] = []; // settingKeys
+    private _themeSelectorsToRefresh: string[] = [];
     private _dddiceObserverInterval: number | null = null;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin) {

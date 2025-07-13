@@ -1,15 +1,13 @@
 // src/services/export-import.ts
-import { Notice, TFile, TFolder, requestUrl } from 'obsidian';
+import { Notice, requestUrl } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
-import DaggerheartStatblockPlugin from '../main';
+import { AllCompendiumData } from '../types';
+
+// --- DATA STRUCTURES & ENUMS ---
 
 /**
- * A generic data exporter/importer for Daggerheart content
- * Currently supports: characters
- * Can be extended to support other content types like compendium entries
+ * The standard wrapper for all exported data.
  */
-
-// Type for exported data
 export interface ExportedData<T> {
     type: string;
     version: string;
@@ -18,7 +16,7 @@ export interface ExportedData<T> {
 }
 
 /**
- * Content types that can be exported/imported
+ * Content types that can be exported/imported.
  */
 export enum ContentType {
     CHARACTER = 'character',
@@ -153,190 +151,197 @@ export const CONTENT_TYPE_INFO: Record<ContentType, ContentTypeInfo> = {
 export function exportToJson<T>(type: string, data: T): ExportedData<T> {
     return {
         type,
-        version: '1.0.0', // Version of the export format
+        version: '1.1.0',
         exportDate: new Date().toISOString(),
         data
     };
 }
 
 /**
- * Export data to a JSON string
- * @param type Type of data being exported
- * @param data The data to export
- * @returns JSON string
+ * Creates a formatted JSON string from data for export.
+ * @param type Type of data being exported.
+ * @param data The data to export.
+ * @returns JSON string.
  */
 export function exportToJsonString<T>(type: string, data: T): string {
     const exportData = exportToJson(type, data);
     return JSON.stringify(exportData, null, 2);
 }
 
+// --- IMPORT FUNCTIONS ---
+
 /**
- * Import data from a JSON string
- * @param jsonString The JSON string to import
- * @returns The parsed data or null if invalid
+ * Detects the content type of a given data object by checking for unique properties.
+ * @param data The object to inspect.
+ * @returns The detected ContentType or 'unknown'.
  */
-export function importFromJsonString<T>(jsonString: string): ExportedData<T> | null {
+function detectContentType(data: any): ContentType | 'unknown' {
+    if (!data || typeof data !== 'object') {
+        return 'unknown';
+    }
+
+    // Check for a specific _type property first, as it's the most reliable
+    if (data._type && Object.values(ContentType).includes(data._type as ContentType)) {
+        return data._type as ContentType;
+    }
+
+    // More specific structural checks based on unique properties from `types.ts`
+    if (data['dg-character'] && data.ancestryId) return ContentType.CHARACTER;
+    if (Array.isArray(data.adversaries) && Array.isArray(data.adversaryGroupOrder)) return ContentType.ENCOUNTER;
+    if (Array.isArray(data.class_feats) && data.domain_1) return ContentType.CLASS;
+    if (Array.isArray(data.foundations) && Array.isArray(data.specializations)) return ContentType.SUBCLASS;
+    if (Array.isArray(data.feats) && data.note) return ContentType.COMMUNITY;
+    if (Array.isArray(data.feats)) return ContentType.ANCESTRY;
+    if (data.recall && data.domain) return ContentType.ABILITY;
+    if (data.base_score && data.base_thresholds) return ContentType.ARMOR;
+    if (data.primary_or_secondary && data.damage) return ContentType.WEAPON;
+    if (data.roll && data.name && data.description) return ContentType.CONSUMABLE;
+    if (data.hp_stress && data.category === 'adversary') return ContentType.ADVERSARY;
+    if (data.hp_stress && data.category === 'environment') return ContentType.ENVIRONMENT;
+
+    // Fallback for a generic item, should be checked last
+    if (data.name && data.description) return ContentType.ITEM;
+
+    return 'unknown';
+}
+
+
+/**
+ * Imports data from a JSON string, handling both raw and pre-exported formats.
+ * @param jsonString The JSON string to import.
+ * @returns An array of processed data items or null if invalid.
+ */
+export function importFromJsonString<T extends AllCompendiumData>(jsonString: string): ExportedData<T>[] | null {
     try {
-        const parsed = JSON.parse(jsonString);
-        console.log('Parsed JSON:', parsed);
+        const parsed = JSON.parse(jsonString.trim());
 
-        // Check if this is already in our export format
+        // Case 1: The file is already in our standard export format.
         if (parsed.type && parsed.version && parsed.data) {
-            console.log('Found export format with type:', parsed.type);
-            return parsed as ExportedData<T>;
+            new Notice(`Imported ${parsed.type} data successfully!`);
+            // It's a valid, exported file. Return it directly, wrapped in an array for consistency.
+            return [parsed as ExportedData<T>];
         }
 
-        // If it's a direct content object with id and name properties
-        if (parsed.id && typeof parsed.name === 'string') {
-            // Try to determine content type
-            let contentType = 'unknown';
+        // Case 2: The file is a raw JSON object or array that needs to be processed.
+        let itemsToProcess: any[] = [];
+        if (Array.isArray(parsed)) {
+            itemsToProcess = parsed;
+        } else if (typeof parsed === 'object' && parsed !== null) {
+            itemsToProcess = [parsed];
+        } else {
+            new Notice("Import failed. File is not a valid JSON object or array.");
+            return null;
+        }
 
-            if (parsed._type === 'character') {
-                contentType = ContentType.CHARACTER;
-            } else if (Array.isArray(parsed.adversaries) && Array.isArray(parsed.adversaryGroupOrder)) {
-                contentType = ContentType.ENCOUNTER;
-                console.log('Detected encounter from object structure, checking arrays:', {
-                    adversaries: parsed.adversaries,
-                    adversaryGroupOrder: parsed.adversaryGroupOrder
-                });
+        const processedData: ExportedData<T>[] = [];
+        let importedCount = 0;
+
+        for (const item of itemsToProcess) {
+            if (typeof item !== 'object' || item === null) continue;
+
+            const contentType = detectContentType(item);
+            if (contentType === 'unknown') {
+                console.warn("Could not determine content type for an item, skipping.", item);
+                continue;
             }
 
-            console.log('Detected content type:', contentType);
-
-            // Wrap it in our export format
-            return {
-                type: contentType,
-                version: '1.0.0',
-                exportDate: new Date().toISOString(),
-                data: parsed as unknown as T
-            };
-        }
-
-        // If it's an array of content items, take the first one
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].id) {
-            let contentType = 'unknown';
-            const firstItem = parsed[0];
-
-            if (firstItem._type === 'character') {
-                contentType = ContentType.CHARACTER;
-            } else if (Array.isArray(firstItem.adversaries) && Array.isArray(firstItem.adversaryGroupOrder)) {
-                contentType = ContentType.ENCOUNTER;
+            // Ensure a unique ID exists for the data item itself.
+            if (!item.id) {
+                item.id = uuidv4();
             }
 
-            console.log('Detected content type from array:', contentType);
-
-            return {
+            processedData.push({
                 type: contentType,
-                version: '1.0.0',
+                version: '1.1.0',
                 exportDate: new Date().toISOString(),
-                data: firstItem as unknown as T
-            };
+                data: item as T,
+            });
+            importedCount++;
         }
 
-        console.error('Could not determine content type from imported data');
-        return null;
+        if (processedData.length > 0) {
+            new Notice(`Successfully imported ${importedCount} item(s).`);
+            return processedData;
+        } else {
+            new Notice("Import failed. No valid content could be identified in the file.");
+            return null;
+        }
+
     } catch (e) {
         console.error("Error parsing import JSON:", e);
+        new Notice("Import failed. The file contains invalid JSON.");
         return null;
     }
 }
 
+
+// --- UTILITY FUNCTIONS ---
+
 /**
- * Validates that imported data is a valid character
- * @param data The data to validate
- * @returns True if valid character data
+ * Re-export of validators from the content-validators file.
  */
 export { isValidCharacterData, isValidContentData } from './content-validators';
 
 /**
- * Copy text to clipboard
- * @param text The text to copy
- * @returns Promise that resolves when copy is complete
+ * Copy text to clipboard.
+ * @param text The text to copy.
  */
 export async function copyToClipboard(text: string): Promise<void> {
     try {
         await navigator.clipboard.writeText(text);
-        return Promise.resolve();
+        new Notice('Copied to clipboard!');
     } catch (err) {
         console.error('Failed to copy to clipboard:', err);
-        return Promise.reject(err);
+        new Notice('Error: Could not copy to clipboard.');
     }
 }
 
 /**
- * Save data to a file in the user's downloads folder
- * @param plugin The plugin instance
- * @param filename The filename to save
- * @param content The content to save
+ * Save data to a file in the user's downloads folder.
+ * @param filename The filename to save.
+ * @param content The content to save.
  */
 export async function saveToFile(filename: string, content: string): Promise<void> {
     const blob = new Blob([content], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
-    a.style.display = 'none';
-
     document.body.appendChild(a);
     a.click();
-
-    // Cleanup
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    new Notice(`Saved to ${filename}`);
 }
 
 /**
- * Fetch JSON data from a URL
- * @param url The URL to fetch JSON from
- * @returns Promise that resolves to the JSON string
+ * Fetch JSON data from a URL, handling various hosting providers.
+ * @param url The URL to fetch JSON from.
+ * @returns Promise that resolves to the JSON string.
  */
 export async function fetchJsonFromUrl(url: string): Promise<string> {
     try {
-        // Handle pastebin URLs
-        if (url.includes('pastebin.com') && !url.includes('/raw/')) {
-            // Convert regular pastebin URL to raw URL
-            url = url.replace('pastebin.com/', 'pastebin.com/raw/');
+        let fetchUrl = url;
+        // Handle Pastebin URLs
+        if (fetchUrl.includes('pastebin.com') && !fetchUrl.includes('/raw/')) {
+            fetchUrl = fetchUrl.replace('pastebin.com/', 'pastebin.com/raw/');
         }
-
-        // Handle GitHub URLs
-        if (url.includes('github.com') && !url.includes('raw.githubusercontent.com')) {
-            if (url.includes('/blob/')) {
-                // Convert GitHub blob URL to raw URL
-                url = url.replace('github.com', 'raw.githubusercontent.com');
-                url = url.replace('/blob/', '/');
-            } else {
-                // Try to convert other GitHub URLs
-                url = url.replace('github.com', 'raw.githubusercontent.com');
-            }
+        // Handle GitHub Blob URLs
+        if (fetchUrl.includes('github.com') && fetchUrl.includes('/blob/')) {
+            fetchUrl = fetchUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
         }
-
         // Handle Gist URLs
-        if (url.includes('gist.github.com') && !url.includes('raw.githubusercontent.com')) {
-            // First try to convert to raw gist URL
-            url = url.replace('gist.github.com', 'gist.githubusercontent.com');
-            if (!url.includes('/raw')) {
-                url += '/raw';
+        if (fetchUrl.includes('gist.github.com') && !fetchUrl.includes('raw.githubusercontent.com')) {
+            fetchUrl = fetchUrl.replace('gist.github.com', 'gist.githubusercontent.com');
+            if (!fetchUrl.includes('/raw')) {
+                fetchUrl += '/raw';
             }
         }
 
-        console.log('Fetching from URL:', url);
+        const response = await requestUrl({ url: fetchUrl });
 
-        // Use Obsidian's requestUrl API which handles CORS correctly
-        const response = await requestUrl({
-            url: url,
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache'
-            }
-        });
-
-        // Check if the response is valid
         if (response.status !== 200) {
-            throw new Error(`Failed to fetch data: ${response.status} ${response.status}`);
+            throw new Error(`Failed to fetch data: Status ${response.status}`);
         }
 
         return response.text;

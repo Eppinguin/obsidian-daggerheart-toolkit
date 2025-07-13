@@ -69,7 +69,6 @@ export type AllCompendiumData =
 export interface CompendiumFeature { name: string; description: string; }
 export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; recall: number; description: string; isCustom?: boolean; }
 
-// ADD this new interface for permanent features
 export interface InherentFeature {
     id: string;
     name: string;
@@ -87,7 +86,6 @@ export type CompendiumItem = (ArmorItem | WeaponItem | GenericItem | ConsumableI
 
 
 // --- CHARACTER DATA MODEL ---
-// This model should store data in a processed, ready-to-use format (e.g., numbers instead of strings)
 export interface AvatarTransform {
     scale: number;
     x: number;
@@ -148,7 +146,6 @@ export interface LevelUpSelection {
     newExperienceName?: string;
 }
 
-// InventoryItem on the Character Sheet is the processed version of a CompendiumItem
 export type InventoryItem = {
     instanceId: string;
     quantity: number;
@@ -204,11 +201,18 @@ export interface DaggerheartPluginSettings {
     compendiumFolder: string;
     useSrdAdversaries: boolean;
     useSrdEnvironments: boolean;
-    userCompendiumFile: string;
+    // User file settings
+    userCompendiumFile: string; // For adversaries and environments
     userAbilitiesFile: string;
     userClassesFile: string;
     userSubclassesFile: string;
     userAncestriesFile: string;
+    userCommunitiesFile: string;
+    userArmorFile: string;
+    userWeaponsFile: string;
+    userItemsFile: string;
+    userConsumablesFile: string;
+    // UI Settings
     showDescriptionOnCards: boolean;
     showFeatureDetailsOnCards: boolean;
     enableFearTracker: boolean;
@@ -220,7 +224,6 @@ export interface DaggerheartPluginSettings {
     encounterBudgetConfig: EncounterBudgetConfig;
     enableEncounterView: boolean;
     enableCharacterSheet: boolean;
-
     // Dice Rolling Settings
     diceProvider: 'dice-roller' | 'dddice';
     enableDiceRoller: boolean;
@@ -233,11 +236,16 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     compendiumFolder: '',
     useSrdAdversaries: true,
     useSrdEnvironments: true,
-    userCompendiumFile: 'User-Adversaries.json',
+    userCompendiumFile: 'user-adversaries.json',
     userAbilitiesFile: 'user-abilities.json',
     userClassesFile: 'user-classes.json',
     userSubclassesFile: 'user-subclasses.json',
     userAncestriesFile: 'user-ancestries.json',
+    userCommunitiesFile: 'user-communities.json',
+    userArmorFile: 'user-armor.json',
+    userWeaponsFile: 'user-weapons.json',
+    userItemsFile: 'user-items.json',
+    userConsumablesFile: 'user-consumables.json',
     showDescriptionOnCards: false,
     showFeatureDetailsOnCards: true,
     enableFearTracker: false,
@@ -249,8 +257,6 @@ export const DEFAULT_SETTINGS: DaggerheartPluginSettings = {
     encounterBudgetConfig: { playerCount: 4, isEasier: false, isHarder: false, isDamageBoosted: false, useLowerTier: false },
     enableEncounterView: true,
     enableCharacterSheet: true,
-
-    // Dice Rolling Settings
     diceProvider: 'dice-roller',
     enableDiceRoller: false,
     useGraphicalDice: false,
