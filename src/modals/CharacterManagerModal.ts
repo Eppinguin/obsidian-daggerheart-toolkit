@@ -175,11 +175,39 @@ export class CharacterManagerModal extends Modal {
         new Setting(grid).setName("Current Stress").addText(text => text.setValue(String(this.tempCharacter.stress.current)).onChange(v => this.tempCharacter.stress.current = parseInt(v) || 0));
         new Setting(grid).setName("Max Hope").addText(text => text.setValue(String(this.tempCharacter.hope.max)).onChange(v => this.tempCharacter.hope.max = parseInt(v) || 0));
         new Setting(grid).setName("Current Hope").addText(text => text.setValue(String(this.tempCharacter.hope.current)).onChange(v => this.tempCharacter.hope.current = parseInt(v) || 0));
-        new Setting(grid).setName("Evasion").addText(text => text.setValue(String(this.tempCharacter.evasion)).onChange(v => this.tempCharacter.evasion = parseInt(v) || 0));
+
+        new Setting(grid)
+            .setName("Evasion Modifier")
+            .setDesc("A custom modifier applied to the character's final Evasion score.")
+            .addText(text => text
+                .setValue(String(this.tempCharacter.customModifiers?.evasion ?? 0))
+                .onChange(value => {
+                    if (!this.tempCharacter.customModifiers) this.tempCharacter.customModifiers = {};
+                    this.tempCharacter.customModifiers.evasion = parseInt(value) || 0;
+                }));
+
         new Setting(grid).setName("Armor Slots (Max)").addText(text => text.setValue(String(this.tempCharacter.armorSlots.max)).onChange(v => this.tempCharacter.armorSlots.max = parseInt(v) || 0));
         new Setting(grid).setName("Armor Slots (Current)").addText(text => text.setValue(String(this.tempCharacter.armorSlots.current)).onChange(v => this.tempCharacter.armorSlots.current = parseInt(v) || 0));
-        new Setting(grid).setName("Major Threshold").addText(text => text.setValue(String(this.tempCharacter.damageThresholds.major)).onChange(v => this.tempCharacter.damageThresholds.major = parseInt(v) || 0));
-        new Setting(grid).setName("Severe Threshold").addText(text => text.setValue(String(this.tempCharacter.damageThresholds.severe)).onChange(v => this.tempCharacter.damageThresholds.severe = parseInt(v) || 0));
+
+        new Setting(grid)
+            .setName("Major Threshold Modifier")
+            .setDesc("A custom modifier applied to the character's final Major Threshold.")
+            .addText(text => text
+                .setValue(String(this.tempCharacter.customModifiers?.majorThreshold ?? 0))
+                .onChange(value => {
+                    if (!this.tempCharacter.customModifiers) this.tempCharacter.customModifiers = {};
+                    this.tempCharacter.customModifiers.majorThreshold = parseInt(value) || 0;
+                }));
+
+        new Setting(grid)
+            .setName("Severe Threshold Modifier")
+            .setDesc("A custom modifier applied to the character's final Severe Threshold.")
+            .addText(text => text
+                .setValue(String(this.tempCharacter.customModifiers?.severeThreshold ?? 0))
+                .onChange(value => {
+                    if (!this.tempCharacter.customModifiers) this.tempCharacter.customModifiers = {};
+                    this.tempCharacter.customModifiers.severeThreshold = parseInt(value) || 0;
+                }));
     }
 
     private drawTraits(parent: HTMLElement) {

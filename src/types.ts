@@ -131,6 +131,11 @@ export interface Character {
     avatarUrl?: string | null;
     avatarTransform?: AvatarTransform;
     accentColor?: string;
+    customModifiers?: {
+        evasion?: number;
+        majorThreshold?: number;
+        severeThreshold?: number;
+    };
 }
 
 export interface Trait { _type: 'trait'; value: number; locked: boolean; }

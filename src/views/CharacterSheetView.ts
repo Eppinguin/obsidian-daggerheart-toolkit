@@ -342,7 +342,7 @@ export class CharacterSheetView extends ItemView {
                 }
             });
         }
-        const finalEvasion = data.evasion + armorEvasionMod + weaponEvasionMod;
+        const finalEvasion = data.evasion + armorEvasionMod + weaponEvasionMod + (data.customModifiers?.evasion || 0);
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
         evasionBox.createEl('span', { text: 'Evasion', cls: 'dh-stat-label' });
@@ -408,6 +408,8 @@ export class CharacterSheetView extends ItemView {
             }
         }
         //add modifiers for Thresholds here
+        finalMajorThreshold += (data.customModifiers?.majorThreshold || 0);
+        finalSevereThreshold += (data.customModifiers?.severeThreshold || 0);
         //guardian stalwart feature, bladedomain vitality and galapa shell
         const minor = thresholdsBox.createDiv();
         minor.createEl('span', { cls: 'dh-threshold-label', text: 'Minor Damage' });
