@@ -324,8 +324,42 @@ export class CharacterSheetView extends ItemView {
         const container = parent.createDiv({ cls: 'dh-primary-defenses' });
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
         const equippedWeapons = data.inventory.filter((i2) => data.equippedWeaponIds && data.equippedWeaponIds.includes(i2.instanceId) && i2._type === "weapon") as (InventoryItem & { _type: 'weapon' })[];
+        const domainCards = data.loadout.filter((f2) => f2.domain !== "Multiclass" || f2.domain === "Multiclass");
         let armorEvasionMod = 0;
         let weaponEvasionMod = 0;
+        let armorMod = 0;
+        if (!equippedArmor) {
+            data.armorSlots.max = 0;
+            if (domainCards.length === 0) {      
+            } else {
+                domainCards.forEach((feature) => {
+                    if (feature.name.toLowerCase().includes("bare bones")) {
+                    data.armorSlots.max = 3 + data.traits['Strength'].value;
+                    }
+                });
+            }     
+        }
+        else {
+            if (domainCards.length === 0) {      
+            } else {
+                domainCards.forEach((feature) => {
+                    if (feature.name.toLowerCase().includes("armorer")) {
+                        armorMod = armorMod + 1;
+                    }
+                    else if (feature.name.toLowerCase().includes("valor-touched")) {
+                        let valorCounter = 0;
+                        domainCards.forEach((feature) => {
+                            if (feature.domain.toLowerCase().includes("valor")) {
+                                valorCounter = valorCounter + 1;
+                            }
+                        });
+                        if (valorCounter>3) {
+                            armorMod = armorMod + 1;
+                        }
+                    }
+                });
+            }
+        }
         if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("heavy"))) {
             armorEvasionMod = equippedArmor.features.some((f2) => f2.name.toLowerCase().includes("very heavy")) ? -2 : -1;
         } else if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("flexible"))) {
@@ -339,6 +373,37 @@ export class CharacterSheetView extends ItemView {
                 }
                 else if (weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("barrier"))) {
                     weaponEvasionMod = weaponEvasionMod - 1;
+                    switch(weapon?.tier) {
+                        case 2:
+                            armorMod = armorMod + 3;
+                            break;
+                        case 3:
+                            armorMod = armorMod + 4;
+                            break;
+                        case 4:
+                            armorMod = armorMod + 5;
+                            break;
+                        default:
+                            armorMod = armorMod + 2;
+                    }
+                }
+                else if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("protective")) || weapon?.features?.some((f2) => f2.name.toLowerCase().includes("double duty"))) {
+                    if(weapon?.name.toLowerCase().includes("round")){
+                        switch(weapon?.tier) {
+                            case 2:
+                                armorMod = armorMod + 2;
+                                break;
+                            case 3:
+                                armorMod = armorMod + 3;
+                                break;
+                            case 4:
+                                armorMod = armorMod + 4;
+                                break;
+                            default:
+                                armorMod = armorMod + 1;
+                        }
+                    }
+                    else armorMod = armorMod + 1;
                 }
             });
         }
@@ -347,7 +412,7 @@ export class CharacterSheetView extends ItemView {
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
         evasionBox.createEl('span', { text: 'Evasion', cls: 'dh-stat-label' });
         const armorBox = container.createDiv({ cls: 'dh-stat-hex' });
-        armorBox.createEl('span', { text: String(data.armorSlots.max), cls: 'dh-stat-value' });
+        armorBox.createEl('span', { text: String(data.armorSlots.max + armorMod), cls: 'dh-stat-value' });
         armorBox.createEl('span', { text: 'Armor', cls: 'dh-stat-label' });
         const armorSlotsContainer = parent.createDiv({ cls: 'dh-armor-slots' });
         armorSlotsContainer.createEl('span', { text: 'Armor Slots' });
@@ -367,7 +432,7 @@ export class CharacterSheetView extends ItemView {
 
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
 
-        const domainCards = data.loadout.filter((f2) => f2.domain !== "Multiclass");
+        const domainCards = data.loadout.filter((f2) => f2.domain !== "Multiclass" || f2.domain === "Multiclass");
         if (!equippedArmor) {
             if (domainCards.length === 0) {
             } else {
@@ -407,10 +472,34 @@ export class CharacterSheetView extends ItemView {
                 });
             }
         }
+        const ancestry = this.plugin.compendium.getAncestry(data.ancestryId);
+        const ancestryFeats = ancestry ? ancestry.feats.map((f2) => ({ name: f2.name, description: f2.text })) : [];
+        if (ancestryFeats.length === 0) {      
+        } else {
+            ancestryFeats.forEach((feature) => {
+                if (feature.name.toLowerCase().includes("shell")) {
+                    finalMajorThreshold = finalMajorThreshold + data.proficiency;
+                    finalSevereThreshold = finalSevereThreshold + data.proficiency;
+                }
+            });
+        }
+        //get SubClassFeatures
+        /*const ownedFeatures = data.features;
+        if(ownedFeatures.has("Unwavering")){
+            finalMajorThreshold = finalMajorThreshold + 1;
+            finalSevereThreshold = finalSevereThreshold + 1;
+        }
+        if(ownedFeatures.has("Unrelenting")){
+            finalMajorThreshold = finalMajorThreshold + 2;
+            finalSevereThreshold = finalSevereThreshold + 2;
+        }
+        if(ownedFeatures.has("Undaunted")){
+            finalMajorThreshold = finalMajorThreshold + 3;
+            finalSevereThreshold = finalSevereThreshold + 3;
+        }*/
         //add modifiers for Thresholds here
         finalMajorThreshold += (data.customModifiers?.majorThreshold || 0);
         finalSevereThreshold += (data.customModifiers?.severeThreshold || 0);
-        //guardian stalwart feature, bladedomain vitality and galapa shell
         const minor = thresholdsBox.createDiv();
         minor.createEl('span', { cls: 'dh-threshold-label', text: 'Minor Damage' });
         minor.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 1 HP` });
