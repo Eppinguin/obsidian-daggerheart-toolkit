@@ -130,6 +130,70 @@
     ]
   },
   {
+    "name": "Juggernaut",
+    "description": "Play the Juggernaut if you want to dominate the battlefield with sheer physical power, soak up hits, and smash through groups of enemies with overwhelming force.",
+    "foundations": [
+      {
+        "name": "Powerhouse",
+        "text": "Increase the d10 damage dice for your unarmed attack to d12s. Additionally, you can mark a Stress to target two creatures within Melee range with a single attack roll."
+      },
+      {
+        "name": "Overwhelm",
+        "text": "On a successful attack, you can spend a Hope to force the target to mark a Stress or to throw them within Close range."
+      }
+    ],
+    "specializations": [
+      {
+        "name": "Rugged",
+        "text": "Gain a permanent +3 bonus to your Severe damage threshold. Additionally, your “Powerhouse” feature can target three creatures instead of two."
+      },
+      {
+        "name": "Eye for an Eye",
+        "text": "When you mark more than one Hit Point from an attack in melee range, the attacker must make a Reaction Roll (13). On a failure (once per rest), they immediately mark the same number of Hit Points in return."
+      }
+    ],
+    "masteries": [
+      {
+        "name": "Pummeljoy",
+        "text": "Whenever you roll a critical success on a weapon attack against an adversary in Melee range, you gain an additional Hope, clear an additional Stress, and add +1 to your Proficiency for the attack."
+      },
+      {
+        "name": "Not Done Yet",
+        "text": "When you mark more than one HP from an attack, you may gain a Hope or clear a Stress."
+      }
+    ]
+  },
+  {
+    "name": "Martial Artist",
+    "description": "Play the Martial Artist if you want to master powerful stances, flow through combat like water, and strike with precision and spiritual force.",
+    "foundations": [
+      {
+        "name": "Martial Form",
+        "text": "Take the Martial Form sheet. You start with two martial stances from Tier 1. When you reach a new tier, take two additional stances at your tier or lower."
+      },
+      {
+        "name": "Focus",
+        "text": "At character creation and at each rest, roll a number of d6 equal to your Instinct. Gain Focus tokens equal to the highest roll. Spend 1 Focus to shift into a stance. It lasts until you take Severe damage, the scene ends, you mark your last Hit Point, or you change stance."
+      }
+    ],
+    "specializations": [
+      {
+        "name": "Keen Defenses",
+        "text": "When you’re targeted by an attack, spend a Focus to impose disadvantage on the attack roll."
+      },
+      {
+        "name": "Spirit Blast",
+        "text": "Spend a Focus to make an Instinct-based attack against a foe in Close range. On a hit, deal d20+3 magic damage. Spend another Focus to make the target *Vulnerable*."
+      }
+    ],
+    "masteries": [
+      {
+        "name": "Limit Breaker",
+        "text": "Once per rest, perform a cinematic feat like running on water or leaping rooftops without rolling. When you do, gain 1 Hope and clear 1 Stress."
+      }
+    ]
+  },
+  {
     "name": "Nightwalker",
     "description": "Play the Nightwalker if you want to manipulate shadows to maneuver through the environment.",
     "spellcast_trait": "Finesse",
