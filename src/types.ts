@@ -69,6 +69,13 @@ export type AllCompendiumData =
 export interface CompendiumFeature { name: string; description: string; }
 export interface DomainCard { _type: 'domainCard'; id: string; name: string; level: number; domain: string; type: string; recall: number; description: string; isCustom?: boolean; }
 
+export interface TokenTrackerState {
+    id: string;
+    name?: string;
+    tokens: number;
+    max: number;
+}
+
 export interface InherentFeature {
     id: string;
     name: string;
@@ -129,6 +136,7 @@ export interface Character {
     connections?: { question: string; answer: string; }[];
     levelUpHistory: { [level: number]: LevelUpSelection };
     conditions: Condition[];
+    trackers?: { [cardId: string]: TokenTrackerState[] };
     avatarUrl?: string | null;
     avatarTransform?: AvatarTransform;
     accentColor?: string;

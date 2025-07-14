@@ -1,8 +1,9 @@
-import { ItemView, WorkspaceLeaf, Notice, setIcon, TFile, MarkdownRenderer } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, setIcon, TFile, MarkdownRenderer, Menu } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
 import {
-    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, ArmorItem, WeaponItem, AvatarTransform, InherentFeature
+    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, ArmorItem, WeaponItem, AvatarTransform, InherentFeature,
+    TokenTrackerState
 } from '../types';
 import {
     AddItemModal,
@@ -14,8 +15,10 @@ import {
     GoldModal,
     ImportExportModal,
     ItemEditModal,
-    LevelUpModal
+    LevelUpModal,
+    ManageTrackersModal
 } from '../modals';
+import { getTokenType, createTokenTracker } from '../services/token-helpers';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
 import { handleAdvantageDisadvantage, formatTraitModifier } from '../services/dice-helpers';
 import { ContentType } from '../services/export-import';
@@ -330,17 +333,17 @@ export class CharacterSheetView extends ItemView {
         let armorMod = 0;
         if (!equippedArmor) {
             data.armorSlots.max = 0;
-            if (domainCards.length === 0) {      
+            if (domainCards.length === 0) {
             } else {
                 domainCards.forEach((feature) => {
                     if (feature.name.toLowerCase().includes("bare bones")) {
-                    data.armorSlots.max = 3 + data.traits['Strength'].value;
+                        data.armorSlots.max = 3 + data.traits['Strength'].value;
                     }
                 });
-            }     
+            }
         }
         else {
-            if (domainCards.length === 0) {      
+            if (domainCards.length === 0) {
             } else {
                 domainCards.forEach((feature) => {
                     if (feature.name.toLowerCase().includes("armorer")) {
@@ -353,7 +356,7 @@ export class CharacterSheetView extends ItemView {
                                 valorCounter = valorCounter + 1;
                             }
                         });
-                        if (valorCounter>3) {
+                        if (valorCounter > 3) {
                             armorMod = armorMod + 1;
                         }
                     }
@@ -371,9 +374,9 @@ export class CharacterSheetView extends ItemView {
                 if (weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("heavy")) || weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("massive"))) {
                     weaponEvasionMod = -1;
                 }
-                else if (weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("barrier"))) {
+                else if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("barrier"))) {
                     weaponEvasionMod = weaponEvasionMod - 1;
-                    switch(weapon?.tier) {
+                    switch (weapon?.tier) {
                         case 2:
                             armorMod = armorMod + 3;
                             break;
@@ -388,8 +391,8 @@ export class CharacterSheetView extends ItemView {
                     }
                 }
                 else if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("protective")) || weapon?.features?.some((f2) => f2.name.toLowerCase().includes("double duty"))) {
-                    if(weapon?.name.toLowerCase().includes("round")){
-                        switch(weapon?.tier) {
+                    if (weapon?.name.toLowerCase().includes("round")) {
+                        switch (weapon?.tier) {
                             case 2:
                                 armorMod = armorMod + 2;
                                 break;
@@ -474,7 +477,7 @@ export class CharacterSheetView extends ItemView {
         }
         const ancestry = this.plugin.compendium.getAncestry(data.ancestryId);
         const ancestryFeats = ancestry ? ancestry.feats.map((f2) => ({ name: f2.name, description: f2.text })) : [];
-        if (ancestryFeats.length === 0) {      
+        if (ancestryFeats.length === 0) {
         } else {
             ancestryFeats.forEach((feature) => {
                 if (feature.name.toLowerCase().includes("shell")) {
@@ -1081,63 +1084,108 @@ export class CharacterSheetView extends ItemView {
 
     private createExperienceCard(parent: HTMLElement, title: string, subtext: string, isInteractive: boolean = false) { const card = parent.createDiv({ cls: `dh-experience-card ${isInteractive ? 'is-interactive' : ''}` }); card.createDiv({ cls: 'dh-card-title', text: title }); if (subtext) card.createSpan({ cls: 'dh-experience-value', text: subtext }); return card; }
 
+
     private createFeatureCard(parent: HTMLElement, feature: InherentFeature | DomainCard, character: Character) {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
+
+        card.addEventListener('contextmenu', (event: MouseEvent) => {
+            event.preventDefault();
+            const menu = new Menu();
+
+            menu.addItem((item) =>
+                item
+                    .setTitle("Manage Trackers...")
+                    .setIcon("list-plus")
+                    .onClick(() => {
+                        new ManageTrackersModal(this.app, this.plugin, character, feature).open();
+                    })
+            );
+
+            menu.showAtMouseEvent(event);
+        });
+
         const metadata = this.getFeatureMetadata(feature);
 
         const header = card.createDiv({ cls: 'dh-feature-card-header' });
         header.createDiv({ cls: 'dh-feature-card-title', text: feature.name });
 
         const metaHeader = header.createDiv({ cls: 'dh-feature-card-meta-header' });
-        if (metadata.domain) {
-            metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.domain });
-        }
-        if (metadata.type) {
-            metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.type });
-        }
-        if (metadata.level) {
-            metaHeader.createSpan({ cls: 'dh-feature-card-type', text: `Level ${metadata.level}` });
-        }
+        if (metadata.domain) metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.domain });
+        if (metadata.type) metaHeader.createSpan({ cls: 'dh-feature-card-type', text: metadata.type });
+        if (metadata.level) metaHeader.createSpan({ cls: 'dh-feature-card-type', text: `Level ${metadata.level}` });
 
         const body = card.createDiv({ cls: 'dh-feature-card-body' });
         renderRollableContent(this.plugin, feature.description, body, feature.name, true);
 
-        if (feature.description.toLowerCase().includes('make a spellcast roll')) {
+        const hasSpellcast = feature.description.toLowerCase().includes('make a spellcast roll');
+        const tokenInfo = getTokenType(feature.description);
+        const nativeHasTokens = tokenInfo.type !== 'none' || feature.description.toLowerCase().includes('mark a stress to replenish this card with tokens');
+
+        // Initialize native tracker if it exists and isn't in the data yet
+        if (nativeHasTokens) {
+            if (!character.trackers) character.trackers = {};
+            if (!character.trackers[feature.id]) character.trackers[feature.id] = [];
+
+            const existingNative = character.trackers[feature.id].find(t => t.id === 'native');
+            if (!existingNative) {
+                let baseMaxTokens = 0;
+                const traitSource = tokenInfo.source as keyof Character['traits'] | undefined;
+
+                if (tokenInfo.type === 'trait' && traitSource && character.traits[traitSource]) {
+                    const traitValue = character.traits[traitSource].value;
+                    baseMaxTokens = tokenInfo.hasMinimumOne ? Math.max(1, traitValue) : traitValue;
+                }
+                else if (tokenInfo.type === 'spellcast' || tokenInfo.type === 'replenish_spellcast') {
+                    if (character.spellCastTrait) {
+                        const traitValue = character.traits[character.spellCastTrait as keyof Character['traits']].value;
+                        baseMaxTokens = tokenInfo.hasMinimumOne ? Math.max(1, traitValue) : traitValue;
+                    }
+                } else if (tokenInfo.type === 'complex' && tokenInfo.source === 'sage_cards') {
+                    baseMaxTokens = [...character.loadout, ...character.vault].filter(c => c.domain === 'Sage').length;
+                }
+
+                const nativeTracker: TokenTrackerState = { id: 'native', tokens: 0, max: baseMaxTokens };
+                character.trackers[feature.id].unshift(nativeTracker);
+            }
+        }
+
+        const allTrackers = character.trackers?.[feature.id] || [];
+
+        if (hasSpellcast || allTrackers.length > 0) {
             const footer = card.createDiv({ cls: 'dh-feature-card-footer dh-feature-card-footer-left' });
 
-            let spellcastingTraitName: keyof Character['traits'] | undefined;
-            if (character.spellCastTrait) {
-                spellcastingTraitName = character.spellCastTrait as keyof Character['traits'];
-            } else {
-                // Fallback for backward compatibility with older characters
-                const subclass = this.plugin.compendium.getSubclass(character.subclassId);
-                spellcastingTraitName = subclass?.spellcast_trait as keyof Character['traits'] | undefined;
+            if (hasSpellcast) {
+                let spellcastingTraitName: keyof Character['traits'] | undefined = character.spellCastTrait as keyof Character['traits'] ||
+                    this.plugin.compendium.getSubclass(character.subclassId)?.spellcast_trait as keyof Character['traits'];
+
+                if (spellcastingTraitName) {
+                    const traitValue = character.traits[spellcastingTraitName]?.value ?? 0;
+                    const rollBox = footer.createEl('div', { cls: 'dh-spellcast-box dh-spellcast-box-inline' });
+                    rollBox.createSpan({ cls: 'dh-spellcast-modifier', text: `${traitValue >= 0 ? '+' : ''}${traitValue}` });
+                    rollBox.createSpan({ text: ` ${spellcastingTraitName}` });
+                    rollBox.addEventListener('click', (event) => {
+                        const { diceString } = handleAdvantageDisadvantage(event, `1d12+1d12`, `${feature.name} Spellcast`);
+                        this.plugin.rollDice(`${diceString}${formatTraitModifier(traitValue)}`, `${feature.name} Spellcast`, spellcastingTraitName);
+                    });
+                }
             }
 
-            if (spellcastingTraitName) {
-                const traitValue = character.traits[spellcastingTraitName]?.value ?? 0;
-                const rollBox = footer.createDiv({ cls: 'dh-spellcast-box dh-spellcast-box-inline' });
-                const modSpan = rollBox.createSpan({ cls: 'dh-spellcast-modifier' });
-                modSpan.setText(`${traitValue >= 0 ? '+' : ''}${traitValue}`);
-                rollBox.createSpan({ text: ` ${spellcastingTraitName}` });
-                rollBox.title = `Click to make a Spellcast roll with ${spellcastingTraitName}`;
-
-                rollBox.addEventListener('click', (event) => {
-                    let baseDiceString = `1d12+1d12`;
-                    const modifierString = formatTraitModifier(traitValue);
-                    let rollTitle = `${feature.name} Spellcast`;
-                    const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
-                        event,
-                        baseDiceString,
-                        rollTitle
-                    );
-                    this.plugin.rollDice(
-                        `${diceString}${modifierString}`,
-                        newRollTitle,
-                        spellcastingTraitName
-                    );
-                });
-            }
+            allTrackers.forEach((trackerState) => {
+                createTokenTracker(
+                    footer,
+                    trackerState,
+                    (newState: TokenTrackerState) => {
+                        const allTrackersForCard = character.trackers?.[feature.id];
+                        if (allTrackersForCard) {
+                            const index = allTrackersForCard.findIndex(t => t.id === newState.id);
+                            if (index > -1) {
+                                allTrackersForCard[index] = newState;
+                                this.plugin.updateCharacter(character);
+                            }
+                        }
+                    }
+                );
+            });
         }
     }
 
