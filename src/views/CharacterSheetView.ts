@@ -483,20 +483,25 @@ export class CharacterSheetView extends ItemView {
                 }
             });
         }
-        //get SubClassFeatures
-        /*const ownedFeatures = data.features;
-        if(ownedFeatures.has("Unwavering")){
-            finalMajorThreshold = finalMajorThreshold + 1;
-            finalSevereThreshold = finalSevereThreshold + 1;
+        const ownedSubclassFeatures = data.features.filter((f2) => f2.source === "Subclass");
+        if (ownedSubclassFeatures.length === 0) {      
+        } else {
+            ownedSubclassFeatures.forEach((ownedFeatures) => {
+                 if(ownedFeatures.name.toLowerCase().includes("unwavering")){
+                    finalMajorThreshold = finalMajorThreshold + 1;
+                    finalSevereThreshold = finalSevereThreshold + 1;
+                }
+                if(ownedFeatures.name.toLowerCase().includes("unrelenting")){
+                    finalMajorThreshold = finalMajorThreshold + 2;
+                    finalSevereThreshold = finalSevereThreshold + 2;
+                }
+                if(ownedFeatures.name.toLowerCase().includes("undaunted")){
+                    finalMajorThreshold = finalMajorThreshold + 3;
+                    finalSevereThreshold = finalSevereThreshold + 3;
+                }
+            });
         }
-        if(ownedFeatures.has("Unrelenting")){
-            finalMajorThreshold = finalMajorThreshold + 2;
-            finalSevereThreshold = finalSevereThreshold + 2;
-        }
-        if(ownedFeatures.has("Undaunted")){
-            finalMajorThreshold = finalMajorThreshold + 3;
-            finalSevereThreshold = finalSevereThreshold + 3;
-        }*/
+       
         //add modifiers for Thresholds here
         finalMajorThreshold += (data.customModifiers?.majorThreshold || 0);
         finalSevereThreshold += (data.customModifiers?.severeThreshold || 0);
