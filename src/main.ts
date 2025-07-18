@@ -619,9 +619,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     public initializeDddiceIfNeeded() {
         const { diceProvider, dddice: dddiceSettings } = this.settings;
         if (diceProvider === 'dddice' && dddiceSettings.apiKey && dddiceSettings.renderInObsidian && dddiceSettings.room) {
-            dddice.initializeDddiceRenderer(dddiceSettings, () => {
-                this.updateDddiceParticipantName();
-            });
+            dddice.initializeDddiceRenderer(dddiceSettings);
+            this.updateDddiceParticipantName();
         }
     }
 }
