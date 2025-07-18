@@ -2,6 +2,7 @@
 @import "./styles/manage-encounters.css";
 @import "./styles/import-export.css";
 @import "./styles/dddice-activation.css";
+@import "./styles/dicetray.css";
 
 .dh-theme-selector-container {
     display: flex;
@@ -2551,9 +2552,14 @@
 }
 .dh-experience-card.is-interactive {
     cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid var(--dh-sheet-bg);
 }
 .dh-experience-card.is-interactive:hover {
-    background-color: var(--dh-sheet-border);
+    background-color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
 }
 .dh-experience-value {
     background-color: var(--dh-sheet-bg-alt);

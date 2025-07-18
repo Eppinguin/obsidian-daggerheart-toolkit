@@ -1,0 +1,286 @@
+/* --- Character Sheet View --- */
+.dh-character-sheet-view .view-content {
+    position: relative; /* This is crucial for positioning the tray inside */
+    overflow: visible !important; /* Allow the tray to pop out */
+}
+
+/* --- Dice Tray Button --- */
+.dh-dice-tray-button {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 48px;
+    height: 48px;
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    color: var(--dh-sheet-text-muted);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: var(--shadow-m);
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-dice-tray-button:hover {
+    color: var(--dh-sheet-accent);
+    border-color: var(--dh-sheet-accent);
+    box-shadow: 0 0 12px var(--dh-sheet-accent-glow);
+    transform: translateY(-2px);
+}
+
+.dh-dice-tray-button.is-active {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+    border-color: var(--dh-sheet-accent-dark);
+}
+
+.dh-dice-tray-button.is-active:hover {
+    background-color: var(--dh-sheet-accent);
+    transform: translateY(-2px) scale(1.05);
+}
+
+/* --- Dice Tray Container --- */
+.dh-dice-tray-container {
+    position: absolute;
+    bottom: 80px;
+    left: 20px;
+    width: 320px;
+    max-height: 450px;
+    background-color: var(--dh-sheet-bg);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-l);
+    box-shadow: var(--shadow-l);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    padding: var(--size-4-3);
+    gap: var(--size-4-3);
+    color: var(--dh-sheet-text);
+}
+
+.dh-dice-tray-history {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: var(--size-4-2);
+    background-color: var(--dh-sheet-bg-alt);
+    margin: calc(var(--size-4-3) * -1);
+    margin-bottom: 0;
+    padding: var(--size-4-3);
+    border-bottom: 1px solid var(--dh-sheet-border);
+}
+
+.dh-dice-tray-controls-wrapper {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.dh-dice-buttons-container {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--size-4-2);
+}
+
+.dh-main-controls-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--size-4-2) var(--size-4-3);
+    align-items: center;
+}
+
+.dh-duality-button {
+    grid-column: 1 / 2;
+}
+
+.dh-adv-dis-container {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+    display: flex;
+    gap: var(--size-4-2);
+}
+
+.dh-dice-tray-input {
+    grid-column: 1 / 2;
+}
+
+.dh-stepper-wrapper {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+}
+
+.dh-dice-button, .dh-duality-button, .dh-adv-dis-button {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    color: var(--dh-sheet-text-muted);
+    padding: var(--size-4-2);
+    text-align: center;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dh-dice-button:hover, .dh-duality-button:hover, .dh-adv-dis-button:hover {
+    color: var(--dh-sheet-text);
+    border-color: var(--dh-sheet-accent);
+    background-color: var(--dh-sheet-bg);
+}
+
+.dh-adv-dis-button {
+    width: 42px;
+}
+.dh-advantage-button { color: var(--color-green); border-color: var(--color-green); }
+.dh-advantage-button:hover { background-color: rgba(var(--color-green-rgb), 0.1); border-color: var(--color-green) !important; color: var(--color-green) !important;}
+.dh-disadvantage-button { color: var(--color-red); border-color: var(--color-red); }
+.dh-disadvantage-button:hover { background-color: rgba(var(--color-red-rgb), 0.1); border-color: var(--color-red) !important; color: var(--color-red) !important;}
+
+.dh-button-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--size-4-2);
+}
+
+.dh-dice-tray-input {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    color: var(--dh-sheet-text);
+}
+.dh-dice-tray-input:focus {
+    border-color: var(--dh-sheet-accent);
+    outline: none;
+    box-shadow: 0 0 5px var(--dh-sheet-accent-glow);
+}
+
+.dh-button-row button {
+    background-color: var(--dh-sheet-border);
+    color: var(--dh-sheet-text-muted);
+    border: none;
+    transition: all 0.2s ease-in-out;
+}
+.dh-stepper-wrapper button:hover {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+}
+.dh-button-row .dh-clear-btn:hover {
+    background-color: var(--dh-sheet-border);
+    color: var(--dh-sheet-text);
+}
+.dh-button-row button:first-of-type { /* Roll Button */
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+}
+.dh-button-row button:first-of-type:hover { /* Roll Button Hover */
+    background-color: var(--dh-sheet-accent);
+    transform: scale(1.05);
+    box-shadow: 0 0 10px var(--dh-sheet-accent-glow);
+}
+
+
+.dh-stepper-wrapper {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.dh-stepper-wrapper button {
+    width: 30px;
+    height: 30px;
+    font-size: var(--font-ui-large);
+    line-height: 1;
+    background-color: var(--dh-sheet-border);
+    color: var(--dh-sheet-text-muted);
+    border: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-stepper-wrapper input[type="number"] {
+    width: 40px;
+    text-align: center;
+    border: 1px solid var(--dh-sheet-border);
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    height: 30px;
+    background-color: var(--dh-sheet-bg-alt);
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.dh-stepper-wrapper input[type="number"]::-webkit-outer-spin-button,
+.dh-stepper-wrapper input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.dh-stepper-wrapper button:first-child {
+    border-top-left-radius: var(--radius-s);
+    border-bottom-left-radius: var(--radius-s);
+}
+
+.dh-stepper-wrapper button:last-child {
+    border-top-right-radius: var(--radius-s);
+    border-bottom-right-radius: var(--radius-s);
+}
+
+
+.dh-history-entry {
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-2);
+    border-radius: var(--radius-s);
+    border: 1px solid var(--dh-sheet-border);
+}
+
+.dh-history-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--font-ui-smaller);
+    color: var(--dh-sheet-text-muted);
+    margin-bottom: var(--size-4-1);
+}
+.dh-history-context {
+    color: var(--dh-sheet-accent);
+    font-weight: var(--font-semibold);
+}
+
+.dh-history-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--size-4-1); word-break: break-word; }
+.dh-history-equation { display: flex; flex-wrap: wrap; align-items: center; row-gap: var(--size-4-1); column-gap: var(--size-4-2); line-height: 1.5; font-size: var(--font-ui-medium); }
+.dh-roll-value { padding: 1px 5px; border-radius: var(--radius-s); font-weight: var(--font-bold); cursor: default; }
+.dh-roll-value.hope { background-color: rgba(var(--color-yellow-rgb), 0.2); color: var(--color-yellow); }
+.dh-roll-value.fear { background-color: rgba(var(--color-purple-rgb), 0.2); color: var(--dh-sheet-purple); }
+.dh-roll-value.advantage { background-color: rgba(var(--color-green-rgb), 0.2); color: var(--color-green); }
+.dh-roll-value.disadvantage { background-color: rgba(var(--color-red-rgb), 0.2); color: var(--color-red); }
+.dh-roll-value.modifier { background-color: transparent; color: var(--text-normal); padding: 1px 0; }
+.dh-roll-value.die { background-color: var(--dh-sheet-bg-alt); color: var(--text-normal); }
+.dh-roll-operator { font-weight: var(--font-light); color: var(--text-muted); }
+.dh-history-total-container { display: flex; align-items: center; gap: var(--size-4-3); }
+.dh-history-equals { font-size: 1.6em; font-weight: var(--font-light); color: var(--text-muted); }
+.dh-history-total { font-size: 2em; font-weight: var(--font-black); color: var(--dh-sheet-accent); line-height: 1; }
+.dh-history-outcome { font-weight: bold; font-size: var(--font-ui-small); text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-s); }
+.dh-history-outcome.with-hope { color: var(--color-yellow); background-color: rgba(var(--color-yellow-rgb), 0.1); }
+.dh-history-outcome.with-fear { color: var(--dh-sheet-purple); background-color: rgba(var(--color-purple-rgb), 0.1); }
+.dh-history-outcome.critical { color: var(--color-orange); background-color: rgba(var(--color-orange-rgb), 0.1); }
+
+/* --- History-Only View for Auto-Popup --- */
+.dh-dice-tray-container.is-history-only .dh-dice-tray-controls-wrapper {
+    display: none;
+}
+
+.dh-dice-tray-container.is-history-only {
+    gap: 0;
+    padding: 0;
+}
+
+.dh-dice-tray-container.is-history-only .dh-dice-tray-history {
+    border-bottom: none;
+    padding: var(--size-4-3);
+}
