@@ -1,11 +1,17 @@
 import { Notice } from 'obsidian';
 import { DddiceSettings } from 'src/types';
-import { displayRollNotice } from './dice-helpers';
 import { ThreeDDiceAPI, ThreeDDice } from 'dddice-js';
-import type { IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, IApiResponse, IRoll } from 'dddice-js';
+import type { IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, IApiResponse, IRoll, IRoomParticipant } from 'dddice-js';
 
 // Re-export types that are needed by the UI
 export type { IRoom, ITheme };
+
+// Add a type for our structured roll components
+export interface RollComponent {
+    value: number;
+    label: string;
+    type: 'hope' | 'fear' | 'advantage' | 'disadvantage' | 'modifier' | 'die';
+}
 
 // Private variable to hold the singleton dddice instance
 let _dddiceInstance: ThreeDDice | undefined;
@@ -14,8 +20,6 @@ let _boundDddiceClear: (() => void) | null = null;
 
 /**
  * Initialize or reinitialize the dddice renderer.
- * @param settings The dddice settings object.
- * @returns The initialized ThreeDDice instance if successful, undefined otherwise.
  */
 export function initializeDddiceRenderer(settings: DddiceSettings): ThreeDDice | undefined {
     destroyDddiceRenderer();
@@ -25,23 +29,17 @@ export function initializeDddiceRenderer(settings: DddiceSettings): ThreeDDice |
     }
 
     try {
-        // Create the canvas for rendering
         _dddiceCanvas = document.body.createEl('canvas', { attr: { id: 'dddice-canvas' } });
         _dddiceCanvas.style.cssText = 'top:0px; left:0; position:fixed; pointer-events:none; z-index:95; width:100vw; height:100vh;';
-
-        // Initialize the dddice instance
         _dddiceInstance = new ThreeDDice().initialize(_dddiceCanvas, settings.apiKey, undefined, 'Daggerheart-Obsidian');
         _dddiceInstance.connect(settings.room);
         _dddiceInstance.start();
-
-        // Set up the clear handler
         _boundDddiceClear = () => {
             if (_dddiceInstance && !_dddiceInstance.isDiceThrowing) {
                 _dddiceInstance.clear();
             }
         };
         document.body.addEventListener('click', _boundDddiceClear);
-
         console.log("dddice renderer initialized.");
         return _dddiceInstance;
     } catch (e) {
@@ -83,9 +81,6 @@ export function getDddiceInstance(): ThreeDDice | undefined {
 
 /**
  * Initializes the dddice API with the provided key for data fetching.
- * This is used when a full renderer instance isn't needed.
- * @param apiKey The user's dddice API key.
- * @returns An instance of the ThreeDDiceAPI.
  */
 export function initializeDddiceApi(apiKey: string): ThreeDDiceAPI {
     if (!apiKey) {
@@ -94,11 +89,7 @@ export function initializeDddiceApi(apiKey: string): ThreeDDiceAPI {
     return new ThreeDDiceAPI(apiKey, 'Daggerheart-Obsidian-Plugin');
 }
 
-/**
- * Fetches the list of available rooms from the dddice API.
- * @param api The initialized ThreeDDiceAPI instance.
- * @returns A promise that resolves to an array of IRoom objects.
- */
+// ... (fetch methods are unchanged) ...
 export async function fetchDddiceRooms(api: ThreeDDiceAPI): Promise<IRoom[]> {
     try {
         const { data } = await api.room.list();
@@ -110,12 +101,6 @@ export async function fetchDddiceRooms(api: ThreeDDiceAPI): Promise<IRoom[]> {
     }
 }
 
-/**
- * Fetches a single page of themes (dice boxes) from the dddice API.
- * @param api The initialized ThreeDDiceAPI instance.
- * @param isFirstPage Whether to fetch the first page or the next page.
- * @returns A promise that resolves to an object with the fetched themes and a hasMore flag.
- */
 export async function fetchDddiceThemesPage(api: ThreeDDiceAPI, isFirstPage: boolean = true): Promise<{ themes: ITheme[], hasMore: boolean }> {
     try {
         let response;
@@ -126,25 +111,7 @@ export async function fetchDddiceThemesPage(api: ThreeDDiceAPI, isFirstPage: boo
         }
 
         const themes = response?.data || [];
-
-        // Determine if there are more pages
-        // For the dddice API, we can check if the next() call would return more results
-        // by attempting a peek at the next page without actually consuming it
-        let hasMore = false;
-
-        if (themes.length > 0) {
-            // Check if there are more pages available
-            // The exact check depends on the API's response structure
-            // This is a simplified check - if we got results, assume there might be more
-            // until we get an empty page
-
-            // Try to access any pagination info that might be in the response
-            // If not available, assume there's more if we got a full page
-            hasMore = themes.length >= 10; // Assuming 10 is a typical page size
-
-            // For a more accurate check, we'd need to know how the API indicates
-            // there are more pages. Update this logic based on API documentation.
-        }
+        let hasMore = themes.length >= 10;
 
         console.log(`Fetched ${themes.length} themes, hasMore: ${hasMore}`);
         return { themes, hasMore };
@@ -155,20 +122,13 @@ export async function fetchDddiceThemesPage(api: ThreeDDiceAPI, isFirstPage: boo
     }
 }
 
-/**
- * Fetches all available themes (dice boxes) from the dddice API, handling pagination.
- * @param api The initialized ThreeDDiceAPI instance.
- * @returns A promise that resolves to an array of ITheme objects.
- */
 export async function fetchDddiceThemes(api: ThreeDDiceAPI): Promise<ITheme[]> {
     try {
         let allThemes: ITheme[] = [];
         let response = await api.diceBox.list();
-
         if (response?.data) {
             allThemes = allThemes.concat(response.data);
         }
-
         while (true) {
             const nextPageResponse = await api.diceBox.next();
             if (nextPageResponse?.data && nextPageResponse.data.length > 0) {
@@ -207,105 +167,277 @@ export async function fetchDddiceTheme(api: ThreeDDiceAPI, themeId: string): Pro
     }
 }
 
-/**
- * Parses a generic dice string like "2d6", "1d20+5", "d8-1" into the dddice IDiceRoll[] format.
- * @param notation The dice string to parse.
- * @returns An array of IDiceRoll objects for the API.
- */
-function parseGenericDiceString(notation: string): IDiceRoll[] {
-    const dice: IDiceRoll[] = [];
-    const pattern = /([+-]?)(\d*d\d+|\d+)/g;
-    let match;
+export async function updateParticipantName(settings: DddiceSettings, newName: string): Promise<void> {
+    if (!settings.apiKey || !settings.room || !newName) {
+        return;
+    }
 
+    try {
+        const api = getDddiceInstance()?.api ?? initializeDddiceApi(settings.apiKey);
+        const roomSlug = settings.room;
+
+        if (!api.roomSlug) {
+            await api.connect(roomSlug);
+        }
+
+        const userResponse = await api.user.get();
+        const user = userResponse?.data;
+        if (!user) {
+            console.error("dddice: Could not get user to update participant name.");
+            return;
+        }
+
+        let room = (await api.room.get(roomSlug))?.data;
+
+        if (!room) {
+            console.error(`dddice: Room with slug "${roomSlug}" not found.`);
+            return;
+        }
+
+        let participant = room.participants.find((p: IRoomParticipant) => p.user.uuid === user.uuid);
+
+        if (!participant) {
+            try {
+                const joinedRoom = (await api.room.join(roomSlug))?.data;
+                if (joinedRoom) {
+                    participant = joinedRoom.participants.find((p: IRoomParticipant) => p.user.uuid === user.uuid);
+                }
+            } catch (joinError: any) {
+                if (!joinError?.response?.data?.data?.message?.includes('already a participant')) {
+                    console.error("dddice: Failed to join room to update participant name:", joinError);
+                }
+            }
+        }
+
+        if (!participant) {
+            console.warn("dddice: Could not find or add user to room. Name not updated.");
+            return;
+        }
+
+        if (participant.username !== newName) {
+            await api.room.updateParticipant(roomSlug, participant.id, { username: newName });
+            console.log(`dddice: Updated participant name to "${newName}".`);
+        }
+    } catch (e: any) {
+        console.error("dddice: Failed to update participant name:", e);
+    }
+}
+
+function parseGenericDiceString(notation: string): { dice: IDiceRoll[], operator?: IDiceRollOptions['operator'] } {
+    const dice: IDiceRoll[] = [];
+    const negativeIndices: number[] = [];
+    const pattern = /([+-])?\s*(\d*d\d+|\d+)/g;
+    let match;
     const cleanedNotation = notation.replace(/\s/g, '');
+    const isFirstTermNegative = cleanedNotation.startsWith('-');
 
     while ((match = pattern.exec(cleanedNotation)) !== null) {
-        const sign = match[1] === '-' ? -1 : 1;
+        const sign = match[1];
         let part = match[2];
 
         if (part.includes('d')) {
             let [countStr, sizeStr] = part.split('d');
             const count = countStr === '' ? 1 : parseInt(countStr, 10);
             const size = parseInt(sizeStr, 10);
-
             if (!isNaN(count) && !isNaN(size)) {
                 for (let i = 0; i < count; i++) {
                     dice.push({ type: `d${size}` as IDieType });
+                    if (sign === '-') {
+                        negativeIndices.push(dice.length - 1);
+                    }
                 }
             }
         } else {
             const value = parseInt(part, 10);
             if (!isNaN(value)) {
-                dice.push({ type: 'mod', value: value * sign });
+                const isNegative = (sign === '-' || (isFirstTermNegative && match.index === 0 && !sign));
+                dice.push({ type: 'mod', value: isNegative ? -value : value });
             }
         }
     }
-    return dice;
+
+    let operator: IDiceRollOptions['operator'] | undefined = undefined;
+    if (negativeIndices.length > 0) {
+        operator = { "*": { "-1": negativeIndices } };
+    }
+
+    return { dice, operator };
 }
 
-/**
- * Sends a dice roll request to the dddice API and returns the total value.
- * @returns A promise that resolves to the total roll value, or null if an error occurs.
- */
-export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString: string, context: string, traitName?: string): Promise<number | null> {
+function handleRollResult(
+    rollData: IRoll,
+    isDaggerheartActionRoll: boolean,
+    traitName?: string,
+    operator?: IDiceRollOptions['operator']
+): { display: string, totalStr: string, total: number, outcome?: string, structuredResult?: RollComponent[] } {
+    let total: number;
+    if (typeof rollData.total_value === 'number') {
+        total = rollData.total_value;
+    } else {
+        total = rollData.values.reduce((sum, die) => sum + Number(die.value), 0);
+    }
+    if (isNaN(total)) {
+        console.error("Could not determine total from dddice roll:", rollData);
+        total = 0;
+    }
+
+    const components: RollComponent[] = [];
+    if (isDaggerheartActionRoll) {
+        let hopeValue: number | null = null;
+        let fearValue: number | null = null;
+
+        rollData.values.forEach(die => {
+            const value = Number(die.value);
+            const type = die.type as IDieType | 'mod';
+            const label = die.label;
+
+            if (label === 'Hope' && type === 'd12') {
+                hopeValue = value;
+                components.push({ value, label: 'Hope', type: 'hope' });
+            } else if (label === 'Fear' && type === 'd12') {
+                fearValue = value;
+                components.push({ value, label: 'Fear', type: 'fear' });
+            } else if (label === 'Advantage' && type === 'd6') {
+                components.push({ value, label: 'Advantage', type: 'advantage' });
+            } else if (label === 'Disadvantage' && type === 'd6') {
+                components.push({ value: -value, label: 'Disadvantage', type: 'disadvantage' });
+            } else if (type === 'mod') {
+                components.push({ value, label: traitName || 'Mod', type: 'modifier' });
+            } else {
+                components.push({ value, label: type, type: 'die' });
+            }
+        });
+
+        const outcome = hopeValue !== null && fearValue !== null
+            ? (hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!"))
+            : undefined;
+
+        let displayString = '';
+        components.forEach((c, index) => {
+            displayString += `${index > 0 ? ` ${c.value < 0 ? '-' : '+'} ` : (c.value < 0 ? '-' : '')}${Math.abs(c.value)}[${c.label}]`;
+        });
+
+        return { display: displayString, totalStr: String(total), total, outcome, structuredResult: components };
+
+    } else { // Handle generic rolls
+        const equationStr = String(rollData.equation || '');
+        const opTimes = operator?.['*'];
+        const negativeDiceIndices = (typeof opTimes === 'object' && opTimes?.['-1']) ? opTimes['-1'] as number[] : [];
+
+        if (rollData.values) {
+            // Dice are processed first, in order, so indices match our payload.
+            const diceValues = rollData.values.filter(v => v.type !== 'mod');
+            diceValues.forEach((v, index) => {
+                const value = Number(v.value);
+                const finalValue = negativeDiceIndices.includes(index) ? -value : value;
+                components.push({ value: finalValue, label: v.type, type: 'die' });
+            });
+
+            // Modifiers are processed last and their values are already signed correctly.
+            rollData.values.forEach(v => {
+                if (v.type === 'mod') {
+                    const value = Number(v.value);
+                    components.push({ value, label: 'Modifier', type: 'modifier' });
+                }
+            });
+        }
+
+        return { display: equationStr, totalStr: String(total), total, outcome: undefined, structuredResult: components };
+    }
+}
+
+
+export async function rollWithDddice(
+    dddiceSettings: DddiceSettings,
+    diceString: string,
+    context: string,
+    traitName?: string
+): Promise<{ display: string, totalStr: string, total: number, outcome?: string, structuredResult?: RollComponent[] } | null> {
     const { apiKey, room, theme, hopeTheme, fearTheme, renderInObsidian } = dddiceSettings;
     if (!apiKey || !room || !theme || !hopeTheme || !fearTheme) {
         new Notice("dddice is not fully configured. Please set API Key, Room, and all dice themes in the plugin settings.");
         return null;
     }
 
-    const isDaggerheartActionRoll = diceString.toLowerCase().startsWith("1d12+1d12");
-    const modifierMatch = isDaggerheartActionRoll ? diceString.match(/1d12\+1d12((?:[+-]\d+)*)(?:[+-]1d6)?/i) : null;
-    let disadvantageValue: number | null = null;
+    const cleanedDiceString = diceString.trim().toLowerCase();
+
+    const dualityKeywords = ['dr', 'duality'];
+    let isDaggerheartActionRoll = false;
+    let modifiers = '';
+
+    for (const keyword of dualityKeywords) {
+        if (cleanedDiceString.startsWith(keyword)) {
+            isDaggerheartActionRoll = true;
+            modifiers = cleanedDiceString.substring(keyword.length);
+            break;
+        }
+    }
+
     let dicePayload: IDiceRoll[];
     const rollOptions: IDiceRollOptions = { room, label: context };
+    let operator: IDiceRollOptions['operator'] | undefined;
 
     if (isDaggerheartActionRoll) {
         dicePayload = [
             { type: 'd12', theme: hopeTheme || undefined, label: 'Hope' },
             { type: 'd12', theme: fearTheme || undefined, label: 'Fear' }
         ];
-        if (diceString.includes('+1d6')) {
-            dicePayload.push({ type: 'd6', theme: theme || undefined, label: 'Advantage' });
-        } else if (diceString.includes('-1d6')) {
-            const randomD6Value = Math.floor(Math.random() * 6) + 1;
-            disadvantageValue = randomD6Value;
-            dicePayload.push({ type: 'd6', theme: theme || undefined, label: 'Disadvantage' });
-        }
-        const endModifierMatch = diceString.match(/([+-]\d+)$/);
-        if (endModifierMatch) {
-            const value = parseInt(endModifierMatch[1], 10);
-            if (!isNaN(value)) {
-                dicePayload.push({ type: 'mod', value: value, label: traitName ? `${traitName} Modifier` : 'Trait Modifier' });
+
+        const pattern = /([+-])?\s*(\d*d\d+|\d+)/g;
+        let match;
+
+        while ((match = pattern.exec(modifiers)) !== null) {
+            const sign = match[1] || '+';
+            const part = match[2];
+
+            if (part.toLowerCase() === '1d6' || part.toLowerCase() === 'd6') {
+                if (sign === '-') {
+                    dicePayload.push({ type: 'd6', theme: theme || undefined, label: 'Disadvantage' });
+                    rollOptions.operator = { "*": { "-1": [dicePayload.length - 1] } };
+                } else {
+                    dicePayload.push({ type: 'd6', theme: theme || undefined, label: 'Advantage' });
+                }
+                continue;
+            }
+
+            if (part.includes('d')) {
+                const [countStr, sizeStr] = part.split('d');
+                const count = countStr === '' ? 1 : parseInt(countStr, 10);
+                const size = parseInt(sizeStr, 10);
+                if (!isNaN(count) && !isNaN(size)) {
+                    for (let i = 0; i < count; i++) {
+                        dicePayload.push({ type: `d${size}` as IDieType, theme: theme || undefined });
+                    }
+                }
+            }
+            else {
+                const value = parseInt(part, 10);
+                if (!isNaN(value)) {
+                    dicePayload.push({ type: 'mod', value: sign === '-' ? -value : value });
+                }
             }
         }
     } else {
-        const parsedDice = parseGenericDiceString(diceString);
+        const parsedResult = parseGenericDiceString(diceString);
+        operator = parsedResult.operator;
+        const parsedDice = parsedResult.dice;
         if (parsedDice.length === 0) {
             new Notice(`Invalid dice string for dddice: "${diceString}"`);
             return null;
         }
         dicePayload = parsedDice.map(d => ({ ...d, theme: theme || undefined }));
+        if (operator) {
+            Object.assign(rollOptions, { operator });
+        }
     }
 
     return new Promise((resolve) => {
         try {
-            if (renderInObsidian && _dddiceInstance) {
-                const disadvantageIndex = dicePayload.findIndex(d => d.label?.includes('Disadvantage'));
-                if (disadvantageIndex !== -1) {
-                    rollOptions.operator = { "*": { "-1": [2] } };
-                }
-                const rollPromise = _dddiceInstance.roll(dicePayload, rollOptions);
-                rollPromise.then((result: IApiResponse<'roll', IRoll>) => {
+            const performRoll = (rollPromise: Promise<IApiResponse<'roll', IRoll>>) => {
+                rollPromise.then((result) => {
                     if (result?.data) {
-                        handleRollResult(result.data, context, isDaggerheartActionRoll, diceString, modifierMatch, disadvantageValue, traitName);
-                        if (typeof result.data.total_value === 'number') {
-                            resolve(result.data.total_value);
-                        } else if (typeof result.data.total_value === 'string') {
-                            resolve(parseInt(result.data.total_value, 10));
-                        } else {
-                            resolve(null);
-                        }
+                        const rollResult = handleRollResult(result.data, isDaggerheartActionRoll, traitName, operator);
+                        resolve(rollResult);
                     } else {
                         resolve(null);
                     }
@@ -313,26 +445,14 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
                     console.error("dddice Roll Promise Error:", e);
                     resolve(null);
                 });
+            };
+
+            if (renderInObsidian && _dddiceInstance) {
+                performRoll(_dddiceInstance.roll(dicePayload, rollOptions));
             } else {
                 const dddiceApi = _dddiceInstance?.api ?? initializeDddiceApi(apiKey);
                 if (room) dddiceApi.connect(room);
-                dddiceApi.roll.create(dicePayload, rollOptions).then((roll: IApiResponse<'roll', IRoll>) => {
-                    if (roll.data) {
-                        handleRollResult(roll.data, context, isDaggerheartActionRoll, diceString, modifierMatch, disadvantageValue, traitName);
-                        if (typeof roll.data.total_value === 'number') {
-                            resolve(roll.data.total_value);
-                        } else if (typeof roll.data.total_value === 'string') {
-                            resolve(parseInt(roll.data.total_value, 10));
-                        } else {
-                            resolve(null);
-                        }
-                    } else {
-                        resolve(null);
-                    }
-                }).catch((e: unknown) => {
-                    console.error("dddice API Roll Error:", e);
-                    resolve(null);
-                });
+                performRoll(dddiceApi.roll.create(dicePayload, rollOptions));
             }
         } catch (e: any) {
             new Notice('Failed to roll with dddice. Check settings and console.');
@@ -340,54 +460,4 @@ export async function rollWithDddice(dddiceSettings: DddiceSettings, diceString:
             resolve(null);
         }
     });
-}
-
-/**
- * Helper function to handle the roll result and display the appropriate notification.
- */
-function handleRollResult(
-    rollData: IRoll,
-    context: string,
-    isDaggerheartActionRoll: boolean,
-    diceString: string,
-    modifierMatch: RegExpMatchArray | null,
-    disadvantageValue: number | null,
-    traitName?: string
-) {
-    const values = rollData.values.map((v: { value: number }) => v.value);
-
-    if (isDaggerheartActionRoll && values.length >= 2) {
-        const hopeValue = values[0];
-        const fearValue = values[1];
-        const totalWithModifiers = String(rollData.total_value);
-        const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
-        let resultDisplay = `${hopeValue}[Hope]+${fearValue}[Fear]`;
-        if (diceString.includes('+1d6') && values.length > 2) {
-            const advantageDie = values[2];
-            resultDisplay += `+${advantageDie}[Advantage]`;
-        } else if (diceString.includes('-1d6') && disadvantageValue !== null) {
-            resultDisplay += `-${disadvantageValue}[Disadvantage]`;
-        }
-        const traitModifiers = [];
-        for (let i = (diceString.includes('+1d6') ? 3 : 2); i < values.length; i++) {
-            traitModifiers.push(values[i]);
-        }
-        if (traitModifiers.length > 0) {
-            const totalTraitMod = traitModifiers.reduce((sum, mod) => sum + mod, 0);
-            if (totalTraitMod !== 0) {
-                const sign = totalTraitMod > 0 ? '+' : '';
-                resultDisplay += `${sign}${totalTraitMod}[${traitName || 'Trait'}]`;
-            }
-        }
-        displayRollNotice(context, resultDisplay, totalWithModifiers, outcome);
-    } else {
-        try {
-            const equationStr = String(rollData.equation || '');
-            const totalStr = String(rollData.total_value || '0');
-            displayRollNotice(context, equationStr, totalStr);
-        } catch (e) {
-            new Notice(`${context}: Roll completed`, 5000);
-            console.error("Error formatting dice result:", e);
-        }
-    }
 }

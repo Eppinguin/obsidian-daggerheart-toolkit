@@ -16,7 +16,7 @@ import {
 import * as dddice from './services/dddice-service';
 import type { ITheme } from './services/dddice-service';
 import { DddiceActivationModal } from './services/dddice-activation';
-import { displayRollNotice } from './services/dice-helpers';
+import { RollCompletedPayload, RollComponent } from './DiceTray';
 
 declare module "obsidian" {
     interface Workspace {
@@ -26,10 +26,30 @@ declare module "obsidian" {
         trigger(name: 'daggerheart-compendium-update'): void;
         on(name: 'daggerheart-encounter-update', callback: () => void, ctx?: any): EventRef;
         trigger(name: 'daggerheart-encounter-update'): void;
+        on(name: 'daggerheart-roll-completed', callback: (payload: RollCompletedPayload) => void, ctx?: any): EventRef;
+        trigger(name: 'daggerheart-roll-completed', payload: RollCompletedPayload): void;
     }
 }
 
 const USER_COMPENDIUM_FOLDER = 'user_data';
+
+/**
+ * Expands a dice string like "2d12+3" into "1d12+1d12+3".
+ * This ensures the dice roller returns a flat list of results.
+ * @param notation The dice string to expand.
+ * @returns The expanded dice string.
+ */
+function expandDiceString(notation: string): string {
+    const diceGroupRegex = /(\d+)d(\d+)/g;
+    return notation.replace(diceGroupRegex, (match, countStr, size) => {
+        const count = parseInt(countStr, 10);
+        if (count <= 1) {
+            return match; // No need to expand 1d12 or 0d12
+        }
+        const expanded = Array(count).fill(`1d${size}`);
+        return expanded.join('+');
+    });
+}
 
 function getThemePreviewUrl(theme: ITheme): string | undefined {
     const preview = theme?.preview;
@@ -216,11 +236,23 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
     public getActiveCharacterId(): string | null { return this.activeCharacterId; }
 
+    public async updateDddiceParticipantName() {
+        if (this.settings.diceProvider !== 'dddice' || !this.settings.dddice.apiKey || !this.settings.dddice.room) {
+            return;
+        }
+
+        const activeCharacter = this.getActiveCharacter();
+        const characterName = activeCharacter ? activeCharacter.name : 'Observer';
+
+        await dddice.updateParticipantName(this.settings.dddice, characterName);
+    }
+
     public async setActiveCharacterId(id: string | null) {
         this.activeCharacterId = id;
         this.settings.activeCharacterId = id;
         await this.saveSettings();
         this.app.workspace.trigger('daggerheart-character-update');
+        await this.updateDddiceParticipantName();
     }
 
     public async updateCharacter(character: Character) {
@@ -232,6 +264,9 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
         await this.saveCharacters();
         this.app.workspace.trigger('daggerheart-character-update');
+        if (character.id === this.activeCharacterId) {
+            await this.updateDddiceParticipantName();
+        }
     }
 
     public async deleteCharacter(id: string) {
@@ -419,8 +454,33 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     public async rollDice(diceString: string, context: string, traitName?: string): Promise<number | null> {
+        const trimmedDiceString = diceString.trim().toLowerCase();
+        const dualityKeywords = ['dr', 'duality'];
+
+        const containsKeyword = dualityKeywords.some(kw => trimmedDiceString.includes(kw));
+        const startsWithKeyword = dualityKeywords.some(kw => trimmedDiceString.startsWith(kw));
+
+        if (containsKeyword && !startsWithKeyword) {
+            new Notice("Duality rolls ('dr' or 'duality') must be at the start of the formula.", 5000);
+            return null;
+        }
+
+        let resultPayload: RollCompletedPayload | null = null;
+        let total: number | null = null;
+
         if (this.settings.diceProvider === 'dddice') {
-            return await dddice.rollWithDddice(this.settings.dddice, diceString, context, traitName);
+            const dddiceResult = await dddice.rollWithDddice(this.settings.dddice, diceString, context, traitName);
+
+            if (dddiceResult) {
+                resultPayload = {
+                    context: context,
+                    result: dddiceResult.display,
+                    total: dddiceResult.totalStr,
+                    outcome: dddiceResult.outcome,
+                    structuredResult: dddiceResult.structuredResult,
+                };
+                total = dddiceResult.total;
+            }
         } else {
             if (!this.settings.enableDiceRoller || !this.isDiceRollerEnabled) {
                 new Notice("Dice Roller integration is not enabled in plugin settings.");
@@ -432,54 +492,100 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 return null;
             }
             try {
-                const roller = await diceRollerPlugin.api.getRoller(diceString);
-                await roller.roll({ showDice: this.settings.useGraphicalDice, throw: this.settings.useGraphicalDice });
-                if (!this.settings.useGraphicalDice) {
-                    const isDaggerheartActionRoll = diceString.toLowerCase().startsWith("1d12+1d12");
+                let isDaggerheartActionRoll = false;
+                let rollerDiceString = diceString;
 
-                    if (isDaggerheartActionRoll) {
-                        const match = roller.result.match(/^(\d+)\s*\+\s*(\d+)(?:\s*\+\s*(.+))?$/);
-                        if (match) {
-                            const hopeValue = parseInt(match[1]);
-                            const fearValue = parseInt(match[2]);
-                            const outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
-                            let resultDisplay = `${hopeValue}[Hope]+${fearValue}[Fear]`;
-                            if (match[3]) {
-                                const advantage = match[3].match(/(\d+)/);
-                                if (diceString.includes('+1d6') && advantage) {
-                                    resultDisplay += `+${advantage[1]}[Advantage]`;
-                                } else if (diceString.includes('-1d6') && advantage) {
-                                    resultDisplay += `-${advantage[1]}[Disadvantage]`;
-                                } else if (traitName) {
-                                    resultDisplay += `+${match[3]}[${traitName}]`;
-                                } else {
-                                    resultDisplay += `+${match[3]}`;
-                                }
-                            }
-                            const total = roller.result.replace(/\s/g, '').split('=')[1];
-                            displayRollNotice(context, resultDisplay, total, outcome);
-                        } else {
-                            displayRollNotice(context, roller.result, roller.result.replace(/\s/g, '').split('=').pop() || '');
-                        }
-                    } else {
-                        const resultParts = roller.result.split('=');
-                        if (resultParts.length > 1) {
-                            const equation = resultParts[0].trim();
-                            const total = resultParts[1].trim();
-                            displayRollNotice(context, equation, total);
-                        } else {
-                            displayRollNotice(context, roller.result, roller.result.replace(/\s/g, '').split('=').pop() || '');
-                        }
+                for (const keyword of dualityKeywords) {
+                    if (diceString.toLowerCase().startsWith(keyword)) {
+                        isDaggerheartActionRoll = true;
+                        const modifiers = diceString.substring(keyword.length);
+                        rollerDiceString = `1d12+1d12${modifiers}`;
+                        break;
                     }
                 }
-                return roller.total;
+
+                if (!isDaggerheartActionRoll) {
+                    // This is for generic rolls, expand dice pools.
+                    rollerDiceString = expandDiceString(rollerDiceString);
+                }
+
+                const roller = await diceRollerPlugin.api.getRoller(rollerDiceString);
+                await roller.roll({ showDice: this.settings.useGraphicalDice, throw: this.settings.useGraphicalDice });
+
+                total = roller.result;
+
+                const resultDisplay = roller.prettified ?? diceString;
+                const totalStr = String(total);
+                let outcome: string | undefined = undefined;
+                const structuredResult: RollComponent[] = [];
+                const rollerResults = (roller.results && Array.isArray(roller.results)) ? [...roller.results] : [];
+
+                if (isDaggerheartActionRoll && rollerResults.length > 0) {
+                    const d12s = rollerResults.filter((r: any) => r.type === 'die' && r.dice?.faces === 12);
+
+                    if (d12s.length >= 2) {
+                        const hopeDie = d12s[0];
+                        const fearDie = d12s[1];
+                        const hopeValue = hopeDie.result;
+                        const fearValue = fearDie.result;
+
+                        structuredResult.push({ value: hopeValue, label: 'Hope', type: 'hope' });
+                        structuredResult.push({ value: fearValue, label: 'Fear', type: 'fear' });
+
+                        outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
+
+                        // Remove processed d12s to avoid double counting
+                        const hopeIndex = rollerResults.indexOf(hopeDie);
+                        if (hopeIndex > -1) rollerResults.splice(hopeIndex, 1);
+
+                        const fearIndex = rollerResults.indexOf(fearDie);
+                        if (fearIndex > -1) rollerResults.splice(fearIndex, 1);
+                    }
+
+                    rollerResults.forEach((res: any) => {
+                        if (res.type === 'die' && res.dice?.faces === 6) {
+                            if (res.dice?.negative) {
+                                structuredResult.push({ value: -res.result, label: 'Disadvantage', type: 'disadvantage' });
+                            } else {
+                                structuredResult.push({ value: res.result, label: 'Advantage', type: 'advantage' });
+                            }
+                        } else if (res.type === 'modifier') {
+                            structuredResult.push({ value: res.modifier, label: traitName || 'Mod', type: 'modifier' });
+                        } else if (res.type === 'die') {
+                            const value = res.dice?.negative ? -res.result : res.result;
+                            structuredResult.push({ value, label: `d${res.dice?.faces}`, type: 'die' });
+                        }
+                    });
+
+                } else if (rollerResults.length > 0) {
+                    rollerResults.forEach((res: any) => {
+                        if (res.type === 'die') {
+                            const value = res.dice?.negative ? -res.result : res.result;
+                            structuredResult.push({ value, label: `d${res.dice?.faces}`, type: 'die' });
+                        } else if (res.type === 'modifier') {
+                            structuredResult.push({ value: res.modifier, label: 'Modifier', type: 'modifier' });
+                        }
+                    });
+                }
+
+                resultPayload = { context, result: resultDisplay, total: totalStr, outcome, structuredResult };
+
             } catch (e) {
                 console.error("Daggerheart: Error rolling dice with Dice Roller:", e);
                 new Notice(`Error rolling dice for "${diceString}".`);
                 return null;
             }
         }
+
+        if (resultPayload) {
+            this.app.workspace.trigger('daggerheart-roll-completed', resultPayload);
+        } else if (total === null) {
+            new Notice(`Failed to roll: ${diceString}`);
+        }
+
+        return total;
     }
+
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -513,7 +619,9 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     public initializeDddiceIfNeeded() {
         const { diceProvider, dddice: dddiceSettings } = this.settings;
         if (diceProvider === 'dddice' && dddiceSettings.apiKey && dddiceSettings.renderInObsidian && dddiceSettings.room) {
-            dddice.initializeDddiceRenderer(dddiceSettings);
+            dddice.initializeDddiceRenderer(dddiceSettings, () => {
+                this.updateDddiceParticipantName();
+            });
         }
     }
 }

@@ -23,6 +23,7 @@ import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
 import { handleAdvantageDisadvantage, formatTraitModifier } from '../services/dice-helpers';
 import { ContentType } from '../services/export-import';
 import { CharacterCreator } from './components/CharacterCreator';
+import { DiceTray } from 'src/DiceTray';
 
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
@@ -64,11 +65,13 @@ export class CharacterSheetView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
     private activeManagerTab: ManagerTab = 'abilities';
     private isEditingDetails = false;
+    private diceTray: DiceTray;
 
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
         this.plugin = plugin;
         this.containerEl.addClass('dh-character-sheet-view');
+        this.diceTray = new DiceTray(this.plugin);
     }
 
     getViewType(): string { return CHARACTER_SHEET_VIEW_TYPE; }
@@ -78,6 +81,11 @@ export class CharacterSheetView extends ItemView {
     async onOpen() {
         this.draw();
         this.registerEvent(this.app.workspace.on('daggerheart-character-update', () => this.draw()));
+    }
+
+    async onClose() {
+        this.diceTray?.unload();
+        super.onClose();
     }
 
     draw() {
@@ -111,6 +119,8 @@ export class CharacterSheetView extends ItemView {
         }
         main.scrollTop = scrollPosition;
 
+        this.diceTray.render(this.containerEl);
+
         if (focusedInfo) {
             const newEl = container.querySelector(`#${focusedInfo.id}`) as HTMLTextAreaElement;
             if (newEl) {
@@ -122,6 +132,10 @@ export class CharacterSheetView extends ItemView {
                 }
             }
         }
+    }
+
+    public setTrayFormula(formula: string, context: string, modifier?: number) {
+        this.diceTray.setFormula(formula, context, modifier);
     }
 
     private drawTopBar(parent: HTMLElement) {
@@ -487,24 +501,24 @@ export class CharacterSheetView extends ItemView {
             });
         }
         const ownedSubclassFeatures = data.features.filter((f2) => f2.source === "Subclass");
-        if (ownedSubclassFeatures.length === 0) {      
+        if (ownedSubclassFeatures.length === 0) {
         } else {
             ownedSubclassFeatures.forEach((ownedFeatures) => {
-                 if(ownedFeatures.name.toLowerCase().includes("unwavering")){
+                if (ownedFeatures.name.toLowerCase().includes("unwavering")) {
                     finalMajorThreshold = finalMajorThreshold + 1;
                     finalSevereThreshold = finalSevereThreshold + 1;
                 }
-                if(ownedFeatures.name.toLowerCase().includes("unrelenting")){
+                if (ownedFeatures.name.toLowerCase().includes("unrelenting")) {
                     finalMajorThreshold = finalMajorThreshold + 2;
                     finalSevereThreshold = finalSevereThreshold + 2;
                 }
-                if(ownedFeatures.name.toLowerCase().includes("undaunted")){
+                if (ownedFeatures.name.toLowerCase().includes("undaunted")) {
                     finalMajorThreshold = finalMajorThreshold + 3;
                     finalSevereThreshold = finalSevereThreshold + 3;
                 }
             });
         }
-       
+
         //add modifiers for Thresholds here
         finalMajorThreshold += (data.customModifiers?.majorThreshold || 0);
         finalSevereThreshold += (data.customModifiers?.severeThreshold || 0);
@@ -535,18 +549,24 @@ export class CharacterSheetView extends ItemView {
                 skillsList.createDiv({ text: skill });
             });
             if (!trait.locked) {
-                box.title = `Click to roll ${name}. Hold Shift for Advantage or Alt for Disadvantage.`;
+                box.title = `Click to roll ${name}. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
                 box.addEventListener('click', (event) => {
-                    let baseDiceString = `1d12+1d12`;
-                    const modifierString = formatTraitModifier(trait.value);
-                    let rollTitle = `${name} Roll`;
+                    const baseDiceString = `dr`;
+                    const modifier = trait.value;
+                    const context = `${name} Roll`;
+
+                    if (event.metaKey || event.ctrlKey) {
+                        this.setTrayFormula(baseDiceString, context, modifier);
+                        return;
+                    }
+
                     const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
                         event,
                         baseDiceString,
-                        rollTitle
+                        context
                     );
                     this.plugin.rollDice(
-                        `${diceString}${modifierString}`,
+                        `${diceString}${formatTraitModifier(modifier)}`,
                         newRollTitle,
                         name
                     );
@@ -589,17 +609,24 @@ export class CharacterSheetView extends ItemView {
                 rollBox.createDiv({ text: traitDisplay });
                 rollBox.createDiv({ text: traitName });
                 const rollTitle = `Unarmed Attack (${traitName})`;
-                rollBox.title = `Click to roll ${traitName}. Hold Shift for Advantage or Alt for Disadvantage.`;
+                rollBox.title = `Click to roll ${traitName}. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
                 rollBox.addEventListener('click', (event) => {
-                    let baseDiceString = `1d12+1d12`;
-                    const modifierString = formatTraitModifier(traitValue);
+                    const formula = 'dr';
+                    const modifier = traitValue;
+
+                    if (event.metaKey || event.ctrlKey) {
+                        this.setTrayFormula(formula, rollTitle, modifier);
+                        return;
+                    }
+
+                    let baseDiceString = `dr`;
                     const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
                         event,
                         baseDiceString,
                         rollTitle
                     );
                     this.plugin.rollDice(
-                        `${diceString}${modifierString}`,
+                        `${diceString}${formatTraitModifier(modifier)}`,
                         newRollTitle,
                         traitName
                     );
@@ -615,8 +642,12 @@ export class CharacterSheetView extends ItemView {
         const damageFormula = `${proficiency}d4`;
         damageBox.createDiv({ text: damageFormula });
         damageBox.createDiv({ text: "Damage" });
-        damageBox.title = `Click to roll ${damageFormula}`;
-        damageBox.addEventListener('click', () => {
+        damageBox.title = `Click to roll ${damageFormula}. Hold Cmd/Ctrl to add to Dice Tray.`;
+        damageBox.addEventListener('click', (event) => {
+            if (event.metaKey || event.ctrlKey) {
+                this.setTrayFormula(damageFormula, 'Unarmed Damage');
+                return;
+            }
             this.plugin.rollDice(damageFormula, `Unarmed Damage`);
         });
     }
@@ -641,16 +672,24 @@ export class CharacterSheetView extends ItemView {
             rollBox.createDiv({ text: traitDisplay });
             rollBox.createDiv({ text: traitName });
             let rollTitle = `${weapon.name} Attack`;
+            rollBox.title = `Click to roll. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
             rollBox.addEventListener('click', (event) => {
-                let baseDiceString = `1d12+1d12`;
-                const modifierString = formatTraitModifier(traitValue);
+                const formula = 'dr';
+                const modifier = traitValue;
+
+                if (event.metaKey || event.ctrlKey) {
+                    this.setTrayFormula(formula, rollTitle, modifier);
+                    return;
+                }
+
+                let baseDiceString = `dr`;
                 const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
                     event,
                     baseDiceString,
                     rollTitle
                 );
                 this.plugin.rollDice(
-                    `${diceString}${modifierString}`,
+                    `${diceString}${formatTraitModifier(modifier)}`,
                     newRollTitle,
                     traitName
                 );
@@ -673,8 +712,12 @@ export class CharacterSheetView extends ItemView {
 
         damageBox.createDiv({ text: damageFormula });
         damageBox.createDiv({ text: weapon.damageType });
-        damageBox.title = `Click to roll ${damageFormula}`;
-        damageBox.addEventListener('click', () => {
+        damageBox.title = `Click to roll ${damageFormula}. Hold Cmd/Ctrl to add to Dice Tray.`;
+        damageBox.addEventListener('click', (event) => {
+            if (event.metaKey || event.ctrlKey) {
+                this.setTrayFormula(damageFormula, `${weapon.name} Damage`);
+                return;
+            }
             this.plugin.rollDice(damageFormula, `${weapon.name} Damage`);
         });
     }
@@ -729,7 +772,10 @@ export class CharacterSheetView extends ItemView {
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Experience' });
         (data.experiences || []).forEach(exp => {
-            const card = this.createExperienceCard(container, exp.name, `+${exp.value}`, false);
+            const card = this.createExperienceCard(container, exp.name, `+${exp.value}`, true);
+            card.addEventListener('click', () => {
+                this.diceTray.addModifier(exp.value);
+            });
         });
     }
 
@@ -1168,9 +1214,19 @@ export class CharacterSheetView extends ItemView {
                     const rollBox = footer.createEl('div', { cls: 'dh-spellcast-box dh-spellcast-box-inline' });
                     rollBox.createSpan({ cls: 'dh-spellcast-modifier', text: `${traitValue >= 0 ? '+' : ''}${traitValue}` });
                     rollBox.createSpan({ text: ` ${spellcastingTraitName}` });
+                    rollBox.title = `Click to roll. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
                     rollBox.addEventListener('click', (event) => {
-                        const { diceString } = handleAdvantageDisadvantage(event, `1d12+1d12`, `${feature.name} Spellcast`);
-                        this.plugin.rollDice(`${diceString}${formatTraitModifier(traitValue)}`, `${feature.name} Spellcast`, spellcastingTraitName);
+                        const formula = 'dr';
+                        const modifier = traitValue;
+                        const context = `${feature.name} Spellcast`;
+
+                        if (event.metaKey || event.ctrlKey) {
+                            this.setTrayFormula(formula, context, modifier);
+                            return;
+                        }
+
+                        const { diceString } = handleAdvantageDisadvantage(event, `dr`, context);
+                        this.plugin.rollDice(`${diceString}${formatTraitModifier(modifier)}`, context, spellcastingTraitName);
                     });
                 }
             }
