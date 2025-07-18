@@ -1086,7 +1086,7 @@ export class CharacterSheetView extends ItemView {
 
     private drawStancesSection(parent: HTMLElement, character: Character) {
         const section = parent.createDiv({ cls: 'dh-card-section' });
-        const header = section.createDiv({ cls: 'dh-section-header-bar' });
+        //const header = section.createDiv({ cls: 'dh-section-header-bar' });
         //header.createEl('h3', { text: 'Stances' });
         
         const groupStances = this.plugin.compendium.stances.reduce((acc, stance) => {
@@ -1103,35 +1103,17 @@ export class CharacterSheetView extends ItemView {
         for (const tier of tierOrder) {
             const stances = groupStances[tier];
             if (stances && stances.length > 0) {
-                const groupContainer = section.createDiv({ cls: 'dh-feature-group' });
+                const body = section.createDiv({ cls: 'dh-card-section' });
+                const groupContainer = body.createDiv({ cls: 'dh-section-header-bar' });
                 groupContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
-                const stanceContainer = groupContainer.createDiv({ cls: 'dh-feature-grid' });
+                const stanceContainer = body.createDiv({ cls: 'dh-advancement-choice' });
                 
                 for (let i = 0; i < 2; i++) {
 
-                    let isEquipped = false;
-                    const actionsCell = stanceContainer.createDiv({ cls: 'dh-feature-group' });
-                    
-                    /*auswahlbox für Stances passend zum tier hinzufügen
-                    */
-                    let selectedStance = "";
-                    const card = stanceContainer.createDiv({ cls: 'dh-feature-card-body' });
-                    const box = new Setting(actionsCell).setName("Stance");
-                    box.addDropdown(dd => {
-                        dd.addOption('', '--- Select ---');
-                        stances.forEach(sub => dd.addOption(sub.name, sub.name));
-                        dd.setValue('').onChange(value => {
-                            selectedStance = value;
-                            stances.forEach((stance) => {
-                                if (selectedStance !== "" && stance.name.toLowerCase().includes(selectedStance.toLowerCase())) {
-                                renderRollableContent(this.plugin, stance.description, card, selectedStance, true);
-                                }
-                            });
-                        });   
-                    });
-                    
+                    let isEquipped = false;               
                 
-                    const equipBtn = actionsCell.createEl('button');
+                    const equipBtn = stanceContainer.createEl('button');
+                    const textContainer = stanceContainer.createEl("section");
                     setIcon(equipBtn, isEquipped ? 'check-square' : 'square');
                     equipBtn.ariaLabel = isEquipped ? 'Unequip' : 'Equip';
                     equipBtn.addEventListener('click', () => {
@@ -1146,6 +1128,22 @@ export class CharacterSheetView extends ItemView {
                             setIcon(equipBtn, 'check-square');
                             equipBtn.ariaLabel = 'Equip';
                         }
+                    });
+                    /*auswahlbox für Stances passend zum tier hinzufügen
+                    */
+                    let selectedStance = "";
+                    const box = new Setting(stanceContainer);
+                    box.addDropdown(dd => {
+                        dd.addOption('', '--- Select ---');
+                        stances.forEach(sub => dd.addOption(sub.name, sub.name));
+                        dd.setValue('').onChange(value => {
+                            selectedStance = value;
+                            stances.forEach((stance) => {
+                                if (selectedStance !== "" && stance.name.toLowerCase().includes(selectedStance.toLowerCase())) {
+                                renderRollableContent(this.plugin, stance.description, textContainer, selectedStance, true);
+                                }
+                            });
+                        });   
                     });
                 }
 
