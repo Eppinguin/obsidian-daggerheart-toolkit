@@ -17,7 +17,9 @@ import {
     ArmorItem,
     WeaponItem,
     ConsumableItem,
-    InventoryItem
+    InventoryItem,
+    Beastform,
+    Stances
 } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { v4 as uuidv4 } from 'uuid';
@@ -38,6 +40,8 @@ export class DaggerheartCompendium {
     public items: CompendiumItem[] = [];
     public consumables: CompendiumItem[] = [];
     public statblocks: StatblockData[] = [];
+    public beastforms: Beastform[] = [];
+    public stances: Stances[] = [];
 
     constructor(plugin: DaggerheartStatblockPlugin) {
         this.plugin = plugin;
@@ -51,6 +55,8 @@ export class DaggerheartCompendium {
         const srdClasses = await this.loadSrdFile<JsonClass>('classes.json');
         const srdSubclasses = await this.loadSrdFile<JsonSubclass>('subclasses.json');
         const srdAbilities = await this.loadSrdFile<JsonAbility>('abilities.json');
+        const srdBeastforms = await this.loadSrdFile<Beastform>('beastforms.json');
+        const srdStances = await this.loadSrdFile<Stances>('stances.json');
 
         // Use settings to load user files
         const userAncestries = await this.loadUserFile<JsonAncestry>(this.plugin.settings.userAncestriesFile);
@@ -64,6 +70,8 @@ export class DaggerheartCompendium {
         this.classes = this.mergeData(srdClasses, userClasses);
         this.subclasses = this.mergeData(srdSubclasses, userSubclasses);
         this.abilities = this.mergeData(srdAbilities, userAbilities);
+        this.beastforms = srdBeastforms;
+        this.stances = srdStances;
 
         this.armors = this.mergeData(
             (await this.loadSrdFile<JsonArmor>('armor.json')).map(a => ({ ...a, _type: 'armor' })),

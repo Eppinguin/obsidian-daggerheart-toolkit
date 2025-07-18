@@ -82,6 +82,25 @@ export interface InherentFeature {
     description: string;
     source: 'Class' | 'Subclass' | 'Ancestry' | 'Community';
 }
+export interface Beastform {
+  name: string;
+  examples: string;
+  tier: number;
+  attributes: { trait: 'Strength' | 'Finesse' | 'Instinct' | 'Presence' | 'Knowledge' | 'Agility' | 'Evasion'; bonus: number }[];
+  attack: {
+    range: string;
+    trait: string;
+    dice: string;
+    type: string;
+  };
+  advantages: string;
+  features: { name: string; description: string }[];
+}
+export interface Stances {
+  name: string;
+  tier: number;
+  description: string;
+}
 
 // Base Item types with _type property
 export type ArmorItem = JsonArmor & { _type: 'armor'; };

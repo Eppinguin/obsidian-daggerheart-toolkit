@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Brutal",
+    "tier": 1,
+    "description": "When you roll the maximum value on a damage die, roll an additional damage die."
+  },
+  {
+    "name": "Defensive",
+    "tier": 1,
+    "description": "Attack rolls against you have disadvantage unless the adversary marks a Stress."
+  },
+  {
+    "name": "Grappling",
+    "tier": 1,
+    "description": "On a successful attack, you can spend a Focus to make the target temporarily Restrained."
+  },
+  {
+    "name": "Steady",
+    "tier": 1,
+    "description": "Gain a -1 penalty to your Evasion. When you deal damage on a successful attack, roll an additional damage die and drop the lowest."
+  },
+  {
+    "name": "Precise",
+    "tier": 1,
+    "description": "Gain a +1 bonus to your attack rolls."
+  },
+  {
+    "name": "Quick",
+    "tier": 1,
+    "description": "When making an attack roll, spend a Focus to include an additional target within range."
+  },
+  {
+    "name": "Deadly",
+    "tier": 2,
+    "description": "When you deal Severe damage, the target marks an additional HP."
+  },
+  {
+    "name": "Hindering",
+    "tier": 2,
+    "description": "On a successful attack, you can spend a Focus to make the target temporarily Hindered. While Hindered, their attack rolls have a -2 penalty."
+  },
+  {
+    "name": "Invigorating",
+    "tier": 2,
+    "description": "When you make a successful attack, roll a d4. On a 4, gain a Focus."
+  },
+  {
+    "name": "Immovable",
+    "tier": 2,
+    "description": "Gain a +2 bonus to your damage thresholds and you cannot be moved unwillingly."
+  },
+  {
+    "name": "Nimble",
+    "tier": 2,
+    "description": "When an adversary makes a successful attack roll against you, you can spend a number of Focus up to your Tier. Roll a number of d6s equal to 1 + the Focus spent. If any of the dice values match, you take no damage from the attack."
+  },
+  {
+    "name": "Otherworldly",
+    "tier": 2,
+    "description": "You can choose whether to do Physical or Magic damage."
+  },
+  {
+    "name": "Scary",
+    "tier": 2,
+    "description": "Successful attacks also force the target to mark a Stress."
+  },
+  {
+    "name": "Deflecting",
+    "tier": 3,
+    "description": "When you are targeted by an attack, you can spend 2 Focus to gain a bonus to your Evasion equal to your Armor Score against the attack."
+  },
+  {
+    "name": "Devastating",
+    "tier": 3,
+    "description": "Spend a Focus before your attack roll to use d20s as your damage dice instead."
+  },
+  {
+    "name": "Dueling",
+    "tier": 3,
+    "description": "Gain advantage on attack rolls when there are no other adversaries or allies in Very Close range of you or your target."
+  },
+  {
+    "name": "Compounding",
+    "tier": 3,
+    "description": "When you roll the maximum value on a Combo Die, increase the size of the subsequent Combo Dice you roll for the attack (at a maximum of d12s)."
+  },
+  {
+    "name": "Inexorable",
+    "tier": 3,
+    "description": "Attacks against you have disadvantage if you have more than two adversaries within Melee of you."
+  },
+  {
+    "name": "Favored",
+    "tier": 3,
+    "description": "Add the trait of your choice to your damage roll."
+  },
+  {
+    "name": "Sheltering",
+    "tier": 3,
+    "description": "When you mark an Armor Slot, it reduces damage for you and all allies within Melee range of you who took the same damage."
+  },
+  {
+    "name": "Crushing",
+    "tier": 4,
+    "description": "When you roll a 1 on a damage die, it can be treated as the highest value on the die instead."
+  },
+  {
+    "name": "Infuriating",
+    "tier": 4,
+    "description": "On a successful attack, the target becomes Furious. While Furious, they are Vulnerable and have a -2 penalty to their attack rolls. They can only clear Furious by succeeding on an attack against you."
+  },
+  {
+    "name": "Sweeping",
+    "tier": 4,
+    "description": "Your attack targets all adversaries within Very Close range. Deal half damage to all targets you succeed against."
+  },
+  {
+    "name": "Discerning",
+    "tier": 4,
+    "description": "You may choose the target of your attack after making your attack roll. The GM will tell you who the attack would succeed against."
+  }
+]

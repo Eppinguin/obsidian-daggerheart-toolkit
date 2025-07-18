@@ -1,9 +1,11 @@
-import { ItemView, WorkspaceLeaf, Notice, setIcon, TFile, MarkdownRenderer, Menu } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, TFile, MarkdownRenderer, Menu } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
 import {
     Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, ArmorItem, WeaponItem, AvatarTransform, InherentFeature,
-    TokenTrackerState
+    TokenTrackerState,
+    Beastform,
+    Stances
 } from '../types';
 import {
     AddItemModal,
@@ -26,7 +28,7 @@ import { CharacterCreator } from './components/CharacterCreator';
 
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
-type ManagerTab = 'abilities' | 'inventory' | 'details';
+type ManagerTab = 'abilities' | 'inventory' | 'details' | "beastforms" | "stances";
 const TRAIT_SKILLS: { [key in keyof Character['traits']]: string[] } = {
     Agility: ['Dodge', 'Sprint', 'Leap'],
     Strength: ['Lift', 'Smash', 'Grapple'],
@@ -739,11 +741,19 @@ export class CharacterSheetView extends ItemView {
         this.createManagerTab(tabs, 'abilities', 'Abilities');
         this.createManagerTab(tabs, 'inventory', 'Equipment');
         this.createManagerTab(tabs, 'details', 'Details');
+        if(data.classId.match("Druid")){
+            this.createManagerTab(tabs, 'beastforms', 'Beastforms');
+        }
+        if(data.classId.match("Brawler")){
+            this.createManagerTab(tabs, 'stances', 'Stances');
+        }
         const content = managerContainer.createDiv({ cls: 'dh-manager-content' });
         switch (this.activeManagerTab) {
             case 'abilities': this.drawAbilitiesManager(content, data); break;
             case 'inventory': this.drawInventoryManager(content, data); break;
             case 'details': this.drawDetailsManager(content, data); break;
+            case 'beastforms': this.drawBeasformsSection(content, data); break;
+            case 'stances': this.drawStancesSection(content, data); break;
         }
     }
 
@@ -963,7 +973,7 @@ export class CharacterSheetView extends ItemView {
         const section = parent.createDiv({ cls: 'dh-card-section' });
         const header = section.createDiv({ cls: 'dh-section-header-bar' });
         header.createEl('h3', { text: 'Features' });
-
+        
         const groupedFeatures = character.features.reduce((acc, feature) => {
             const source = feature.source;
             if (!acc[source]) {
@@ -984,6 +994,115 @@ export class CharacterSheetView extends ItemView {
                 features.forEach(feat => {
                     this.createFeatureCard(grid, feat, character);
                 });
+            }
+        }
+    }
+
+    private drawBeasformsSection(parent: HTMLElement, character: Character) {
+        const section = parent.createDiv({ cls: 'dh-card-section' });
+        const header = section.createDiv({ cls: 'dh-section-header-bar' });
+        //header.createEl('h3', { text: 'Beastforms' });
+        
+        const beastforms = this.plugin.compendium.beastforms.reduce((acc, beast) => {
+            const tier = beast.tier;
+            if (!acc[tier]) {
+                acc[tier] = [];
+            }
+            acc[tier].push(beast);
+            return acc;
+        }, {} as Record<Beastform['tier'], Beastform[]>);
+
+        const tierOrder: Beastform['tier'][] = [1, 2, 3, 4];
+        
+        for (const tier of tierOrder) {
+            const beasts = beastforms[tier];
+            if (beasts && beasts.length > 0) {
+                const buttonContainer = section.createDiv({ cls: 'dh-section-header-bar' });
+                buttonContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
+                const button = buttonContainer.createEl('button', { text: "Tier " + tier.toString()+ " ausblenden" });
+                const groupContainer = section.createDiv({ cls: 'dh-feature-group' });
+
+                let visible = true;
+
+                button.addEventListener("click", () => {
+                    visible = !visible;
+                    groupContainer.style.display = visible ? "block" : "none";
+                    button.textContent = visible ? "Tier " + tier.toString()+ " ausblenden" : "Tier " + tier.toString()+ " anzeigen";
+                });
+                //groupContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
+                const grid = groupContainer.createDiv({ cls: 'dh-feature-grid' });
+                beasts.forEach(beast => {
+                    this.createBeastCard(grid, beast, character);
+                });
+            }
+        }
+    }
+
+    private drawStancesSection(parent: HTMLElement, character: Character) {
+        const section = parent.createDiv({ cls: 'dh-card-section' });
+        const header = section.createDiv({ cls: 'dh-section-header-bar' });
+        //header.createEl('h3', { text: 'Stances' });
+        
+        const groupStances = this.plugin.compendium.stances.reduce((acc, stance) => {
+            const tier = stance.tier;
+            if (!acc[tier]) {
+                acc[tier] = [];
+            }
+            acc[tier].push(stance);
+            return acc;
+        }, {} as Record<Stances['tier'], Stances[]>);
+
+        const tierOrder: Stances['tier'][] = [1, 2, 3, 4];
+        
+        for (const tier of tierOrder) {
+            const stances = groupStances[tier];
+            if (stances && stances.length > 0) {
+                const groupContainer = section.createDiv({ cls: 'dh-feature-group' });
+                groupContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
+                const stanceContainer = groupContainer.createDiv({ cls: 'dh-feature-grid' });
+                
+                for (let i = 0; i < 2; i++) {
+
+                    let isEquipped = false;
+                    const actionsCell = stanceContainer.createDiv({ cls: 'dh-feature-group' });
+                    
+                    /*auswahlbox für Stances passend zum tier hinzufügen
+                    */
+                    let selectedStance = "";
+                    const card = stanceContainer.createDiv({ cls: 'dh-feature-card-body' });
+                    const box = new Setting(actionsCell).setName("Stance");
+                    box.addDropdown(dd => {
+                        dd.addOption('', '--- Select ---');
+                        stances.forEach(sub => dd.addOption(sub.name, sub.name));
+                        dd.setValue('').onChange(value => {
+                            selectedStance = value;
+                            stances.forEach((stance) => {
+                                if (selectedStance !== "" && stance.name.toLowerCase().includes(selectedStance.toLowerCase())) {
+                                renderRollableContent(this.plugin, stance.description, card, selectedStance, true);
+                                }
+                            });
+                        });   
+                    });
+                    
+                
+                    const equipBtn = actionsCell.createEl('button');
+                    setIcon(equipBtn, isEquipped ? 'check-square' : 'square');
+                    equipBtn.ariaLabel = isEquipped ? 'Unequip' : 'Equip';
+                    equipBtn.addEventListener('click', () => {
+                        if (isEquipped) {
+                            //unequip
+                            isEquipped = false;
+                            setIcon(equipBtn, 'square');
+                            equipBtn.ariaLabel = 'Unequip';
+                        } else {
+                            //equip
+                            isEquipped = true;
+                            setIcon(equipBtn, 'check-square');
+                            equipBtn.ariaLabel = 'Equip';
+                        }
+                    });
+                }
+
             }
         }
     }
@@ -1193,6 +1312,7 @@ export class CharacterSheetView extends ItemView {
             });
         }
     }
+    
 
     private getFeatureMetadata(feature: InherentFeature | DomainCard): { level?: number; domain?: string; type?: string; } {
         const metadata: { level?: number; domain?: string; type?: string; } = {};
@@ -1203,5 +1323,56 @@ export class CharacterSheetView extends ItemView {
             metadata.type = card.type;
         }
         return metadata;
+    }
+
+    private createBeastCard(parent: HTMLElement, beast: Beastform, character: Character) {
+        const card = parent.createDiv({ cls: 'dh-feature-card' });
+        /*
+        card.addEventListener('contextmenu', (event: MouseEvent) => {
+            event.preventDefault();
+            const menu = new Menu();
+
+            menu.addItem((item) =>
+                item
+                    .setTitle("Manage Trackers...")
+                    .setIcon("list-plus")
+                    .onClick(() => {
+                        new ManageTrackersModal(this.app, this.plugin, character, beast).open();
+                    })
+            );
+
+            menu.showAtMouseEvent(event);
+        });
+        */
+        const header = card.createDiv({ cls: 'dh-feature-card-header' });
+        header.createDiv({ cls: 'dh-feature-card-title', text: beast.name });
+
+        const beastHeader = header.createDiv({ cls: 'dh-feature-card-meta-header' });
+        if (beast.examples) beastHeader.createSpan({ cls: 'dh-feature-card-type', text: beast.examples + ", etc" });
+
+        const body = card.createDiv({ cls: 'dh-feature-card-body' });
+        const rollString = this.beastToString(beast);
+        renderRollableContent(this.plugin, rollString, body, beast.name, true);
+    }
+
+    private beastToString(beast : Beastform){
+        let fullstring = "";
+        if (beast.attributes){
+            const traitString = beast.attributes.map(t => `${t.trait} +${t.bonus}`).join(' | ');
+            fullstring += traitString +'\n';
+        }
+        if (beast.attack){
+            const attackString = beast.attack.range + " " + beast.attack.trait + " 1"  + beast.attack.dice + " "  + beast.attack.type;
+            fullstring += attackString +'\n\n';
+        }
+        if (beast.advantages){
+            const advantageString = "Gain advantage on: " + beast.advantages;
+            fullstring += advantageString +'\n\n';
+        }
+        if (beast.features){
+            const featuresString = beast.features.map(t => `${t.name}: ${t.description}`).join('\n\n');
+            fullstring += featuresString +'\n';
+        }
+        return fullstring;
     }
 }
