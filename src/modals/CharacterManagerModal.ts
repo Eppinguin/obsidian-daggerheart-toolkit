@@ -1,23 +1,17 @@
 import { App, Modal, Setting, Notice, TextAreaComponent, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
-import { Character, DomainCard, Experience, InherentFeature, JsonAncestry, Trait } from '../types';
+import { Character, DomainCard, Experience, InherentFeature, JsonAncestry, Trait, Stances } from '../types';
 import { createAvatarEditor } from '../views/components/AvatarEditor';
 import { TRAIT_NAMES } from '../constants';
 import { CardSwapModal } from './CardSwapModal';
 
-/**
- * A modal for freely editing all aspects of a character sheet.
- * This modal disregards game rules and provides direct access to the character data model.
- */
 export class CharacterManagerModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     character: Character;
     onSave: (character: Character) => void;
     private tempCharacter: Character;
     private sectionStates: { [title: string]: boolean } = {};
-
-    // State for mixed ancestry editing
     private isMixedAncestry: boolean = false;
     private parentAncestry1: string = '';
     private parentAncestry2: string = '';
@@ -54,6 +48,7 @@ export class CharacterManagerModal extends Modal {
         this.drawVitals(this.createCollapsibleSection(contentEl, 'Vitals & Defenses'));
         this.drawTraits(this.createCollapsibleSection(contentEl, 'Traits'));
         this.drawHeritageAndClass(this.createCollapsibleSection(contentEl, 'Heritage & Class'));
+        this.drawStances(this.createCollapsibleSection(contentEl, 'Stances'));
         this.drawExperiences(this.createCollapsibleSection(contentEl, 'Experiences'));
         this.drawCardsAndFeatures(this.createCollapsibleSection(contentEl, 'Features & Cards'));
         this.drawDetails(this.createCollapsibleSection(contentEl, 'Background & Connections'));
@@ -82,13 +77,71 @@ export class CharacterManagerModal extends Modal {
                     isCustom: true,
                 };
 
-                // This will add or overwrite an entry with the same name.
                 await this.plugin.saveCustomCompendiumData('user-ancestries.json', newMixedAncestry);
             }
 
             this.onSave(this.tempCharacter);
             this.close();
         });
+    }
+
+    // Add this new method
+    private drawStances(parent: HTMLElement) {
+        const isBrawler = this.tempCharacter.classId.toLowerCase().includes('brawler');
+        if (!isBrawler) {
+            parent.parentElement?.remove();
+            return;
+        }
+
+        if (!this.tempCharacter.equippedStances) {
+            this.tempCharacter.equippedStances = [];
+        }
+
+        const redraw = () => {
+            parent.empty();
+            parent.createEl('p', { text: "Directly manage your Brawler's learned stances.", cls: 'setting-item-description' });
+
+            this.tempCharacter.equippedStances?.forEach((stanceName, index) => {
+                new Setting(parent)
+                    .setName(stanceName)
+                    .addExtraButton(btn => btn
+                        .setIcon('trash')
+                        .setTooltip('Remove Stance')
+                        .onClick(() => {
+                            this.tempCharacter.equippedStances?.splice(index, 1);
+                            if (this.tempCharacter.activeStance === stanceName) {
+                                this.tempCharacter.activeStance = '';
+                            }
+                            redraw();
+                        }));
+            });
+
+            const addSetting = new Setting(parent)
+                .setName('Add a Stance');
+
+            const availableStances = this.plugin.compendium.stances
+                .filter(s => !(this.tempCharacter.equippedStances || []).includes(s.name));
+
+            let selectedStance = '';
+            addSetting.addDropdown(dd => {
+                dd.addOption('', '--- Select a Stance to Add ---');
+                availableStances.forEach(s => dd.addOption(s.name, `${s.name} (Tier ${s.tier})`));
+                dd.onChange(val => selectedStance = val);
+            });
+
+            addSetting.addButton(btn => btn
+                .setButtonText('Add')
+                .onClick(() => {
+                    if (selectedStance) {
+                        this.tempCharacter.equippedStances?.push(selectedStance);
+                        redraw();
+                    } else {
+                        new Notice('Please select a stance to add.');
+                    }
+                }));
+        };
+
+        redraw();
     }
 
     onClose() {

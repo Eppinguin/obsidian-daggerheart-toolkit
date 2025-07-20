@@ -83,23 +83,23 @@ export interface InherentFeature {
     source: 'Class' | 'Subclass' | 'Ancestry' | 'Community';
 }
 export interface Beastform {
-  name: string;
-  examples: string;
-  tier: number;
-  attributes: { trait: 'Strength' | 'Finesse' | 'Instinct' | 'Presence' | 'Knowledge' | 'Agility' | 'Evasion'; bonus: number }[];
-  attack: {
-    range: string;
-    trait: string;
-    dice: string;
-    type: string;
-  };
-  advantages: string;
-  features: { name: string; description: string }[];
+    name: string;
+    examples: string;
+    tier: number;
+    attributes: { trait: 'Strength' | 'Finesse' | 'Instinct' | 'Presence' | 'Knowledge' | 'Agility' | 'Evasion'; bonus: number }[];
+    attack: {
+        range: string;
+        trait: string;
+        dice: string;
+        type: string;
+    };
+    advantages: string;
+    features: { name: string; description: string }[];
 }
 export interface Stances {
-  name: string;
-  tier: number;
-  description: string;
+    name: string;
+    tier: number;
+    description: string;
 }
 
 // Base Item types with _type property
@@ -164,7 +164,10 @@ export interface Character {
         majorThreshold?: number;
         severeThreshold?: number;
     };
+    equippedStances?: string[];
+    activeStance?: string;
 }
+
 
 export interface Trait { _type: 'trait'; value: number; locked: boolean; }
 export interface DynamicResource { _type: 'dynamicResource'; max: number; current: number; }

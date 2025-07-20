@@ -3,7 +3,7 @@ import { App, Notice, Setting, TFile, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
-    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform, InherentFeature
+    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform, InherentFeature, Stances
 } from '../../types';
 import { AddItemModal, CompendiumCreatorModal, ItemEditModal } from '../../modals';
 import { renderMarkdown, renderRollableContent } from '../../rendering/ui-helpers';
@@ -30,6 +30,7 @@ type CreatorState = {
     backgroundAnswers: string[];
     experiences: { name: string; }[];
     domainCardIds: string[];
+    stanceChoices: string[];
     potionChoice: 'health' | 'stamina';
     connections: string[];
     additionalItems?: InventoryItem[];
@@ -67,6 +68,7 @@ export class CharacterCreator {
         this.creatorState = {
             traits: {},
             domainCardIds: [],
+            stanceChoices: [],
             backgroundAnswers: [],
             experiences: [{ name: '' }, { name: '' }],
             startingWeaponIds: [],
@@ -147,19 +149,21 @@ export class CharacterCreator {
             case 3: // Equipment
                 return !!(state.startingArmorId && state.startingWeaponIds && state.startingWeaponIds.length > 0);
             case 4: // Background
-                // Step is not complete if no class is selected yet.
                 if (!state.classId) return false;
                 const charClassBg = this.plugin.compendium.getClass(state.classId);
-                // If the class has no background questions, the step is considered complete.
                 if (!charClassBg?.backgrounds || charClassBg.backgrounds.length === 0) return true;
-                // Otherwise, check if all questions have been answered.
                 return state.backgroundAnswers?.length === charClassBg.backgrounds.length && state.backgroundAnswers.every(a => a && a.trim() !== '');
             case 5: // Experiences
                 return !!(state.experiences && state.experiences.length === 2 && state.experiences.every(e => e.name && e.name.trim() !== ''));
             case 6: // Domains
-                return !!(state.domainCardIds && state.domainCardIds.length === 2);
+                const subclass = this.plugin.compendium.getSubclass(state.subclassId || '');
+                const isBrawler = subclass?.name.toLowerCase().includes('martial artist');
+                const domainCheck = !!(state.domainCardIds && state.domainCardIds.length === 2);
+                if (isBrawler) {
+                    return domainCheck && !!(state.stanceChoices && state.stanceChoices.length === 2 && state.stanceChoices.every(s => s));
+                }
+                return domainCheck;
             case 7: // Connections
-                // Considered complete if at least one connection has been filled out.
                 return !!state.connections?.some(c => c && c.trim() !== '');
             case 8: // Final Details
                 return !!(state.name && state.name.trim() !== '');
@@ -171,7 +175,6 @@ export class CharacterCreator {
     private drawCharacterCreator(parent: HTMLElement) {
         const wizardWrapper = parent.createDiv({ cls: 'dh-creator-wizard' });
 
-        // Header with title and navigation buttons
         const header = wizardWrapper.createDiv({ cls: 'dh-creator-header' });
         header.createEl('h2', { text: 'Create New Character' });
         const navButtons = header.createDiv({ cls: 'dh-creator-nav-buttons' });
@@ -180,7 +183,6 @@ export class CharacterCreator {
 
         const creatorLayout = wizardWrapper.createDiv({ cls: 'dh-creator-layout' });
 
-        // Left sidebar for steps
         const stepsNav = creatorLayout.createDiv({ cls: 'dh-creator-steps-nav' });
         const stepsList = stepsNav.createDiv({ cls: 'dh-creator-steps-list' });
 
@@ -192,7 +194,7 @@ export class CharacterCreator {
         stepLabels.forEach((label, idx) => {
             const stepItem = stepsList.createDiv({ cls: 'dh-creator-step-item' });
             const indicator = stepItem.createDiv({ cls: 'dh-creator-step-indicator' });
-            setIcon(indicator, 'circle'); // Default icon
+            setIcon(indicator, 'circle');
             const stepLabel = stepItem.createDiv({ cls: 'dh-creator-step-label' });
             stepLabel.textContent = label;
 
@@ -202,11 +204,9 @@ export class CharacterCreator {
             });
         });
 
-        // Main content area
         const contentWrapper = creatorLayout.createDiv({ cls: 'dh-creator-content-wrapper' });
         this.stepContainer = contentWrapper.createDiv({ cls: 'dh-creator-step-content' });
 
-        // Event listeners for the buttons
         this.backBtn.addEventListener('click', () => {
             if (this.creatorStep > 0) {
                 this.creatorStep--;
@@ -603,7 +603,6 @@ export class CharacterCreator {
             });
 
             customInput.addEventListener('click', (e) => {
-                // Prevent the card click handler from firing
                 e.stopPropagation();
             });
 
@@ -772,7 +771,6 @@ export class CharacterCreator {
                     cls: 'dh-item-type-badge'
                 });
 
-                // Additional info based on type
                 if (item._type === 'weapon') {
                     nameContainer.createEl('span', {
                         text: `T${item.tier} ${item.trait} ${item.range}`,
@@ -785,7 +783,6 @@ export class CharacterCreator {
                     });
                 }
 
-                // Remove button
                 const removeBtn = itemHeader.createEl('button', { cls: 'dh-remove-item-btn' });
                 setIcon(removeBtn, 'trash');
                 removeBtn.addEventListener('click', () => {
@@ -793,7 +790,6 @@ export class CharacterCreator {
                     this.redrawCreatorStep();
                 });
 
-                // Add description if present
                 if (item.description) {
                     itemEl.createEl('div', {
                         text: item.description,
@@ -801,7 +797,6 @@ export class CharacterCreator {
                     });
                 }
 
-                // Add features if present
                 if ('features' in item && item.features && item.features.length > 0) {
                     const featureContainer = itemEl.createDiv({
                         cls: 'dh-item-feature',
@@ -815,7 +810,6 @@ export class CharacterCreator {
                             text: feature.name,
                             cls: 'dh-item-feature-name'
                         });
-                        // Ensure no title attribute that would cause a question mark cursor
                         nameEl.removeAttribute('title');
                         nameEl.removeAttribute('aria-label');
 
@@ -823,7 +817,6 @@ export class CharacterCreator {
                             text: feature.description,
                             cls: 'dh-item-feature-description'
                         });
-                        // Ensure no title attribute that would cause a question mark cursor
                         descEl.removeAttribute('title');
                         descEl.removeAttribute('aria-label');
                     });
@@ -853,8 +846,9 @@ export class CharacterCreator {
 
     private drawCreatorStep5_Background(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 5: Background Questions' }); const charClass = this.plugin.compendium.getClass(this.creatorState.classId ?? ''); if (charClass?.backgrounds) { charClass.backgrounds.forEach((bg, index) => { new Setting(parent).setName(bg.question).addTextArea(text => { text.setValue(this.creatorState.backgroundAnswers?.[index] || '').onChange(value => { if (!this.creatorState.backgroundAnswers) this.creatorState.backgroundAnswers = []; this.creatorState.backgroundAnswers[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see background questions.' }); } }
     private drawCreatorStep6_Experiences(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 6: Create Experiences' }); parent.createEl('p', { text: 'Create two experiences for your character. These represent skills or defining moments from their past. They both start with a +2 modifier.' }); if (!this.creatorState.experiences) this.creatorState.experiences = [{ name: '' }, { name: '' }]; this.creatorState.experiences.forEach((exp, index) => { parent.createEl('h5', { text: `Experience ${index + 1}` }); new Setting(parent).setName('Name').addText(text => text.setPlaceholder('e.g., Survivor, Master of Disguise').setValue(exp.name).onChange(value => exp.name = value)); }); }
+
     private drawCreatorStep7_Domains(parent: HTMLElement) {
-        parent.createEl('h3', { text: 'Step 7: Choose Domain Cards' });
+        parent.createEl('h3', { text: 'Step 7: Choose Starting Abilities' });
         const classId = this.creatorState.classId;
         if (!classId) {
             parent.createEl('p', { text: 'Please select a class in Step 1.' });
@@ -862,6 +856,7 @@ export class CharacterCreator {
         }
         const charClass = this.plugin.compendium.getClass(classId);
         if (!charClass) return;
+
         const domains = [charClass.domain_1, charClass.domain_2];
         parent.createEl('p', { text: `Choose two cards from your class domains: ${domains.join(' & ')}.` });
 
@@ -892,21 +887,72 @@ export class CharacterCreator {
                         new Notice('You can only select two domain cards.');
                     }
                 }
+                this.redrawCreatorStep();
             });
 
             cardEl.createEl('strong', { text: card.name });
             renderMarkdown(this.plugin, card.text, cardEl.createDiv());
 
             const footer = cardEl.createDiv({ cls: 'dh-creator-card-meta' });
-            if (card.domain) {
-                footer.createSpan({ text: `Domain: ${card.domain}` });
-            }
-            if (card.level) {
-                footer.createSpan({ text: `Level: ${card.level}` });
-            }
+            if (card.domain) footer.createSpan({ text: `Domain: ${card.domain}` });
+            if (card.level) footer.createSpan({ text: `Level: ${card.level}` });
         });
+
+        // Add Brawler Stance Selection
+        const subclass = this.plugin.compendium.getSubclass(this.creatorState.subclassId || '');
+        if (subclass && subclass.name.toLowerCase().includes('martial artist')) {
+            this.drawBrawlerInitialStanceCreator(parent);
+        }
     }
+
+    private drawBrawlerInitialStanceCreator(parent: HTMLElement) {
+        const stanceContainer = parent.createDiv({ cls: 'dh-creator-section' });
+        stanceContainer.createEl('h4', { text: 'Choose Starting Stances' });
+        stanceContainer.createEl('p', { text: 'As a Martial Artist, you start with two stances from Tier 1.' });
+
+        if (!this.creatorState.stanceChoices) {
+            this.creatorState.stanceChoices = ['', ''];
+        }
+
+        const tier1Stances = this.plugin.compendium.stances.filter(s => s.tier === 1);
+
+        new Setting(stanceContainer)
+            .setName('Stance 1')
+            .addDropdown(dd => {
+                dd.addOption('', '--- Select ---');
+                const otherChoice = this.creatorState.stanceChoices?.[1];
+                tier1Stances.forEach(s => {
+                    if (s.name !== otherChoice) {
+                        dd.addOption(s.name, s.name);
+                    }
+                });
+                dd.setValue(this.creatorState.stanceChoices?.[0] || '');
+                dd.onChange(value => {
+                    if (this.creatorState.stanceChoices) this.creatorState.stanceChoices[0] = value;
+                    this.redrawCreatorStep();
+                });
+            });
+
+        new Setting(stanceContainer)
+            .setName('Stance 2')
+            .addDropdown(dd => {
+                dd.addOption('', '--- Select ---');
+                const otherChoice = this.creatorState.stanceChoices?.[0];
+                tier1Stances.forEach(s => {
+                    if (s.name !== otherChoice) {
+                        dd.addOption(s.name, s.name);
+                    }
+                });
+                dd.setValue(this.creatorState.stanceChoices?.[1] || '');
+                dd.onChange(value => {
+                    if (this.creatorState.stanceChoices) this.creatorState.stanceChoices[1] = value;
+                    this.redrawCreatorStep();
+                });
+            });
+    }
+
     private drawCreatorStep8_Connections(parent: HTMLElement) { parent.createEl('h3', { text: 'Step 8: Create Connections' }); parent.createEl('p', { text: "Use these questions as inspiration to create connections with the other characters at your table. Discuss your answers together and jot down your notes here." }); const charClass = this.plugin.compendium.getClass(this.creatorState.classId ?? ''); if (charClass?.connections) { charClass.connections.forEach((conn, index) => { new Setting(parent).setName(conn.question).addTextArea(text => { text.setValue(this.creatorState.connections?.[index] || '').onChange(value => { if (!this.creatorState.connections) this.creatorState.connections = []; this.creatorState.connections[index] = value; }); }); }); } else { parent.createEl('p', { text: 'Please select a class in Step 1 to see connection questions.' }); } }
+
     private drawCreatorStep9_FinalDetails(parent: HTMLElement) {
         parent.createEl('h3', { text: 'Step 9: Final Details & Review' });
 
@@ -914,7 +960,6 @@ export class CharacterCreator {
         const leftCol = layout.createDiv({ cls: 'dh-step9-col-left' });
         const rightCol = layout.createDiv({ cls: 'dh-step9-col-right' });
 
-        // --- Left Column: Inputs ---
         const detailsGroup = leftCol.createDiv({ cls: 'dh-creator-input-group' });
         detailsGroup.createEl('h4', { text: 'Character Details' });
         if (!this.creatorState.pronouns) this.creatorState.pronouns = { subject: 'they', object: 'them' };
@@ -956,7 +1001,6 @@ export class CharacterCreator {
             }
         );
 
-        // --- Right Column: Review ---
         const reviewCard = rightCol.createDiv({ cls: 'dh-creator-review-card' });
         reviewCard.createEl('h4', { text: 'Character Summary' });
 
@@ -969,13 +1013,11 @@ export class CharacterCreator {
         const weapons = startingWeaponIds ? (this.plugin.compendium.weapons.filter(w => startingWeaponIds.includes(w.name)) as WeaponItem[]) : [];
         const domains = domainCardIds?.map(id => this.plugin.compendium.getAbility(id)?.name).filter(n => n).join(', ');
 
-        // Core Info Section
         const coreInfoSection = reviewCard.createDiv({ cls: 'dh-review-section' });
         coreInfoSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Class:</strong> ${charClass?.name || 'N/A'} (${subclass?.name || 'N/A'})`;
         coreInfoSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Heritage:</strong> ${this.creatorState.isMixedAncestry ? (this.creatorState.mixedAncestryName || 'Mixed') : (ancestry?.name || 'N/A')}`;
         coreInfoSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Community:</strong> ${community?.name || 'N/A'}`;
 
-        // Traits Section
         const traitsSection = reviewCard.createDiv({ cls: 'dh-review-section' });
         traitsSection.createEl('h5', { text: 'Traits' });
         const traitsGrid = traitsSection.createDiv({ cls: 'dh-review-grid' });
@@ -985,16 +1027,21 @@ export class CharacterCreator {
             });
         }
 
-        // Equipment Section
         const equipmentSection = reviewCard.createDiv({ cls: 'dh-review-section' });
         equipmentSection.createEl('h5', { text: 'Equipment' });
         equipmentSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Armor:</strong> ${armor?.name || 'N/A'}`;
         equipmentSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = `<strong>Weapons:</strong> ${weapons?.map(w => w.name).join(', ') || 'N/A'}`;
 
-        // Domains Section
         const domainsSection = reviewCard.createDiv({ cls: 'dh-review-section' });
         domainsSection.createEl('h5', { text: 'Domain Cards' });
         domainsSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = domains || 'N/A';
+
+        const isBrawler = subclass?.name.toLowerCase().includes('martial artist');
+        if (isBrawler) {
+            const stancesSection = reviewCard.createDiv({ cls: 'dh-review-section' });
+            stancesSection.createEl('h5', { text: 'Starting Stances' });
+            stancesSection.createEl('p', { cls: 'dh-review-item' }).innerHTML = this.creatorState.stanceChoices?.join(', ') || 'N/A';
+        }
     }
 
     private async finalizeCharacter(partialChar: Partial<CreatorState>) {
@@ -1084,7 +1131,6 @@ export class CharacterCreator {
 
         const initialInventory: InventoryItem[] = [];
 
-        // Add class item if one was selected
         if (partialChar.selectedClassItem) {
             const itemName = partialChar.selectedClassItem;
             const item = this.plugin.compendium.items.find(i => i.name.toLowerCase() === itemName.trim().toLowerCase());
@@ -1107,7 +1153,6 @@ export class CharacterCreator {
             });
         }
 
-        // Create the list of InherentFeatures
         const finalFeatures: InherentFeature[] = [];
         charClass.class_feats.forEach(f => finalFeatures.push({ id: f.name, name: f.name, description: f.text, source: 'Class' }));
         finalFeatures.push({ id: charClass.hope_feat_name, name: charClass.hope_feat_name, description: charClass.hope_feat_text, source: 'Class' });
@@ -1115,7 +1160,6 @@ export class CharacterCreator {
         ancestry.feats.forEach(f => finalFeatures.push({ id: f.name, name: f.name, description: f.text, source: 'Ancestry' }));
         community.feats.forEach(f => finalFeatures.push({ id: f.name, name: f.name, description: f.text, source: 'Community' }));
 
-        // Create the starting loadout of DomainCards
         const finalLoadout: DomainCard[] = (partialChar.domainCardIds || []).map(id => this.plugin.compendium.getAbility(id)).filter((f): f is DomainCard => !!f);
 
         const finalEvasion = parseInt(charClass.evasion);
@@ -1144,6 +1188,8 @@ export class CharacterCreator {
             connections: charClass.connections.map((c, i) => ({ question: c.question, answer: partialChar.connections?.[i] || '' })),
             levelUpHistory: {}, conditions: [], notes: partialChar.description || '',
             accentColor: partialChar.accentColor || '#e5b32a',
+            equippedStances: partialChar.stanceChoices || [],
+            activeStance: '',
         };
 
         await this.plugin.updateCharacter(fullChar);

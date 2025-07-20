@@ -3920,3 +3920,88 @@ color: var(--text-normal);
     opacity: 0.5;
     pointer-events: none;
 }
+
+/* --- Active Stance (Center Column) --- */
+.dh-active-stance {
+    background-color: var(--dh-sheet-bg-alt);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.dh-active-stance-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.dh-active-stance-content .setting-item {
+    padding: 0;
+    border: none;
+}
+
+.dh-active-stance-card {
+    background-color: var(--dh-sheet-bg);
+    padding: var(--size-4-3);
+    border-radius: var(--radius-s);
+    border: 1px solid var(--dh-sheet-accent);
+}
+
+.dh-active-stance-card h4 {
+    margin: 0 0 var(--size-4-2) 0;
+    color: var(--dh-sheet-accent);
+    text-transform: uppercase;
+    font-size: var(--font-ui-medium);
+}
+
+.dh-active-stance-description {
+    font-size: var(--font-ui-small);
+}
+
+/* --- Stances Manager (Manager Tab) --- */
+.dh-stances-manager {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+}
+
+.dh-stances-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-4);
+}
+
+.dh-stance-slot {
+    background-color: var(--dh-sheet-bg);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3);
+    transition: all 0.2s ease-in-out;
+}
+
+.dh-stance-slot .setting-item {
+    padding: 0;
+    border: none;
+    align-items: center;
+}
+
+.dh-stance-label {
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-semibold);
+    color: var(--dh-sheet-accent);
+}
+
+.dh-stance-dropdown-control .dropdown {
+    width: 100%;
+}
+
+.dh-stance-description {
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+    margin-top: var(--size-4-3);
+    padding-top: var(--size-4-3);
+    border-top: 1px dashed var(--dh-sheet-border);
+}

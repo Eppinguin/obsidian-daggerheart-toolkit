@@ -329,6 +329,9 @@ export class CharacterSheetView extends ItemView {
     private drawCenterColumn(parent: HTMLElement, data: Character) {
         const centerCol = parent.createDiv({ cls: 'dh-grid-column-center' });
         this.drawTraits(centerCol, data);
+        if (data.classId.match("Brawler")) {
+            this.drawActiveStance(centerCol, data);
+        }
         this.drawActiveWeapons(centerCol, data);
     }
 
@@ -787,19 +790,19 @@ export class CharacterSheetView extends ItemView {
         this.createManagerTab(tabs, 'abilities', 'Abilities');
         this.createManagerTab(tabs, 'inventory', 'Equipment');
         this.createManagerTab(tabs, 'details', 'Details');
-        if(data.classId.match("Druid")){
+        if (data.classId.match("Druid")) {
             this.createManagerTab(tabs, 'beastforms', 'Beastforms');
         }
-        if(data.classId.match("Brawler")){
-            this.createManagerTab(tabs, 'stances', 'Stances');
-        }
+        // if (data.classId.match("Brawler")) {
+        //     this.createManagerTab(tabs, 'stances', 'Stances');
+        // }
         const content = managerContainer.createDiv({ cls: 'dh-manager-content' });
         switch (this.activeManagerTab) {
             case 'abilities': this.drawAbilitiesManager(content, data); break;
             case 'inventory': this.drawInventoryManager(content, data); break;
             case 'details': this.drawDetailsManager(content, data); break;
             case 'beastforms': this.drawBeasformsSection(content, data); break;
-            case 'stances': this.drawStancesSection(content, data); break;
+            // case 'stances': this.drawStancesSection(content, data); break;
         }
     }
 
@@ -1019,7 +1022,7 @@ export class CharacterSheetView extends ItemView {
         const section = parent.createDiv({ cls: 'dh-card-section' });
         const header = section.createDiv({ cls: 'dh-section-header-bar' });
         header.createEl('h3', { text: 'Features' });
-        
+
         const groupedFeatures = character.features.reduce((acc, feature) => {
             const source = feature.source;
             if (!acc[source]) {
@@ -1048,7 +1051,7 @@ export class CharacterSheetView extends ItemView {
         const section = parent.createDiv({ cls: 'dh-card-section' });
         const header = section.createDiv({ cls: 'dh-section-header-bar' });
         //header.createEl('h3', { text: 'Beastforms' });
-        
+
         const beastforms = this.plugin.compendium.beastforms.reduce((acc, beast) => {
             const tier = beast.tier;
             if (!acc[tier]) {
@@ -1059,13 +1062,13 @@ export class CharacterSheetView extends ItemView {
         }, {} as Record<Beastform['tier'], Beastform[]>);
 
         const tierOrder: Beastform['tier'][] = [1, 2, 3, 4];
-        
+
         for (const tier of tierOrder) {
             const beasts = beastforms[tier];
             if (beasts && beasts.length > 0) {
                 const buttonContainer = section.createDiv({ cls: 'dh-section-header-bar' });
                 buttonContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
-                const button = buttonContainer.createEl('button', { text: "Tier " + tier.toString()+ " ausblenden" });
+                const button = buttonContainer.createEl('button', { text: "Tier " + tier.toString() + " ausblenden" });
                 const groupContainer = section.createDiv({ cls: 'dh-feature-group' });
 
                 let visible = true;
@@ -1073,7 +1076,7 @@ export class CharacterSheetView extends ItemView {
                 button.addEventListener("click", () => {
                     visible = !visible;
                     groupContainer.style.display = visible ? "block" : "none";
-                    button.textContent = visible ? "Tier " + tier.toString()+ " ausblenden" : "Tier " + tier.toString()+ " anzeigen";
+                    button.textContent = visible ? "Tier " + tier.toString() + " ausblenden" : "Tier " + tier.toString() + " anzeigen";
                 });
                 //groupContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
                 const grid = groupContainer.createDiv({ cls: 'dh-feature-grid' });
@@ -1084,71 +1087,127 @@ export class CharacterSheetView extends ItemView {
         }
     }
 
-    private drawStancesSection(parent: HTMLElement, character: Character) {
-        const section = parent.createDiv({ cls: 'dh-card-section' });
-        //const header = section.createDiv({ cls: 'dh-section-header-bar' });
-        //header.createEl('h3', { text: 'Stances' });
-        
-        const groupStances = this.plugin.compendium.stances.reduce((acc, stance) => {
-            const tier = stance.tier;
-            if (!acc[tier]) {
-                acc[tier] = [];
+    private drawActiveStance(parent: HTMLElement, character: Character) {
+        const container = parent.createDiv({ cls: 'dh-active-stance' });
+        const header = container.createDiv({ cls: 'dh-section-header-box' });
+        header.createEl('h3', { text: 'Active Stance' });
+
+        const content = container.createDiv({ cls: 'dh-active-stance-content' });
+        const learnedStances = character.equippedStances || [];
+
+        // Add a dropdown to select which of the learned stances is active
+        new Setting(content)
+            .setName('Switch Stance')
+            .setDesc('Select which of your learned stances is currently active.')
+            .addDropdown(dd => {
+                dd.addOption('', 'None');
+                learnedStances.forEach(stanceName => {
+                    dd.addOption(stanceName, stanceName);
+                });
+                dd.setValue(character.activeStance || '').onChange(async (value) => {
+                    character.activeStance = value;
+                    await this.plugin.updateCharacter(character);
+                });
+            });
+
+        // Display the details of the currently active stance
+        const activeStanceName = character.activeStance;
+        if (activeStanceName) {
+            const activeStanceData = this.plugin.compendium.stances.find(s => s.name === activeStanceName);
+            if (activeStanceData) {
+                const card = content.createDiv({ cls: 'dh-active-stance-card' });
+                card.createEl('h4', { text: activeStanceData.name });
+                const descEl = card.createDiv({ cls: 'dh-active-stance-description' });
+                renderRollableContent(this.plugin, activeStanceData.description, descEl, activeStanceData.name, true);
             }
-            acc[tier].push(stance);
-            return acc;
-        }, {} as Record<Stances['tier'], Stances[]>);
-
-        const tierOrder: Stances['tier'][] = [1, 2, 3, 4];
-        
-        for (const tier of tierOrder) {
-            const stances = groupStances[tier];
-            if (stances && stances.length > 0) {
-                const body = section.createDiv({ cls: 'dh-card-section' });
-                const groupContainer = body.createDiv({ cls: 'dh-section-header-bar' });
-                groupContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
-                const stanceContainer = body.createDiv({ cls: 'dh-advancement-choice' });
-                
-                for (let i = 0; i < 2; i++) {
-
-                    let isEquipped = false;               
-                
-                    const equipBtn = stanceContainer.createEl('button');
-                    const textContainer = stanceContainer.createEl("section");
-                    setIcon(equipBtn, isEquipped ? 'check-square' : 'square');
-                    equipBtn.ariaLabel = isEquipped ? 'Unequip' : 'Equip';
-                    equipBtn.addEventListener('click', () => {
-                        if (isEquipped) {
-                            //unequip
-                            isEquipped = false;
-                            setIcon(equipBtn, 'square');
-                            equipBtn.ariaLabel = 'Unequip';
-                        } else {
-                            //equip
-                            isEquipped = true;
-                            setIcon(equipBtn, 'check-square');
-                            equipBtn.ariaLabel = 'Equip';
-                        }
-                    });
-                    /*auswahlbox für Stances passend zum tier hinzufügen
-                    */
-                    let selectedStance = "";
-                    const box = new Setting(stanceContainer);
-                    box.addDropdown(dd => {
-                        dd.addOption('', '--- Select ---');
-                        stances.forEach(sub => dd.addOption(sub.name, sub.name));
-                        dd.setValue('').onChange(value => {
-                            selectedStance = value;
-                            stances.forEach((stance) => {
-                                if (selectedStance !== "" && stance.name.toLowerCase().includes(selectedStance.toLowerCase())) {
-                                renderRollableContent(this.plugin, stance.description, textContainer, selectedStance, true);
-                                }
-                            });
-                        });   
-                    });
-                }
-
-            }
+        } else {
+            content.createDiv({ text: 'No stance is currently active.', cls: 'dh-empty-text' });
         }
+    }
+
+    // Replace the existing drawStancesSection with this updated version
+    private drawStancesSection(parent: HTMLElement, character: Character) {
+        if (!character.equippedStances) {
+            character.equippedStances = [];
+        }
+
+        const section = parent.createDiv({ cls: 'dh-stances-manager' });
+        const header = section.createDiv({ cls: 'dh-section-header-bar' });
+        header.createEl('h3', { text: 'Manage Learned Stances' });
+
+        const stanceSlots = this.getBrawlerStanceSlots(character.level);
+        const availableStances = this.getAvailableStances(character.level);
+
+        const listContainer = section.createDiv({ cls: 'dh-stances-list' });
+
+        if (stanceSlots === 0) {
+            listContainer.createDiv({ text: 'No stance slots available at current level.', cls: 'dh-empty-text' });
+            return;
+        }
+
+        const tempEquippedStances = [...(character.equippedStances || [])];
+        while (tempEquippedStances.length < stanceSlots) {
+            tempEquippedStances.push('');
+        }
+
+        tempEquippedStances.slice(0, stanceSlots).forEach((selectedStanceName, index) => {
+            const slotContainer = listContainer.createDiv({ cls: 'dh-stance-slot' });
+
+            const otherSelectedStances = tempEquippedStances.filter((s, i) => s && i !== index);
+            const dropdownOptions = availableStances.filter(s => !otherSelectedStances.includes(s.name));
+
+            const setting = new Setting(slotContainer)
+                .setName(`Stance Slot ${index + 1}`)
+                .addDropdown(dd => {
+                    dd.addOption('', '--- Choose a Stance ---');
+                    dropdownOptions.forEach(stance => dd.addOption(stance.name, stance.name));
+
+                    dd.setValue(selectedStanceName).onChange(async (value) => {
+                        const newStances = [...tempEquippedStances];
+                        newStances[index] = value;
+
+                        character.equippedStances = newStances.filter(s => s && s !== '');
+
+                        // If the currently active stance was unequipped, deactivate it
+                        if (character.activeStance && !character.equippedStances.includes(character.activeStance)) {
+                            character.activeStance = '';
+                        }
+
+                        await this.plugin.updateCharacter(character);
+                    });
+                });
+
+            setting.controlEl.addClass('dh-stance-dropdown-control');
+            setting.nameEl.addClass('dh-stance-label');
+
+            if (selectedStanceName) {
+                const selectedStanceData = availableStances.find(s => s.name === selectedStanceName);
+                if (selectedStanceData) {
+                    const descEl = slotContainer.createDiv({ cls: 'dh-stance-description' });
+                    renderRollableContent(this.plugin, selectedStanceData.description, descEl, selectedStanceData.name, true);
+                }
+            }
+        });
+    }
+
+    // Add these helper methods inside the CharacterSheetView class
+    private getBrawlerStanceSlots(level: number): number {
+        if (level >= 8) return 4;
+        if (level >= 5) return 3;
+        if (level >= 2) return 2;
+        if (level >= 1) return 1;
+        return 0;
+    }
+
+    private getAvailableStances(level: number): Stances[] {
+        return this.plugin.compendium.stances.filter(stance => {
+            const tier = stance.tier;
+            if (tier === 1 && level >= 1) return true;
+            if (tier === 2 && level >= 2) return true;
+            if (tier === 3 && level >= 5) return true;
+            if (tier === 4 && level >= 8) return true;
+            return false;
+        });
     }
 
     private drawDetailsManager(parent: HTMLElement, data: Character) {
@@ -1366,7 +1425,7 @@ export class CharacterSheetView extends ItemView {
             });
         }
     }
-    
+
 
     private getFeatureMetadata(feature: InherentFeature | DomainCard): { level?: number; domain?: string; type?: string; } {
         const metadata: { level?: number; domain?: string; type?: string; } = {};
@@ -1409,23 +1468,23 @@ export class CharacterSheetView extends ItemView {
         renderRollableContent(this.plugin, rollString, body, beast.name, true);
     }
 
-    private beastToString(beast : Beastform){
+    private beastToString(beast: Beastform) {
         let fullstring = "";
-        if (beast.attributes){
+        if (beast.attributes) {
             const traitString = beast.attributes.map(t => `${t.trait} +${t.bonus}`).join(' | ');
-            fullstring += traitString +'\n';
+            fullstring += traitString + '\n';
         }
-        if (beast.attack){
-            const attackString = beast.attack.range + " " + beast.attack.trait + " 1"  + beast.attack.dice + " "  + beast.attack.type;
-            fullstring += attackString +'\n\n';
+        if (beast.attack) {
+            const attackString = beast.attack.range + " " + beast.attack.trait + " 1" + beast.attack.dice + " " + beast.attack.type;
+            fullstring += attackString + '\n\n';
         }
-        if (beast.advantages){
+        if (beast.advantages) {
             const advantageString = "Gain advantage on: " + beast.advantages;
-            fullstring += advantageString +'\n\n';
+            fullstring += advantageString + '\n\n';
         }
-        if (beast.features){
+        if (beast.features) {
             const featuresString = beast.features.map(t => `${t.name}: ${t.description}`).join('\n\n');
-            fullstring += featuresString +'\n';
+            fullstring += featuresString + '\n';
         }
         return fullstring;
     }

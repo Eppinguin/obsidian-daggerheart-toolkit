@@ -2,14 +2,13 @@
 import { App, Modal, Setting, Notice, TextComponent, ExtraButtonComponent } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
-import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass, JsonFeat, InherentFeature } from '../types';
+import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass, JsonFeat, InherentFeature, Stances } from '../types';
 import { renderMarkdown } from '../rendering/ui-helpers';
 import { TRAIT_NAMES } from '../constants';
 
-// Add newExperienceId to the type definition for persistent tracking.
-// In a real application, this would be in types.ts
 interface LevelUpSelection extends BaseLevelUpSelection {
     newExperienceId?: string;
+    stanceChoices?: string[];
 }
 
 export class LevelUpModal extends Modal {
@@ -18,14 +17,13 @@ export class LevelUpModal extends Modal {
     onSave: (character: Character) => void;
 
     private tempCharacter: Character;
-    private originalCharacterState: Character; // A snapshot of the character when the modal was opened.
+    private originalCharacterState: Character;
     private levelUpContainer: HTMLElement;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, onSave: (character: Character) => void) {
         super(app);
         this.plugin = plugin;
         this.character = character;
-        // Deep copy for isolated editing and for the "rewind" state.
         this.originalCharacterState = JSON.parse(JSON.stringify(character));
         this.tempCharacter = JSON.parse(JSON.stringify(character));
         this.onSave = onSave;
@@ -67,10 +65,9 @@ export class LevelUpModal extends Modal {
             .setTooltip('Decrease Level')
             .onClick(() => {
                 if (this.tempCharacter.level > 1) {
-                    // When decreasing level, remove the history for the level being removed.
                     delete this.tempCharacter.levelUpHistory[this.tempCharacter.level];
                     this.tempCharacter.level--;
-                    this.onOpen(); // Redraw everything
+                    this.onOpen();
                 }
             });
 
@@ -85,7 +82,7 @@ export class LevelUpModal extends Modal {
             .onClick(() => {
                 if (this.tempCharacter.level < 10) {
                     this.tempCharacter.level++;
-                    this.onOpen(); // Redraw everything
+                    this.onOpen();
                 }
             });
     }
@@ -101,14 +98,12 @@ export class LevelUpModal extends Modal {
         const entryContainer = parent.createDiv({ cls: 'dh-level-entry' });
         entryContainer.createEl('h2', { text: `Level ${level}` });
 
-        // Initialize level up history for the current level if it doesn't exist.
         if (!this.tempCharacter.levelUpHistory[level]) {
             this.tempCharacter.levelUpHistory[level] = {
                 advancements: [null, null],
                 domainCardId: null,
             };
         }
-        // Ensure newExperienceName and a persistent ID exist for relevant levels.
         if (level === 2 || level === 5 || level === 8) {
             const history = this.tempCharacter.levelUpHistory[level] as LevelUpSelection;
             if (history.newExperienceName === undefined) {
@@ -121,7 +116,6 @@ export class LevelUpModal extends Modal {
 
         const selection = this.tempCharacter.levelUpHistory[level] as LevelUpSelection;
 
-        // --- Automatic Advancements (Tier Achievements) ---
         if (level === 2 || level === 5 || level === 8) {
             const autoContainer = entryContainer.createDiv({ cls: 'dh-automatic-advancements' });
             autoContainer.createEl('h3', { text: 'Tier Achievement' });
@@ -144,9 +138,16 @@ export class LevelUpModal extends Modal {
             }
         }
 
+        const isBrawler = this.tempCharacter.classId.toLowerCase().includes('brawler');
+        if (isBrawler && (level === 2 || level === 5 || level === 8)) {
+            if (!selection.stanceChoices) {
+                selection.stanceChoices = ['', ''];
+            }
+            this.drawBrawlerStanceSelection(entryContainer, level, selection);
+        }
+
         const advancementOptions = this.getAdvancementOptions(level);
 
-        // Advancements
         entryContainer.createEl('h3', { text: 'Your Advancements' });
         const advancementContainer = entryContainer.createDiv({ cls: 'dh-advancement-container' });
 
@@ -174,7 +175,6 @@ export class LevelUpModal extends Modal {
                         dd.addOption(opt.id, opt.name);
                     });
 
-                    // If the saved choice is no longer valid, still show it but disabled.
                     if (currentAdvancement?.id && !advancementOptions.some(opt => opt.id === currentAdvancement.id)) {
                         const optionName = this.getAdvancementNameById(currentAdvancement.id, level);
                         if (optionName) {
@@ -204,7 +204,6 @@ export class LevelUpModal extends Modal {
             }
         }
 
-        // Domain Card
         entryContainer.createEl('h3', { text: 'Domain Card' });
         const domainContainer = entryContainer.createDiv();
         const extraCardChoice = selection.advancements.find(a => a?.id === 'take_domain_card')?.choices[0];
@@ -232,18 +231,79 @@ export class LevelUpModal extends Modal {
         this.redrawDomainCardPreview(domainContainer, selection.domainCardId);
     }
 
+    private drawBrawlerStanceSelection(parent: HTMLElement, level: number, selection: LevelUpSelection) {
+        parent.createEl('h3', { text: 'Stance Selection' });
+        const stanceContainer = parent.createDiv({ cls: 'dh-advancement-container' });
+        stanceContainer.createEl('p', { text: 'As you reach a new tier, you learn two new stances of your new tier or lower.', cls: 'setting-item-description' });
+
+        const allAvailableStances = this.getAvailableStances(level);
+        const alreadyChosenStances = this.getChosenStances(level);
+
+        for (let i = 0; i < 2; i++) {
+            const choiceContainer = stanceContainer.createDiv({ cls: 'dh-advancement-choice' });
+
+            const currentChoice = selection.stanceChoices?.[i] || '';
+            const otherChoice = selection.stanceChoices?.[1 - i] || '';
+
+            const availableForThisDropdown = allAvailableStances.filter(s =>
+                !alreadyChosenStances.has(s.name) && s.name !== otherChoice
+            );
+
+            new Setting(choiceContainer)
+                .setName(`New Stance ${i + 1}`)
+                .addDropdown(dd => {
+                    dd.addOption('', '--- Select Stance ---');
+                    availableForThisDropdown.forEach(s => dd.addOption(s.name, `${s.name} (Tier ${s.tier})`));
+
+                    if (currentChoice && !availableForThisDropdown.some(s => s.name === currentChoice)) {
+                        const s = allAvailableStances.find(stance => stance.name === currentChoice);
+                        if (s) dd.addOption(s.name, `${s.name} (Tier ${s.tier})`);
+                    }
+
+                    dd.setValue(currentChoice);
+                    dd.onChange(value => {
+                        if (!selection.stanceChoices) selection.stanceChoices = ['', ''];
+                        selection.stanceChoices[i] = value;
+                        this.drawLevelUpInterface();
+                    });
+                });
+        }
+    }
+
+    private getAvailableStances(level: number): Stances[] {
+        return this.plugin.compendium.stances.filter(stance => {
+            const tier = stance.tier;
+            if (tier === 1 && level >= 1) return true;
+            if (tier === 2 && level >= 2) return true;
+            if (tier === 3 && level >= 5) return true;
+            if (tier === 4 && level >= 8) return true;
+            return false;
+        });
+    }
+
+    private getChosenStances(upToLevel: number): Set<string> {
+        const chosen = new Set<string>();
+        this.originalCharacterState.equippedStances?.forEach(s => chosen.add(s));
+
+        for (let l = 2; l < upToLevel; l++) {
+            const history = this.tempCharacter.levelUpHistory[l] as LevelUpSelection;
+            history?.stanceChoices?.forEach(stanceName => {
+                if (stanceName) chosen.add(stanceName);
+            });
+        }
+        return chosen;
+    }
+
     private getMarkedTraits(upToLevel: number): Set<string> {
         const markedTraits = new Set<string>();
         const currentTier = this.getTier(upToLevel);
 
-        // Determine the starting level of the current tier
         const tierStartLevel = {
             2: 2,
             3: 5,
             4: 8,
         }[currentTier] || 2;
 
-        // Iterate from the start of the tier up to the level just before the current one
         for (let l = tierStartLevel; l < upToLevel; l++) {
             const history = this.tempCharacter.levelUpHistory[l];
             if (history) {
@@ -308,7 +368,6 @@ export class LevelUpModal extends Modal {
                     .flatMap(a => a!.choices)
                     .filter(c => c);
 
-                // Build a temporary list of experiences available for upgrade at this point in the modal
                 const experiencesAtThisLevel = [...this.originalCharacterState.experiences];
                 for (let l = 2; l <= level; l++) {
                     const history = this.tempCharacter.levelUpHistory[l] as LevelUpSelection;
@@ -449,7 +508,6 @@ export class LevelUpModal extends Modal {
                         });
                     });
 
-                    // Spellcasting Trait Choice
                     const selectedNewSubclass = this.plugin.compendium.getSubclass(selectedSubclassId);
                     const originalSubclass = this.plugin.compendium.getSubclass(this.originalCharacterState.subclassId);
 
@@ -469,6 +527,7 @@ export class LevelUpModal extends Modal {
                                         let maxScore = -Infinity;
                                         const charForCalc: Character = JSON.parse(JSON.stringify(this.originalCharacterState));
                                         this.rewindCharacter(charForCalc);
+                                        // Pass 'this' as the context for the callback
                                         this.fastForwardCharacter(charForCalc, this.tempCharacter.levelUpHistory as any);
 
                                         for (const trait of availableTraits) {
@@ -551,10 +610,8 @@ export class LevelUpModal extends Modal {
 
         const owned = new Set<string>();
 
-        // Add foundation features
         subclass.foundations.forEach(f => owned.add(f.name));
 
-        // Add features from level up history up to the level *before* the one we're checking
         for (let l = 2; l < currentLevel; l++) {
             const history = this.tempCharacter.levelUpHistory[l] as LevelUpSelection;
             history?.advancements.forEach(adv => {
@@ -597,7 +654,6 @@ export class LevelUpModal extends Modal {
 
         const history = this.tempCharacter.levelUpHistory as { [level: number]: LevelUpSelection };
 
-        // Define the limits for each advancement per tier.
         const tierLimits: { [key: string]: number } = {
             'increase_traits': 3,
             'add_hp': 2,
@@ -605,7 +661,7 @@ export class LevelUpModal extends Modal {
             'increase_experience': 1,
             'take_domain_card': 1,
             'increase_evasion': 1,
-            'upgrade_subclass': tier >= 3 ? 1 : 0, // Tier 2 has this handled separately
+            'upgrade_subclass': tier >= 3 ? 1 : 0,
             'increase_proficiency': tier >= 3 ? 1 : 0,
             'multiclass': tier >= 3 ? 1 : 0,
         };
@@ -619,12 +675,10 @@ export class LevelUpModal extends Modal {
             { id: 'increase_evasion', name: 'Increase Evasion by +1' },
         ];
 
-        // Tier 2 specific: Enhanced Subclass
         if (tier === 2) {
             tierLimits['upgrade_subclass'] = 1;
         }
 
-        // Tier 3+ options
         if (tier >= 3) {
             potentialOptions.push(
                 { id: 'upgrade_subclass', name: 'Enhanced Subclass' },
@@ -633,13 +687,11 @@ export class LevelUpModal extends Modal {
             );
         }
 
-        // Filter options based on tier limits
         const options = potentialOptions.filter(opt => {
             const countInTier = this.countAdvancementsInTier(opt.id, tier, history);
             return countInTier < tierLimits[opt.id];
         });
 
-        // Handle mutual exclusivity for Enhanced Subclass and Multiclass within the tier
         const hasTakenSubclassUpgradeInTier = this.countAdvancementsInTier('upgrade_subclass', tier, history) > 0;
         const hasTakenMulticlassInTier = this.countAdvancementsInTier('multiclass', tier, history) > 0;
 
@@ -650,7 +702,6 @@ export class LevelUpModal extends Modal {
             return options.filter(opt => opt.id !== 'upgrade_subclass');
         }
 
-        // Final check for subclass upgrade availability (specializations/masteries)
         const upgradeSubclassOption = options.find(opt => opt.id === 'upgrade_subclass');
         if (upgradeSubclassOption) {
             const allHistoryAdvancements = Object.values(history).flatMap(h => h.advancements.map(a => a?.id));
@@ -665,12 +716,9 @@ export class LevelUpModal extends Modal {
         return options;
     }
 
-
     private getDomainCardOptions(level: number, exclusions: string[] = []): JsonAbility[] {
         const primaryClass = this.plugin.compendium.getClass(this.character.classId);
         if (!primaryClass) return [];
-
-        //const tier = this.getTier(level);
 
         const domainsToSearch: { domain: string, maxLevel: number }[] = [
             { domain: primaryClass.domain_1.toLowerCase(), maxLevel: level },
@@ -690,7 +738,7 @@ export class LevelUpModal extends Modal {
         if (multiclassDomain) {
             domainsToSearch.push({
                 domain: multiclassDomain.toLowerCase(),
-                maxLevel: Math.ceil(level / 2) // This rule seems separate from the tier rule, keeping as is.
+                maxLevel: Math.ceil(level / 2)
             });
         }
 
@@ -717,7 +765,7 @@ export class LevelUpModal extends Modal {
             return (
                 !isNaN(abilityLevel) &&
                 abilityLevel > 0 &&
-                abilityLevel <= domainInfo.maxLevel && // Check against tier-limited maxLevel
+                abilityLevel <= domainInfo.maxLevel &&
                 !initialCards.has(ability.name) &&
                 !chosenCardNames.has(ability.name)
             );
@@ -735,7 +783,6 @@ export class LevelUpModal extends Modal {
 
             let resetReason = '';
 
-            // Validate Advancements
             for (let i = 0; i < selection.advancements.length; i++) {
                 const adv = selection.advancements[i];
                 if (adv && !availableAdvancements.includes(adv.id)) {
@@ -745,7 +792,6 @@ export class LevelUpModal extends Modal {
                 }
             }
 
-            // Validate Domain Card
             if (selection.domainCardId && !availableCards.includes(selection.domainCardId)) {
                 resetReason += `Domain card "${selection.domainCardId}" is no longer valid. `;
                 selection.domainCardId = null;
@@ -760,18 +806,13 @@ export class LevelUpModal extends Modal {
     }
 
     private executeSmartRebuild() {
-        // 1. Start with the current character state to preserve manual changes (e.g., inventory, card loadout)
         const finalChar: Character = JSON.parse(JSON.stringify(this.originalCharacterState));
         finalChar.levelUpHistory = this.tempCharacter.levelUpHistory;
         finalChar.level = this.tempCharacter.level;
 
-        // 2. Rewind: Revert the character to a clean level 1 state, preserving only foundational attributes.
         this.rewindCharacter(finalChar);
-
-        // 3. Fast-Forward: Apply all mechanical benefits from the new level up history.
         this.fastForwardCharacter(finalChar, finalChar.levelUpHistory as { [level: number]: LevelUpSelection });
 
-        // 4. Finalize and Save
         new Notice("Character stats recalculated and applied!");
         this.onSave(finalChar);
     }
@@ -781,8 +822,6 @@ export class LevelUpModal extends Modal {
         const subclass = this.plugin.compendium.getSubclass(char.subclassId);
         if (!charClass || !subclass) return;
 
-        // --- Experience Rewind ---
-        // Start with a copy of the experiences from the pre-modal state
         char.experiences = JSON.parse(JSON.stringify(this.originalCharacterState.experiences));
         const originalHistory = this.originalCharacterState.levelUpHistory;
         const newExpIds = new Set<string>();
@@ -792,9 +831,7 @@ export class LevelUpModal extends Modal {
                 newExpIds.add(history.newExperienceId);
             }
         }
-        // Remove experiences created during level-ups
         char.experiences = char.experiences.filter(exp => !newExpIds.has(exp.id));
-        // Revert the +1 bonuses from "increase_experience" advancements
         for (const level in originalHistory) {
             const history = originalHistory[level] as LevelUpSelection;
             history.advancements.forEach(adv => {
@@ -809,7 +846,6 @@ export class LevelUpModal extends Modal {
             });
         }
 
-        // --- Card & Feature Rewind ---
         const cardsToRemove = new Set<string>();
         const featuresToRemove = new Set<string>();
 
@@ -842,14 +878,25 @@ export class LevelUpModal extends Modal {
         char.vault = char.vault.filter(card => !cardsToRemove.has(card.name));
         char.features = char.features.filter(feature => !featuresToRemove.has(feature.name));
 
+        char.equippedStances = this.originalCharacterState.equippedStances ? [...this.originalCharacterState.equippedStances] : [];
+        char.activeStance = this.originalCharacterState.activeStance;
+        for (const level in originalHistory) {
+            const history = originalHistory[level] as LevelUpSelection;
+            history.stanceChoices?.forEach(stanceName => {
+                if (stanceName) {
+                    const index = char.equippedStances?.indexOf(stanceName);
+                    if (index !== undefined && index > -1) {
+                        char.equippedStances?.splice(index, 1);
+                    }
+                }
+            });
+        }
 
-        // Reset stats to level 1 values
         char.proficiency = 1;
         char.hitPoints.max = parseInt(charClass.hp);
         char.stress.max = 6;
         char.evasion = parseInt(charClass.evasion);
 
-        // Reset traits to their original values, before any level ups
         char.traits = JSON.parse(JSON.stringify(this.originalCharacterState.traits));
         for (const levelHistory of Object.values(this.originalCharacterState.levelUpHistory)) {
             levelHistory?.advancements.forEach(adv => {
@@ -865,7 +912,6 @@ export class LevelUpModal extends Modal {
             });
         }
 
-        // Reset multiclass info and spellcasting trait
         char.multiclassClassId = null;
         char.multiclassSubclassId = null;
         char.multiclassDomainId = null;
@@ -877,9 +923,9 @@ export class LevelUpModal extends Modal {
         const subclass = this.plugin.compendium.getSubclass(char.subclassId);
         if (!charClass || !subclass) return;
 
-        // Re-apply level-ups from 2 to the new target level
         for (let level = 2; level <= char.level; level++) {
-            // Recalculate damage thresholds for each level
+            const selection = history[level];
+
             const equippedArmor = char.inventory.find(i => i.instanceId === char.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
             if (equippedArmor) {
                 char.damageThresholds.major = equippedArmor.baseThresholds.major + level;
@@ -889,12 +935,10 @@ export class LevelUpModal extends Modal {
                 char.damageThresholds.severe = level * 2;
             }
 
-            // Apply Tier Achievements
             if (level === 2 || level === 5 || level === 8) {
                 char.proficiency++;
                 const selectionForExp = history[level];
                 if (selectionForExp?.newExperienceName && selectionForExp.newExperienceId) {
-                    // Update existing experience or add new one
                     const existingExp = char.experiences.find(e => e.id === selectionForExp.newExperienceId);
                     if (existingExp) {
                         existingExp.name = selectionForExp.newExperienceName;
@@ -907,8 +951,16 @@ export class LevelUpModal extends Modal {
                 }
             }
 
-            const selection = history[level];
             if (!selection) continue;
+
+            if (selection.stanceChoices) {
+                if (!char.equippedStances) char.equippedStances = [];
+                selection.stanceChoices.forEach(stanceName => {
+                    if (stanceName && !char.equippedStances?.includes(stanceName)) {
+                        char.equippedStances?.push(stanceName);
+                    }
+                });
+            }
 
             const addCardToLoadoutOrVault = (card: DomainCard) => {
                 if (!card) return;
@@ -929,7 +981,6 @@ export class LevelUpModal extends Modal {
                 char.features.push(feature);
             };
 
-            // Apply Advancements
             selection.advancements.forEach(adv => {
                 if (!adv) return;
                 switch (adv.id) {
@@ -1002,7 +1053,6 @@ export class LevelUpModal extends Modal {
                 }
             });
 
-            // Apply Domain Card
             if (selection.domainCardId) {
                 const card = this.plugin.compendium.getAbility(selection.domainCardId);
                 if (card) addCardToLoadoutOrVault(card);
