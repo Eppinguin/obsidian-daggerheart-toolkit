@@ -1403,7 +1403,7 @@ export class CharacterSheetView extends ItemView {
 
             const renderView = () => {
                 contentDiv.empty();
-                const valueToRender = initialValue || (isSingleLine ? "" : "_Click to edit..._");
+                const valueToRender = initialValue || "_Click to edit..._";
                 MarkdownRenderer.render(this.app, valueToRender, contentDiv, '', this);
             };
 
