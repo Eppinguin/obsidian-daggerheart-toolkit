@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, TFile, MarkdownRenderer, Menu } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, TFile, MarkdownRenderer, Menu, App, Modal } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
 import {
@@ -18,7 +18,8 @@ import {
     ImportExportModal,
     ItemEditModal,
     LevelUpModal,
-    ManageTrackersModal
+    ManageTrackersModal,
+    TemporaryResourceModal
 } from '../modals';
 import { getTokenType, createTokenTracker } from '../services/token-helpers';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
@@ -437,18 +438,57 @@ export class CharacterSheetView extends ItemView {
         const armorBox = container.createDiv({ cls: 'dh-stat-hex' });
         armorBox.createEl('span', { text: String(data.armorSlots.max + armorMod), cls: 'dh-stat-value' });
         armorBox.createEl('span', { text: 'Armor', cls: 'dh-stat-label' });
+
         const armorSlotsContainer = parent.createDiv({ cls: 'dh-armor-slots' });
-        armorSlotsContainer.createEl('span', { text: 'Armor Slots' });
+
+        const armorLabelContainer = armorSlotsContainer.createDiv({ cls: 'dh-armor-label-container' });
+        armorLabelContainer.createEl('span', { text: 'Armor Slots' });
+        const addTempArmorBtn = armorLabelContainer.createEl('button', { cls: 'dh-add-temp-btn clickable-icon' });
+        setIcon(addTempArmorBtn, 'plus-circle');
+        addTempArmorBtn.ariaLabel = "Add/Edit Temporary Armor Slots";
+        addTempArmorBtn.addEventListener('click', () => {
+            const currentVal = data.temporaryArmorSlots ? String(data.temporaryArmorSlots.max) : '0';
+            new TemporaryResourceModal(this.app, "Edit Temporary Armor", "Enter amount", currentVal, (value) => {
+                const amount = parseInt(value);
+                if (!isNaN(amount)) {
+                    if (!data.temporaryArmorSlots) {
+                        data.temporaryArmorSlots = { _type: 'dynamicResource', current: 0, max: 0 };
+                    }
+                    const currentMarked = data.temporaryArmorSlots.current;
+                    data.temporaryArmorSlots.max = amount;
+                    data.temporaryArmorSlots.current = Math.min(currentMarked, amount);
+                    if (amount === 0) {
+                        data.temporaryArmorSlots.current = 0;
+                    }
+                    this.plugin.updateCharacter(data);
+                }
+            }).open();
+        });
+
         this.plugin.createInteractiveTrack(armorSlotsContainer, '', data.armorSlots.max, data.id + '-armor', data.armorSlots.current, (v) => {
             data.armorSlots.current = v;
             this.plugin.updateCharacter(data);
         });
+
+        if (data.temporaryArmorSlots && data.temporaryArmorSlots.max > 0) {
+            const tempArmorContainer = armorSlotsContainer.createDiv({ cls: 'dh-temporary-track-container' });
+            this.plugin.createInteractiveTrack(tempArmorContainer, 'Temp', data.temporaryArmorSlots.max, data.id + '-temp-armor', data.temporaryArmorSlots.current, (v) => {
+                if (!data.temporaryArmorSlots) return;
+                data.temporaryArmorSlots.current = v;
+                if (data.temporaryArmorSlots.current >= data.temporaryArmorSlots.max) {
+                    data.temporaryArmorSlots.max = 0;
+                    data.temporaryArmorSlots.current = 0;
+                }
+                this.plugin.updateCharacter(data);
+            });
+        }
     }
 
     private drawDamageAndResources(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-damage-and-resources' });
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Hit Points & Stress' });
+
         const thresholdsBox = container.createDiv({ cls: 'dh-thresholds-box' });
         let finalMajorThreshold = data.damageThresholds.major;
         let finalSevereThreshold = data.damageThresholds.severe;
@@ -539,8 +579,90 @@ export class CharacterSheetView extends ItemView {
         severe.createEl('span', { cls: 'dh-threshold-label', text: 'Severe Damage' });
         severe.createEl('span', { cls: 'dh-threshold-value', text: String(finalSevereThreshold) });
         severe.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 3 HP` });
-        if (data.hitPoints) this.plugin.createInteractiveTrack(container, 'HP', data.hitPoints.max, data.id + '-hp', data.hitPoints.current, (v) => { data.hitPoints.current = v; this.plugin.updateCharacter(data); });
-        if (data.stress) this.plugin.createInteractiveTrack(container, 'Stress', data.stress.max, data.id + '-stress', data.stress.current, (v) => { data.stress.current = v; this.plugin.updateCharacter(data); });
+
+        if (data.hitPoints) {
+            const hpTrackContainer = container.createDiv();
+            this.plugin.createInteractiveTrack(hpTrackContainer, 'HP', data.hitPoints.max, data.id + '-hp', data.hitPoints.current, (v) => {
+                data.hitPoints.current = v;
+                this.plugin.updateCharacter(data);
+            });
+            const hpLabel = hpTrackContainer.querySelector('.dh-track-label') as HTMLElement;
+            if (hpLabel) {
+                hpLabel.addClass('is-clickable');
+                hpLabel.ariaLabel = "Add/Edit Temporary HP";
+                hpLabel.addEventListener('click', () => {
+                    const currentVal = data.temporaryHitPoints ? String(data.temporaryHitPoints.max) : '0';
+                    new TemporaryResourceModal(this.app, "Edit Temporary HP", "Enter amount", currentVal, (value) => {
+                        const amount = parseInt(value);
+                        if (!isNaN(amount)) {
+                            if (!data.temporaryHitPoints) {
+                                data.temporaryHitPoints = { _type: 'dynamicResource', current: 0, max: 0 };
+                            }
+                            // Replace old temp HP, resetting any marked boxes.
+                            data.temporaryHitPoints.max = amount;
+                            data.temporaryHitPoints.current = 0;
+                            this.plugin.updateCharacter(data);
+                        }
+                    }).open();
+                });
+            }
+        }
+
+        if (data.temporaryHitPoints && data.temporaryHitPoints.max > 0) {
+            const tempHpContainer = container.createDiv({ cls: 'dh-temporary-track-container' });
+            this.plugin.createInteractiveTrack(tempHpContainer, 'Temp HP', data.temporaryHitPoints.max, data.id + '-temp-hp', data.temporaryHitPoints.current, (v) => {
+                if (!data.temporaryHitPoints) return;
+                data.temporaryHitPoints.current = v;
+                if (data.temporaryHitPoints.current >= data.temporaryHitPoints.max) {
+                    data.temporaryHitPoints.max = 0;
+                    data.temporaryHitPoints.current = 0;
+                }
+                this.plugin.updateCharacter(data);
+            });
+        }
+
+        if (data.stress) {
+            const stressTrackContainer = container.createDiv();
+            this.plugin.createInteractiveTrack(stressTrackContainer, 'Stress', data.stress.max, data.id + '-stress', data.stress.current, (v) => { data.stress.current = v; this.plugin.updateCharacter(data); });
+            const stressLabel = stressTrackContainer.querySelector('.dh-track-label') as HTMLElement;
+            if (stressLabel) {
+                stressLabel.addClass('is-clickable');
+                stressLabel.ariaLabel = "Add/Edit Temporary Stress";
+                stressLabel.addEventListener('click', () => {
+                    const currentVal = data.temporaryStress ? String(data.temporaryStress.max) : '0';
+                    new TemporaryResourceModal(this.app, "Edit Temporary Stress", "Enter amount", currentVal, (value) => {
+                        const amount = parseInt(value);
+                        if (!isNaN(amount)) {
+                            if (!data.temporaryStress) {
+                                data.temporaryStress = { _type: 'dynamicResource', current: 0, max: 0 };
+                            }
+                            const currentMarked = data.temporaryStress.current;
+                            data.temporaryStress.max = amount;
+                            // Preserve marked stress if it's less than the new max
+                            data.temporaryStress.current = Math.min(currentMarked, amount);
+                            if (amount === 0) {
+                                data.temporaryStress.current = 0;
+                            }
+                            this.plugin.updateCharacter(data);
+                        }
+                    }).open();
+                });
+            }
+        }
+
+        if (data.temporaryStress && data.temporaryStress.max > 0) {
+            const tempStressContainer = container.createDiv({ cls: 'dh-temporary-track-container' });
+            this.plugin.createInteractiveTrack(tempStressContainer, 'Temp Stress', data.temporaryStress.max, data.id + '-temp-stress', data.temporaryStress.current, (v) => {
+                if (!data.temporaryStress) return;
+                data.temporaryStress.current = v;
+                if (data.temporaryStress.current >= data.temporaryStress.max) {
+                    // Once filled, temp stress is gone
+                    data.temporaryStress.max = 0;
+                    data.temporaryStress.current = 0;
+                }
+                this.plugin.updateCharacter(data);
+            });
+        }
     }
 
     private drawTraits(parent: HTMLElement, data: Character) {

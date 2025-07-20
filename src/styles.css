@@ -2298,6 +2298,70 @@
     background-color: var(--dh-sheet-accent);
 }
 
+/* Remove obsolete button and wrapper styles */
+.dh-track-wrapper,
+.dh-section-header-content .dh-add-temp-btn {
+    display: none;
+}
+
+/* Styles for the reverted Armor Slot button */
+.dh-armor-label-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--size-4-2);
+}
+
+.dh-add-temp-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    margin-left: var(--size-4-2);
+}
+
+.dh-add-temp-btn:hover {
+    color: var(--dh-sheet-accent);
+}
+
+/* Styles to make HP/Stress labels clickable */
+.dh-track-label.is-clickable {
+    cursor: pointer;
+    transition: color 0.2s ease-in-out;
+}
+
+.dh-track-label.is-clickable:hover {
+    color: var(--dh-sheet-accent);
+}
+
+/* Styles for Modal Stepper Input */
+.dh-stepper-container {
+    display: flex;
+    align-items: center;
+}
+
+.dh-stepper-container button {
+    width: 30px;
+    height: 30px;
+    font-size: var(--font-ui-large);
+    flex-shrink: 0;
+}
+
+.dh-stepper-container input[type="number"] {
+    width: 60px;
+    text-align: center;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+}
+
+.dh-stepper-container input[type=number]::-webkit-outer-spin-button,
+.dh-stepper-container input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
 .dh-damage-and-resources {
     background-color: var(--dh-sheet-bg-alt);
     border: 1px solid var(--dh-sheet-border);

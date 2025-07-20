@@ -138,9 +138,12 @@ export interface Character {
     evasion: number;
     traits: { Strength: Trait; Agility: Trait; Finesse: Trait; Instinct: Trait; Presence: Trait; Knowledge: Trait; };
     hitPoints: DynamicResource;
+    temporaryHitPoints?: DynamicResource;
     stress: DynamicResource;
+    temporaryStress?: DynamicResource;
     hope: DynamicResource;
     armorSlots: DynamicResource;
+    temporaryArmorSlots?: DynamicResource;
     damageThresholds: DamageThresholds;
     gold: Gold;
     experiences: Experience[];
