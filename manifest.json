@@ -1,7 +1,7 @@
 {
     "id": "daggerheart-toolkit",
     "name": "Daggerheart Toolkit",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "minAppVersion": "0.15.0",
     "description": "An Obsidian.md extension for Daggerheart GMs and players to render statblocks, build and run encounters, track fear and countdowns, and manage character.",
     "author": "Eppinguin",
