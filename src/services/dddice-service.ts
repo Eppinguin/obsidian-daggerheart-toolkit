@@ -6,6 +6,17 @@ import type { IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, IApiResponse
 // Re-export types that are needed by the UI
 export type { IRoom, ITheme };
 
+/**
+ * Custom error to signal that a dddice room was not found.
+ */
+export class DddiceRoomNotFoundError extends Error {
+    constructor(message?: string) {
+        super(message || 'dddice room not found.');
+        this.name = 'DddiceRoomNotFoundError';
+    }
+}
+
+
 // Add a type for our structured roll components
 export interface RollComponent {
     value: number;
@@ -72,7 +83,7 @@ export function destroyDddiceRenderer(): void {
 }
 
 /**
- * Get the current dddice instance if initialized.
+ * Get the current dddice instance if it initialized.
  * @returns The current ThreeDDice instance or undefined if not initialized.
  */
 export function getDddiceInstance(): ThreeDDice | undefined {
@@ -219,7 +230,9 @@ export async function updateParticipantName(settings: DddiceSettings, newName: s
             console.log(`dddice: Updated participant name to "${newName}".`);
         }
     } catch (e: any) {
-        console.error("dddice: Failed to update participant name:", e);
+        if (e?.response?.status !== 404) {
+            console.error("dddice: Failed to update participant name:", e);
+        }
     }
 }
 
@@ -431,33 +444,28 @@ export async function rollWithDddice(
         }
     }
 
-    return new Promise((resolve) => {
-        try {
-            const performRoll = (rollPromise: Promise<IApiResponse<'roll', IRoll>>) => {
-                rollPromise.then((result) => {
-                    if (result?.data) {
-                        const rollResult = handleRollResult(result.data, isDaggerheartActionRoll, traitName, operator);
-                        resolve(rollResult);
-                    } else {
-                        resolve(null);
-                    }
-                }).catch((e: unknown) => {
-                    console.error("dddice Roll Promise Error:", e);
-                    resolve(null);
-                });
-            };
-
-            if (renderInObsidian && _dddiceInstance) {
-                performRoll(_dddiceInstance.roll(dicePayload, rollOptions));
-            } else {
-                const dddiceApi = _dddiceInstance?.api ?? initializeDddiceApi(apiKey);
-                if (room) dddiceApi.connect(room);
-                performRoll(dddiceApi.roll.create(dicePayload, rollOptions));
-            }
-        } catch (e: any) {
-            new Notice('Failed to roll with dddice. Check settings and console.');
-            console.error("dddice Roll Error:", e.response?.data?.data?.message ?? e.message, e);
-            resolve(null);
+    try {
+        const dddiceApi = _dddiceInstance?.api ?? initializeDddiceApi(apiKey);
+        if (room && dddiceApi.roomSlug !== room) {
+            await dddiceApi.connect(room);
         }
-    });
+
+        const rollPromise = dddiceApi.roll.create(dicePayload, rollOptions);
+
+        const result = await rollPromise;
+
+        if (result?.data) {
+            return handleRollResult(result.data, isDaggerheartActionRoll, traitName, operator);
+        } else {
+            return null;
+        }
+    } catch (e: any) {
+        if (e?.response?.status === 404) {
+            console.warn("dddice: Roll failed because the room was not found (404).");
+            throw new DddiceRoomNotFoundError();
+        }
+        new Notice('Failed to roll with dddice. Check settings and console.');
+        console.error("dddice Roll Error:", e.response?.data?.data?.message ?? e.message, e);
+        return null;
+    }
 }

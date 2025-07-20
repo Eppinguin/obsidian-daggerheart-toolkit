@@ -1,4 +1,4 @@
-import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu, DropdownComponent } from 'obsidian';
+import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu, DropdownComponent, ButtonComponent } from 'obsidian';
 import * as YAML from 'js-yaml';
 import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter, AllCompendiumData } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './views/EncounterBuilderView';
@@ -468,118 +468,156 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         let resultPayload: RollCompletedPayload | null = null;
         let total: number | null = null;
 
-        if (this.settings.diceProvider === 'dddice') {
-            const dddiceResult = await dddice.rollWithDddice(this.settings.dddice, diceString, context, traitName);
+        const performRoll = async (isRetry: boolean = false) => {
+            if (this.settings.diceProvider === 'dddice') {
+                try {
+                    const dddiceResult = await dddice.rollWithDddice(this.settings.dddice, diceString, context, traitName);
 
-            if (dddiceResult) {
-                resultPayload = {
-                    context: context,
-                    result: dddiceResult.display,
-                    total: dddiceResult.totalStr,
-                    outcome: dddiceResult.outcome,
-                    structuredResult: dddiceResult.structuredResult,
-                };
-                total = dddiceResult.total;
-            }
-        } else {
-            if (!this.settings.enableDiceRoller || !this.isDiceRollerEnabled) {
-                new Notice("Dice Roller integration is not enabled in plugin settings.");
-                return null;
-            }
-            const diceRollerPlugin = (this.app as any).plugins.getPlugin("obsidian-dice-roller");
-            if (!diceRollerPlugin || typeof diceRollerPlugin.api?.getRoller !== 'function') {
-                new Notice("Dice Roller plugin API not available or plugin is disabled.", 4000);
-                return null;
-            }
-            try {
-                let isDaggerheartActionRoll = false;
-                let rollerDiceString = diceString;
-
-                for (const keyword of dualityKeywords) {
-                    if (diceString.toLowerCase().startsWith(keyword)) {
-                        isDaggerheartActionRoll = true;
-                        const modifiers = diceString.substring(keyword.length);
-                        rollerDiceString = `1d12+1d12${modifiers}`;
-                        break;
+                    if (dddiceResult) {
+                        resultPayload = {
+                            context: context,
+                            result: dddiceResult.display,
+                            total: dddiceResult.totalStr,
+                            outcome: dddiceResult.outcome,
+                            structuredResult: dddiceResult.structuredResult,
+                        };
+                        total = dddiceResult.total;
                     }
-                }
+                    return;
+                } catch (e) {
+                    if (e instanceof dddice.DddiceRoomNotFoundError && !isRetry) {
+                        new Notice("dddice room not found. Creating a new one and retrying...", 4000);
+                        try {
+                            const apiKey = this.settings.dddice.apiKey;
+                            if (!apiKey) throw new Error("Missing dddice API key for recovery.");
 
-                if (!isDaggerheartActionRoll) {
-                    // This is for generic rolls, expand dice pools.
-                    rollerDiceString = expandDiceString(rollerDiceString);
-                }
-
-                const roller = await diceRollerPlugin.api.getRoller(rollerDiceString);
-                await roller.roll({ showDice: this.settings.useGraphicalDice, throw: this.settings.useGraphicalDice });
-
-                total = roller.result;
-
-                const resultDisplay = roller.prettified ?? diceString;
-                const totalStr = String(total);
-                let outcome: string | undefined = undefined;
-                const structuredResult: RollComponent[] = [];
-                const rollerResults = (roller.results && Array.isArray(roller.results)) ? [...roller.results] : [];
-
-                if (isDaggerheartActionRoll && rollerResults.length > 0) {
-                    const d12s = rollerResults.filter((r: any) => r.type === 'die' && r.dice?.faces === 12);
-
-                    if (d12s.length >= 2) {
-                        const hopeDie = d12s[0];
-                        const fearDie = d12s[1];
-                        const hopeValue = hopeDie.result;
-                        const fearValue = fearDie.result;
-
-                        structuredResult.push({ value: hopeValue, label: 'Hope', type: 'hope' });
-                        structuredResult.push({ value: fearValue, label: 'Fear', type: 'fear' });
-
-                        outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
-
-                        // Remove processed d12s to avoid double counting
-                        const hopeIndex = rollerResults.indexOf(hopeDie);
-                        if (hopeIndex > -1) rollerResults.splice(hopeIndex, 1);
-
-                        const fearIndex = rollerResults.indexOf(fearDie);
-                        if (fearIndex > -1) rollerResults.splice(fearIndex, 1);
-                    }
-
-                    rollerResults.forEach((res: any) => {
-                        if (res.type === 'die' && res.dice?.faces === 6) {
-                            if (res.dice?.negative) {
-                                structuredResult.push({ value: -res.result, label: 'Disadvantage', type: 'disadvantage' });
-                            } else {
-                                structuredResult.push({ value: res.result, label: 'Advantage', type: 'advantage' });
+                            const api = dddice.initializeDddiceApi(apiKey);
+                            const newRoom = (await api.room.create())?.data;
+                            if (!newRoom || !newRoom.slug) {
+                                throw new Error("Failed to create a new dddice room during recovery.");
                             }
-                        } else if (res.type === 'modifier') {
-                            structuredResult.push({ value: res.modifier, label: traitName || 'Mod', type: 'modifier' });
-                        } else if (res.type === 'die') {
-                            const value = res.dice?.negative ? -res.result : res.result;
-                            structuredResult.push({ value, label: `d${res.dice?.faces}`, type: 'die' });
-                        }
-                    });
+                            this.settings.dddice.room = newRoom.slug;
+                            await this.saveSettings();
+                            this.initializeDddiceIfNeeded(); // This reconnects the renderer
+                            new Notice(`New room '${newRoom.name}' created. Retrying roll.`, 4000);
 
-                } else if (rollerResults.length > 0) {
-                    rollerResults.forEach((res: any) => {
-                        if (res.type === 'die') {
-                            const value = res.dice?.negative ? -res.result : res.result;
-                            structuredResult.push({ value, label: `d${res.dice?.faces}`, type: 'die' });
-                        } else if (res.type === 'modifier') {
-                            structuredResult.push({ value: res.modifier, label: 'Modifier', type: 'modifier' });
+                            // Retry the roll once with the new settings
+                            await performRoll(true);
+                        } catch (retryError) {
+                            new Notice("Failed to recover dddice connection. Please check settings.", 10000);
+                            console.error("Daggerheart: dddice self-healing failed:", retryError);
                         }
-                    });
+                    } else if (e instanceof dddice.DddiceRoomNotFoundError && isRetry) {
+                        new Notice("Failed to roll in the new dddice room. Please check settings.", 10000);
+                    } else {
+                        const errorMessage = e instanceof Error ? e.message : String(e);
+                        new Notice("An unexpected error occurred with dddice. Check the console.");
+                        console.error("Daggerheart: Unhandled error rolling with dddice:", e);
+                    }
+                    // For other errors or failed retry, total remains null
+                    return;
                 }
+            } else {
+                if (!this.settings.enableDiceRoller || !this.isDiceRollerEnabled) {
+                    new Notice("Dice Roller integration is not enabled in plugin settings.");
+                    return;
+                }
+                const diceRollerPlugin = (this.app as any).plugins.getPlugin("obsidian-dice-roller");
+                if (!diceRollerPlugin || typeof diceRollerPlugin.api?.getRoller !== 'function') {
+                    new Notice("Dice Roller plugin API not available or plugin is disabled.", 4000);
+                    return;
+                }
+                try {
+                    let isDaggerheartActionRoll = false;
+                    let rollerDiceString = diceString;
 
-                resultPayload = { context, result: resultDisplay, total: totalStr, outcome, structuredResult };
+                    for (const keyword of dualityKeywords) {
+                        if (diceString.toLowerCase().startsWith(keyword)) {
+                            isDaggerheartActionRoll = true;
+                            const modifiers = diceString.substring(keyword.length);
+                            rollerDiceString = `1d12+1d12${modifiers}`;
+                            break;
+                        }
+                    }
 
-            } catch (e) {
-                console.error("Daggerheart: Error rolling dice with Dice Roller:", e);
-                new Notice(`Error rolling dice for "${diceString}".`);
-                return null;
+                    if (!isDaggerheartActionRoll) {
+                        // This is for generic rolls, expand dice pools.
+                        rollerDiceString = expandDiceString(rollerDiceString);
+                    }
+
+                    const roller = await diceRollerPlugin.api.getRoller(rollerDiceString);
+                    await roller.roll({ showDice: this.settings.useGraphicalDice, throw: this.settings.useGraphicalDice });
+
+                    total = roller.result;
+
+                    const resultDisplay = roller.prettified ?? diceString;
+                    const totalStr = String(total);
+                    let outcome: string | undefined = undefined;
+                    const structuredResult: RollComponent[] = [];
+                    const rollerResults = (roller.results && Array.isArray(roller.results)) ? [...roller.results] : [];
+
+                    if (isDaggerheartActionRoll && rollerResults.length > 0) {
+                        const d12s = rollerResults.filter((r: any) => r.type === 'die' && r.dice?.faces === 12);
+
+                        if (d12s.length >= 2) {
+                            const hopeDie = d12s[0];
+                            const fearDie = d12s[1];
+                            const hopeValue = hopeDie.result;
+                            const fearValue = fearDie.result;
+
+                            structuredResult.push({ value: hopeValue, label: 'Hope', type: 'hope' });
+                            structuredResult.push({ value: fearValue, label: 'Fear', type: 'fear' });
+
+                            outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
+
+                            // Remove processed d12s to avoid double counting
+                            const hopeIndex = rollerResults.indexOf(hopeDie);
+                            if (hopeIndex > -1) rollerResults.splice(hopeIndex, 1);
+
+                            const fearIndex = rollerResults.indexOf(fearDie);
+                            if (fearIndex > -1) rollerResults.splice(fearIndex, 1);
+                        }
+
+                        rollerResults.forEach((res: any) => {
+                            if (res.type === 'die' && res.dice?.faces === 6) {
+                                if (res.dice?.negative) {
+                                    structuredResult.push({ value: -res.result, label: 'Disadvantage', type: 'disadvantage' });
+                                } else {
+                                    structuredResult.push({ value: res.result, label: 'Advantage', type: 'advantage' });
+                                }
+                            } else if (res.type === 'modifier') {
+                                structuredResult.push({ value: res.modifier, label: traitName || 'Mod', type: 'modifier' });
+                            } else if (res.type === 'die') {
+                                const value = res.dice?.negative ? -res.result : res.result;
+                                structuredResult.push({ value, label: `d${res.dice?.faces}`, type: 'die' });
+                            }
+                        });
+
+                    } else if (rollerResults.length > 0) {
+                        rollerResults.forEach((res: any) => {
+                            if (res.type === 'die') {
+                                const value = res.dice?.negative ? -res.result : res.result;
+                                structuredResult.push({ value, label: `d${res.dice?.faces}`, type: 'die' });
+                            } else if (res.type === 'modifier') {
+                                structuredResult.push({ value: res.modifier, label: 'Modifier', type: 'modifier' });
+                            }
+                        });
+                    }
+
+                    resultPayload = { context, result: resultDisplay, total: totalStr, outcome, structuredResult };
+
+                } catch (e) {
+                    console.error("Daggerheart: Error rolling dice with Dice Roller:", e);
+                    new Notice(`Error rolling dice for "${diceString}".`);
+                }
             }
-        }
+        };
+
+        await performRoll();
 
         if (resultPayload) {
             this.app.workspace.trigger('daggerheart-roll-completed', resultPayload);
-        } else if (total === null) {
+        } else if (total === null && this.settings.diceProvider === 'dice-roller') { // only show if not dddice (which has its own notices)
             new Notice(`Failed to roll: ${diceString}`);
         }
 
@@ -649,7 +687,9 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         // Start the UI refresh observer
         this.startDddiceDataObserver();
-    } public async preloadDddiceData(loadAllThemes: boolean = false): Promise<void> {
+    }
+
+    public async preloadDddiceData(loadAllThemes: boolean = false): Promise<void> {
         if (!this.plugin.settings.dddice.apiKey) return;
 
         const now = Date.now();
@@ -974,6 +1014,51 @@ class DaggerheartSettingTab extends PluginSettingTab {
         }
     }
 
+    async handleJoinRoomWithLink(link: string, button: ButtonComponent) {
+        const roomLinkRegex = /dddice\.com\/room\/([a-zA-Z0-9-]+)(?:\?passcode=([a-zA-Z0-9-]+))?/;
+        const match = link.match(roomLinkRegex);
+
+        if (!match) {
+            new Notice('Invalid dddice room link format.');
+            return;
+        }
+
+        const slug = match[1];
+        const passcode = match[2];
+
+        button.setButtonText('Joining...').setDisabled(true);
+
+        try {
+            const apiKey = this.plugin.settings.dddice.apiKey;
+            if (!apiKey) {
+                new Notice('You must connect to dddice first before joining a room.');
+                throw new Error("API key not found.");
+            }
+
+            const dddiceApi = dddice.initializeDddiceApi(apiKey);
+            await dddiceApi.room.join(slug, passcode);
+
+            new Notice(`Successfully joined room: ${slug}`);
+
+            // Update settings
+            this.plugin.settings.dddice.room = slug;
+            await this.plugin.saveSettings();
+
+            // Re-initialize renderer with new room
+            this.plugin.initializeDddiceIfNeeded();
+
+            // Refresh settings UI
+            await this.preloadDddiceData(true); // Force a refresh of rooms list
+
+        } catch (error: any) {
+            console.error('Failed to join dddice room via link:', error);
+            const errorMessage = error?.response?.data?.data?.message || 'Failed to join room. Check the link and passcode.';
+            new Notice(errorMessage);
+        } finally {
+            button.setButtonText('Join').setDisabled(false);
+        }
+    }
+
     renderDddiceSettings(containerEl: HTMLElement) {
         const apiKeyDesc = createFragment((frag) => {
             frag.createEl('p', { text: 'Connect to dddice to roll 3D dice and share with friends.' });
@@ -993,6 +1078,25 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         const isConnected = this.plugin.settings.dddice.apiKey;
         if (isConnected) {
+            new Setting(containerEl)
+                .setName('Join Room with Link')
+                .setDesc('Paste a dddice room share link to join it.')
+                .addText(text => text
+                    .setPlaceholder('https://dddice.com/room/...'))
+                .addButton(button => button
+                    .setButtonText('Join')
+                    .onClick(async () => {
+                        const inputEl = containerEl.querySelector('.dddice-join-link-container input') as HTMLInputElement;
+                        if (inputEl && inputEl.value) {
+                            await this.handleJoinRoomWithLink(inputEl.value, button);
+                            inputEl.value = ''; // Clear input after attempting to join
+                        } else {
+                            new Notice('Please enter a room link.');
+                        }
+                    }))
+                .settingEl.addClass('dddice-join-link-container');
+
+
             new Setting(containerEl)
                 .setName('Render dice in Obsidian')
                 .setDesc('If enabled, 3D dice will be rendered over the Obsidian window.')

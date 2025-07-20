@@ -25,8 +25,9 @@ export class DddiceActivationModal extends Modal {
 
         contentEl.createEl('h2', { text: 'Connect to dddice' });
 
+        // Section 1: Activate with code
         const instructionsEl = contentEl.createEl('div', { cls: 'dddice-instructions' });
-        instructionsEl.createEl('p', { text: 'Click this link to connect:' });
+        instructionsEl.createEl('p', { text: 'Click this link to connect your account:' });
         const linkEl = instructionsEl.createEl('a', {
             text: 'dddice.com/activate',
             href: 'https://dddice.com/activate',
@@ -41,18 +42,20 @@ export class DddiceActivationModal extends Modal {
 
         this.timerEl = instructionsEl.createEl('div', { cls: 'dddice-timer' });
 
+        // Separator
         const separatorEl = contentEl.createEl('div', { cls: 'dddice-separator' });
         separatorEl.createEl('span', { text: 'OR' });
 
+        // Section 2: Continue as Guest
         const guestButtonEl = contentEl.createEl('div', { cls: 'dddice-guest-button-container' });
-        const guestButton = new Setting(guestButtonEl)
+        new Setting(guestButtonEl)
             .addButton(button => button
                 .setButtonText('Continue as Guest')
                 .onClick(async () => {
                     await this.continueAsGuest();
                 }));
 
-        // Initialize the activation process
+        // Initialize the activation process for the code flow
         this.startActivation();
     }
 
@@ -145,7 +148,6 @@ export class DddiceActivationModal extends Modal {
         if (!this.activationCode || !this.secret) return;
 
         try {
-            // Update timer element to show polling status
             if (this.timerEl) {
                 const timerText = this.timerEl.textContent || '';
                 if (!timerText.includes('Checking for activation')) {
@@ -166,7 +168,6 @@ export class DddiceActivationModal extends Modal {
             const data = await response.json();
 
             if (data.data && data.data.token) {
-                // We got a token!
                 this.stopPolling();
                 await this.handleActivationSuccess(data.data.token);
             }
@@ -184,7 +185,6 @@ export class DddiceActivationModal extends Modal {
 
     private async handleActivationSuccess(apiKey: string) {
         try {
-            // Show loading state in the modal
             const loadingEl = this.contentEl.createEl('div', {
                 cls: 'dddice-loading',
                 text: 'Setting up dddice...'
@@ -193,52 +193,59 @@ export class DddiceActivationModal extends Modal {
             loadingEl.style.marginTop = '20px';
             loadingEl.style.fontWeight = 'bold';
 
-            // Save the API key
             this.plugin.settings.dddice.apiKey = apiKey;
+            this.plugin.settings.diceProvider = 'dddice';
 
-            // Fetch rooms and themes
             const dddiceApi = dddice.initializeDddiceApi(apiKey);
+
+            const currentRoomSlug = this.plugin.settings.dddice.room;
+            let roomIsValid = false;
+
+            if (currentRoomSlug) {
+                try {
+                    await dddiceApi.room.get(currentRoomSlug);
+                    roomIsValid = true;
+                } catch (e: any) {
+                    if (e?.response?.status === 404) {
+                        console.warn(`dddice: Saved room '${currentRoomSlug}' not found. A new room will be created.`);
+                        this.plugin.settings.dddice.room = null;
+                        roomIsValid = false;
+                    } else {
+                        new Notice('Could not verify your dddice room. Please try again.');
+                        throw e;
+                    }
+                }
+            }
+
+            if (!roomIsValid) {
+                const newRoom = (await dddiceApi.room.create())?.data;
+                if (newRoom && newRoom.slug) {
+                    this.plugin.settings.dddice.room = newRoom.slug;
+                    console.log(`dddice: Created and selected new room '${newRoom.slug}'.`);
+                } else {
+                    throw new Error("Failed to create a new dddice room.");
+                }
+            }
+
             const [rooms, themes] = await Promise.all([
                 dddice.fetchDddiceRooms(dddiceApi),
                 dddice.fetchDddiceThemes(dddiceApi)
             ]);
 
-            // Cache rooms and themes temporarily in memory for immediate use
             this.plugin.settings.dddice.rooms = rooms.map(r => ({ slug: r.slug, name: r.name }));
             this.plugin.settings.dddice.themes = themes;
 
-            // Verify if the current room selection is still valid
-            if (!rooms.some(r => r.slug === this.plugin.settings.dddice.room)) {
-                this.plugin.settings.dddice.room = null;
-            }
-
-            // Set default values if needed
-            if (rooms.length > 0 && !this.plugin.settings.dddice.room) {
-                this.plugin.settings.dddice.room = rooms[0].slug;
-            }
-
             if (themes.length > 0) {
-                if (!this.plugin.settings.dddice.theme) {
-                    this.plugin.settings.dddice.theme = themes[0].id;
-                }
-                if (!this.plugin.settings.dddice.hopeTheme) {
-                    this.plugin.settings.dddice.hopeTheme = themes[0].id;
-                }
-                if (!this.plugin.settings.dddice.fearTheme) {
-                    this.plugin.settings.dddice.fearTheme = themes[0].id;
-                }
+                if (!this.plugin.settings.dddice.theme) this.plugin.settings.dddice.theme = themes[0].id;
+                if (!this.plugin.settings.dddice.hopeTheme) this.plugin.settings.dddice.hopeTheme = themes[0].id;
+                if (!this.plugin.settings.dddice.fearTheme) this.plugin.settings.dddice.fearTheme = themes[0].id;
             }
 
-            // Enable dddice as the dice provider
-            this.plugin.settings.diceProvider = 'dddice';            // Save settings and reinitialize dddice
             await this.plugin.saveSettings();
-
-            // Reinitialize the dddice renderer
             this.plugin.initializeDddiceIfNeeded();
 
-            // Refresh the settings tab if available
             if (this.plugin.settingsTab) {
-                this.plugin.settingsTab.display();
+                await this.plugin.settingsTab.preloadDddiceData(true);
             }
 
             new Notice('Successfully connected to dddice!');
@@ -246,6 +253,8 @@ export class DddiceActivationModal extends Modal {
         } catch (error) {
             console.error('Error handling activation success:', error);
             new Notice('Error setting up dddice. Please try again.');
+            this.plugin.settings.dddice.apiKey = '';
+            await this.plugin.saveSettings();
         }
     }
 
