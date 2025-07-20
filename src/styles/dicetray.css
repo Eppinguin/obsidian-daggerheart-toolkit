@@ -1,9 +1,17 @@
-/* --- Character Sheet View --- */
-.dh-character-sheet-view .view-content {
-    position: relative; /* This is crucial for positioning the tray inside */
-    overflow: visible !important; /* Allow the tray to pop out */
+/* --- Dice Tray Theming --- */
+.dh-character-sheet-view {
+  /* Use character-specific theme colors */
+  --dh-tray-accent-color: var(--dh-sheet-accent);
+  --dh-tray-accent-glow: var(--dh-sheet-accent-glow);
+  --dh-tray-fear-color: var(--dh-sheet-purple);
 }
 
+.dh-encounter-builder-container {
+  position: relative;
+  --dh-tray-accent-color: var(--interactive-accent);
+  --dh-tray-accent-glow: rgba(var(--interactive-accent-rgb), 0.4);
+  --dh-tray-fear-color: var(--color-purple);
+}
 /* --- Dice Tray Button --- */
 .dh-dice-tray-button {
     position: absolute;
@@ -11,9 +19,9 @@
     left: 20px;
     width: 48px;
     height: 48px;
-    background-color: var(--dh-sheet-bg-alt);
-    border: 1px solid var(--dh-sheet-border);
-    color: var(--dh-sheet-text-muted);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -25,20 +33,20 @@
 }
 
 .dh-dice-tray-button:hover {
-    color: var(--dh-sheet-accent);
-    border-color: var(--dh-sheet-accent);
-    box-shadow: 0 0 12px var(--dh-sheet-accent-glow);
+    color: var(--dh-tray-accent-color, var(--interactive-accent));
+    border-color: var(--dh-tray-accent-color, var(--interactive-accent));
+    box-shadow: 0 0 12px var(--dh-tray-accent-glow, rgba(var(--interactive-accent-rgb), 0.4));
     transform: translateY(-2px);
 }
 
 .dh-dice-tray-button.is-active {
-    background-color: var(--dh-sheet-accent);
-    color: var(--dh-sheet-bg);
-    border-color: var(--dh-sheet-accent);
+    background-color: var(--dh-tray-accent-color, var(--interactive-accent));
+    color: var(--text-on-accent);
+    border-color: var(--dh-tray-accent-color, var(--interactive-accent));
 }
 
 .dh-dice-tray-button.is-active:hover {
-    background-color: var(--dh-sheet-accent);
+    background-color: var(--dh-tray-accent-color, var(--interactive-accent));
     transform: translateY(-2px) scale(1.05);
 }
 
@@ -49,8 +57,8 @@
     left: 20px;
     width: 320px;
     max-height: 450px;
-    background-color: var(--dh-sheet-bg);
-    border: 1px solid var(--dh-sheet-border);
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-l);
     box-shadow: var(--shadow-l);
     z-index: 1000;
@@ -58,7 +66,7 @@
     flex-direction: column;
     padding: var(--size-4-3);
     gap: var(--size-4-3);
-    color: var(--dh-sheet-text);
+    color: var(--text-normal);
 }
 
 .dh-dice-tray-history {
@@ -67,11 +75,11 @@
     display: flex;
     flex-direction: column-reverse;
     gap: var(--size-4-2);
-    background-color: var(--dh-sheet-bg-alt);
+    background-color: var(--background-secondary);
     margin: calc(var(--size-4-3) * -1);
     margin-bottom: 0;
     padding: var(--size-4-3);
-    border-bottom: 1px solid var(--dh-sheet-border);
+    border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .dh-dice-tray-controls-wrapper {
@@ -115,9 +123,9 @@
 }
 
 .dh-dice-button, .dh-duality-button, .dh-adv-dis-button {
-    background-color: var(--dh-sheet-bg-alt);
-    border: 1px solid var(--dh-sheet-border);
-    color: var(--dh-sheet-text-muted);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
     padding: var(--size-4-2);
     text-align: center;
     border-radius: var(--radius-s);
@@ -131,9 +139,9 @@
 }
 
 .dh-dice-button:hover, .dh-duality-button:hover, .dh-adv-dis-button:hover {
-    color: var(--dh-sheet-text);
-    border-color: var(--dh-sheet-accent);
-    background-color: var(--dh-sheet-bg);
+    color: var(--text-normal);
+    border-color: var(--dh-tray-accent-color, var(--interactive-accent));
+    background-color: var(--background-modifier-hover);
 }
 
 .dh-adv-dis-button {
@@ -144,45 +152,72 @@
 .dh-disadvantage-button { color: var(--color-red); border-color: var(--color-red); }
 .dh-disadvantage-button:hover { background-color: rgba(var(--color-red-rgb), 0.1); border-color: var(--color-red) !important; color: var(--color-red) !important;}
 
+
+/* MODIFIED: Button Row Layout */
 .dh-button-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr auto; /* Default for Roll and Clear */
     gap: var(--size-4-2);
 }
 
+/* MODIFIED: Layout when hidden button is present */
+.dh-button-row.has-hidden-button {
+    grid-template-columns: 1fr auto auto; /* For Roll, Hidden, and Clear */
+}
+
 .dh-dice-tray-input {
-    background-color: var(--dh-sheet-bg-alt);
-    border: 1px solid var(--dh-sheet-border);
-    color: var(--dh-sheet-text);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-normal);
 }
 .dh-dice-tray-input:focus {
-    border-color: var(--dh-sheet-accent);
+    border-color: var(--dh-tray-accent-color, var(--interactive-accent));
     outline: none;
-    box-shadow: 0 0 5px var(--dh-sheet-accent-glow);
+    box-shadow: 0 0 5px var(--dh-tray-accent-glow, rgba(var(--interactive-accent-rgb), 0.4));
 }
 
 .dh-button-row button {
-    background-color: var(--dh-sheet-border);
-    color: var(--dh-sheet-text-muted);
+    background-color: var(--background-modifier-border);
+    color: var(--text-muted);
     border: none;
     transition: all 0.2s ease-in-out;
 }
 .dh-stepper-wrapper button:hover {
-    background-color: var(--dh-sheet-accent);
-    color: var(--dh-sheet-bg);
+    background-color: var(--dh-tray-accent-color, var(--interactive-accent));
+    color: var(--text-on-accent);
 }
-.dh-button-row .dh-clear-btn:hover {
-    background-color: var(--dh-sheet-border);
-    color: var(--dh-sheet-text);
+
+/* NEW: Shared style for icon buttons like Hidden and Clear */
+.dh-icon-button {
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    color: var(--text-muted);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    width: 36px;  /* Fixed size for icon buttons */
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+
+.dh-icon-button:hover {
+    color: var(--text-normal);
+    border-color: var(--dh-tray-accent-color, var(--interactive-accent));
+    background-color: var(--background-modifier-hover) !important;
+}
+
+
 .dh-button-row button:first-of-type { /* Roll Button */
-    background-color: var(--dh-sheet-accent);
-    color: var(--dh-sheet-bg);
+    background-color: var(--dh-tray-accent-color, var(--interactive-accent));
+    color: var(--text-on-accent);
 }
 .dh-button-row button:first-of-type:hover { /* Roll Button Hover */
-    background-color: var(--dh-sheet-accent);
+    background-color: var(--dh-tray-accent-color, var(--interactive-accent));
     transform: scale(1.05);
-    box-shadow: 0 0 10px var(--dh-sheet-accent-glow);
+    box-shadow: 0 0 10px var(--dh-tray-accent-glow, rgba(var(--interactive-accent-rgb), 0.4));
 }
 
 
@@ -197,8 +232,8 @@
     height: 30px;
     font-size: var(--font-ui-large);
     line-height: 1;
-    background-color: var(--dh-sheet-border);
-    color: var(--dh-sheet-text-muted);
+    background-color: var(--background-modifier-border);
+    color: var(--text-muted);
     border: none;
     transition: all 0.2s ease-in-out;
 }
@@ -206,12 +241,12 @@
 .dh-stepper-wrapper input[type="number"] {
     width: 40px;
     text-align: center;
-    border: 1px solid var(--dh-sheet-border);
+    border: 1px solid var(--background-modifier-border);
     border-left: none;
     border-right: none;
     border-radius: 0;
     height: 30px;
-    background-color: var(--dh-sheet-bg-alt);
+    background-color: var(--background-secondary);
     -moz-appearance: textfield;
     appearance: textfield;
 }
@@ -234,40 +269,75 @@
 
 
 .dh-history-entry {
-    background-color: var(--dh-sheet-bg);
+    background-color: var(--background-primary);
     padding: var(--size-4-2);
     border-radius: var(--radius-s);
-    border: 1px solid var(--dh-sheet-border);
+    border: 1px solid var(--background-modifier-border);
 }
 
 .dh-history-header {
     display: flex;
     justify-content: space-between;
+    align-items: center; /* Align items vertically */
     font-size: var(--font-ui-smaller);
-    color: var(--dh-sheet-text-muted);
+    color: var(--text-muted);
     margin-bottom: var(--size-4-1);
 }
 .dh-history-context {
-    color: var(--dh-sheet-accent);
+    color: var(--dh-tray-accent-color, var(--interactive-accent));
     font-weight: var(--font-semibold);
 }
+
+/* NEW: Container for history entry controls */
+.dh-history-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+}
+
+/* NEW: Reveal button style */
+.dh-reveal-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.dh-reveal-button:hover {
+    color: var(--text-normal);
+}
+
+.lucide-loader-circle {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 
 .dh-history-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--size-4-1); word-break: break-word; }
 .dh-history-equation { display: flex; flex-wrap: wrap; align-items: center; row-gap: var(--size-4-1); column-gap: var(--size-4-2); line-height: 1.5; font-size: var(--font-ui-medium); }
 .dh-roll-value { padding: 1px 5px; border-radius: var(--radius-s); font-weight: var(--font-bold); cursor: default; }
 .dh-roll-value.hope { background-color: rgba(var(--color-yellow-rgb), 0.2); color: var(--color-yellow); }
-.dh-roll-value.fear { background-color: rgba(var(--color-purple-rgb), 0.2); color: var(--dh-sheet-purple); }
+.dh-roll-value.fear { background-color: rgba(var(--color-purple-rgb), 0.2); color: var(--dh-tray-fear-color, var(--color-purple)); }
 .dh-roll-value.advantage { background-color: rgba(var(--color-green-rgb), 0.2); color: var(--color-green); }
 .dh-roll-value.disadvantage { background-color: rgba(var(--color-red-rgb), 0.2); color: var(--color-red); }
 .dh-roll-value.modifier { background-color: transparent; color: var(--text-normal); padding: 1px 0; }
-.dh-roll-value.die { background-color: var(--dh-sheet-bg-alt); color: var(--text-normal); }
+.dh-roll-value.die { background-color: var(--background-secondary-alt); color: var(--text-normal); }
 .dh-roll-operator { font-weight: var(--font-light); color: var(--text-muted); }
 .dh-history-total-container { display: flex; align-items: center; gap: var(--size-4-3); }
 .dh-history-equals { font-size: 1.6em; font-weight: var(--font-light); color: var(--text-muted); }
-.dh-history-total { font-size: 2em; font-weight: var(--font-black); color: var(--dh-sheet-accent); line-height: 1; }
+.dh-history-total { font-size: 2em; font-weight: var(--font-black); color: var(--dh-tray-accent-color, var(--interactive-accent)); line-height: 1; }
 .dh-history-outcome { font-weight: bold; font-size: var(--font-ui-small); text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-s); }
 .dh-history-outcome.with-hope { color: var(--color-yellow); background-color: rgba(var(--color-yellow-rgb), 0.1); }
-.dh-history-outcome.with-fear { color: var(--dh-sheet-purple); background-color: rgba(var(--color-purple-rgb), 0.1); }
+.dh-history-outcome.with-fear { color: var(--dh-tray-fear-color, var(--color-purple)); background-color: rgba(var(--color-purple-rgb), 0.1); }
 .dh-history-outcome.critical { color: var(--color-orange); background-color: rgba(var(--color-orange-rgb), 0.1); }
 
 /* --- History-Only View for Auto-Popup --- */

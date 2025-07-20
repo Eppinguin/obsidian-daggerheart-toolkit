@@ -9,6 +9,7 @@ import {
 import { DAGGERHEART_CONDITIONS } from 'src/constants';
 import { ContentType } from '../services/export-import';
 import { EVENT_CREATE_COUNTDOWN } from 'src/constants';
+import { DiceTray } from 'src/DiceTray';
 
 
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
@@ -17,6 +18,7 @@ export class EncounterBuilderView extends ItemView {
     plugin: DaggerheartStatblockPlugin;
     compendiumItems: StatblockData[] = [];
     activeEncounterItems: AdversaryInstance[] = [];
+    private diceTray: DiceTray;
 
     currentEncounterId: string | null = null;
     private uiContainer: HTMLElement | null = null;
@@ -47,6 +49,7 @@ export class EncounterBuilderView extends ItemView {
     constructor(leaf: WorkspaceLeaf, plugin: DaggerheartStatblockPlugin) {
         super(leaf);
         this.plugin = plugin;
+        this.diceTray = new DiceTray(this.plugin);
         this.boundHandleRequestConditionMenu = this.handleRequestConditionMenu.bind(this);
         this.boundHandleRemoveConditionEvent = this.handleRemoveConditionEvent.bind(this);
         this.boundHandleRemoveInstanceEvent = this.handleRemoveInstanceEvent.bind(this);
@@ -69,6 +72,9 @@ export class EncounterBuilderView extends ItemView {
     }
 
     async onOpen() {
+        // Add a wrapper class to the view's root element for styling
+        this.containerEl.addClass('dh-encounter-view');
+
         this.uiContainer = this.containerEl.children[1] as HTMLElement;
         this.uiContainer.empty();
         this.uiContainer.addClass("dh-encounter-builder-container");
@@ -95,6 +101,8 @@ export class EncounterBuilderView extends ItemView {
         this.loadItemsForCurrentEncounter();
         await this.loadCompendium();
         this.drawUI();
+        // Render the DiceTray into the root container, not the scrolling one
+        this.diceTray.render(this.containerEl);
         this.leaf.setEphemeralState(this.getState());
     }
 
@@ -1065,6 +1073,7 @@ export class EncounterBuilderView extends ItemView {
     }
 
     async onClose() {
+        this.diceTray?.unload();
         if (this.uiContainer) {
             this.uiContainer.removeEventListener('dh-request-condition-menu', this.boundHandleRequestConditionMenu);
             this.uiContainer.removeEventListener('dh-remove-condition', this.boundHandleRemoveConditionEvent);

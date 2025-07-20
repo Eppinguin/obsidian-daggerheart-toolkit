@@ -1,5 +1,7 @@
 import type DaggerheartStatblockPlugin from './main';
-import { setIcon } from 'obsidian';
+import { Notice, setIcon } from 'obsidian';
+import * as dddice from './services/dddice-service';
+import type { IRoll } from './services/dddice-service';
 
 export interface RollComponent {
     value: number;
@@ -7,16 +9,23 @@ export interface RollComponent {
     type: 'hope' | 'fear' | 'advantage' | 'disadvantage' | 'modifier' | 'die';
 }
 
+// This interface now matches the one in main.ts
 export interface RollCompletedPayload {
+    rollerName?: string;
     context: string;
     result: string;
     structuredResult?: RollComponent[];
     total: string;
     outcome?: string;
+    rollId?: string;
+    userUUID?: string;
+    diceUUIDs?: string[];
+    hiddenRolls?: boolean[];
+    isModifierHidden?: boolean;
 }
 
 interface RollHistoryEntry extends RollCompletedPayload {
-    id: number;
+    id: string; // Changed to string for UUIDs
     timestamp: string;
 }
 
@@ -103,7 +112,18 @@ export class DiceTray {
             const rollBtn = buttonRow.createEl('button', { text: 'Roll' });
             rollBtn.addEventListener('click', () => this.rollFromInput());
 
-            const clearBtn = buttonRow.createEl('button', { text: 'Clear', cls: 'dh-clear-btn' });
+            if (this.plugin.settings.diceProvider === 'dddice') {
+                const hiddenRollBtn = buttonRow.createEl('button', { cls: 'dh-icon-button' });
+                setIcon(hiddenRollBtn, 'eye-off');
+                hiddenRollBtn.title = 'Roll hidden from other players';
+                hiddenRollBtn.addEventListener('click', () => this.rollFromInput(true));
+                buttonRow.addClass('has-hidden-button');
+            }
+
+            // IMPROVEMENT: Changed Clear button to use an icon
+            const clearBtn = buttonRow.createEl('button', { cls: 'dh-icon-button' });
+            setIcon(clearBtn, 'brush-cleaning');
+            clearBtn.title = 'Clear input';
             clearBtn.addEventListener('click', () => {
                 if (this.formulaInput) this.formulaInput.value = '';
                 if (this.modifierInput) this.modifierInput.value = '0';
@@ -113,19 +133,32 @@ export class DiceTray {
     }
 
     private handleNewRoll = (payload: RollCompletedPayload) => {
-        const newRoll: RollHistoryEntry = {
-            id: Date.now(),
-            ...payload,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        this.rolls.unshift(newRoll);
+        const existingIndex = this.rolls.findIndex(r => r.id === payload.rollId);
+
+        if (existingIndex !== -1) {
+            const updatedRoll = {
+                ...this.rolls[existingIndex],
+                ...payload,
+                id: payload.rollId as string,
+            };
+            this.rolls[existingIndex] = updatedRoll;
+        } else {
+            const newRoll: RollHistoryEntry = {
+                id: payload.rollId || String(Date.now()),
+                ...payload,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            this.rolls.unshift(newRoll);
+        }
+
         if (this.rolls.length > 20) this.rolls.pop();
         this.renderHistory();
 
-        if (!this.manuallyOpened) {
+        if (!this.manuallyOpened && existingIndex === -1) {
             this.showHistoryTemporarily();
         }
     };
+
 
     private showHistoryTemporarily() {
         if (!this.trayContainer || !this.trayButton) return;
@@ -139,7 +172,7 @@ export class DiceTray {
         this.autoHideTimer = window.setTimeout(() => this.hide(), 5000);
     }
 
-    private async rollFromInput() {
+    private async rollFromInput(isHidden: boolean = false) {
         if (!this.formulaInput || !this.modifierInput) return;
         let formula = this.formulaInput.value.trim();
         const modifier = parseInt(this.modifierInput.value, 10) || 0;
@@ -151,13 +184,60 @@ export class DiceTray {
         }
 
         const context = this.formulaContext || "Tray Roll";
-        const result = await this.plugin.rollDice(formula, context);
+        const result = await this.plugin.rollDice(formula, context, undefined, isHidden);
 
-        // After a roll is completed, we clear the formula and context for the next one.
+
         if (result !== null) {
             this.formulaInput.value = '';
             this.modifierInput.value = '0';
             this.formulaContext = null;
+        }
+    }
+
+    private async checkForRollUpdate(rollId: string, buttonEl: HTMLElement) {
+        if (!rollId) return;
+
+        setIcon(buttonEl, 'loader-circle');
+
+        const updatedRollData = await dddice.getRoll(rollId);
+
+        if (updatedRollData) {
+            const isStillHidden = updatedRollData.values.some(v => v.is_hidden);
+
+            if (!isStillHidden) {
+                // The roll has been revealed. Process it and update the history.
+                let isDaggerheartActionRoll = updatedRollData.values.some(d => d.label === 'Hope') && updatedRollData.values.some(d => d.label === 'Fear');
+                const d12s = updatedRollData.values.filter(d => d.type === 'd12');
+                if (!isDaggerheartActionRoll && d12s.length === 2 && d12s[0].theme !== d12s[1].theme) {
+                    isDaggerheartActionRoll = true;
+                    d12s[0].label = 'Hope';
+                    d12s[1].label = 'Fear';
+                }
+
+                const processedResult = dddice.handleRollResult(updatedRollData, isDaggerheartActionRoll);
+                const rollerName = updatedRollData.room?.participants?.find(p => p.user.uuid === updatedRollData.user?.uuid)?.username || updatedRollData.user?.username || 'Unknown Roller';
+
+                const payload: RollCompletedPayload = {
+                    rollerName,
+                    context: updatedRollData.label || 'External Roll',
+                    result: processedResult.display,
+                    total: processedResult.totalStr,
+                    outcome: processedResult.outcome,
+                    structuredResult: processedResult.structuredResult,
+                    rollId: processedResult.rollId,
+                    userUUID: processedResult.userUUID,
+                    diceUUIDs: processedResult.diceUUIDs,
+                    hiddenRolls: processedResult.hiddenRolls,
+                    isModifierHidden: processedResult.isModifierHidden,
+                };
+                this.plugin.app.workspace.trigger('daggerheart-roll-completed', payload);
+            } else {
+                new Notice("Roll has not been revealed yet.");
+                setIcon(buttonEl, 'refresh-cw');
+            }
+        } else {
+            new Notice("Could not retrieve roll update.");
+            setIcon(buttonEl, 'refresh-cw');
         }
     }
 
@@ -167,9 +247,44 @@ export class DiceTray {
         this.rolls.forEach(roll => {
             const entryEl = this.historyContainer.createDiv({ cls: 'dh-history-entry' });
 
+            const currentUserUuid = dddice.getCurrentUserUuid();
+            const isOwnRoll = !!(currentUserUuid && roll.userUUID && currentUserUuid === roll.userUUID);
+            const hasHiddenComponents = (roll.hiddenRolls && roll.hiddenRolls.some(h => h)) || !!roll.isModifierHidden;
+            const shouldObscure = !isOwnRoll && hasHiddenComponents;
+
             const header = entryEl.createDiv({ cls: 'dh-history-header' });
-            header.createSpan({ text: roll.context, cls: 'dh-history-context' });
-            header.createSpan({ text: roll.timestamp, cls: 'dh-history-timestamp' });
+
+            const contextSpan = header.createSpan({ cls: 'dh-history-context' });
+            if (roll.rollerName) {
+                contextSpan.createEl('strong', { text: `${roll.rollerName}` });
+                contextSpan.appendText(`: ${roll.context}`);
+            } else {
+                contextSpan.setText(roll.context);
+            }
+
+            const controlsContainer = header.createSpan({ cls: 'dh-history-controls' });
+            if (hasHiddenComponents && roll.rollId) {
+                if (isOwnRoll && roll.diceUUIDs) {
+                    // Own roll, show REVEAL button
+                    const revealDiv = controlsContainer.createEl('div', { cls: 'dh-reveal-button' });
+                    setIcon(revealDiv, 'eye');
+                    revealDiv.title = 'Reveal roll to all players';
+                    revealDiv.addEventListener('click', () => {
+                        revealDiv.style.display = 'none'; // Hide button immediately
+                        dddice.revealRoll(roll.rollId!, roll.diceUUIDs!);
+                    });
+                } else if (!isOwnRoll) {
+                    // External roll, show REFRESH button
+                    const refreshDiv = controlsContainer.createEl('div', { cls: 'dh-reveal-button' });
+                    setIcon(refreshDiv, 'refresh-cw');
+                    refreshDiv.title = 'Check if roll has been revealed';
+                    refreshDiv.addEventListener('click', () => {
+                        this.checkForRollUpdate(roll.rollId!, refreshDiv);
+                    });
+                }
+            }
+            controlsContainer.createSpan({ text: roll.timestamp, cls: 'dh-history-timestamp' });
+
 
             const body = entryEl.createDiv({ cls: 'dh-history-body' });
 
@@ -186,21 +301,26 @@ export class DiceTray {
 
                     equationContainer.createSpan({
                         cls: `dh-roll-value ${component.type}`,
-                        text: String(Math.abs(component.value)),
+                        text: shouldObscure ? '?' : String(Math.abs(component.value)),
                         attr: { title: component.label }
                     });
                 });
 
                 const totalContainer = body.createDiv({ cls: 'dh-history-total-container' });
                 totalContainer.createSpan({ cls: 'dh-history-equals', text: '=' });
-                totalContainer.createSpan({ text: roll.total, cls: 'dh-history-total' });
-                if (roll.outcome) {
+                totalContainer.createSpan({ text: shouldObscure ? '?' : roll.total, cls: 'dh-history-total' });
+
+                if (roll.outcome && !shouldObscure) {
                     const outcomeClass = roll.outcome.toLowerCase().replace(/\s/g, '-').replace('!', '');
                     totalContainer.createSpan({ text: roll.outcome, cls: `dh-history-outcome ${outcomeClass}` });
                 }
             } else {
-                const resultHtml = `<span>${roll.result || ''}</span> = <strong class="dh-history-total">${roll.total || ''}</strong>`;
-                body.createSpan({ cls: 'dh-history-result' }).innerHTML = resultHtml;
+                if (shouldObscure) {
+                    body.createSpan({ cls: 'dh-history-result' }).innerHTML = `<span>Hidden Roll</span> = <strong class="dh-history-total">?</strong>`;
+                } else {
+                    const resultHtml = `<span>${roll.result || ''}</span> = <strong class="dh-history-total">${roll.total || ''}</strong>`;
+                    body.createSpan({ cls: 'dh-history-result' }).innerHTML = resultHtml;
+                }
             }
         });
     }

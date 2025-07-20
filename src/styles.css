@@ -313,6 +313,20 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
+    position: relative !important;
+    overflow: visible !important;
+}
+
+/* Dice Tray Theming for Encounter Builder */
+.dh-encounter-builder-container {
+    --dh-sheet-bg: var(--background-secondary);
+    --dh-sheet-bg-alt: var(--background-primary);
+    --dh-sheet-border: var(--background-modifier-border);
+    --dh-sheet-text: var(--text-normal);
+    --dh-sheet-text-muted: var(--text-muted);
+    --dh-sheet-accent: var(--interactive-accent);
+    --dh-sheet-accent-glow: var(--interactive-accent-glow, rgba(var(--interactive-accent-rgb), 0.4));
+    --dh-sheet-purple: var(--color-purple);
 }
 
 .dh-top-row {

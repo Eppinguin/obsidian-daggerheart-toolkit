@@ -1,10 +1,12 @@
 import { Notice } from 'obsidian';
 import { DddiceSettings } from 'src/types';
-import { ThreeDDiceAPI, ThreeDDice } from 'dddice-js';
+import { ThreeDDiceAPI, ThreeDDice, ThreeDDiceRollEvent } from 'dddice-js';
 import type { IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, IApiResponse, IRoll, IRoomParticipant } from 'dddice-js';
+import DaggerheartStatblockPlugin from 'src/main';
+import { RollCompletedPayload } from 'src/DiceTray';
 
 // Re-export types that are needed by the UI
-export type { IRoom, ITheme };
+export type { IRoom, ITheme, IRoll };
 
 /**
  * Custom error to signal that a dddice room was not found.
@@ -24,15 +26,69 @@ export interface RollComponent {
     type: 'hope' | 'fear' | 'advantage' | 'disadvantage' | 'modifier' | 'die';
 }
 
+// Add a type for the full result of a dddice roll
+export interface DddiceRollResult {
+    display: string;
+    totalStr: string;
+    total: number;
+    outcome?: string;
+    structuredResult?: RollComponent[];
+    rollId: string;
+    userUUID?: string;
+    diceUUIDs: string[];
+    hiddenRolls: boolean[];
+    isModifierHidden: boolean;
+}
+
+
 // Private variable to hold the singleton dddice instance
 let _dddiceInstance: ThreeDDice | undefined;
 let _dddiceCanvas: HTMLCanvasElement | null = null;
 let _boundDddiceClear: (() => void) | null = null;
+let _currentUserUuid: string | undefined;
+
+async function handleExternalRoll(roll: IRoll, plugin: DaggerheartStatblockPlugin) {
+    if (roll.user?.uuid === _currentUserUuid) {
+        return;
+    }
+
+    let isDaggerheartActionRoll = roll.values.some(d => d.label === 'Hope') && roll.values.some(d => d.label === 'Fear');
+
+    // Check for 2d12 with different themes as a fallback for identifying duality rolls
+    const d12s = roll.values.filter(d => d.type === 'd12');
+    if (!isDaggerheartActionRoll && d12s.length === 2 && d12s[0].theme !== d12s[1].theme) {
+        isDaggerheartActionRoll = true;
+        // Mutate the roll object to add labels for consistent processing
+        d12s[0].label = 'Hope';
+        d12s[1].label = 'Fear';
+    }
+
+    const processedResult = handleRollResult(roll, isDaggerheartActionRoll);
+
+    const rollerName = roll.room?.participants?.find(p => p.user.uuid === roll.user?.uuid)?.username || roll.user?.username || 'Unknown Roller';
+
+    const payload: RollCompletedPayload = {
+        rollerName: rollerName,
+        context: roll.label || 'External Roll',
+        result: processedResult.display,
+        total: processedResult.totalStr,
+        outcome: processedResult.outcome,
+        structuredResult: processedResult.structuredResult,
+        // Add new fields for hidden/reveal logic
+        rollId: processedResult.rollId,
+        userUUID: processedResult.userUUID,
+        diceUUIDs: processedResult.diceUUIDs,
+        hiddenRolls: processedResult.hiddenRolls,
+        isModifierHidden: processedResult.isModifierHidden,
+    };
+
+    plugin.app.workspace.trigger('daggerheart-roll-completed', payload);
+}
 
 /**
  * Initialize or reinitialize the dddice renderer.
  */
-export function initializeDddiceRenderer(settings: DddiceSettings): ThreeDDice | undefined {
+export function initializeDddiceRenderer(settings: DddiceSettings, plugin: DaggerheartStatblockPlugin): ThreeDDice | undefined {
     destroyDddiceRenderer();
 
     if (!settings.apiKey || !settings.renderInObsidian || !settings.room) {
@@ -43,7 +99,19 @@ export function initializeDddiceRenderer(settings: DddiceSettings): ThreeDDice |
         _dddiceCanvas = document.body.createEl('canvas', { attr: { id: 'dddice-canvas' } });
         _dddiceCanvas.style.cssText = 'top:0px; left:0; position:fixed; pointer-events:none; z-index:95; width:100vw; height:100vh;';
         _dddiceInstance = new ThreeDDice().initialize(_dddiceCanvas, settings.apiKey, undefined, 'Daggerheart-Obsidian');
+
+        // Fetch and cache the current user's UUID to prevent processing our own rolls from the server
+        _dddiceInstance?.api?.user.get().then(userResponse => {
+            if (userResponse?.data) {
+                _currentUserUuid = userResponse.data.uuid;
+            }
+        });
+
         _dddiceInstance.connect(settings.room);
+        // Use the correct event enum to listen for finished rolls
+        _dddiceInstance.on(ThreeDDiceRollEvent.RollFinished, (roll: IRoll) => {
+            handleExternalRoll(roll, plugin);
+        });
         _dddiceInstance.start();
         _boundDddiceClear = () => {
             if (_dddiceInstance && !_dddiceInstance.isDiceThrowing) {
@@ -91,6 +159,38 @@ export function getDddiceInstance(): ThreeDDice | undefined {
 }
 
 /**
+ * Get the current dddice user's UUID if available.
+ * @returns The current user's UUID or undefined.
+ */
+export function getCurrentUserUuid(): string | undefined {
+    return _currentUserUuid;
+}
+
+
+/**
+ * Reveals a hidden roll.
+ * @param rollId The UUID of the roll to reveal.
+ * @param diceUUIDs The UUIDs of all dice in the roll.
+ */
+export async function revealRoll(rollId: string, diceUUIDs: string[]): Promise<void> {
+    if (!_dddiceInstance?.api) {
+        new Notice("dddice API not initialized.");
+        return;
+    }
+
+    try {
+        const diceUpdatePayload = diceUUIDs.map(uuid => ({ uuid, is_hidden: false }));
+        // CORRECTION: Removed the top-level `is_hidden` property from the update payload to match the library's type definition.
+        await _dddiceInstance.api.roll.update(rollId, { dice: diceUpdatePayload });
+        new Notice("Roll revealed!");
+    } catch (e: any) {
+        console.error("dddice: Failed to reveal roll:", e);
+        new Notice("Failed to reveal roll. See console for details.");
+    }
+}
+
+
+/**
  * Initializes the dddice API with the provided key for data fetching.
  */
 export function initializeDddiceApi(apiKey: string): ThreeDDiceAPI {
@@ -98,6 +198,30 @@ export function initializeDddiceApi(apiKey: string): ThreeDDiceAPI {
         throw new Error("API Key is required to connect to dddice.");
     }
     return new ThreeDDiceAPI(apiKey, 'Daggerheart-Obsidian-Plugin');
+}
+
+/**
+ * Fetches the latest data for a specific roll from the dddice server.
+ * @param rollId The UUID of the roll to fetch.
+ * @returns The roll data or null if not found.
+ */
+export async function getRoll(rollId: string): Promise<IRoll | null> {
+    const api = getDddiceInstance()?.api;
+    if (!api) {
+        console.warn("dddice API not initialized. Cannot fetch roll update.");
+        return null;
+    }
+
+    try {
+        const response = await api.roll.get(rollId);
+        return response?.data ?? null;
+    } catch (e: any) {
+        if (e?.response?.status !== 404) {
+            new Notice("Failed to fetch roll update from dddice.");
+            console.error(`dddice: Failed to get roll ${rollId}`, e);
+        }
+        return null;
+    }
 }
 
 // ... (fetch methods are unchanged) ...
@@ -198,6 +322,8 @@ export async function updateParticipantName(settings: DddiceSettings, newName: s
             return;
         }
 
+        _currentUserUuid = user.uuid;
+
         let room = (await api.room.get(roomSlug))?.data;
 
         if (!room) {
@@ -277,12 +403,12 @@ function parseGenericDiceString(notation: string): { dice: IDiceRoll[], operator
     return { dice, operator };
 }
 
-function handleRollResult(
+export function handleRollResult(
     rollData: IRoll,
     isDaggerheartActionRoll: boolean,
     traitName?: string,
     operator?: IDiceRollOptions['operator']
-): { display: string, totalStr: string, total: number, outcome?: string, structuredResult?: RollComponent[] } {
+): DddiceRollResult {
     let total: number;
     if (typeof rollData.total_value === 'number') {
         total = rollData.total_value;
@@ -295,6 +421,9 @@ function handleRollResult(
     }
 
     const components: RollComponent[] = [];
+    const diceValues = rollData.values.filter(v => v.type !== 'mod');
+    const modifierValues = rollData.values.filter(v => v.type === 'mod');
+
     if (isDaggerheartActionRoll) {
         let hopeValue: number | null = null;
         let fearValue: number | null = null;
@@ -330,7 +459,18 @@ function handleRollResult(
             displayString += `${index > 0 ? ` ${c.value < 0 ? '-' : '+'} ` : (c.value < 0 ? '-' : '')}${Math.abs(c.value)}[${c.label}]`;
         });
 
-        return { display: displayString, totalStr: String(total), total, outcome, structuredResult: components };
+        return {
+            display: displayString,
+            totalStr: String(total),
+            total,
+            outcome,
+            structuredResult: components,
+            rollId: rollData.uuid,
+            userUUID: rollData.user?.uuid,
+            diceUUIDs: rollData.values.map(v => v.uuid),
+            hiddenRolls: diceValues.map(v => v.is_hidden ?? false),
+            isModifierHidden: modifierValues.some(v => v.is_hidden ?? false),
+        };
 
     } else { // Handle generic rolls
         const equationStr = String(rollData.equation || '');
@@ -339,7 +479,6 @@ function handleRollResult(
 
         if (rollData.values) {
             // Dice are processed first, in order, so indices match our payload.
-            const diceValues = rollData.values.filter(v => v.type !== 'mod');
             diceValues.forEach((v, index) => {
                 const value = Number(v.value);
                 const finalValue = negativeDiceIndices.includes(index) ? -value : value;
@@ -347,15 +486,24 @@ function handleRollResult(
             });
 
             // Modifiers are processed last and their values are already signed correctly.
-            rollData.values.forEach(v => {
-                if (v.type === 'mod') {
-                    const value = Number(v.value);
-                    components.push({ value, label: 'Modifier', type: 'modifier' });
-                }
+            modifierValues.forEach(v => {
+                const value = Number(v.value);
+                components.push({ value, label: 'Modifier', type: 'modifier' });
             });
         }
 
-        return { display: equationStr, totalStr: String(total), total, outcome: undefined, structuredResult: components };
+        return {
+            display: equationStr,
+            totalStr: String(total),
+            total,
+            outcome: undefined,
+            structuredResult: components,
+            rollId: rollData.uuid,
+            userUUID: rollData.user?.uuid,
+            diceUUIDs: rollData.values.map(v => v.uuid),
+            hiddenRolls: diceValues.map(v => v.is_hidden ?? false),
+            isModifierHidden: modifierValues.some(v => v.is_hidden ?? false),
+        };
     }
 }
 
@@ -364,8 +512,9 @@ export async function rollWithDddice(
     dddiceSettings: DddiceSettings,
     diceString: string,
     context: string,
-    traitName?: string
-): Promise<{ display: string, totalStr: string, total: number, outcome?: string, structuredResult?: RollComponent[] } | null> {
+    traitName?: string,
+    isHidden?: boolean,
+): Promise<DddiceRollResult | null> {
     const { apiKey, room, theme, hopeTheme, fearTheme, renderInObsidian } = dddiceSettings;
     if (!apiKey || !room || !theme || !hopeTheme || !fearTheme) {
         new Notice("dddice is not fully configured. Please set API Key, Room, and all dice themes in the plugin settings.");
@@ -387,13 +536,15 @@ export async function rollWithDddice(
     }
 
     let dicePayload: IDiceRoll[];
+    // CORRECTION: Removed '(local)' suffix from label and `is_hidden` from the top-level options.
     const rollOptions: IDiceRollOptions = { room, label: context };
     let operator: IDiceRollOptions['operator'] | undefined;
+    const dieOptions = { theme: theme || undefined, is_hidden: isHidden };
 
     if (isDaggerheartActionRoll) {
         dicePayload = [
-            { type: 'd12', theme: hopeTheme || undefined, label: 'Hope' },
-            { type: 'd12', theme: fearTheme || undefined, label: 'Fear' }
+            { type: 'd12', theme: hopeTheme || undefined, label: 'Hope', is_hidden: isHidden },
+            { type: 'd12', theme: fearTheme || undefined, label: 'Fear', is_hidden: isHidden }
         ];
 
         const pattern = /([+-])?\s*(\d*d\d+|\d+)/g;
@@ -405,10 +556,10 @@ export async function rollWithDddice(
 
             if (part.toLowerCase() === '1d6' || part.toLowerCase() === 'd6') {
                 if (sign === '-') {
-                    dicePayload.push({ type: 'd6', theme: theme || undefined, label: 'Disadvantage' });
+                    dicePayload.push({ type: 'd6', ...dieOptions, label: 'Disadvantage' });
                     rollOptions.operator = { "*": { "-1": [dicePayload.length - 1] } };
                 } else {
-                    dicePayload.push({ type: 'd6', theme: theme || undefined, label: 'Advantage' });
+                    dicePayload.push({ type: 'd6', ...dieOptions, label: 'Advantage' });
                 }
                 continue;
             }
@@ -419,14 +570,14 @@ export async function rollWithDddice(
                 const size = parseInt(sizeStr, 10);
                 if (!isNaN(count) && !isNaN(size)) {
                     for (let i = 0; i < count; i++) {
-                        dicePayload.push({ type: `d${size}` as IDieType, theme: theme || undefined });
+                        dicePayload.push({ type: `d${size}` as IDieType, ...dieOptions });
                     }
                 }
             }
             else {
                 const value = parseInt(part, 10);
                 if (!isNaN(value)) {
-                    dicePayload.push({ type: 'mod', value: sign === '-' ? -value : value });
+                    dicePayload.push({ type: 'mod', value: sign === '-' ? -value : value, is_hidden: isHidden });
                 }
             }
         }
@@ -438,14 +589,15 @@ export async function rollWithDddice(
             new Notice(`Invalid dice string for dddice: "${diceString}"`);
             return null;
         }
-        dicePayload = parsedDice.map(d => ({ ...d, theme: theme || undefined }));
+        dicePayload = parsedDice.map(d => ({ ...d, ...dieOptions }));
         if (operator) {
             Object.assign(rollOptions, { operator });
         }
     }
 
     try {
-        const dddiceApi = _dddiceInstance?.api ?? initializeDddiceApi(apiKey);
+        if (!_dddiceInstance?.api) throw new Error("dddice API not initialized");
+        const dddiceApi = _dddiceInstance.api;
         if (room && dddiceApi.roomSlug !== room) {
             await dddiceApi.connect(room);
         }
@@ -455,6 +607,10 @@ export async function rollWithDddice(
         const result = await rollPromise;
 
         if (result?.data) {
+            // After our own roll, update our UUID in case it was a guest account that just got created
+            if (!_currentUserUuid && result.data.user?.uuid) {
+                _currentUserUuid = result.data.user.uuid;
+            }
             return handleRollResult(result.data, isDaggerheartActionRoll, traitName, operator);
         } else {
             return null;
