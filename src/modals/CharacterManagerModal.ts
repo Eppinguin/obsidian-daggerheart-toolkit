@@ -87,8 +87,10 @@ export class CharacterManagerModal extends Modal {
 
     // Add this new method
     private drawStances(parent: HTMLElement) {
-        const isBrawler = this.tempCharacter.classId.toLowerCase().includes('brawler');
-        if (!isBrawler) {
+        const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId || '');
+        const isMartialArtist = subclass?.name.toLowerCase().includes('martial artist');
+
+        if (!isMartialArtist) {
             parent.parentElement?.remove();
             return;
         }
@@ -99,7 +101,7 @@ export class CharacterManagerModal extends Modal {
 
         const redraw = () => {
             parent.empty();
-            parent.createEl('p', { text: "Directly manage your Brawler's learned stances.", cls: 'setting-item-description' });
+            parent.createEl('p', { text: "Directly manage your Martial Artist's learned stances.", cls: 'setting-item-description' });
 
             this.tempCharacter.equippedStances?.forEach((stanceName, index) => {
                 new Setting(parent)

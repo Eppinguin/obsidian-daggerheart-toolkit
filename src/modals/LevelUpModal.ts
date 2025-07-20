@@ -138,8 +138,9 @@ export class LevelUpModal extends Modal {
             }
         }
 
-        const isBrawler = this.tempCharacter.classId.toLowerCase().includes('brawler');
-        if (isBrawler && (level === 2 || level === 5 || level === 8)) {
+        const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId || '');
+        const isMartialArtist = subclass?.name.toLowerCase().includes('martial artist');
+        if (isMartialArtist && (level === 2 || level === 5 || level === 8)) {
             if (!selection.stanceChoices) {
                 selection.stanceChoices = ['', ''];
             }

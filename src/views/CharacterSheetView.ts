@@ -329,7 +329,8 @@ export class CharacterSheetView extends ItemView {
     private drawCenterColumn(parent: HTMLElement, data: Character) {
         const centerCol = parent.createDiv({ cls: 'dh-grid-column-center' });
         this.drawTraits(centerCol, data);
-        if (data.classId.match("Brawler")) {
+        const subClass = this.plugin.compendium.getSubclass(data.subclassId);
+        if (subClass?.name.toLowerCase().includes('martial artist')) {
             this.drawActiveStance(centerCol, data);
         }
         this.drawActiveWeapons(centerCol, data);
@@ -793,16 +794,12 @@ export class CharacterSheetView extends ItemView {
         if (data.classId.match("Druid")) {
             this.createManagerTab(tabs, 'beastforms', 'Beastforms');
         }
-        // if (data.classId.match("Brawler")) {
-        //     this.createManagerTab(tabs, 'stances', 'Stances');
-        // }
         const content = managerContainer.createDiv({ cls: 'dh-manager-content' });
         switch (this.activeManagerTab) {
             case 'abilities': this.drawAbilitiesManager(content, data); break;
             case 'inventory': this.drawInventoryManager(content, data); break;
             case 'details': this.drawDetailsManager(content, data); break;
             case 'beastforms': this.drawBeasformsSection(content, data); break;
-            // case 'stances': this.drawStancesSection(content, data); break;
         }
     }
 
@@ -1123,91 +1120,6 @@ export class CharacterSheetView extends ItemView {
         } else {
             content.createDiv({ text: 'No stance is currently active.', cls: 'dh-empty-text' });
         }
-    }
-
-    // Replace the existing drawStancesSection with this updated version
-    private drawStancesSection(parent: HTMLElement, character: Character) {
-        if (!character.equippedStances) {
-            character.equippedStances = [];
-        }
-
-        const section = parent.createDiv({ cls: 'dh-stances-manager' });
-        const header = section.createDiv({ cls: 'dh-section-header-bar' });
-        header.createEl('h3', { text: 'Manage Learned Stances' });
-
-        const stanceSlots = this.getBrawlerStanceSlots(character.level);
-        const availableStances = this.getAvailableStances(character.level);
-
-        const listContainer = section.createDiv({ cls: 'dh-stances-list' });
-
-        if (stanceSlots === 0) {
-            listContainer.createDiv({ text: 'No stance slots available at current level.', cls: 'dh-empty-text' });
-            return;
-        }
-
-        const tempEquippedStances = [...(character.equippedStances || [])];
-        while (tempEquippedStances.length < stanceSlots) {
-            tempEquippedStances.push('');
-        }
-
-        tempEquippedStances.slice(0, stanceSlots).forEach((selectedStanceName, index) => {
-            const slotContainer = listContainer.createDiv({ cls: 'dh-stance-slot' });
-
-            const otherSelectedStances = tempEquippedStances.filter((s, i) => s && i !== index);
-            const dropdownOptions = availableStances.filter(s => !otherSelectedStances.includes(s.name));
-
-            const setting = new Setting(slotContainer)
-                .setName(`Stance Slot ${index + 1}`)
-                .addDropdown(dd => {
-                    dd.addOption('', '--- Choose a Stance ---');
-                    dropdownOptions.forEach(stance => dd.addOption(stance.name, stance.name));
-
-                    dd.setValue(selectedStanceName).onChange(async (value) => {
-                        const newStances = [...tempEquippedStances];
-                        newStances[index] = value;
-
-                        character.equippedStances = newStances.filter(s => s && s !== '');
-
-                        // If the currently active stance was unequipped, deactivate it
-                        if (character.activeStance && !character.equippedStances.includes(character.activeStance)) {
-                            character.activeStance = '';
-                        }
-
-                        await this.plugin.updateCharacter(character);
-                    });
-                });
-
-            setting.controlEl.addClass('dh-stance-dropdown-control');
-            setting.nameEl.addClass('dh-stance-label');
-
-            if (selectedStanceName) {
-                const selectedStanceData = availableStances.find(s => s.name === selectedStanceName);
-                if (selectedStanceData) {
-                    const descEl = slotContainer.createDiv({ cls: 'dh-stance-description' });
-                    renderRollableContent(this.plugin, selectedStanceData.description, descEl, selectedStanceData.name, true);
-                }
-            }
-        });
-    }
-
-    // Add these helper methods inside the CharacterSheetView class
-    private getBrawlerStanceSlots(level: number): number {
-        if (level >= 8) return 4;
-        if (level >= 5) return 3;
-        if (level >= 2) return 2;
-        if (level >= 1) return 1;
-        return 0;
-    }
-
-    private getAvailableStances(level: number): Stances[] {
-        return this.plugin.compendium.stances.filter(stance => {
-            const tier = stance.tier;
-            if (tier === 1 && level >= 1) return true;
-            if (tier === 2 && level >= 2) return true;
-            if (tier === 3 && level >= 5) return true;
-            if (tier === 4 && level >= 8) return true;
-            return false;
-        });
     }
 
     private drawDetailsManager(parent: HTMLElement, data: Character) {
