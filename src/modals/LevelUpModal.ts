@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
 import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass, JsonFeat, InherentFeature, Stances } from '../types';
 import { renderMarkdown } from '../rendering/ui-helpers';
-import { TRAIT_NAMES } from '../constants';
+import { getTier, TRAIT_NAMES } from '../constants';
 
 interface LevelUpSelection extends BaseLevelUpSelection {
     newExperienceId?: string;
@@ -297,7 +297,7 @@ export class LevelUpModal extends Modal {
 
     private getMarkedTraits(upToLevel: number): Set<string> {
         const markedTraits = new Set<string>();
-        const currentTier = this.getTier(upToLevel);
+        const currentTier = getTier(upToLevel);
 
         const tierStartLevel = {
             2: 2,
@@ -619,13 +619,6 @@ export class LevelUpModal extends Modal {
         return owned;
     }
 
-    private getTier(level: number): number {
-        if (level >= 8) return 4;
-        if (level >= 5) return 3;
-        if (level >= 2) return 2;
-        return 1;
-    }
-
     private countAdvancementsInTier(advancementId: string, tier: number, history: { [level: number]: LevelUpSelection }): number {
         const [startLevel, endLevel] = {
             2: [2, 4],
@@ -644,7 +637,7 @@ export class LevelUpModal extends Modal {
     }
 
     private getAdvancementOptions(level: number): { id: string, name: string }[] {
-        const tier = this.getTier(level);
+        const tier = getTier(level);
         const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
         if (!subclass) return [];
 

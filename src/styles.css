@@ -2441,6 +2441,10 @@
     box-shadow: 0 0 8px var(--dh-sheet-accent-glow);
 }
 
+.dh-trait-box-large.is-modified .dh-trait-value-large {
+    color: var(--dh-sheet-accent);
+}
+
 .dh-trait-value-large {
     font-size: 2.2em;
     font-weight: var(--font-bold);
@@ -2797,6 +2801,154 @@
 .dh-inventory-item-actions button:hover {
     color: var(--text-normal);
     background-color: var(--background-modifier-hover);
+}
+/* --- ACTIVE BEASTFORM BANNER (HEADER) --- */
+.dh-active-beastform-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    background-color: var(--dh-sheet-bg-alt);
+    color: var(--dh-sheet-accent);
+    padding: var(--size-4-1) var(--size-4-3);
+    border-radius: var(--radius-s);
+    margin-top: var(--size-4-2);
+    font-weight: var(--font-semibold);
+}
+
+.dh-active-beastform-banner button {
+    background: none;
+    border: none;
+    color: var(--dh-sheet-text-muted);
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    margin-left: auto;
+    opacity: 0.7;
+}
+
+.dh-active-beastform-banner button:hover {
+    color: var(--color-red);
+    opacity: 1;
+}
+
+
+/* --- BEASTFORM MANAGER CARDS (MANAGER TAB) --- */
+.dh-beastform-card {
+    break-inside: avoid;
+    margin-bottom: var(--size-4-3);
+    background-color: var(--dh-sheet-bg);
+    border: 1px solid var(--dh-sheet-border);
+    border-radius: var(--radius-m);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dh-beastform-card-header {
+    padding: var(--size-4-2) var(--size-4-3);
+    border-bottom: 1px solid var(--dh-sheet-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--size-4-3);
+}
+
+.dh-beastform-card-title {
+    font-size: var(--font-ui-large);
+    font-weight: var(--font-bold);
+    color: var(--dh-sheet-accent);
+    text-transform: uppercase;
+}
+
+.dh-beastform-card-examples {
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+    font-style: italic;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.dh-beastform-card-body {
+    padding: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-3);
+    font-size: var(--font-ui-small);
+    color: var(--dh-sheet-text-muted);
+}
+
+.dh-beastform-card-body h5 {
+    margin: 0 0 var(--size-4-1) 0;
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    font-size: var(--font-ui-smaller);
+    letter-spacing: 0.05em;
+    color: var(--dh-sheet-text);
+}
+
+.dh-beastform-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--size-4-3);
+    padding-bottom: var(--size-4-2);
+    border-bottom: 1px dashed var(--dh-sheet-border);
+}
+
+.dh-beastform-stats-grid ul {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.dh-beastform-advantages p {
+    margin: 0;
+    font-style: italic;
+}
+
+.dh-beastform-features {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2);
+}
+
+.dh-beastform-feature-item strong {
+    color: var(--dh-sheet-text);
+    font-weight: var(--font-semibold);
+}
+
+.dh-beastform-card-footer {
+    border-top: 1px solid var(--dh-sheet-border);
+    background-color: var(--dh-sheet-bg-alt);
+    padding: var(--size-4-2);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.dh-beastform-card-footer button {
+    background-color: var(--dh-sheet-accent);
+    color: var(--dh-sheet-bg);
+    border: none;
+    border-radius: var(--radius-s);
+    padding: var(--size-4-2) var(--size-4-3);
+    font-weight: var(--font-bold);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.dh-beastform-card-footer button:hover:not(:disabled) {
+    background-color: var(--dh-sheet-accent-dark);
+}
+
+.dh-beastform-card-footer button:disabled {
+    background-color: var(--dh-sheet-border);
+    color: var(--dh-sheet-text-muted);
+    cursor: not-allowed;
+}
+
+/* Make sure the existing feature grid is used for the manager tab */
+.dh-manager-content .dh-feature-grid {
+    column-width: 340px;
+    column-gap: var(--size-4-3);
 }
 
 

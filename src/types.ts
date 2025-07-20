@@ -167,6 +167,7 @@ export interface Character {
         majorThreshold?: number;
         severeThreshold?: number;
     };
+    activeBeastformName?: string | null;
     equippedStances?: string[];
     activeStance?: string;
 }

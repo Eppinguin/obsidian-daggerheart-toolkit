@@ -18,3 +18,11 @@ export const EVENT_CREATE_COUNTDOWN = 'dh-create-countdown';
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
 export const TRAIT_NAMES: (keyof Character['traits'])[] = ['Strength', 'Agility', 'Finesse', 'Instinct', 'Presence', 'Knowledge'];
+
+
+export const getTier = (level: number): number => {
+    if (level >= 8) return 4;
+    if (level >= 5) return 3;
+    if (level >= 2) return 2;
+    return 1;
+};

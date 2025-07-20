@@ -27,6 +27,7 @@ import { handleAdvantageDisadvantage, formatTraitModifier } from '../services/di
 import { ContentType } from '../services/export-import';
 import { CharacterCreator } from './components/CharacterCreator';
 import { DiceTray } from 'src/DiceTray';
+import { getTier } from 'src/constants';
 
 export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
 
@@ -295,6 +296,22 @@ export class CharacterSheetView extends ItemView {
             }).open();
         });
 
+        // Add active beastform banner
+        if (data.activeBeastformName) {
+            const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
+            if (activeBeast) {
+                const banner = nameplate.createDiv({ cls: 'dh-active-beastform-banner' });
+                banner.createSpan({ text: `Transformed: ${activeBeast.name}` });
+                const revertBtn = banner.createEl('button');
+                setIcon(revertBtn, 'x-circle');
+                revertBtn.ariaLabel = "Revert to normal form";
+                revertBtn.addEventListener('click', () => {
+                    data.activeBeastformName = null;
+                    this.plugin.updateCharacter(data);
+                });
+            }
+        }
+
         let classDisplay = `${charClass?.name || 'N/A'} (${subClass?.name || 'N/A'})`;
         if (data.multiclassClassId) {
             const mcClass = this.plugin.compendium.getClass(data.multiclassClassId);
@@ -355,6 +372,18 @@ export class CharacterSheetView extends ItemView {
         let armorEvasionMod = 0;
         let weaponEvasionMod = 0;
         let armorMod = 0;
+
+        let beastformEvasionBonus = 0;
+        if (data.activeBeastformName) {
+            const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
+            if (activeBeast) {
+                const evasionAttr = activeBeast.attributes.find(a => a.trait === 'Evasion');
+                if (evasionAttr) {
+                    beastformEvasionBonus = evasionAttr.bonus;
+                }
+            }
+        }
+
         if (!equippedArmor) {
             data.armorSlots.max = 0;
             if (domainCards.length === 0) {
@@ -434,7 +463,7 @@ export class CharacterSheetView extends ItemView {
                 }
             });
         }
-        const finalEvasion = data.evasion + armorEvasionMod + weaponEvasionMod + (data.customModifiers?.evasion || 0);
+        const finalEvasion = data.evasion + armorEvasionMod + weaponEvasionMod + beastformEvasionBonus + (data.customModifiers?.evasion || 0);
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
         evasionBox.createEl('span', { text: 'Evasion', cls: 'dh-stat-label' });
@@ -568,9 +597,29 @@ export class CharacterSheetView extends ItemView {
             });
         }
 
-        //add modifiers for Thresholds here
+        // FIX: Apply beastform threshold modifications
+        if (data.activeBeastformName) {
+            const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
+            if (activeBeast) {
+                activeBeast.features.forEach(feature => {
+                    const name = feature.name.toLowerCase();
+                    if (name.includes("thick hide") || name.includes("undaunted")) {
+                        finalMajorThreshold += 2;
+                        finalSevereThreshold += 2;
+                    } else if (name.includes("hollow bones")) {
+                        finalMajorThreshold -= 2;
+                        finalSevereThreshold -= 2;
+                    } else if (name.includes("physical defense")) {
+                        finalMajorThreshold += 3;
+                        finalSevereThreshold += 3;
+                    }
+                });
+            }
+        }
+
         finalMajorThreshold += (data.customModifiers?.majorThreshold || 0);
         finalSevereThreshold += (data.customModifiers?.severeThreshold || 0);
+
         const minor = thresholdsBox.createDiv();
         minor.createEl('span', { cls: 'dh-threshold-label', text: 'Minor Damage' });
         minor.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 1 HP` });
@@ -587,6 +636,12 @@ export class CharacterSheetView extends ItemView {
             const hpTrackContainer = container.createDiv();
             this.plugin.createInteractiveTrack(hpTrackContainer, 'HP', data.hitPoints.max, data.id + '-hp', data.hitPoints.current, (v) => {
                 data.hitPoints.current = v;
+
+                if (data.activeBeastformName && data.hitPoints.current >= data.hitPoints.max) {
+                    data.activeBeastformName = null;
+                    new Notice("You marked your last Hit Point and reverted to your normal form.");
+                }
+
                 this.plugin.updateCharacter(data);
             });
             const hpLabel = hpTrackContainer.querySelector('.dh-track-label') as HTMLElement;
@@ -601,7 +656,6 @@ export class CharacterSheetView extends ItemView {
                             if (!data.temporaryHitPoints) {
                                 data.temporaryHitPoints = { _type: 'dynamicResource', current: 0, max: 0 };
                             }
-                            // Replace old temp HP, resetting any marked boxes.
                             data.temporaryHitPoints.max = amount;
                             data.temporaryHitPoints.current = 0;
                             this.plugin.updateCharacter(data);
@@ -641,7 +695,6 @@ export class CharacterSheetView extends ItemView {
                             }
                             const currentMarked = data.temporaryStress.current;
                             data.temporaryStress.max = amount;
-                            // Preserve marked stress if it's less than the new max
                             data.temporaryStress.current = Math.min(currentMarked, amount);
                             if (amount === 0) {
                                 data.temporaryStress.current = 0;
@@ -659,7 +712,6 @@ export class CharacterSheetView extends ItemView {
                 if (!data.temporaryStress) return;
                 data.temporaryStress.current = v;
                 if (data.temporaryStress.current >= data.temporaryStress.max) {
-                    // Once filled, temp stress is gone
                     data.temporaryStress.max = 0;
                     data.temporaryStress.current = 0;
                 }
@@ -670,10 +722,36 @@ export class CharacterSheetView extends ItemView {
 
     private drawTraits(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-traits-grid' });
+
+        let beastBonuses: { [key: string]: number } = {};
+        if (data.activeBeastformName) {
+            const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
+            if (activeBeast) {
+                // Create a map of the beast's attribute bonuses
+                activeBeast.attributes.forEach(attr => {
+                    // We handle Evasion separately, so only include the six main traits here.
+                    if (attr.trait !== 'Evasion') {
+                        beastBonuses[attr.trait] = attr.bonus;
+                    }
+                });
+            }
+        }
+
         Object.entries(data.traits).forEach(([name, trait]) => {
             const key = name as keyof Character['traits'];
+
+            const bonus = beastBonuses[name] || 0;
+            const finalValue = trait.value + bonus;
+
             const box = container.createDiv({ cls: `dh-trait-box-large ${trait.locked ? 'locked' : ''}` });
-            box.createDiv({ cls: 'dh-trait-value-large', text: `${trait.value >= 0 ? '+' : ''}${trait.value}` });
+
+            // Add a visual indicator and tooltip if the trait is modified
+            if (bonus > 0) {
+                box.addClass('is-modified');
+                box.title = `Base: ${trait.value >= 0 ? '+' : ''}${trait.value}, Bonus: +${bonus}`;
+            }
+
+            box.createDiv({ cls: 'dh-trait-value-large', text: `${finalValue >= 0 ? '+' : ''}${finalValue}` });
             box.createDiv({ cls: 'dh-trait-name-large', text: name });
             const skillsList = box.createDiv({ cls: 'dh-trait-skills' });
             (TRAIT_SKILLS[key] || []).forEach(skill => {
@@ -683,7 +761,8 @@ export class CharacterSheetView extends ItemView {
                 box.title = `Click to roll ${name}. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
                 box.addEventListener('click', (event) => {
                     const baseDiceString = `dr`;
-                    const modifier = trait.value;
+                    // Use the final, boosted value for the roll modifier
+                    const modifier = finalValue;
                     const context = `${name} Roll`;
 
                     if (event.metaKey || event.ctrlKey) {
@@ -707,6 +786,19 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawActiveWeapons(parent: HTMLElement, data: Character) {
+        // Check for active beastform
+        if (data.activeBeastformName) {
+            const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
+            if (activeBeast) {
+                const container = parent.createDiv({ cls: 'dh-active-weapons' });
+                const header = container.createDiv({ cls: 'dh-section-header-box' });
+                header.createEl('h3', { text: 'Active Attack' });
+                this.createBeastformAttackCard(container, activeBeast, data);
+                return; // Stop here and don't draw normal weapons
+            }
+        }
+
+        // Original weapon drawing logic if not transformed
         const container = parent.createDiv({ cls: 'dh-active-weapons' });
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Active Weapons' });
@@ -850,6 +942,67 @@ export class CharacterSheetView extends ItemView {
                 return;
             }
             this.plugin.rollDice(damageFormula, `${weapon.name} Damage`);
+        });
+    }
+
+    private createBeastformAttackCard(parent: HTMLElement, beast: Beastform, character: Character) {
+        const card = parent.createDiv({ cls: 'dh-weapon-card' });
+        card.createEl('h4', { text: beast.name });
+        const body = card.createDiv({ cls: 'dh-weapon-card-body' });
+
+        const left = body.createDiv();
+        left.createDiv({ cls: 'dh-weapon-name', text: 'Beast Attack' });
+        left.createDiv({ cls: 'dh-weapon-type', text: `${beast.attack.range}` });
+
+        // Render features of the beastform
+        (beast.features || []).forEach(feature => {
+            const featureEl = left.createDiv({ cls: 'dh-weapon-feature' });
+            renderRollableContent(this.plugin, `**${feature.name}:** ${feature.description}`, featureEl, `${beast.name}: ${feature.name}`, true);
+        });
+
+        const right = body.createDiv({ cls: 'dh-weapon-card-right' });
+        const traitName = beast.attack.trait as keyof Character['traits'];
+        const trait = character.traits[traitName];
+        if (trait) {
+            // FIX: Add the beast's specific attribute bonus to the character's trait value for the roll.
+            const beastAttributeBonus = beast.attributes.find(a => a.trait === traitName)?.bonus || 0;
+            const totalTraitValue = trait.value + beastAttributeBonus;
+
+            const rollBox = right.createDiv({ cls: 'dh-weapon-roll-box' });
+            const traitDisplay = `${totalTraitValue >= 0 ? '+' : ''}${totalTraitValue}`;
+            rollBox.createDiv({ text: traitDisplay });
+            rollBox.createDiv({ text: traitName });
+            const rollTitle = `${beast.name} Attack`;
+            rollBox.title = `Click to roll. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
+            rollBox.addEventListener('click', (event) => {
+                const formula = 'dr';
+                const modifier = totalTraitValue; // Use the corrected total value
+                if (event.metaKey || event.ctrlKey) {
+                    this.setTrayFormula(formula, rollTitle, modifier);
+                    return;
+                }
+                const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(event, 'dr', rollTitle);
+                this.plugin.rollDice(`${diceString}${formatTraitModifier(modifier)}`, newRollTitle, traitName);
+            });
+        }
+
+        const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
+        const proficiency = character.proficiency;
+        let damageFormula = `${proficiency}${beast.attack.dice}`;
+
+        if (beast.attack.dice.includes('+') || beast.attack.dice.includes('-')) {
+            damageFormula = `${proficiency}(${beast.attack.dice})`;
+        }
+
+        damageBox.createDiv({ text: damageFormula });
+        damageBox.createDiv({ text: beast.attack.type });
+        damageBox.title = `Click to roll ${damageFormula}. Hold Cmd/Ctrl to add to Dice Tray.`;
+        damageBox.addEventListener('click', (event) => {
+            if (event.metaKey || event.ctrlKey) {
+                this.setTrayFormula(damageFormula, `${beast.name} Damage`);
+                return;
+            }
+            this.plugin.rollDice(damageFormula, `${beast.name} Damage`);
         });
     }
     private drawVitals(parent: HTMLElement, data: Character) {
@@ -1172,7 +1325,7 @@ export class CharacterSheetView extends ItemView {
     private drawBeasformsSection(parent: HTMLElement, character: Character) {
         const section = parent.createDiv({ cls: 'dh-card-section' });
         const header = section.createDiv({ cls: 'dh-section-header-bar' });
-        //header.createEl('h3', { text: 'Beastforms' });
+        header.createEl('h3', { text: 'Beastforms' });
 
         const beastforms = this.plugin.compendium.beastforms.reduce((acc, beast) => {
             const tier = beast.tier;
@@ -1188,19 +1341,8 @@ export class CharacterSheetView extends ItemView {
         for (const tier of tierOrder) {
             const beasts = beastforms[tier];
             if (beasts && beasts.length > 0) {
-                const buttonContainer = section.createDiv({ cls: 'dh-section-header-bar' });
-                buttonContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
-                const button = buttonContainer.createEl('button', { text: "Tier " + tier.toString() + " ausblenden" });
                 const groupContainer = section.createDiv({ cls: 'dh-feature-group' });
-
-                let visible = true;
-
-                button.addEventListener("click", () => {
-                    visible = !visible;
-                    groupContainer.style.display = visible ? "block" : "none";
-                    button.textContent = visible ? "Tier " + tier.toString() + " ausblenden" : "Tier " + tier.toString() + " anzeigen";
-                });
-                //groupContainer.createEl('h3', { text: "Tier " + tier.toString(), cls: 'dh-feature-group-title' });
+                groupContainer.createEl('h4', { text: `Tier ${tier}`, cls: 'dh-feature-group-title' });
                 const grid = groupContainer.createDiv({ cls: 'dh-feature-grid' });
                 beasts.forEach(beast => {
                     this.createBeastCard(grid, beast, character);
@@ -1476,53 +1618,83 @@ export class CharacterSheetView extends ItemView {
     }
 
     private createBeastCard(parent: HTMLElement, beast: Beastform, character: Character) {
-        const card = parent.createDiv({ cls: 'dh-feature-card' });
-        /*
-        card.addEventListener('contextmenu', (event: MouseEvent) => {
-            event.preventDefault();
-            const menu = new Menu();
+        const card = parent.createDiv({ cls: 'dh-beastform-card' });
 
-            menu.addItem((item) =>
-                item
-                    .setTitle("Manage Trackers...")
-                    .setIcon("list-plus")
-                    .onClick(() => {
-                        new ManageTrackersModal(this.app, this.plugin, character, beast).open();
-                    })
-            );
+        const header = card.createDiv({ cls: 'dh-beastform-card-header' });
+        header.createEl('h4', { text: beast.name, cls: 'dh-beastform-card-title' });
+        if (beast.examples) {
+            header.createSpan({ text: beast.examples, cls: 'dh-beastform-card-examples' });
+        }
 
-            menu.showAtMouseEvent(event);
+        const body = card.createDiv({ cls: 'dh-beastform-card-body' });
+
+        // Stats Grid
+        const statsGrid = body.createDiv({ cls: 'dh-beastform-stats-grid' });
+        const attributesCell = statsGrid.createDiv();
+        attributesCell.createEl('h5', { text: 'Attributes' });
+        const attrList = attributesCell.createEl('ul');
+        beast.attributes.forEach(attr => {
+            attrList.createEl('li', { text: `+${attr.bonus} ${attr.trait}` });
         });
-        */
-        const header = card.createDiv({ cls: 'dh-feature-card-header' });
-        header.createDiv({ cls: 'dh-feature-card-title', text: beast.name });
 
-        const beastHeader = header.createDiv({ cls: 'dh-feature-card-meta-header' });
-        if (beast.examples) beastHeader.createSpan({ cls: 'dh-feature-card-type', text: beast.examples + ", etc" });
+        const attackCell = statsGrid.createDiv();
+        attackCell.createEl('h5', { text: 'Attack' });
+        const attackList = attackCell.createEl('ul');
+        const proficiency = character.proficiency;
+        attackList.createEl('li', { text: `Range: ${beast.attack.range}` });
+        attackList.createEl('li', { text: `Trait: ${beast.attack.trait}` });
+        attackList.createEl('li', { text: `Damage: ${proficiency}${beast.attack.dice} ${beast.attack.type}` });
 
-        const body = card.createDiv({ cls: 'dh-feature-card-body' });
-        const rollString = this.beastToString(beast);
-        renderRollableContent(this.plugin, rollString, body, beast.name, true);
-    }
-
-    private beastToString(beast: Beastform) {
-        let fullstring = "";
-        if (beast.attributes) {
-            const traitString = beast.attributes.map(t => `${t.trait} +${t.bonus}`).join(' | ');
-            fullstring += traitString + '\n';
-        }
-        if (beast.attack) {
-            const attackString = beast.attack.range + " " + beast.attack.trait + " 1" + beast.attack.dice + " " + beast.attack.type;
-            fullstring += attackString + '\n\n';
-        }
+        // Advantages
         if (beast.advantages) {
-            const advantageString = "Gain advantage on: " + beast.advantages;
-            fullstring += advantageString + '\n\n';
+            const advantagesSection = body.createDiv({ cls: 'dh-beastform-advantages' });
+            advantagesSection.createEl('h5', { text: 'Advantages' });
+            advantagesSection.createEl('p', { text: `Gain advantage on: ${beast.advantages}` });
         }
-        if (beast.features) {
-            const featuresString = beast.features.map(t => `${t.name}: ${t.description}`).join('\n\n');
-            fullstring += featuresString + '\n';
+
+        // Features
+        const featuresSection = body.createDiv({ cls: 'dh-beastform-features' });
+        featuresSection.createEl('h5', { text: 'Features' });
+        beast.features.forEach(feature => {
+            const featureEl = featuresSection.createDiv({ cls: 'dh-beastform-feature-item' });
+            featureEl.createEl('strong', { text: `${feature.name}: ` });
+            featureEl.createSpan({ text: feature.description });
+        });
+
+        const footer = card.createDiv({ cls: 'dh-beastform-card-footer' });
+        const transformBtn = footer.createEl('button', { text: 'Transform' });
+
+        // FIX 2: Use getTier() for correct level vs tier comparison.
+        const characterTier = getTier(character.level);
+        const isDisabledByTier = beast.tier > characterTier;
+        const isDisabledByState = !!character.activeBeastformName;
+
+        if (isDisabledByTier || isDisabledByState) {
+            transformBtn.disabled = true;
+            if (isDisabledByTier) {
+                transformBtn.title = `Requires Tier ${beast.tier} (You are Tier ${characterTier})`;
+            } else if (isDisabledByState) {
+                transformBtn.title = 'You are already transformed.';
+            }
         }
-        return fullstring;
+
+        transformBtn.addEventListener('click', () => {
+            // FIX 1: Correct stress check.
+            if (character.stress.current >= character.stress.max) {
+                new Notice("You have no Stress slots available to spend.");
+                return;
+            }
+
+            new ConfirmationModal(
+                this.app,
+                `Transforming into ${beast.name} costs 1 Stress. Are you sure?`,
+                async () => {
+                    // FIX 1: Correctly increment marked stress.
+                    character.stress.current++;
+                    character.activeBeastformName = beast.name;
+                    await this.plugin.updateCharacter(character);
+                }
+            ).open();
+        });
     }
 }
