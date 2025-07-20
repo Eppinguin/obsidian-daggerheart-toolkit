@@ -424,35 +424,29 @@ export class LevelUpModal extends Modal {
                 if (!subclass) break;
 
                 const ownedFeatures = this.getOwnedSubclassFeatures(level);
-                const ownedSpecializations = subclass.specializations.filter(s => ownedFeatures.has(s.name));
-                const ownedMasteries = subclass.masteries.filter(m => ownedFeatures.has(m.name));
-
-                let availableUpgrades: JsonFeat[] = [];
+                let featuresToGrant: JsonFeat[] = [];
                 let upgradeType = '';
 
-                if (ownedSpecializations.length < subclass.specializations.length) {
+                if (subclass.specializations.length > 0 && !subclass.specializations.every(s => ownedFeatures.has(s.name))) {
                     upgradeType = 'Specialization';
-                    availableUpgrades = subclass.specializations.filter(s => !ownedFeatures.has(s.name));
-                } else if (ownedMasteries.length < subclass.masteries.length) {
+                    featuresToGrant = subclass.specializations;
+                } else if (subclass.masteries.length > 0 && !subclass.masteries.every(m => ownedFeatures.has(m.name))) {
                     upgradeType = 'Mastery';
-                    availableUpgrades = subclass.masteries.filter(m => !ownedFeatures.has(m.name));
+                    featuresToGrant = subclass.masteries;
                 }
 
-                if (availableUpgrades.length > 0) {
-                    const currentChoice = advancement.choices[0];
-                    new Setting(parent).setName(`Choose ${upgradeType} Card`).addDropdown(dd => {
-                        dd.addOption('', '---');
-                        availableUpgrades.forEach(feat => dd.addOption(feat.name, feat.name));
-                        dd.setValue(currentChoice ?? '');
-                        dd.onChange(value => {
-                            advancement.choices[0] = value || '';
-                            this.validateAndResetSubsequentLevels(level);
-                            this.drawLevelUpInterface();
-                        });
+                if (featuresToGrant.length > 0) {
+                    parent.createEl('p', { text: `This advancement grants you the following ${upgradeType} features:` });
+                    const listEl = parent.createEl('ul', { cls: 'dh-feature-grant-list' });
+                    featuresToGrant.forEach(feat => {
+                        const itemEl = listEl.createEl('li');
+                        itemEl.createEl('strong', { text: feat.name });
+                        renderMarkdown(this.plugin, feat.text, itemEl.createDiv());
                     });
-                    this.redrawDomainCardPreview(parent, currentChoice);
+                    advancement.choices = featuresToGrant.map(f => f.name);
                 } else {
-                    parent.createEl('p', { text: 'No further subclass upgrades available at this time.' });
+                    parent.createEl('p', { text: 'All subclass features have been granted.' });
+                    advancement.choices = [];
                 }
                 break;
             }
@@ -593,12 +587,13 @@ export class LevelUpModal extends Modal {
                 if (!subclass) return 'Upgrade Subclass';
 
                 const ownedFeatures = this.getOwnedSubclassFeatures(level);
-                const ownedSpecializations = subclass.specializations.filter(s => ownedFeatures.has(s.name));
-
-                if (ownedSpecializations.length < subclass.specializations.length) {
-                    return 'Take Specialization card';
+                if (subclass.specializations.length > 0 && !subclass.specializations.every(s => ownedFeatures.has(s.name))) {
+                    return 'Take Specialization Features';
                 }
-                return 'Take Mastery card';
+                if (subclass.masteries.length > 0 && !subclass.masteries.every(m => ownedFeatures.has(m.name))) {
+                    return 'Take Mastery Features';
+                }
+                return 'Subclass Upgraded';
             }
             default: return null;
         }
@@ -615,8 +610,8 @@ export class LevelUpModal extends Modal {
         for (let l = 2; l < currentLevel; l++) {
             const history = this.tempCharacter.levelUpHistory[l] as LevelUpSelection;
             history?.advancements.forEach(adv => {
-                if (adv?.id === 'upgrade_subclass' && adv.choices[0]) {
-                    owned.add(adv.choices[0]);
+                if (adv?.id === 'upgrade_subclass' && adv.choices) {
+                    adv.choices.forEach(choice => owned.add(choice));
                 }
             });
         }
@@ -705,8 +700,12 @@ export class LevelUpModal extends Modal {
         const upgradeSubclassOption = options.find(opt => opt.id === 'upgrade_subclass');
         if (upgradeSubclassOption) {
             const allHistoryAdvancements = Object.values(history).flatMap(h => h.advancements.map(a => a?.id));
+
+            const totalSpecializations = subclass.specializations.length > 0 ? 1 : 0;
+            const totalMasteries = subclass.masteries.length > 0 ? 1 : 0;
+            const totalPossibleUpgrades = totalSpecializations + totalMasteries;
+
             const upgradeSubclassCount = allHistoryAdvancements.filter(id => id === 'upgrade_subclass').length;
-            const totalPossibleUpgrades = subclass.specializations.length + subclass.masteries.length;
             if (upgradeSubclassCount >= totalPossibleUpgrades) {
                 return options.filter(opt => opt.id !== 'upgrade_subclass');
             }
@@ -858,8 +857,8 @@ export class LevelUpModal extends Modal {
                 if (adv?.id === 'take_domain_card' && adv.choices[0]) {
                     cardsToRemove.add(adv.choices[0]);
                 }
-                if (adv?.id === 'upgrade_subclass' && adv.choices[0]) {
-                    featuresToRemove.add(adv.choices[0]);
+                if (adv?.id === 'upgrade_subclass' && adv.choices) {
+                    adv.choices.forEach(choice => featuresToRemove.add(choice));
                 }
                 if (adv?.id === 'multiclass' && adv.choices[0]) {
                     const newClass = this.plugin.compendium.getClass(adv.choices[0]);
@@ -922,6 +921,8 @@ export class LevelUpModal extends Modal {
         const charClass = this.plugin.compendium.getClass(char.classId);
         const subclass = this.plugin.compendium.getSubclass(char.subclassId);
         if (!charClass || !subclass) return;
+
+        let subclassUpgradeCount = 0;
 
         for (let level = 2; level <= char.level; level++) {
             const selection = history[level];
@@ -1006,14 +1007,12 @@ export class LevelUpModal extends Modal {
                         });
                         break;
                     case 'upgrade_subclass': {
-                        if (adv.choices[0]) {
-                            const featureName = adv.choices[0];
-                            const feature = [...subclass.specializations, ...subclass.masteries].find(f => f.name === featureName);
-                            if (feature) {
-                                const newFeature: InherentFeature = { id: feature.name, name: feature.name, description: feature.text, source: 'Subclass' };
-                                addInherentFeature(newFeature);
-                            }
-                        }
+                        const featuresToGrant = subclassUpgradeCount === 0 ? subclass.specializations : subclass.masteries;
+                        featuresToGrant.forEach(feature => {
+                            const newFeature: InherentFeature = { id: feature.name, name: feature.name, description: feature.text, source: 'Subclass' };
+                            addInherentFeature(newFeature);
+                        });
+                        subclassUpgradeCount++;
                         break;
                     }
                     case 'take_domain_card': {
