@@ -571,7 +571,7 @@ export class CharacterSheetView extends ItemView {
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Hit Points & Stress' });
 
-        const thresholdsBox = container.createDiv({ cls: 'dh-thresholds-box' });
+        const thresholdsDisplay = container.createDiv({ cls: 'dh-thresholds-display' });
         let finalMajorThreshold = data.damageThresholds.major;
         let finalSevereThreshold = data.damageThresholds.severe;
 
@@ -664,18 +664,31 @@ export class CharacterSheetView extends ItemView {
 
         finalMajorThreshold += (data.customModifiers?.majorThreshold || 0);
         finalSevereThreshold += (data.customModifiers?.severeThreshold || 0);
+        const mainRow = thresholdsDisplay.createDiv({ cls: 'dh-threshold-main-row' });
 
-        const minor = thresholdsBox.createDiv();
-        minor.createEl('span', { cls: 'dh-threshold-label', text: 'Minor Damage' });
-        minor.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 1 HP` });
-        const major = thresholdsBox.createDiv();
-        major.createEl('span', { cls: 'dh-threshold-label', text: 'Major Damage' });
-        major.createEl('span', { cls: 'dh-threshold-value', text: String(finalMajorThreshold) });
-        major.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 2 HP` });
-        const severe = thresholdsBox.createDiv();
-        severe.createEl('span', { cls: 'dh-threshold-label', text: 'Severe Damage' });
-        severe.createEl('span', { cls: 'dh-threshold-value', text: String(finalSevereThreshold) });
-        severe.createEl('span', { cls: 'dh-threshold-desc', text: `Mark 3 HP` });
+        const minorBox = mainRow.createDiv({ cls: 'dh-threshold-box' });
+        minorBox.createSpan({ cls: 'dh-threshold-label', text: 'Minor' });
+
+        mainRow.createSpan({ cls: 'dh-threshold-value', text: String(finalMajorThreshold) });
+
+        const majorGroup = mainRow.createDiv({ cls: 'dh-threshold-group' });
+        majorGroup.createDiv({ cls: 'dh-threshold-arrow' });
+        const majorBox = majorGroup.createDiv({ cls: 'dh-threshold-box' });
+        majorBox.createSpan({ cls: 'dh-threshold-label', text: 'Major' });
+
+        mainRow.createSpan({ cls: 'dh-threshold-value', text: String(finalSevereThreshold) });
+        const severeGroup = mainRow.createDiv({ cls: 'dh-threshold-group' });
+        severeGroup.createDiv({ cls: 'dh-threshold-arrow' });
+        const severeBox = severeGroup.createDiv({ cls: 'dh-threshold-box' });
+        severeBox.createSpan({ cls: 'dh-threshold-label', text: 'Severe' });
+
+        const descRow = thresholdsDisplay.createDiv({ cls: 'dh-threshold-desc-row' });
+        descRow.createDiv({ cls: 'dh-threshold-desc-item', text: 'Mark 1 HP' });
+        descRow.createDiv({ cls: 'dh-threshold-separator is-empty' });
+        descRow.createDiv({ cls: 'dh-threshold-desc-item', text: 'Mark 2 HP' });
+        descRow.createDiv({ cls: 'dh-threshold-separator is-empty' });
+        descRow.createDiv({ cls: 'dh-threshold-desc-item', text: 'Mark 3 HP' });
+
 
         if (data.hitPoints) {
             const hpTrackContainer = container.createDiv();
@@ -825,27 +838,49 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawActiveWeapons(parent: HTMLElement, data: Character) {
+        // Create the main container for this section
+        const container = parent.createDiv({ cls: 'dh-active-weapons' });
+
+        // Determine the title based on character state
+        let titleText = 'Active Weapons';
         if (data.activeBeastformName) {
             const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
             if (activeBeast) {
-                const container = parent.createDiv({ cls: 'dh-active-weapons' });
-                const header = container.createDiv({ cls: 'dh-section-header-box' });
-                header.createEl('h3', { text: 'Active Attack' });
-                this.createBeastformAttackCard(container, activeBeast, data);
-                return;
+                titleText = 'Active Attack';
             }
         }
 
-        const container = parent.createDiv({ cls: 'dh-active-weapons' });
+        // Create the original, centered header
         const header = container.createDiv({ cls: 'dh-section-header-box' });
-        header.createEl('h3', { text: 'Active Weapons' });
-        const equippedWeapons = data.inventory.filter(i => data.equippedWeaponIds && data.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as (InventoryItem & { _type: 'weapon' })[];
-        if (equippedWeapons.length === 0) {
-            this.createUnarmedAttackCard(container, 'Unarmed', data);
+        header.createEl('h3', { text: titleText });
+
+        // Draw the specific content (beast, weapon, or unarmed) first
+        if (data.activeBeastformName) {
+            const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
+            if (activeBeast) {
+                this.createBeastformAttackCard(container, activeBeast, data);
+            }
         } else {
-            equippedWeapons.forEach((weapon, index) => {
-                this.createWeaponCard(container, weapon, index === 0 ? 'Primary' : 'Secondary', data);
-            });
+            const equippedWeapons = data.inventory.filter(i => data.equippedWeaponIds && data.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as (InventoryItem & { _type: 'weapon' })[];
+            if (equippedWeapons.length === 0) {
+                this.createUnarmedAttackCard(container, 'Unarmed', data);
+            } else {
+                equippedWeapons.forEach((weapon, index) => {
+                    this.createWeaponCard(container, weapon, index === 0 ? 'Primary' : 'Secondary', data);
+                });
+            }
+        }
+
+        // Create the proficiency pip display at the bottom of the section
+        const proficiencyContainer = container.createDiv({ cls: 'dh-proficiency-container' });
+        proficiencyContainer.createSpan({ cls: 'dh-proficiency-label', text: 'Proficiency' });
+        const pipsContainer = proficiencyContainer.createDiv({ cls: 'dh-proficiency-pips' });
+        const MAX_PROFICIENCY = 6;
+        for (let i = 0; i < MAX_PROFICIENCY; i++) {
+            const pip = pipsContainer.createDiv({ cls: 'dh-proficiency-pip' });
+            if (i < data.proficiency) {
+                pip.addClass('is-filled');
+            }
         }
     }
 
