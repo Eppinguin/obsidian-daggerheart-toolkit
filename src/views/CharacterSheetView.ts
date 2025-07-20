@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, TFile, MarkdownRenderer, Menu, App, Modal } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, TFile, MarkdownRenderer, Menu, App, Modal, MenuItem } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
 import {
@@ -97,8 +97,8 @@ export class CharacterSheetView extends ItemView {
             return;
         }
 
-        const container = this.containerEl.children[1];
-        const mainContent = container.querySelector('.dh-cs-main');
+        const container = this.containerEl.children[1] as HTMLElement;
+        const mainContent = container.querySelector('.dh-cs-main') as HTMLElement;
         const scrollPosition = mainContent ? mainContent.scrollTop : 0;
 
         const activeEl = document.activeElement as HTMLElement;
@@ -113,24 +113,25 @@ export class CharacterSheetView extends ItemView {
         }
 
         container.empty();
-        const main = container.createDiv({ cls: 'dh-cs-main' });
-        this.drawTopBar(main);
         const activeChar = this.plugin.getActiveCharacter();
+
         if (activeChar) {
-            // Set accent colors on the main container so the Dice Tray can use them
             const accentColor = activeChar.accentColor || '#e5b32a';
             const accentGlow = this.hexToRgba(accentColor, 0.4);
             this.containerEl.style.setProperty('--dh-sheet-accent', accentColor);
             this.containerEl.style.setProperty('--dh-sheet-accent-glow', accentGlow);
 
-            this.drawCharacterSheet(main, activeChar);
+            this.drawCharacterSheet(container, activeChar);
         } else {
-            new CharacterCreator(this.plugin, this, main);
-            // Reset accent color if no character is active, so it uses the CSS default
+            this.drawNoCharacterState(container);
             this.containerEl.style.removeProperty('--dh-sheet-accent');
             this.containerEl.style.removeProperty('--dh-sheet-accent-glow');
         }
-        main.scrollTop = scrollPosition;
+
+        const newMainContent = container.querySelector('.dh-cs-main') as HTMLElement;
+        if (newMainContent) {
+            newMainContent.scrollTop = scrollPosition;
+        }
 
         this.diceTray.render(this.containerEl);
 
@@ -151,74 +152,46 @@ export class CharacterSheetView extends ItemView {
         this.diceTray.setFormula(formula, context, modifier);
     }
 
-    private drawTopBar(parent: HTMLElement) {
-        const header = parent.createDiv({ cls: 'dh-cs-topbar' });
-        const left = header.createDiv({ cls: 'dh-topbar-left' });
-        const characters = this.plugin.getCharacters();
-        const activeCharId = this.plugin.getActiveCharacterId();
+    private drawNoCharacterState(parent: HTMLElement) {
+        const header = parent.createDiv({ cls: 'dh-character-selection-header' });
 
-        const selector = left.createEl('select', { cls: 'dropdown' });
-        selector.createEl('option', { value: '', text: 'Select a Character...' });
-        characters.forEach((char: Character) => {
-            const option = selector.createEl('option', { value: char.id, text: char.name });
-            if (char.id === activeCharId) { option.selected = true; }
-        });
-        selector.addEventListener('change', async (ev: Event) => {
-            const selectEl = ev.target as HTMLSelectElement;
-            await this.plugin.setActiveCharacterId(selectEl.value || null);
+        const selectBtn = header.createEl('button', { text: 'Select a Character' });
+        setIcon(selectBtn, 'users');
+        selectBtn.addEventListener('click', (e) => {
+            const menu = new Menu();
+            const characters = this.plugin.getCharacters();
+            if (characters.length > 0) {
+                characters.forEach(char => {
+                    menu.addItem(item => item
+                        .setTitle(char.name)
+                        .onClick(() => this.plugin.setActiveCharacterId(char.id))
+                    );
+                });
+            } else {
+                menu.addItem(item => item.setTitle("No characters found").setDisabled(true));
+            }
+            menu.showAtMouseEvent(e);
         });
 
-        const importBtn = left.createEl('button', { cls: 'dh-import-btn clickable-icon' });
+        const importBtn = header.createEl('button', { text: 'Import Character' });
         setIcon(importBtn, 'download');
-        importBtn.setAttribute('aria-label', 'Import Character');
-        importBtn.title = 'Import Character';
         importBtn.addEventListener('click', () => {
             new ImportExportModal(this.app, this.plugin, 'import', ContentType.CHARACTER).open();
         });
 
-        const right = header.createDiv({ cls: 'dh-topbar-right' });
-
-        const activeChar = this.plugin.getActiveCharacter();
-        if (activeChar) {
-            const exportBtn = right.createEl('button', { cls: 'dh-export-btn clickable-icon' });
-            setIcon(exportBtn, 'upload');
-            exportBtn.setAttribute('aria-label', 'Export Character');
-            exportBtn.title = 'Export Character';
-            exportBtn.addEventListener('click', () => {
-                new ImportExportModal(this.app, this.plugin, 'export', ContentType.CHARACTER, activeChar.id).open();
-            });
-
-            const deleteBtn = right.createEl('button', { cls: 'clickable-icon' });
-            setIcon(deleteBtn, 'trash');
-            deleteBtn.ariaLabel = "Delete Character";
-            deleteBtn.addEventListener('click', () => {
-                new ConfirmationModal(
-                    this.app,
-                    `Are you sure you want to delete ${activeChar.name}? This cannot be undone.`,
-                    async () => {
-                        await this.plugin.deleteCharacter(activeChar.id);
-                    }
-                ).open();
-            });
-        }
-
-        const newCharBtn = right.createEl('button', { cls: 'clickable-icon' });
-        setIcon(newCharBtn, 'plus');
-        newCharBtn.ariaLabel = "Create New Character";
-        newCharBtn.addEventListener('click', () => {
-            this.plugin.setActiveCharacterId(null);
-        });
+        new CharacterCreator(this.plugin, this, parent);
     }
 
     private drawCharacterSheet(parent: HTMLElement, data: Character) {
         const sheet = parent.createDiv({ cls: 'dh-sheet' });
+        const main = sheet.createDiv({ cls: 'dh-cs-main' });
 
-        this.drawSheetHeader(sheet, data);
-        const mainGrid = sheet.createDiv({ cls: 'dh-sheet-grid' });
+        this.drawSheetHeader(main, data);
+        const mainGrid = main.createDiv({ cls: 'dh-sheet-grid' });
         this.drawLeftColumn(mainGrid, data);
         this.drawCenterColumn(mainGrid, data);
         this.drawRightColumn(mainGrid, data);
-        this.drawManager(sheet, data);
+        this.drawManager(main, data);
     }
 
     private hexToRgba(hex: string, alpha: number): string {
@@ -287,16 +260,13 @@ export class CharacterSheetView extends ItemView {
         const nameWrapper = nameplate.createDiv({ cls: 'dh-name-wrapper' });
         nameWrapper.createEl('h1', { text: data.name || "Unnamed Character" });
 
-        const editBtn = nameWrapper.createEl('button', { cls: 'dh-edit-character-btn clickable-icon' });
-        setIcon(editBtn, 'settings-2');
-        editBtn.ariaLabel = "Edit Character";
-        editBtn.addEventListener('click', () => {
-            new CharacterManagerModal(this.app, this.plugin, data, (updatedChar) => {
-                this.plugin.updateCharacter(updatedChar);
-            }).open();
+        const actionsBtn = nameWrapper.createEl('button', { cls: 'dh-character-actions-btn clickable-icon' });
+        setIcon(actionsBtn, 'settings-2');
+        actionsBtn.ariaLabel = "Manage Characters & Actions";
+        actionsBtn.addEventListener('click', (event: MouseEvent) => {
+            this.showMasterActionsMenu(event, data);
         });
 
-        // Add active beastform banner
         if (data.activeBeastformName) {
             const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
             if (activeBeast) {
@@ -339,6 +309,89 @@ export class CharacterSheetView extends ItemView {
             }
             right.createDiv({ cls: 'dh-domain-placeholder', text: classDomains.join(' & ') });
         }
+    }
+
+    private showMasterActionsMenu(event: MouseEvent, character: Character) {
+        const menu = new Menu();
+
+        // Section 1: Current Character Management
+        menu.addItem((item) =>
+            item
+                .setTitle("Manage Character")
+                .setIcon("pencil")
+                .onClick(() => {
+                    new CharacterManagerModal(this.app, this.plugin, character, (updatedChar) => {
+                        this.plugin.updateCharacter(updatedChar);
+                    }).open();
+                })
+        );
+
+        menu.addItem((item) =>
+            item
+                .setTitle("Export Character")
+                .setIcon("upload")
+                .onClick(() => {
+                    new ImportExportModal(this.app, this.plugin, 'export', ContentType.CHARACTER, character.id).open();
+                })
+        );
+
+        menu.addSeparator();
+
+        // Section 2: Switch Character
+        const characters = this.plugin.getCharacters().filter(c => c.id !== character.id);
+        if (characters.length > 0) {
+            menu.addItem((item: MenuItem) => {
+                item.setTitle("Switch To").setIcon("users");
+                // This uses a type assertion '(item as any)' to access setSubmenu.
+                // This is a workaround for potentially outdated or incorrect Obsidian type definitions.
+                // It allows the code to compile while relying on the runtime availability of the method.
+                const subMenu = (item as any).setSubmenu();
+                characters.forEach(char => {
+                    subMenu.addItem((subItem: MenuItem) => {
+                        subItem
+                            .setTitle(char.name)
+                            .setIcon("user-round")
+                            .onClick(() => this.plugin.setActiveCharacterId(char.id));
+                    });
+                });
+            });
+            menu.addSeparator();
+        }
+
+        // Section 3: Global Actions
+        menu.addItem((item) =>
+            item
+                .setTitle("Create New Character")
+                .setIcon("plus")
+                .onClick(() => this.plugin.setActiveCharacterId(null))
+        );
+
+        menu.addItem((item) =>
+            item
+                .setTitle("Import Character")
+                .setIcon("download")
+                .onClick(() => {
+                    new ImportExportModal(this.app, this.plugin, 'import', ContentType.CHARACTER).open();
+                })
+        );
+
+        menu.addSeparator();
+
+        // Section 4: Danger Zone
+        menu.addItem((item) =>
+            item
+                .setTitle("Delete Current Character")
+                .setIcon("trash")
+                .onClick(() => {
+                    new ConfirmationModal(
+                        this.app,
+                        `Are you sure you want to delete ${character.name}?`,
+                        async () => { await this.plugin.deleteCharacter(character.id); }
+                    ).open();
+                })
+        );
+
+        menu.showAtMouseEvent(event);
     }
 
     private drawLeftColumn(parent: HTMLElement, data: Character) {
@@ -386,8 +439,7 @@ export class CharacterSheetView extends ItemView {
 
         if (!equippedArmor) {
             data.armorSlots.max = 0;
-            if (domainCards.length === 0) {
-            } else {
+            if (domainCards.length > 0) {
                 domainCards.forEach((feature) => {
                     if (feature.name.toLowerCase().includes("bare bones")) {
                         data.armorSlots.max = 3 + data.traits['Strength'].value;
@@ -396,16 +448,15 @@ export class CharacterSheetView extends ItemView {
             }
         }
         else {
-            if (domainCards.length === 0) {
-            } else {
+            if (domainCards.length > 0) {
                 domainCards.forEach((feature) => {
                     if (feature.name.toLowerCase().includes("armorer")) {
                         armorMod = armorMod + 1;
                     }
                     else if (feature.name.toLowerCase().includes("valor-touched")) {
                         let valorCounter = 0;
-                        domainCards.forEach((feature) => {
-                            if (feature.domain.toLowerCase().includes("valor")) {
+                        domainCards.forEach((feature2) => {
+                            if (feature2.domain.toLowerCase().includes("valor")) {
                                 valorCounter = valorCounter + 1;
                             }
                         });
@@ -421,8 +472,7 @@ export class CharacterSheetView extends ItemView {
         } else if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("flexible"))) {
             armorEvasionMod = 1;
         }
-        if (equippedWeapons.length === 0) {
-        } else {
+        if (equippedWeapons.length > 0) {
             equippedWeapons.forEach((weapon) => {
                 if (weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("heavy")) || weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("massive"))) {
                     weaponEvasionMod = -1;
@@ -529,8 +579,7 @@ export class CharacterSheetView extends ItemView {
 
         const domainCards = data.loadout.filter((f2) => f2.domain !== "Multiclass" || f2.domain === "Multiclass");
         if (!equippedArmor) {
-            if (domainCards.length === 0) {
-            } else {
+            if (domainCards.length > 0) {
                 finalMajorThreshold = data.level;
                 finalSevereThreshold = data.level * 2;
                 domainCards.forEach((feature) => {
@@ -557,47 +606,43 @@ export class CharacterSheetView extends ItemView {
         } else {
             finalMajorThreshold = equippedArmor.baseThresholds.major + data.level;
             finalSevereThreshold = equippedArmor.baseThresholds.severe + data.level;
-            if (domainCards.length === 0) {
-            } else {
+            if (domainCards.length > 0) {
                 domainCards.forEach((feature) => {
                     if (feature.name.toLowerCase().includes("fortified armor")) {
-                        finalMajorThreshold = finalMajorThreshold + 2;
-                        finalSevereThreshold = finalSevereThreshold + 2;
+                        finalMajorThreshold += 2;
+                        finalSevereThreshold += 2;
                     }
                 });
             }
         }
         const ancestry = this.plugin.compendium.getAncestry(data.ancestryId);
         const ancestryFeats = ancestry ? ancestry.feats.map((f2) => ({ name: f2.name, description: f2.text })) : [];
-        if (ancestryFeats.length === 0) {
-        } else {
+        if (ancestryFeats.length > 0) {
             ancestryFeats.forEach((feature) => {
                 if (feature.name.toLowerCase().includes("shell")) {
-                    finalMajorThreshold = finalMajorThreshold + data.proficiency;
-                    finalSevereThreshold = finalSevereThreshold + data.proficiency;
+                    finalMajorThreshold += data.proficiency;
+                    finalSevereThreshold += data.proficiency;
                 }
             });
         }
         const ownedSubclassFeatures = data.features.filter((f2) => f2.source === "Subclass");
-        if (ownedSubclassFeatures.length === 0) {
-        } else {
+        if (ownedSubclassFeatures.length > 0) {
             ownedSubclassFeatures.forEach((ownedFeatures) => {
                 if (ownedFeatures.name.toLowerCase().includes("unwavering")) {
-                    finalMajorThreshold = finalMajorThreshold + 1;
-                    finalSevereThreshold = finalSevereThreshold + 1;
+                    finalMajorThreshold += 1;
+                    finalSevereThreshold += 1;
                 }
                 if (ownedFeatures.name.toLowerCase().includes("unrelenting")) {
-                    finalMajorThreshold = finalMajorThreshold + 2;
-                    finalSevereThreshold = finalSevereThreshold + 2;
+                    finalMajorThreshold += 2;
+                    finalSevereThreshold += 2;
                 }
                 if (ownedFeatures.name.toLowerCase().includes("undaunted")) {
-                    finalMajorThreshold = finalMajorThreshold + 3;
-                    finalSevereThreshold = finalSevereThreshold + 3;
+                    finalMajorThreshold += 3;
+                    finalSevereThreshold += 3;
                 }
             });
         }
 
-        // FIX: Apply beastform threshold modifications
         if (data.activeBeastformName) {
             const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
             if (activeBeast) {
@@ -727,9 +772,7 @@ export class CharacterSheetView extends ItemView {
         if (data.activeBeastformName) {
             const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
             if (activeBeast) {
-                // Create a map of the beast's attribute bonuses
                 activeBeast.attributes.forEach(attr => {
-                    // We handle Evasion separately, so only include the six main traits here.
                     if (attr.trait !== 'Evasion') {
                         beastBonuses[attr.trait] = attr.bonus;
                     }
@@ -739,13 +782,10 @@ export class CharacterSheetView extends ItemView {
 
         Object.entries(data.traits).forEach(([name, trait]) => {
             const key = name as keyof Character['traits'];
-
             const bonus = beastBonuses[name] || 0;
             const finalValue = trait.value + bonus;
-
             const box = container.createDiv({ cls: `dh-trait-box-large ${trait.locked ? 'locked' : ''}` });
 
-            // Add a visual indicator and tooltip if the trait is modified
             if (bonus > 0) {
                 box.addClass('is-modified');
                 box.title = `Base: ${trait.value >= 0 ? '+' : ''}${trait.value}, Bonus: +${bonus}`;
@@ -761,7 +801,6 @@ export class CharacterSheetView extends ItemView {
                 box.title = `Click to roll ${name}. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
                 box.addEventListener('click', (event) => {
                     const baseDiceString = `dr`;
-                    // Use the final, boosted value for the roll modifier
                     const modifier = finalValue;
                     const context = `${name} Roll`;
 
@@ -786,7 +825,6 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawActiveWeapons(parent: HTMLElement, data: Character) {
-        // Check for active beastform
         if (data.activeBeastformName) {
             const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
             if (activeBeast) {
@@ -794,11 +832,10 @@ export class CharacterSheetView extends ItemView {
                 const header = container.createDiv({ cls: 'dh-section-header-box' });
                 header.createEl('h3', { text: 'Active Attack' });
                 this.createBeastformAttackCard(container, activeBeast, data);
-                return; // Stop here and don't draw normal weapons
+                return;
             }
         }
 
-        // Original weapon drawing logic if not transformed
         const container = parent.createDiv({ cls: 'dh-active-weapons' });
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Active Weapons' });
@@ -954,7 +991,6 @@ export class CharacterSheetView extends ItemView {
         left.createDiv({ cls: 'dh-weapon-name', text: 'Beast Attack' });
         left.createDiv({ cls: 'dh-weapon-type', text: `${beast.attack.range}` });
 
-        // Render features of the beastform
         (beast.features || []).forEach(feature => {
             const featureEl = left.createDiv({ cls: 'dh-weapon-feature' });
             renderRollableContent(this.plugin, `**${feature.name}:** ${feature.description}`, featureEl, `${beast.name}: ${feature.name}`, true);
@@ -964,7 +1000,6 @@ export class CharacterSheetView extends ItemView {
         const traitName = beast.attack.trait as keyof Character['traits'];
         const trait = character.traits[traitName];
         if (trait) {
-            // FIX: Add the beast's specific attribute bonus to the character's trait value for the roll.
             const beastAttributeBonus = beast.attributes.find(a => a.trait === traitName)?.bonus || 0;
             const totalTraitValue = trait.value + beastAttributeBonus;
 
@@ -976,7 +1011,7 @@ export class CharacterSheetView extends ItemView {
             rollBox.title = `Click to roll. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
             rollBox.addEventListener('click', (event) => {
                 const formula = 'dr';
-                const modifier = totalTraitValue; // Use the corrected total value
+                const modifier = totalTraitValue;
                 if (event.metaKey || event.ctrlKey) {
                     this.setTrayFormula(formula, rollTitle, modifier);
                     return;
@@ -1005,6 +1040,7 @@ export class CharacterSheetView extends ItemView {
             this.plugin.rollDice(damageFormula, `${beast.name} Damage`);
         });
     }
+
     private drawVitals(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-vitals' });
         this.drawConditions(container, data);
@@ -1254,7 +1290,6 @@ export class CharacterSheetView extends ItemView {
         });
     }
 
-
     private drawGoldTracker(parent: HTMLElement, data: Character) {
         const box = parent.createDiv({ cls: 'dh-gold-tracker' });
         box.addEventListener('click', () => new GoldModal(this.app, data, () => this.plugin.updateCharacter(data)).open());
@@ -1262,10 +1297,7 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawAbilitiesManager(parent: HTMLElement, data: Character) {
-        // Draw the swappable Domain Cards section
         this.drawDomainCardSection(parent, 'Domain Cards', data.loadout, data);
-
-        // Draw the read-only Inherent Features section
         this.drawInherentFeaturesSection(parent, data);
     }
 
@@ -1359,7 +1391,6 @@ export class CharacterSheetView extends ItemView {
         const content = container.createDiv({ cls: 'dh-active-stance-content' });
         const learnedStances = character.equippedStances || [];
 
-        // Add a dropdown to select which of the learned stances is active
         new Setting(content)
             .setName('Switch Stance')
             .setDesc('Select which of your learned stances is currently active.')
@@ -1374,7 +1405,6 @@ export class CharacterSheetView extends ItemView {
                 });
             });
 
-        // Display the details of the currently active stance
         const activeStanceName = character.activeStance;
         if (activeStanceName) {
             const activeStanceData = this.plugin.compendium.stances.find(s => s.name === activeStanceName);
@@ -1459,13 +1489,11 @@ export class CharacterSheetView extends ItemView {
             renderView();
         };
 
-        // Description Section
         const descriptionSection = parent.createDiv({ cls: 'dh-details-section' });
         descriptionSection.createEl('h3', { text: 'Character Description' });
         const descriptionCard = descriptionSection.createDiv({ cls: 'dh-detail-card' });
         createEditableMarkdownField(descriptionCard, data.notes || '', (value) => { data.notes = value; });
 
-        // Background Section
         if (data.background && data.background.length > 0) {
             const backgroundSection = parent.createDiv({ cls: 'dh-details-section dh-background-section' });
             backgroundSection.createEl('h3', { text: 'Background' });
@@ -1476,7 +1504,6 @@ export class CharacterSheetView extends ItemView {
             });
         }
 
-        // Connections Section
         if (data.connections && data.connections.length > 0) {
             const connectionSection = parent.createDiv({ cls: 'dh-details-section dh-connections-section' });
             connectionSection.createEl('h3', { text: 'Connections' });
@@ -1488,8 +1515,12 @@ export class CharacterSheetView extends ItemView {
         }
     }
 
-    private createExperienceCard(parent: HTMLElement, title: string, subtext: string, isInteractive: boolean = false) { const card = parent.createDiv({ cls: `dh-experience-card ${isInteractive ? 'is-interactive' : ''}` }); card.createDiv({ cls: 'dh-card-title', text: title }); if (subtext) card.createSpan({ cls: 'dh-experience-value', text: subtext }); return card; }
-
+    private createExperienceCard(parent: HTMLElement, title: string, subtext: string, isInteractive: boolean = false) {
+        const card = parent.createDiv({ cls: `dh-experience-card ${isInteractive ? 'is-interactive' : ''}` });
+        card.createDiv({ cls: 'dh-card-title', text: title });
+        if (subtext) card.createSpan({ cls: 'dh-experience-value', text: subtext });
+        return card;
+    }
 
     private createFeatureCard(parent: HTMLElement, feature: InherentFeature | DomainCard, character: Character) {
         const card = parent.createDiv({ cls: 'dh-feature-card' });
@@ -1527,7 +1558,6 @@ export class CharacterSheetView extends ItemView {
         const tokenInfo = getTokenType(feature.description);
         const nativeHasTokens = tokenInfo.type !== 'none' || feature.description.toLowerCase().includes('mark a stress to replenish this card with tokens');
 
-        // Initialize native tracker if it exists and isn't in the data yet
         if (nativeHasTokens) {
             if (!character.trackers) character.trackers = {};
             if (!character.trackers[feature.id]) character.trackers[feature.id] = [];
@@ -1605,10 +1635,9 @@ export class CharacterSheetView extends ItemView {
         }
     }
 
-
     private getFeatureMetadata(feature: InherentFeature | DomainCard): { level?: number; domain?: string; type?: string; } {
         const metadata: { level?: number; domain?: string; type?: string; } = {};
-        if (feature && 'domain' in feature) { // This is a simple check for DomainCard
+        if (feature && 'domain' in feature) {
             const card = feature as DomainCard;
             metadata.level = card.level;
             metadata.domain = card.domain;
@@ -1628,7 +1657,6 @@ export class CharacterSheetView extends ItemView {
 
         const body = card.createDiv({ cls: 'dh-beastform-card-body' });
 
-        // Stats Grid
         const statsGrid = body.createDiv({ cls: 'dh-beastform-stats-grid' });
         const attributesCell = statsGrid.createDiv();
         attributesCell.createEl('h5', { text: 'Attributes' });
@@ -1645,14 +1673,12 @@ export class CharacterSheetView extends ItemView {
         attackList.createEl('li', { text: `Trait: ${beast.attack.trait}` });
         attackList.createEl('li', { text: `Damage: ${proficiency}${beast.attack.dice} ${beast.attack.type}` });
 
-        // Advantages
         if (beast.advantages) {
             const advantagesSection = body.createDiv({ cls: 'dh-beastform-advantages' });
             advantagesSection.createEl('h5', { text: 'Advantages' });
             advantagesSection.createEl('p', { text: `Gain advantage on: ${beast.advantages}` });
         }
 
-        // Features
         const featuresSection = body.createDiv({ cls: 'dh-beastform-features' });
         featuresSection.createEl('h5', { text: 'Features' });
         beast.features.forEach(feature => {
@@ -1664,7 +1690,6 @@ export class CharacterSheetView extends ItemView {
         const footer = card.createDiv({ cls: 'dh-beastform-card-footer' });
         const transformBtn = footer.createEl('button', { text: 'Transform' });
 
-        // FIX 2: Use getTier() for correct level vs tier comparison.
         const characterTier = getTier(character.level);
         const isDisabledByTier = beast.tier > characterTier;
         const isDisabledByState = !!character.activeBeastformName;
@@ -1679,7 +1704,6 @@ export class CharacterSheetView extends ItemView {
         }
 
         transformBtn.addEventListener('click', () => {
-            // FIX 1: Correct stress check.
             if (character.stress.current >= character.stress.max) {
                 new Notice("You have no Stress slots available to spend.");
                 return;
@@ -1689,7 +1713,6 @@ export class CharacterSheetView extends ItemView {
                 this.app,
                 `Transforming into ${beast.name} costs 1 Stress. Are you sure?`,
                 async () => {
-                    // FIX 1: Correctly increment marked stress.
                     character.stress.current++;
                     character.activeBeastformName = beast.name;
                     await this.plugin.updateCharacter(character);
