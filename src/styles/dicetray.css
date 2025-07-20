@@ -34,7 +34,7 @@
 .dh-dice-tray-button.is-active {
     background-color: var(--dh-sheet-accent);
     color: var(--dh-sheet-bg);
-    border-color: var(--dh-sheet-accent-dark);
+    border-color: var(--dh-sheet-accent);
 }
 
 .dh-dice-tray-button.is-active:hover {

@@ -116,9 +116,18 @@ export class CharacterSheetView extends ItemView {
         this.drawTopBar(main);
         const activeChar = this.plugin.getActiveCharacter();
         if (activeChar) {
+            // Set accent colors on the main container so the Dice Tray can use them
+            const accentColor = activeChar.accentColor || '#e5b32a';
+            const accentGlow = this.hexToRgba(accentColor, 0.4);
+            this.containerEl.style.setProperty('--dh-sheet-accent', accentColor);
+            this.containerEl.style.setProperty('--dh-sheet-accent-glow', accentGlow);
+
             this.drawCharacterSheet(main, activeChar);
         } else {
             new CharacterCreator(this.plugin, this, main);
+            // Reset accent color if no character is active, so it uses the CSS default
+            this.containerEl.style.removeProperty('--dh-sheet-accent');
+            this.containerEl.style.removeProperty('--dh-sheet-accent-glow');
         }
         main.scrollTop = scrollPosition;
 
@@ -202,12 +211,6 @@ export class CharacterSheetView extends ItemView {
 
     private drawCharacterSheet(parent: HTMLElement, data: Character) {
         const sheet = parent.createDiv({ cls: 'dh-sheet' });
-
-        sheet.style.setProperty('--dh-sheet-accent', data.accentColor || '#e5b32a');
-        const accentColor = data.accentColor || '#e5b32a';
-        const accentGlow = this.hexToRgba(accentColor, 0.4);
-        sheet.style.setProperty('--dh-sheet-accent-glow', accentGlow);
-
 
         this.drawSheetHeader(sheet, data);
         const mainGrid = sheet.createDiv({ cls: 'dh-sheet-grid' });
