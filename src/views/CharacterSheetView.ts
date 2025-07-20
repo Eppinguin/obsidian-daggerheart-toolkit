@@ -24,6 +24,7 @@ import {
 import { getTokenType, createTokenTracker } from '../services/token-helpers';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
 import { handleAdvantageDisadvantage, formatTraitModifier } from '../services/dice-helpers';
+import { getEvasionModifier, getArmorModifier, getFinalDamageThresholds, getUnarmedAttack } from '../services/feature-automations';
 import { ContentType } from '../services/export-import';
 import { CharacterCreator } from './components/CharacterCreator';
 import { DiceTray } from 'src/DiceTray';
@@ -420,105 +421,37 @@ export class CharacterSheetView extends ItemView {
     private drawPrimaryDefenses(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-primary-defenses' });
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
-        const equippedWeapons = data.inventory.filter((i2) => data.equippedWeaponIds && data.equippedWeaponIds.includes(i2.instanceId) && i2._type === "weapon") as (InventoryItem & { _type: 'weapon' })[];
-        const domainCards = data.loadout.filter((f2) => f2.domain !== "Multiclass" || f2.domain === "Multiclass");
-        let armorEvasionMod = 0;
-        let weaponEvasionMod = 0;
-        let armorMod = 0;
+        const equippedWeapons = data.inventory.filter(i => data.equippedWeaponIds?.includes(i.instanceId) && i._type === "weapon") as (InventoryItem & { _type: 'weapon' })[];
 
+        // --- Evasion Calculation ---
         let beastformEvasionBonus = 0;
         if (data.activeBeastformName) {
             const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
-            if (activeBeast) {
-                const evasionAttr = activeBeast.attributes.find(a => a.trait === 'Evasion');
-                if (evasionAttr) {
-                    beastformEvasionBonus = evasionAttr.bonus;
-                }
+            if (activeBeast?.attributes.some(a => a.trait === 'Evasion')) {
+                beastformEvasionBonus = activeBeast.attributes.find(a => a.trait === 'Evasion')?.bonus || 0;
             }
+        }
+        const evasionModifier = getEvasionModifier(data, equippedArmor, equippedWeapons, this.plugin);
+        const finalEvasion = data.evasion + evasionModifier + beastformEvasionBonus + (data.customModifiers?.evasion || 0);
+
+        // --- Armor Calculation ---
+        const armorModifier = getArmorModifier(data, equippedWeapons, this.plugin);
+        const finalArmor = (equippedArmor ? equippedArmor.baseScore : 0) + armorModifier;
+        if (!equippedArmor && data.loadout.some(f => f.name.toLowerCase().includes("bare bones"))) {
+            data.armorSlots.max = 3 + data.traits['Strength'].value;
+        } else if (equippedArmor) {
+            data.armorSlots.max = finalArmor;
+        } else {
+            data.armorSlots.max = 0;
         }
 
-        if (!equippedArmor) {
-            data.armorSlots.max = 0;
-            if (domainCards.length > 0) {
-                domainCards.forEach((feature) => {
-                    if (feature.name.toLowerCase().includes("bare bones")) {
-                        data.armorSlots.max = 3 + data.traits['Strength'].value;
-                    }
-                });
-            }
-        }
-        else {
-            if (domainCards.length > 0) {
-                domainCards.forEach((feature) => {
-                    if (feature.name.toLowerCase().includes("armorer")) {
-                        armorMod = armorMod + 1;
-                    }
-                    else if (feature.name.toLowerCase().includes("valor-touched")) {
-                        let valorCounter = 0;
-                        domainCards.forEach((feature2) => {
-                            if (feature2.domain.toLowerCase().includes("valor")) {
-                                valorCounter = valorCounter + 1;
-                            }
-                        });
-                        if (valorCounter > 3) {
-                            armorMod = armorMod + 1;
-                        }
-                    }
-                });
-            }
-        }
-        if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("heavy"))) {
-            armorEvasionMod = equippedArmor.features.some((f2) => f2.name.toLowerCase().includes("very heavy")) ? -2 : -1;
-        } else if (equippedArmor?.features?.some((f2) => f2.name.toLowerCase().includes("flexible"))) {
-            armorEvasionMod = 1;
-        }
-        if (equippedWeapons.length > 0) {
-            equippedWeapons.forEach((weapon) => {
-                if (weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("heavy")) || weapon?.features?.some((f2: CompendiumFeature) => f2.name.toLowerCase().includes("massive"))) {
-                    weaponEvasionMod = -1;
-                }
-                else if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("barrier"))) {
-                    weaponEvasionMod = weaponEvasionMod - 1;
-                    switch (weapon?.tier) {
-                        case 2:
-                            armorMod = armorMod + 3;
-                            break;
-                        case 3:
-                            armorMod = armorMod + 4;
-                            break;
-                        case 4:
-                            armorMod = armorMod + 5;
-                            break;
-                        default:
-                            armorMod = armorMod + 2;
-                    }
-                }
-                else if (weapon?.features?.some((f2) => f2.name.toLowerCase().includes("protective")) || weapon?.features?.some((f2) => f2.name.toLowerCase().includes("double duty"))) {
-                    if (weapon?.name.toLowerCase().includes("round")) {
-                        switch (weapon?.tier) {
-                            case 2:
-                                armorMod = armorMod + 2;
-                                break;
-                            case 3:
-                                armorMod = armorMod + 3;
-                                break;
-                            case 4:
-                                armorMod = armorMod + 4;
-                                break;
-                            default:
-                                armorMod = armorMod + 1;
-                        }
-                    }
-                    else armorMod = armorMod + 1;
-                }
-            });
-        }
-        const finalEvasion = data.evasion + armorEvasionMod + weaponEvasionMod + beastformEvasionBonus + (data.customModifiers?.evasion || 0);
+        // --- Rendering ---
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
         evasionBox.createEl('span', { text: 'Evasion', cls: 'dh-stat-label' });
+
         const armorBox = container.createDiv({ cls: 'dh-stat-hex' });
-        armorBox.createEl('span', { text: String(data.armorSlots.max + armorMod), cls: 'dh-stat-value' });
+        armorBox.createEl('span', { text: String(data.armorSlots.max), cls: 'dh-stat-value' });
         armorBox.createEl('span', { text: 'Armor', cls: 'dh-stat-label' });
 
         const armorSlotsContainer = parent.createDiv({ cls: 'dh-armor-slots' });
@@ -572,100 +505,13 @@ export class CharacterSheetView extends ItemView {
         header.createEl('h3', { text: 'Hit Points & Stress' });
 
         const thresholdsDisplay = container.createDiv({ cls: 'dh-thresholds-display' });
-        let finalMajorThreshold = data.damageThresholds.major;
-        let finalSevereThreshold = data.damageThresholds.severe;
-
         const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
 
-        const domainCards = data.loadout.filter((f2) => f2.domain !== "Multiclass" || f2.domain === "Multiclass");
-        if (!equippedArmor) {
-            if (domainCards.length > 0) {
-                finalMajorThreshold = data.level;
-                finalSevereThreshold = data.level * 2;
-                domainCards.forEach((feature) => {
-                    if (feature.name.toLowerCase().includes("bare bones")) {
-                        if (data.level < 2) {
-                            finalMajorThreshold = 9 + data.level;
-                            finalSevereThreshold = 19 + data.level;
-                        }
-                        else if (data.level < 5) {
-                            finalMajorThreshold = 11 + data.level;
-                            finalSevereThreshold = 24 + data.level;
-                        }
-                        else if (data.level < 8) {
-                            finalMajorThreshold = 13 + data.level;
-                            finalSevereThreshold = 31 + data.level;
-                        }
-                        else {
-                            finalMajorThreshold = 15 + data.level;
-                            finalSevereThreshold = 38 + data.level;
-                        }
-                    }
-                });
-            }
-        } else {
-            finalMajorThreshold = equippedArmor.baseThresholds.major + data.level;
-            finalSevereThreshold = equippedArmor.baseThresholds.severe + data.level;
-            if (domainCards.length > 0) {
-                domainCards.forEach((feature) => {
-                    if (feature.name.toLowerCase().includes("fortified armor")) {
-                        finalMajorThreshold += 2;
-                        finalSevereThreshold += 2;
-                    }
-                });
-            }
-        }
-        const ancestry = this.plugin.compendium.getAncestry(data.ancestryId);
-        const ancestryFeats = ancestry ? ancestry.feats.map((f2) => ({ name: f2.name, description: f2.text })) : [];
-        if (ancestryFeats.length > 0) {
-            ancestryFeats.forEach((feature) => {
-                if (feature.name.toLowerCase().includes("shell")) {
-                    finalMajorThreshold += data.proficiency;
-                    finalSevereThreshold += data.proficiency;
-                }
-            });
-        }
-        const ownedSubclassFeatures = data.features.filter((f2) => f2.source === "Subclass");
-        if (ownedSubclassFeatures.length > 0) {
-            ownedSubclassFeatures.forEach((ownedFeatures) => {
-                if (ownedFeatures.name.toLowerCase().includes("unwavering")) {
-                    finalMajorThreshold += 1;
-                    finalSevereThreshold += 1;
-                }
-                if (ownedFeatures.name.toLowerCase().includes("unrelenting")) {
-                    finalMajorThreshold += 2;
-                    finalSevereThreshold += 2;
-                }
-                if (ownedFeatures.name.toLowerCase().includes("undaunted")) {
-                    finalMajorThreshold += 3;
-                    finalSevereThreshold += 3;
-                }
-            });
-        }
+        // --- Threshold Calculation ---
+        const { major: finalMajorThreshold, severe: finalSevereThreshold } = getFinalDamageThresholds(data, equippedArmor, this.plugin);
 
-        if (data.activeBeastformName) {
-            const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
-            if (activeBeast) {
-                activeBeast.features.forEach(feature => {
-                    const name = feature.name.toLowerCase();
-                    if (name.includes("thick hide") || name.includes("undaunted")) {
-                        finalMajorThreshold += 2;
-                        finalSevereThreshold += 2;
-                    } else if (name.includes("hollow bones")) {
-                        finalMajorThreshold -= 2;
-                        finalSevereThreshold -= 2;
-                    } else if (name.includes("physical defense")) {
-                        finalMajorThreshold += 3;
-                        finalSevereThreshold += 3;
-                    }
-                });
-            }
-        }
-
-        finalMajorThreshold += (data.customModifiers?.majorThreshold || 0);
-        finalSevereThreshold += (data.customModifiers?.severeThreshold || 0);
+        // --- Rendering ---
         const mainRow = thresholdsDisplay.createDiv({ cls: 'dh-threshold-main-row' });
-
         const minorBox = mainRow.createDiv({ cls: 'dh-threshold-box' });
         minorBox.createSpan({ cls: 'dh-threshold-label', text: 'Minor' });
 
@@ -933,17 +779,17 @@ export class CharacterSheetView extends ItemView {
         createRollBox('Finesse');
 
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
-        const proficiency = character.proficiency;
-        const damageFormula = `${proficiency}d4`;
+        const { formula: damageFormula, type: damageTypeLabel, context: damageRollContext } = getUnarmedAttack(character, this.plugin);
+
         damageBox.createDiv({ text: damageFormula });
-        damageBox.createDiv({ text: "Damage" });
+        damageBox.createDiv({ text: damageTypeLabel });
         damageBox.title = `Click to roll ${damageFormula}. Hold Cmd/Ctrl to add to Dice Tray.`;
         damageBox.addEventListener('click', (event) => {
             if (event.metaKey || event.ctrlKey) {
-                this.setTrayFormula(damageFormula, 'Unarmed Damage');
+                this.setTrayFormula(damageFormula, damageRollContext);
                 return;
             }
-            this.plugin.rollDice(damageFormula, `Unarmed Damage`);
+            this.plugin.rollDice(damageFormula, damageRollContext);
         });
     }
 
