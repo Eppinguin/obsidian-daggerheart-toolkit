@@ -154,32 +154,6 @@ export class CharacterSheetView extends ItemView {
     }
 
     private drawNoCharacterState(parent: HTMLElement) {
-        const header = parent.createDiv({ cls: 'dh-character-selection-header' });
-
-        const selectBtn = header.createEl('button', { text: 'Select a Character' });
-        setIcon(selectBtn, 'users');
-        selectBtn.addEventListener('click', (e) => {
-            const menu = new Menu();
-            const characters = this.plugin.getCharacters();
-            if (characters.length > 0) {
-                characters.forEach(char => {
-                    menu.addItem(item => item
-                        .setTitle(char.name)
-                        .onClick(() => this.plugin.setActiveCharacterId(char.id))
-                    );
-                });
-            } else {
-                menu.addItem(item => item.setTitle("No characters found").setDisabled(true));
-            }
-            menu.showAtMouseEvent(e);
-        });
-
-        const importBtn = header.createEl('button', { text: 'Import Character' });
-        setIcon(importBtn, 'download');
-        importBtn.addEventListener('click', () => {
-            new ImportExportModal(this.app, this.plugin, 'import', ContentType.CHARACTER).open();
-        });
-
         new CharacterCreator(this.plugin, this, parent);
     }
 

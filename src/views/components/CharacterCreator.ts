@@ -1,14 +1,15 @@
 // src/views/components/CharacterCreator.ts
-import { App, Notice, Setting, TFile, setIcon } from 'obsidian';
+import { App, Menu, MenuItem, Notice, Setting, TFile, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
     Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform, InherentFeature, Stances
 } from '../../types';
-import { AddItemModal, CompendiumCreatorModal, ItemEditModal } from '../../modals';
+import { AddItemModal, CompendiumCreatorModal, ImportExportModal, ItemEditModal } from '../../modals';
 import { renderMarkdown, renderRollableContent } from '../../rendering/ui-helpers';
 import { createAvatarEditor } from "./AvatarEditor";
 import { CharacterSheetView } from '../CharacterSheetView';
+import { ContentType } from '../../services/export-import';
 
 const TRAIT_VALUES = [2, 1, 1, 0, 0, -1];
 const TRAIT_NAMES: (keyof Character['traits'])[] = ['Strength', 'Agility', 'Finesse', 'Instinct', 'Presence', 'Knowledge'];
@@ -172,16 +173,59 @@ export class CharacterCreator {
         }
     }
 
+    private showCharacterActionsMenu(event: MouseEvent) {
+        const menu = new Menu();
+        const characters = this.plugin.getCharacters();
+
+        // Add "Switch To" submenu if other characters exist
+        if (characters.length > 0) {
+            menu.addItem((item) => {
+                item.setTitle("Switch To").setIcon("users");
+                const subMenu = (item as any).setSubmenu();
+                characters.forEach(char => {
+                    subMenu.addItem((subItem: MenuItem) => {
+                        subItem
+                            .setTitle(char.name)
+                            .setIcon("user-round")
+                            .onClick(() => this.plugin.setActiveCharacterId(char.id));
+                    });
+                });
+            });
+            menu.addSeparator();
+        }
+
+        // Add "Import Character" option
+        menu.addItem((item) =>
+            item
+                .setTitle("Import Character")
+                .setIcon("download")
+                .onClick(() => {
+                    new ImportExportModal(this.app, this.plugin, 'import', ContentType.CHARACTER).open();
+                })
+        );
+
+        menu.showAtMouseEvent(event);
+    }
+
     private drawCharacterCreator(parent: HTMLElement) {
         const wizardWrapper = parent.createDiv({ cls: 'dh-creator-wizard' });
 
         const header = wizardWrapper.createDiv({ cls: 'dh-creator-header' });
+
+        // Relocated character actions menu
+        const leftActions = header.createDiv({ cls: 'dh-creator-header-actions-left' });
+        const actionsBtn = leftActions.createEl('button', { text: 'Actions', cls: 'dh-creator-btn' });
+        setIcon(actionsBtn, 'users');
+        actionsBtn.addEventListener('click', (e) => this.showCharacterActionsMenu(e));
+
         header.createEl('h2', { text: 'Create New Character' });
+
         const navButtons = header.createDiv({ cls: 'dh-creator-nav-buttons' });
         this.backBtn = navButtons.createEl('button', { text: 'Back', cls: 'dh-creator-btn' });
         this.nextBtn = navButtons.createEl('button', { text: 'Next', cls: 'dh-creator-btn mod-cta' });
 
         const creatorLayout = wizardWrapper.createDiv({ cls: 'dh-creator-layout' });
+
 
         const stepsNav = creatorLayout.createDiv({ cls: 'dh-creator-steps-nav' });
         const stepsList = stepsNav.createDiv({ cls: 'dh-creator-steps-list' });
