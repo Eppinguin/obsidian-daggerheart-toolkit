@@ -526,11 +526,9 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                         new Notice("An unexpected error occurred with dddice. Check the console.");
                         console.error("Daggerheart: Unhandled error rolling with dddice:", e);
                     }
-                    // For other errors or failed retry, total remains null
                     return;
                 }
             } else {
-                // ... (dice-roller logic remains the same as it doesn't support hidden rolls)
                 if (!this.settings.enableDiceRoller || !this.isDiceRollerEnabled) {
                     new Notice("Dice Roller integration is not enabled in plugin settings.");
                     return;
@@ -554,7 +552,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                     }
 
                     if (!isDaggerheartActionRoll) {
-                        // This is for generic rolls, expand dice pools.
                         rollerDiceString = expandDiceString(rollerDiceString);
                     }
 
@@ -954,6 +951,40 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
     renderEncounterViewSettings(containerEl: HTMLElement) {
         containerEl.createEl('h3', { text: 'Encounter View Settings' });
+
+        new Setting(containerEl)
+            .setName('Enable Encounter Budget')
+            .setDesc('Show the encounter budget tracker in the Encounter Builder.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableEncounterBudget)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableEncounterBudget = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.app.workspace.trigger('daggerheart-compendium-update');
+                }));
+
+        new Setting(containerEl)
+            .setName('Enable Fear Tracker')
+            .setDesc('Show the fear tracker in the Encounter Builder.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableFearTracker)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableFearTracker = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.app.workspace.trigger('daggerheart-compendium-update');
+                }));
+
+        new Setting(containerEl)
+            .setName('Enable Countdown Tracker')
+            .setDesc('Show the countdown tracker in the Encounter Builder.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableCountdownTracker)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableCountdownTracker = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.app.workspace.trigger('daggerheart-compendium-update');
+                }));
+
         new Setting(containerEl)
             .setName('Show Description on Instance Cards')
             .setDesc('If enabled, the full description will be shown on adversary cards in the encounter builder.')

@@ -80,7 +80,7 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
         atkSpan.createEl('strong', { text: 'ATK: ' });
 
         const modifierValue = String(data.attack.modifier ?? '0').trim();
-        if (/^[+-]?\d+$/.test(modifierValue) && plugin.isDiceRollerEnabled) {
+        if (/^[+-]?\d+$/.test(modifierValue)) {
             let normalizedModifier = modifierValue;
             if (!normalizedModifier.startsWith('+') && !normalizedModifier.startsWith('-') && normalizedModifier !== '0') {
                 normalizedModifier = `+${modifierValue}`;
@@ -318,7 +318,7 @@ function renderAdversaryInstance(
         renderRollableContent(plugin, data.attack.damage || '', damageSpan, data.attack.name || 'Attack');
         attackSpan.appendText(' (ATK ');
         const modValue = String(data.attack.modifier ?? '0').trim();
-        if (/^[+-]?\d+$/.test(modValue) && plugin.isDiceRollerEnabled) {
+        if (/^[+-]?\d+$/.test(modValue)) {
             const diceString = `1d20${modValue === '0' ? '' : modValue.startsWith('+') ? modValue : `+${modValue}`}`;
             const attackName = data.attack?.name || 'Attack';
             const rollSpan = attackSpan.createSpan({
@@ -406,23 +406,23 @@ function renderAdversaryInstance(
 
         // Redesigned Thresholds section
         if (data.hp_stress.major_hp) {
-            const thresholdsBar = trackContainer.createDiv({ cls: 'dh-threshold-bar' });
+            const thresholdsBar = trackContainer.createDiv({ cls: 'dh-encounter-threshold-bar' });
 
             // First segment (Minor)
-            thresholdsBar.createDiv({ cls: 'dh-threshold-segment dh-threshold-minor', text: 'Minor' });
+            thresholdsBar.createDiv({ cls: 'dh-encounter-threshold-segment dh-encounter-threshold-minor', text: 'Minor' });
 
             // First threshold value
-            thresholdsBar.createDiv({ cls: 'dh-threshold-value', text: String(data.hp_stress.major_hp) });
+            thresholdsBar.createDiv({ cls: 'dh-encounter-threshold-value', text: String(data.hp_stress.major_hp) });
 
             // Middle segment (Major)
-            thresholdsBar.createDiv({ cls: 'dh-threshold-segment dh-threshold-major', text: 'Major' });
+            thresholdsBar.createDiv({ cls: 'dh-encounter-threshold-segment dh-encounter-threshold-major', text: 'Major' });
 
             if (data.hp_stress.severe_hp) {
                 // Second threshold value
-                thresholdsBar.createDiv({ cls: 'dh-threshold-value', text: String(data.hp_stress.severe_hp) });
+                thresholdsBar.createDiv({ cls: 'dh-encounter-threshold-value', text: String(data.hp_stress.severe_hp) });
 
                 // Last segment (Severe)
-                thresholdsBar.createDiv({ cls: 'dh-threshold-segment dh-threshold-severe', text: 'Severe' });
+                thresholdsBar.createDiv({ cls: 'dh-encounter-threshold-segment dh-encounter-threshold-severe', text: 'Severe' });
             }
         }
         // END: Redesigned Thresholds section
