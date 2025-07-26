@@ -89,7 +89,15 @@ export interface StatblockAttack { name: string; range: string; damage: string; 
 export interface StatblockExperience { [key: string]: number; }
 export interface StatblockHpStress { hp: number; stress: number; minor_hp?: number | null; major_hp?: number | null; severe_hp?: number | null; }
 export interface StatblockFeature { name: string; type: string; parsedCost?: string; countdown?: string | null; description: string; effects?: string[]; }
-export interface Condition { instanceId: string; name: string; description: string; isCustom?: boolean; effects?: string[]; }
+export interface ConditionDefinition {
+    name: string;
+    description: string;
+    isCustom?: boolean;
+    effects?: string[];
+}
+export interface Condition extends ConditionDefinition {
+    instanceId: string;
+}
 export interface StatblockData { name: string; category: 'adversary' | 'environment'; image?: string; tier?: number | string; type?: string; description?: string; attack?: StatblockAttack; difficulty?: number | string; experience?: StatblockExperience | string; motives_tactics?: string[] | string; impulses?: string; potential_adversaries?: string; hp_stress: StatblockHpStress; features?: StatblockFeature[]; sourceFile?: string; isCustom?: boolean; effects?: string[]; }
 export interface AdversaryInstance extends StatblockData { id: string; groupId: string; currentHp: number; currentStress: number; displayName: string; conditions?: Condition[]; }
 export interface SavedEncounter { id: string; name: string; adversaries: AdversaryInstance[]; adversaryGroupOrder: string[]; }

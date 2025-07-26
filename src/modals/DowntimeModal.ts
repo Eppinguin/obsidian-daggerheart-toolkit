@@ -1,6 +1,7 @@
 import { App, Modal, Setting, Notice } from 'obsidian';
 import { Character } from '../types';
 import DaggerheartStatblockPlugin from '../main';
+import { getTier } from 'src/constants';
 
 type RestType = 'short' | 'long';
 type DowntimeMove = {
@@ -20,10 +21,11 @@ export class DowntimeModal extends Modal {
     constructor(app: App, plugin: DaggerheartStatblockPlugin, character: Character, onSave: (character: Character) => void) {
         super(app);
         this.plugin = plugin;
-        this.character = JSON.parse(JSON.stringify(character));
+        this.character = character;
         this.onSave = onSave;
         this.modalEl.addClass('dh-downtime-modal');
     }
+
 
     onOpen() {
         this.contentEl.empty();
@@ -147,10 +149,7 @@ export class DowntimeModal extends Modal {
 
     private async applyMove(moveId: DowntimeMove['id']) {
         const level = this.character.level;
-        let tier = 1;
-        if (level >= 8) tier = 4;
-        else if (level >= 5) tier = 3;
-        else if (level >= 2) tier = 2;
+        const tier = getTier(level);
 
         switch (moveId) {
             case 'tend-wounds': {
@@ -175,10 +174,10 @@ export class DowntimeModal extends Modal {
                 break;
             }
             case 'prepare':
-                this.character.hope.current = Math.min(this.character.hope.max, this.character.hope.current + 2);
+                const maxHope = this.character.hope.max.getValue(this.character);
+                this.character.hope.current = Math.min(maxHope, this.character.hope.current + 2);
                 new Notice(`${this.character.name} gained 2 Hope.`);
                 break;
-
             case 'tend-all-wounds':
                 this.character.hitPoints.current = 0;
                 new Notice(`${this.character.name} cleared all HP.`);

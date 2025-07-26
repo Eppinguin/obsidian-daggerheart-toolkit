@@ -17,6 +17,7 @@ import {
     JsonArmor,
     JsonConsumable,
 } from '../types';
+import { CalculatedStat } from '../services/calculated-stat';
 
 enum SuggesterState {
     MAIN,
@@ -39,11 +40,15 @@ type Suggestion = {
  * modal, which is designed to work with items in a character's inventory.
  */
 function compendiumToInventoryItem(compendiumItem: CompendiumItem): InventoryItem {
-    const base: Partial<InventoryItem> = {
-        instanceId: `compendium-edit-${Math.random()}`,
+    // FIX: Define the 'base' object with explicit, non-optional properties 
+    // to satisfy the InventoryItem type requirements.
+    const base = {
+        instanceId: `compendium-edit-${Date.now()}`,
         quantity: 1,
         name: compendiumItem.name,
         isCustom: compendiumItem.isCustom,
+        description: (compendiumItem as any).description || (compendiumItem as any).feat_text || '',
+        effects: (compendiumItem as any).effects || [],
     };
 
     const type = (compendiumItem as any)._type || 'item';
@@ -51,20 +56,36 @@ function compendiumToInventoryItem(compendiumItem: CompendiumItem): InventoryIte
     switch (type) {
         case 'weapon': {
             const weaponData = compendiumItem as JsonWeapon;
-            const [damageDice, damageType] = (weaponData.damage || 'd6').split(' ');
+
+            const damageString = weaponData.damage || 'd6 phy';
+            const damageParts = damageString.split(' ');
+            const dicePart = damageParts[0];
+            const typePart = damageParts[1] || 'phy';
+            let baseDice = dicePart;
+            let baseModifier = 0;
+            const modifierMatch = dicePart.match(/([+-]\d+)$/);
+            if (modifierMatch) {
+                baseModifier = parseInt(modifierMatch[1]);
+                baseDice = dicePart.replace(modifierMatch[0], '');
+            }
+
             return {
                 ...base,
                 _type: 'weapon',
                 tier: parseInt(weaponData.tier || '1'),
                 trait: weaponData.trait || 'Strength',
                 range: weaponData.range || 'Melee',
-                damage: weaponData.damage || 'd6',
-                burden: weaponData.burden || 'One-Handed',
-                primaryOrSecondary: weaponData.primary_or_secondary || 'Primary',
-                damageDice,
-                damageType: damageType || 'phy',
+                burden: (weaponData.burden || 'One-Handed') as 'One-Handed' | 'Two-Handed',
+                primaryOrSecondary: (weaponData.primary_or_secondary || 'Primary') as 'Primary' | 'Secondary',
                 features: weaponData.feat_name ? [{ name: weaponData.feat_name, description: weaponData.feat_text || '' }] : [],
-            } as InventoryItem;
+                damageComponents: {
+                    baseDice: baseDice,
+                    baseModifier: baseModifier,
+                    damageType: typePart,
+                    numberOfDice: new CalculatedStat(0),
+                    flatBonus: new CalculatedStat(baseModifier),
+                }
+            };
         }
         case 'armor': {
             const armorData = compendiumItem as JsonArmor;
@@ -73,10 +94,13 @@ function compendiumToInventoryItem(compendiumItem: CompendiumItem): InventoryIte
                 ...base,
                 _type: 'armor',
                 tier: parseInt(armorData.tier || '1'),
-                baseScore: parseInt(armorData.base_score || '1'),
-                baseThresholds: { major, severe },
+                baseScore: new CalculatedStat(parseInt(armorData.base_score || '1')),
+                baseThresholds: {
+                    major: new CalculatedStat(major),
+                    severe: new CalculatedStat(severe)
+                },
                 features: armorData.feat_name ? [{ name: armorData.feat_name, description: armorData.feat_text || '' }] : [],
-            } as InventoryItem;
+            };
         }
         case 'consumable': {
             const consumableData = compendiumItem as JsonConsumable;
@@ -84,11 +108,14 @@ function compendiumToInventoryItem(compendiumItem: CompendiumItem): InventoryIte
                 ...base,
                 _type: 'consumable',
                 roll: consumableData.roll || '',
-            } as InventoryItem;
+            };
         }
         case 'item':
         default:
-            return { ...base, _type: 'item' } as InventoryItem;
+            return {
+                ...base,
+                _type: 'item',
+            };
     }
 }
 

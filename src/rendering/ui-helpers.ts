@@ -158,7 +158,8 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
                                 return;
                             }
 
-                            const newStress = Math.min(activeChar.stress.max, activeChar.stress.current + amount);
+                            const maxStress = activeChar.stress.max.getValue(activeChar);
+                            const newStress = Math.min(maxStress, activeChar.stress.current + amount);
                             activeChar.stress.current = newStress;
                             plugin.updateCharacter(activeChar);
                             new Notice(`Marked ${amount} stress on ${activeChar.name}.`);

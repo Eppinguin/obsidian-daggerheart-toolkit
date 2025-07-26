@@ -836,7 +836,12 @@ export class EncounterBuilderView extends ItemView {
         const { instanceId, anchor } = (e as CustomEvent).detail;
         if (!instanceId || !anchor) return;
         const menu = new Menu();
-        DAGGERHEART_CONDITIONS.forEach(condition => { menu.addItem(item => item.setTitle(condition.name).onClick(() => this.addConditionToInstance(instanceId, condition))); });
+        DAGGERHEART_CONDITIONS.forEach(condition => {
+            menu.addItem(item =>
+                item.setTitle(condition.name)
+                    .onClick(() => this.addConditionToInstance(instanceId, { ...condition, instanceId }))
+            );
+        });
         menu.addSeparator();
         menu.addItem(item => item.setTitle("Add Custom...").setIcon("plus").onClick(() => { new CustomConditionModal(this.app, (newCondition) => this.addConditionToInstance(instanceId, newCondition)).open(); }));
         const rect = (anchor as HTMLElement).getBoundingClientRect();

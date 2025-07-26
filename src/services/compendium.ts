@@ -23,6 +23,7 @@ import {
 } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { v4 as uuidv4 } from 'uuid';
+import { CalculatedStat } from './calculated-stat';
 
 const DATA_PATH = "data";
 const USER_DATA_PATH = "user_data";
@@ -252,40 +253,69 @@ export class DaggerheartCompendium {
             name: item.name,
             quantity: 1,
             isCustom: item.isCustom,
+            effects: (item as any).effects || [],
         };
 
         switch (item._type) {
-            case 'armor':
-                const [major, severe] = item.base_thresholds.split(' / ').map(s => parseInt(s.trim()));
+            case 'armor': {
+                const armor = item as ArmorItem;
+                const [major, severe] = armor.base_thresholds.split(' / ').map(s => parseInt(s.trim()));
                 return {
                     ...base,
                     _type: 'armor',
-                    description: item.feat_text,
-                    tier: parseInt(item.tier),
-                    baseScore: parseInt(item.base_score),
-                    baseThresholds: { major, severe },
-                    features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
+                    description: armor.feat_text,
+                    tier: parseInt(armor.tier),
+                    // FIX: Create new CalculatedStat instances for each stat
+                    baseScore: new CalculatedStat(parseInt(armor.base_score)),
+                    baseThresholds: {
+                        major: new CalculatedStat(major),
+                        severe: new CalculatedStat(severe)
+                    },
+                    features: armor.feat_name ? [{ name: armor.feat_name, description: armor.feat_text || '' }] : [],
                 };
-            case 'weapon':
-                const [damageDice, damageType] = item.damage.split(' ');
+            }
+            case 'weapon': {
+                const weapon = item as WeaponItem;
+                // FIX: Parse the damage string and create a valid damageComponents object
+                const damageString = weapon.damage || 'd6 phy';
+                const damageParts = damageString.split(' ');
+                const dicePart = damageParts[0];
+                const typePart = damageParts[1] || 'phy';
+
+                let baseDice = dicePart;
+                let baseModifier = 0;
+
+                const modifierMatch = dicePart.match(/([+-]\d+)$/);
+                if (modifierMatch) {
+                    baseModifier = parseInt(modifierMatch[1]);
+                    baseDice = dicePart.replace(modifierMatch[0], '');
+                }
+
                 return {
                     ...base,
                     _type: 'weapon',
-                    description: item.feat_text,
-                    tier: parseInt(item.tier),
-                    burden: item.burden as 'One-Handed' | 'Two-Handed',
-                    range: item.range,
-                    trait: item.trait,
-                    primaryOrSecondary: item.primary_or_secondary as 'Primary' | 'Secondary',
-                    damage: item.damage,
-                    damageDice,
-                    damageType,
-                    features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
+                    description: weapon.feat_text,
+                    tier: parseInt(weapon.tier),
+                    burden: weapon.burden as 'One-Handed' | 'Two-Handed',
+                    range: weapon.range,
+                    trait: weapon.trait,
+                    primaryOrSecondary: weapon.primary_or_secondary as 'Primary' | 'Secondary',
+                    features: weapon.feat_name ? [{ name: weapon.feat_name, description: weapon.feat_text || '' }] : [],
+                    damageComponents: {
+                        baseDice: baseDice,
+                        baseModifier: baseModifier,
+                        damageType: typePart,
+                        numberOfDice: new CalculatedStat(0), // Base bonus dice is always 0
+                        flatBonus: new CalculatedStat(baseModifier)
+                    }
                 };
+            }
             case 'consumable':
-                return { ...base, _type: 'consumable', description: item.description, roll: item.roll };
+                const consumable = item as ConsumableItem;
+                return { ...base, _type: 'consumable', description: consumable.description, roll: consumable.roll };
             case 'item':
-                return { ...base, _type: 'item', description: item.description };
+                const generic = item as GenericItem;
+                return { ...base, _type: 'item', description: generic.description };
         }
     }
 
@@ -296,18 +326,26 @@ export class DaggerheartCompendium {
                     _type: 'armor',
                     name: item.name,
                     tier: String(item.tier),
-                    base_score: String(item.baseScore),
-                    base_thresholds: `${item.baseThresholds.major} / ${item.baseThresholds.severe}`,
+                    // FIX: Safely access the .base property of the CalculatedStat
+                    base_score: String(item.baseScore?.base ?? 0),
+                    base_thresholds: `${item.baseThresholds?.major?.base ?? 0} / ${item.baseThresholds?.severe?.base ?? 0}`,
                     feat_name: item.features?.[0]?.name,
                     feat_text: item.features?.[0]?.description,
                     isCustom: item.isCustom,
+                    effects: item.effects,
                 };
             case 'weapon':
+                // FIX: Safely reconstruct the damage string from damageComponents
+                const dice = item.damageComponents?.baseDice || 'd6';
+                const mod = item.damageComponents?.flatBonus?.base ?? 0;
+                const type = item.damageComponents?.damageType || 'phy';
+                const damageString = `${dice}${mod !== 0 ? (mod > 0 ? `+${mod}` : mod) : ''} ${type}`;
+
                 return {
                     _type: 'weapon',
                     name: item.name,
                     tier: String(item.tier),
-                    damage: item.damage,
+                    damage: damageString.trim(),
                     range: item.range,
                     trait: item.trait,
                     burden: item.burden,
@@ -316,6 +354,7 @@ export class DaggerheartCompendium {
                     feat_name: item.features?.[0]?.name,
                     feat_text: item.features?.[0]?.description,
                     isCustom: item.isCustom,
+                    effects: item.effects,
                 };
             case 'consumable':
                 return {
@@ -324,6 +363,7 @@ export class DaggerheartCompendium {
                     description: item.description || '',
                     roll: item.roll,
                     isCustom: item.isCustom,
+                    effects: item.effects,
                 };
             case 'item':
                 return {
@@ -331,6 +371,7 @@ export class DaggerheartCompendium {
                     name: item.name,
                     description: item.description || '',
                     isCustom: item.isCustom,
+                    effects: item.effects,
                 };
         }
     }

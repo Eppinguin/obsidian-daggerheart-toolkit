@@ -329,7 +329,7 @@ export class CardSwapModal extends Modal {
                 if (this.autoPayCost && cardToMove.recall > 0) {
                     const cost = cardToMove.recall || 0;
                     const currentStress = this.character.stress.current;
-                    const maxStress = this.character.stress.max;
+                    const maxStress = this.character.stress.max.getValue(this.character);
                     if (currentStress + cost > maxStress) {
                         new Notice(`Not enough Stress to pay recall cost of ${cost}. Action cancelled.`);
                         this.character.vault.push(cardToMove);
