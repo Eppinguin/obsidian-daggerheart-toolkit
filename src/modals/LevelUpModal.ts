@@ -2,9 +2,10 @@
 import { App, Modal, Setting, Notice, TextComponent, ExtraButtonComponent } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
-import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Trait, Experience, InventoryItem, JsonSubclass, JsonFeat, InherentFeature, Stances } from '../types';
+import { Character, LevelUpSelection as BaseLevelUpSelection, DomainCard, JsonAbility, Experience, InventoryItem, JsonSubclass, JsonFeat, InherentFeature, Stances } from '../types';
 import { renderMarkdown } from '../rendering/ui-helpers';
 import { getTier, TRAIT_NAMES } from '../constants';
+import { addEffectsFromSource } from '../services/effects-manager';
 
 interface LevelUpSelection extends BaseLevelUpSelection {
     newExperienceId?: string;
@@ -526,7 +527,7 @@ export class LevelUpModal extends Modal {
                                         this.fastForwardCharacter(charForCalc, this.tempCharacter.levelUpHistory as any);
 
                                         for (const trait of availableTraits) {
-                                            const score = charForCalc.traits[trait as keyof typeof charForCalc.traits]?.value ?? -Infinity;
+                                            const score = charForCalc.traits[trait as keyof typeof charForCalc.traits]?.base ?? -Infinity;
                                             if (score > maxScore) {
                                                 maxScore = score;
                                                 defaultTrait = trait;
@@ -809,11 +810,12 @@ export class LevelUpModal extends Modal {
         new Notice("Character stats recalculated and applied!");
         this.onSave(finalChar);
     }
-
     private rewindCharacter(char: Character) {
         const charClass = this.plugin.compendium.getClass(char.classId);
         const subclass = this.plugin.compendium.getSubclass(char.subclassId);
         if (!charClass || !subclass) return;
+
+        char.activeEffects = [];
 
         char.experiences = JSON.parse(JSON.stringify(this.originalCharacterState.experiences));
         const originalHistory = this.originalCharacterState.levelUpHistory;
@@ -885,10 +887,10 @@ export class LevelUpModal extends Modal {
             });
         }
 
-        char.proficiency = 1;
-        char.hitPoints.max = parseInt(charClass.hp);
-        char.stress.max = 6;
-        char.evasion = parseInt(charClass.evasion);
+        char.proficiency.base = 1;
+        char.hitPoints.max.base = parseInt(charClass.hp);
+        char.stress.max.base = 6;
+        char.evasion.base = parseInt(charClass.evasion);
 
         char.traits = JSON.parse(JSON.stringify(this.originalCharacterState.traits));
         for (const levelHistory of Object.values(this.originalCharacterState.levelUpHistory)) {
@@ -897,7 +899,7 @@ export class LevelUpModal extends Modal {
                     adv.choices.forEach(traitName => {
                         const traitKey = traitName as keyof typeof char.traits;
                         if (char.traits[traitKey]) {
-                            char.traits[traitKey].value--;
+                            char.traits[traitKey].base--;
                             char.traits[traitKey].locked = false;
                         }
                     });
@@ -918,20 +920,27 @@ export class LevelUpModal extends Modal {
 
         let subclassUpgradeCount = 0;
 
+        char.features.forEach(feat => addEffectsFromSource(char, feat));
+        char.inventory.forEach(item => {
+            if (char.equippedArmorId === item.instanceId || char.equippedWeaponIds.includes(item.instanceId)) {
+                addEffectsFromSource(char, item);
+            }
+        });
+
         for (let level = 2; level <= char.level; level++) {
             const selection = history[level];
-
             const equippedArmor = char.inventory.find(i => i.instanceId === char.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
             if (equippedArmor) {
-                char.damageThresholds.major = equippedArmor.baseThresholds.major + level;
-                char.damageThresholds.severe = equippedArmor.baseThresholds.severe + level;
+                // MODIFICATION: Use the .base property for arithmetic
+                char.damageThresholds.major.base = equippedArmor.baseThresholds.major.base + level;
+                char.damageThresholds.severe.base = equippedArmor.baseThresholds.severe.base + level;
             } else {
-                char.damageThresholds.major = level;
-                char.damageThresholds.severe = level * 2;
+                char.damageThresholds.major.base = level;
+                char.damageThresholds.severe.base = level * 2;
             }
 
             if (level === 2 || level === 5 || level === 8) {
-                char.proficiency++;
+                char.proficiency.base++;
                 const selectionForExp = history[level];
                 if (selectionForExp?.newExperienceName && selectionForExp.newExperienceId) {
                     const existingExp = char.experiences.find(e => e.id === selectionForExp.newExperienceId);
@@ -967,6 +976,7 @@ export class LevelUpModal extends Modal {
                 } else {
                     char.vault.push(card);
                 }
+                addEffectsFromSource(char, card);
             };
 
             const addInherentFeature = (feature: InherentFeature) => {
@@ -974,20 +984,21 @@ export class LevelUpModal extends Modal {
                 const alreadyHasFeature = char.features.some(f => f.name === feature.name);
                 if (alreadyHasFeature) return;
                 char.features.push(feature);
+                addEffectsFromSource(char, feature);
             };
 
             selection.advancements.forEach(adv => {
                 if (!adv) return;
                 switch (adv.id) {
-                    case 'add_hp': char.hitPoints.max++; break;
-                    case 'add_stress': char.stress.max++; break;
-                    case 'increase_evasion': char.evasion++; break;
-                    case 'increase_proficiency': char.proficiency++; break;
+                    case 'add_hp': char.hitPoints.max.base++; break;
+                    case 'add_stress': char.stress.max.base++; break;
+                    case 'increase_evasion': char.evasion.base++; break;
+                    case 'increase_proficiency': char.proficiency.base++; break;
                     case 'increase_traits':
                         adv.choices.forEach(traitName => {
                             const traitKey = traitName as keyof typeof char.traits;
                             if (traitName && char.traits[traitKey] && !char.traits[traitKey].locked) {
-                                char.traits[traitKey].value++;
+                                char.traits[traitKey].base++;
                                 char.traits[traitKey].locked = true;
                             }
                         });
@@ -1003,7 +1014,7 @@ export class LevelUpModal extends Modal {
                     case 'upgrade_subclass': {
                         const featuresToGrant = subclassUpgradeCount === 0 ? subclass.specializations : subclass.masteries;
                         featuresToGrant.forEach(feature => {
-                            const newFeature: InherentFeature = { id: feature.name, name: feature.name, description: feature.text, source: 'Subclass' };
+                            const newFeature: InherentFeature = { id: feature.name, name: feature.name, description: feature.text, source: 'Subclass', effects: feature.effects };
                             addInherentFeature(newFeature);
                         });
                         subclassUpgradeCount++;
@@ -1028,16 +1039,16 @@ export class LevelUpModal extends Modal {
                             const newSubclass = this.plugin.compendium.getSubclass(subclassId);
 
                             if (newClass) {
-                                const hopeFeature: InherentFeature = { id: newClass.hope_feat_name, name: newClass.hope_feat_name, description: newClass.hope_feat_text, source: 'Class' };
+                                const hopeFeature: InherentFeature = { id: newClass.hope_feat_name, name: newClass.hope_feat_name, description: newClass.hope_feat_text, source: 'Class', effects: newClass.effects };
                                 addInherentFeature(hopeFeature);
                                 newClass.class_feats.forEach(feat => {
-                                    const classFeat: InherentFeature = { id: feat.name, name: feat.name, description: feat.text, source: 'Class' };
+                                    const classFeat: InherentFeature = { id: feat.name, name: feat.name, description: feat.text, source: 'Class', effects: feat.effects };
                                     addInherentFeature(classFeat);
                                 });
                             }
                             if (newSubclass) {
                                 newSubclass.foundations.forEach(foundation => {
-                                    const foundationFeature: InherentFeature = { id: foundation.name, name: foundation.name, description: foundation.text, source: 'Subclass' };
+                                    const foundationFeature: InherentFeature = { id: foundation.name, name: foundation.name, description: foundation.text, source: 'Subclass', effects: foundation.effects };
                                     addInherentFeature(foundationFeature);
                                 });
                             }

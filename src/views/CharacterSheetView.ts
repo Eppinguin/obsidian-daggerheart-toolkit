@@ -1,11 +1,14 @@
+// CharacterSheetView.ts
 import { ItemView, WorkspaceLeaf, Notice, Setting, setIcon, TFile, MarkdownRenderer, Menu, App, Modal, MenuItem } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
 import {
-    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, ArmorItem, WeaponItem, AvatarTransform, InherentFeature,
+    Character, ICalculatedStat, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, ArmorItem, WeaponItem, AvatarTransform, InherentFeature,
     TokenTrackerState,
     Beastform,
-    Stances
+    Stances,
+    Condition,
+    IModifier
 } from '../types';
 import {
     AddItemModal,
@@ -24,7 +27,8 @@ import {
 import { getTokenType, createTokenTracker } from '../services/token-helpers';
 import { renderMarkdown, renderRollableContent } from '../rendering/ui-helpers';
 import { handleAdvantageDisadvantage, formatTraitModifier } from '../services/dice-helpers';
-import { getEvasionModifier, getArmorModifier, getFinalDamageThresholds, getUnarmedAttack } from '../services/feature-automations';
+import { initializeInventoryItem } from '../services/effects-engine';
+import { addEffectsFromSource, removeEffectsFromSource } from '../services/effects-manager';
 import { ContentType } from '../services/export-import';
 import { CharacterCreator } from './components/CharacterCreator';
 import { DiceTray } from 'src/DiceTray';
@@ -114,15 +118,18 @@ export class CharacterSheetView extends ItemView {
         }
 
         container.empty();
-        const activeChar = this.plugin.getActiveCharacter();
+        const character = this.plugin.getActiveCharacter();
 
-        if (activeChar) {
-            const accentColor = activeChar.accentColor || '#e5b32a';
+        if (character) {
+            // The call to recalculateCharacterStats is removed. The character object
+            // is now "live" and its stats will calculate their own values on demand.
+
+            const accentColor = character.accentColor || '#e5b32a';
             const accentGlow = this.hexToRgba(accentColor, 0.4);
             this.containerEl.style.setProperty('--dh-sheet-accent', accentColor);
             this.containerEl.style.setProperty('--dh-sheet-accent-glow', accentGlow);
 
-            this.drawCharacterSheet(container, activeChar);
+            this.drawCharacterSheet(container, character);
         } else {
             this.drawNoCharacterState(container);
             this.containerEl.style.removeProperty('--dh-sheet-accent');
@@ -318,8 +325,6 @@ export class CharacterSheetView extends ItemView {
             menu.addItem((item: MenuItem) => {
                 item.setTitle("Switch To").setIcon("users");
                 // This uses a type assertion '(item as any)' to access setSubmenu.
-                // This is a workaround for potentially outdated or incorrect Obsidian type definitions.
-                // It allows the code to compile while relying on the runtime availability of the method.
                 const subMenu = (item as any).setSubmenu();
                 characters.forEach(char => {
                     subMenu.addItem((subItem: MenuItem) => {
@@ -388,44 +393,21 @@ export class CharacterSheetView extends ItemView {
     private drawRightColumn(parent: HTMLElement, data: Character) {
         const rightCol = parent.createDiv({ cls: 'dh-grid-column-right' });
         this.drawVitals(rightCol, data);
-        this.plugin.createInteractiveTrack(rightCol, 'Hope', data.hope.max, data.id + '-hope', data.hope.current, (v) => { data.hope.current = v; this.plugin.updateCharacter(data); });
+        this.plugin.createInteractiveTrack(rightCol, 'Hope', data.hope.max.getValue(data), data.id + '-hope', data.hope.current, (v) => { data.hope.current = v; this.plugin.updateCharacter(data); });
         this.drawExperiences(rightCol, data);
     }
 
     private drawPrimaryDefenses(parent: HTMLElement, data: Character) {
         const container = parent.createDiv({ cls: 'dh-primary-defenses' });
-        const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
-        const equippedWeapons = data.inventory.filter(i => data.equippedWeaponIds?.includes(i.instanceId) && i._type === "weapon") as (InventoryItem & { _type: 'weapon' })[];
+        const finalEvasion = data.evasion.getValue(data);
+        const finalArmorValue = data.armorSlots.max.getValue(data);
 
-        // --- Evasion Calculation ---
-        let beastformEvasionBonus = 0;
-        if (data.activeBeastformName) {
-            const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
-            if (activeBeast?.attributes.some(a => a.trait === 'Evasion')) {
-                beastformEvasionBonus = activeBeast.attributes.find(a => a.trait === 'Evasion')?.bonus || 0;
-            }
-        }
-        const evasionModifier = getEvasionModifier(data, equippedArmor, equippedWeapons, this.plugin);
-        const finalEvasion = data.evasion + evasionModifier + beastformEvasionBonus + (data.customModifiers?.evasion || 0);
-
-        // --- Armor Calculation ---
-        const armorModifier = getArmorModifier(data, equippedWeapons, this.plugin);
-        const finalArmor = (equippedArmor ? equippedArmor.baseScore : 0) + armorModifier;
-        if (!equippedArmor && data.loadout.some(f => f.name.toLowerCase().includes("bare bones"))) {
-            data.armorSlots.max = 3 + data.traits['Strength'].value;
-        } else if (equippedArmor) {
-            data.armorSlots.max = finalArmor;
-        } else {
-            data.armorSlots.max = 0;
-        }
-
-        // --- Rendering ---
         const evasionBox = container.createDiv({ cls: 'dh-stat-hex' });
         evasionBox.createEl('span', { text: String(finalEvasion), cls: 'dh-stat-value' });
         evasionBox.createEl('span', { text: 'Evasion', cls: 'dh-stat-label' });
 
         const armorBox = container.createDiv({ cls: 'dh-stat-hex' });
-        armorBox.createEl('span', { text: String(data.armorSlots.max), cls: 'dh-stat-value' });
+        armorBox.createEl('span', { text: String(finalArmorValue), cls: 'dh-stat-value' });
         armorBox.createEl('span', { text: 'Armor', cls: 'dh-stat-label' });
 
         const armorSlotsContainer = parent.createDiv({ cls: 'dh-armor-slots' });
@@ -454,7 +436,7 @@ export class CharacterSheetView extends ItemView {
             }).open();
         });
 
-        this.plugin.createInteractiveTrack(armorSlotsContainer, '', data.armorSlots.max, data.id + '-armor', data.armorSlots.current, (v) => {
+        this.plugin.createInteractiveTrack(armorSlotsContainer, '', data.armorSlots.max.getValue(data), data.id + '-armor', data.armorSlots.current, (v) => {
             data.armorSlots.current = v;
             this.plugin.updateCharacter(data);
         });
@@ -479,10 +461,9 @@ export class CharacterSheetView extends ItemView {
         header.createEl('h3', { text: 'Hit Points & Stress' });
 
         const thresholdsDisplay = container.createDiv({ cls: 'dh-thresholds-display' });
-        const equippedArmor = data.inventory.find(i => i.instanceId === data.equippedArmorId && i._type === 'armor') as InventoryItem & { _type: 'armor' } | undefined;
 
-        // --- Threshold Calculation ---
-        const { major: finalMajorThreshold, severe: finalSevereThreshold } = getFinalDamageThresholds(data, equippedArmor, this.plugin);
+        const finalMajorThreshold = data.damageThresholds.major.getValue(data);
+        const finalSevereThreshold = data.damageThresholds.severe.getValue(data);
 
         // --- Rendering ---
         const mainRow = thresholdsDisplay.createDiv({ cls: 'dh-threshold-main-row' });
@@ -509,13 +490,12 @@ export class CharacterSheetView extends ItemView {
         descRow.createDiv({ cls: 'dh-threshold-separator is-empty' });
         descRow.createDiv({ cls: 'dh-threshold-desc-item', text: 'Mark 3 HP' });
 
-
         if (data.hitPoints) {
             const hpTrackContainer = container.createDiv();
-            this.plugin.createInteractiveTrack(hpTrackContainer, 'HP', data.hitPoints.max, data.id + '-hp', data.hitPoints.current, (v) => {
+            this.plugin.createInteractiveTrack(hpTrackContainer, 'HP', data.hitPoints.max.getValue(data), data.id + '-hp', data.hitPoints.current, (v) => {
                 data.hitPoints.current = v;
 
-                if (data.activeBeastformName && data.hitPoints.current >= data.hitPoints.max) {
+                if (data.activeBeastformName && data.hitPoints.current >= data.hitPoints.max.getValue(data)) {
                     data.activeBeastformName = null;
                     new Notice("You marked your last Hit Point and reverted to your normal form.");
                 }
@@ -558,7 +538,8 @@ export class CharacterSheetView extends ItemView {
 
         if (data.stress) {
             const stressTrackContainer = container.createDiv();
-            this.plugin.createInteractiveTrack(stressTrackContainer, 'Stress', data.stress.max, data.id + '-stress', data.stress.current, (v) => { data.stress.current = v; this.plugin.updateCharacter(data); });
+            // MODIFICATION: Use getValue() for calculated stats
+            this.plugin.createInteractiveTrack(stressTrackContainer, 'Stress', data.stress.max.getValue(data), data.id + '-stress', data.stress.current, (v) => { data.stress.current = v; this.plugin.updateCharacter(data); });
             const stressLabel = stressTrackContainer.querySelector('.dh-track-label') as HTMLElement;
             if (stressLabel) {
                 stressLabel.addClass('is-clickable');
@@ -616,12 +597,14 @@ export class CharacterSheetView extends ItemView {
         Object.entries(data.traits).forEach(([name, trait]) => {
             const key = name as keyof Character['traits'];
             const bonus = beastBonuses[name] || 0;
-            const finalValue = trait.value + bonus;
-            const box = container.createDiv({ cls: `dh-trait-box-large ${trait.locked ? 'locked' : ''}` });
+            // MODIFICATION: Use getValue() for the trait's final value
+            const traitValue = trait.getValue(data);
+            const finalValue = traitValue + bonus;
+            const box = container.createDiv({ cls: `dh-trait-box-large` }); // 'locked' class logic removed as ICalculatedStat doesn't have it
 
             if (bonus > 0) {
                 box.addClass('is-modified');
-                box.title = `Base: ${trait.value >= 0 ? '+' : ''}${trait.value}, Bonus: +${bonus}`;
+                box.title = `Base: ${traitValue >= 0 ? '+' : ''}${traitValue}, Bonus: +${bonus}`;
             }
 
             box.createDiv({ cls: 'dh-trait-value-large', text: `${finalValue >= 0 ? '+' : ''}${finalValue}` });
@@ -630,38 +613,34 @@ export class CharacterSheetView extends ItemView {
             (TRAIT_SKILLS[key] || []).forEach(skill => {
                 skillsList.createDiv({ text: skill });
             });
-            if (!trait.locked) {
-                box.title = `Click to roll ${name}. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
-                box.addEventListener('click', (event) => {
-                    const baseDiceString = `dr`;
-                    const modifier = finalValue;
-                    const context = `${name} Roll`;
 
-                    if (event.metaKey || event.ctrlKey) {
-                        this.setTrayFormula(baseDiceString, context, modifier);
-                        return;
-                    }
+            box.title = `Click to roll ${name}. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
+            box.addEventListener('click', (event) => {
+                const baseDiceString = `dr`;
+                const modifier = finalValue;
+                const context = `${name} Roll`;
 
-                    const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
-                        event,
-                        baseDiceString,
-                        context
-                    );
-                    this.plugin.rollDice(
-                        `${diceString}${formatTraitModifier(modifier)}`,
-                        newRollTitle,
-                        name
-                    );
-                });
-            }
+                if (event.metaKey || event.ctrlKey) {
+                    this.setTrayFormula(baseDiceString, context, modifier);
+                    return;
+                }
+
+                const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(
+                    event,
+                    baseDiceString,
+                    context
+                );
+                this.plugin.rollDice(
+                    `${diceString}${formatTraitModifier(modifier)}`,
+                    newRollTitle,
+                    name
+                );
+            });
         });
     }
 
     private drawActiveWeapons(parent: HTMLElement, data: Character) {
-        // Create the main container for this section
         const container = parent.createDiv({ cls: 'dh-active-weapons' });
-
-        // Determine the title based on character state
         let titleText = 'Active Weapons';
         if (data.activeBeastformName) {
             const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
@@ -670,11 +649,9 @@ export class CharacterSheetView extends ItemView {
             }
         }
 
-        // Create the original, centered header
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: titleText });
 
-        // Draw the specific content (beast, weapon, or unarmed) first
         if (data.activeBeastformName) {
             const activeBeast = this.plugin.compendium.beastforms.find(b => b.name === data.activeBeastformName);
             if (activeBeast) {
@@ -691,14 +668,15 @@ export class CharacterSheetView extends ItemView {
             }
         }
 
-        // Create the proficiency pip display at the bottom of the section
         const proficiencyContainer = container.createDiv({ cls: 'dh-proficiency-container' });
         proficiencyContainer.createSpan({ cls: 'dh-proficiency-label', text: 'Proficiency' });
         const pipsContainer = proficiencyContainer.createDiv({ cls: 'dh-proficiency-pips' });
         const MAX_PROFICIENCY = 6;
+        // MODIFICATION: Use getValue() for proficiency
+        const finalProficiency = data.proficiency.getValue(data);
         for (let i = 0; i < MAX_PROFICIENCY; i++) {
             const pip = pipsContainer.createDiv({ cls: 'dh-proficiency-pip' });
-            if (i < data.proficiency) {
+            if (i < finalProficiency) {
                 pip.addClass('is-filled');
             }
         }
@@ -719,7 +697,8 @@ export class CharacterSheetView extends ItemView {
             const trait = character.traits[traitName];
             if (trait) {
                 const rollBox = right.createDiv({ cls: 'dh-weapon-roll-box' });
-                const traitValue = trait.value;
+                // Use getValue() for traits
+                const traitValue = trait.getValue(character);
                 const traitDisplay = `${traitValue >= 0 ? '+' : ''}${traitValue}`;
                 rollBox.createDiv({ text: traitDisplay });
                 rollBox.createDiv({ text: traitName });
@@ -753,10 +732,21 @@ export class CharacterSheetView extends ItemView {
         createRollBox('Finesse');
 
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
-        const { formula: damageFormula, type: damageTypeLabel, context: damageRollContext } = getUnarmedAttack(character, this.plugin);
+        // MODIFIED: Get components from character.unarmedDamage
+        const numberOfDice = character.unarmedDamage.numberOfDice.getValue(character); // 
+        const baseDiceType = character.unarmedDamage.baseDice; // 
+        const flatDamageBonus = character.unarmedDamage.flatBonus.getValue(character); // 
+        const damageType = character.unarmedDamage.damageType; // 
+
+        // Construct the damage formula string
+        let damageFormula = `${numberOfDice}${baseDiceType}`;
+        if (flatDamageBonus !== 0) {
+            damageFormula += `${flatDamageBonus > 0 ? '+' : ''}${flatDamageBonus}`;
+        }
+        const damageRollContext = 'Unarmed Damage';
 
         damageBox.createDiv({ text: damageFormula });
-        damageBox.createDiv({ text: damageTypeLabel });
+        damageBox.createDiv({ text: damageType });
         damageBox.title = `Click to roll ${damageFormula}. Hold Cmd/Ctrl to add to Dice Tray.`;
         damageBox.addEventListener('click', (event) => {
             if (event.metaKey || event.ctrlKey) {
@@ -782,7 +772,8 @@ export class CharacterSheetView extends ItemView {
         const trait = character.traits[traitName];
         if (trait) {
             const rollBox = right.createDiv({ cls: 'dh-weapon-roll-box' });
-            const traitValue = trait.value;
+            // MODIFICATION: Use getValue() for trait
+            const traitValue = trait.getValue(character);
             const traitDisplay = `${traitValue >= 0 ? '+' : ''}${traitValue}`;
             rollBox.createDiv({ text: traitDisplay });
             rollBox.createDiv({ text: traitName });
@@ -812,22 +803,35 @@ export class CharacterSheetView extends ItemView {
         }
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
 
-        const proficiency = character.proficiency;
-        const damageString = weapon.damageDice;
-        const match = damageString.match(/(d\d+)([+-]\d+)?/);
-        let damageFormula = '';
+        // --- CORRECTED ADVANCED DAMAGE CALCULATION LOGIC ---
+        let totalDice: number;
+        const diceStatBreakdown = weapon.damageComponents.numberOfDice.getBreakdown(character);
 
-        if (match) {
-            const diePart = match[1];
-            const modifierPart = match[2] || '';
-            damageFormula = `${proficiency}${diePart}${modifierPart}`;
+        // FIX: Add type annotation for 'm' to resolve the implicit 'any' error.
+        const overrideModifier = diceStatBreakdown.activeModifiers.find((m: IModifier) => m.type === 'override' || m.type === '=');
+
+        if (overrideModifier && overrideModifier.value?.type === 'keyword') {
+            const traitKey = overrideModifier.value.value.charAt(0).toUpperCase() + overrideModifier.value.value.slice(1).toLowerCase();
+            totalDice = character.traits[traitKey as keyof Character['traits']].getValue(character);
         } else {
-            damageFormula = `${proficiency}${damageString}`;
+            const proficiency = character.proficiency.getValue(character);
+            const diceCountBonus = diceStatBreakdown.final;
+            totalDice = proficiency + diceCountBonus;
         }
 
+        const baseDiceType = weapon.damageComponents.baseDice;
+        const flatDamageBonus = weapon.damageComponents.flatBonus.getValue(character);
+        const damageType = weapon.damageComponents.damageType;
+
+        let damageFormula = `${totalDice}${baseDiceType}`;
+        if (flatDamageBonus !== 0) {
+            damageFormula += `${flatDamageBonus > 0 ? '+' : ''}${flatDamageBonus}`;
+        }
+        // --- END OF CORRECTED LOGIC ---
+
         damageBox.createDiv({ text: damageFormula });
-        damageBox.createDiv({ text: weapon.damageType });
-        damageBox.title = `Click to roll ${damageFormula}. Hold Cmd/Ctrl to add to Dice Tray.`;
+        damageBox.createDiv({ text: damageType }); // Use the damageType from components
+        damageBox.title = `Click to roll ${damageFormula}. Hold Cmd / Ctrl to add to Dice Tray.`;
         damageBox.addEventListener('click', (event) => {
             if (event.metaKey || event.ctrlKey) {
                 this.setTrayFormula(damageFormula, `${weapon.name} Damage`);
@@ -844,11 +848,11 @@ export class CharacterSheetView extends ItemView {
 
         const left = body.createDiv();
         left.createDiv({ cls: 'dh-weapon-name', text: 'Beast Attack' });
-        left.createDiv({ cls: 'dh-weapon-type', text: `${beast.attack.range}` });
+        left.createDiv({ cls: 'dh-weapon-type', text: `${beast.attack.range} ` });
 
         (beast.features || []).forEach(feature => {
             const featureEl = left.createDiv({ cls: 'dh-weapon-feature' });
-            renderRollableContent(this.plugin, `**${feature.name}:** ${feature.description}`, featureEl, `${beast.name}: ${feature.name}`, true);
+            renderRollableContent(this.plugin, `** ${feature.name}:** ${feature.description} `, featureEl, `${beast.name}: ${feature.name} `, true);
         });
 
         const right = body.createDiv({ cls: 'dh-weapon-card-right' });
@@ -856,14 +860,15 @@ export class CharacterSheetView extends ItemView {
         const trait = character.traits[traitName];
         if (trait) {
             const beastAttributeBonus = beast.attributes.find(a => a.trait === traitName)?.bonus || 0;
-            const totalTraitValue = trait.value + beastAttributeBonus;
+            // MODIFICATION: Use getValue() for trait
+            const totalTraitValue = trait.getValue(character) + beastAttributeBonus;
 
             const rollBox = right.createDiv({ cls: 'dh-weapon-roll-box' });
-            const traitDisplay = `${totalTraitValue >= 0 ? '+' : ''}${totalTraitValue}`;
+            const traitDisplay = `${totalTraitValue >= 0 ? '+' : ''}${totalTraitValue} `;
             rollBox.createDiv({ text: traitDisplay });
             rollBox.createDiv({ text: traitName });
             const rollTitle = `${beast.name} Attack`;
-            rollBox.title = `Click to roll. Hold Shift for Advantage or Alt for Disadvantage. Hold Cmd/Ctrl to add to Dice Tray.`;
+            rollBox.title = `Click to roll.Hold Shift for Advantage or Alt for Disadvantage.Hold Cmd / Ctrl to add to Dice Tray.`;
             rollBox.addEventListener('click', (event) => {
                 const formula = 'dr';
                 const modifier = totalTraitValue;
@@ -872,21 +877,22 @@ export class CharacterSheetView extends ItemView {
                     return;
                 }
                 const { diceString, rollTitle: newRollTitle } = handleAdvantageDisadvantage(event, 'dr', rollTitle);
-                this.plugin.rollDice(`${diceString}${formatTraitModifier(modifier)}`, newRollTitle, traitName);
+                this.plugin.rollDice(`${diceString}${formatTraitModifier(modifier)} `, newRollTitle, traitName);
             });
         }
 
         const damageBox = right.createDiv({ cls: 'dh-weapon-damage-box' });
-        const proficiency = character.proficiency;
-        let damageFormula = `${proficiency}${beast.attack.dice}`;
+        // MODIFICATION: Use getValue() for proficiency
+        const proficiency = character.proficiency.getValue(character);
+        let damageFormula = `${proficiency}${beast.attack.dice} `;
 
         if (beast.attack.dice.includes('+') || beast.attack.dice.includes('-')) {
-            damageFormula = `${proficiency}(${beast.attack.dice})`;
+            damageFormula = `${proficiency} (${beast.attack.dice})`;
         }
 
         damageBox.createDiv({ text: damageFormula });
         damageBox.createDiv({ text: beast.attack.type });
-        damageBox.title = `Click to roll ${damageFormula}. Hold Cmd/Ctrl to add to Dice Tray.`;
+        damageBox.title = `Click to roll ${damageFormula}. Hold Cmd / Ctrl to add to Dice Tray.`;
         damageBox.addEventListener('click', (event) => {
             if (event.metaKey || event.ctrlKey) {
                 this.setTrayFormula(damageFormula, `${beast.name} Damage`);
@@ -927,7 +933,12 @@ export class CharacterSheetView extends ItemView {
                 setIcon(removeBtn, 'x');
                 removeBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    data.conditions = data.conditions.filter(c => c.name !== condition.name);
+
+                    if (condition.effects && condition.effects.length > 0) {
+                        removeEffectsFromSource(data, condition.instanceId);
+                    }
+
+                    data.conditions = data.conditions.filter(c => c.instanceId !== condition.instanceId);
                     this.plugin.updateCharacter(data);
                 });
             });
@@ -936,7 +947,10 @@ export class CharacterSheetView extends ItemView {
         }
 
         conditionsBox.addEventListener('click', () => {
-            new ConditionModal(this.app, data, (updatedCharacter) => {
+            new ConditionModal(this.app, data, (updatedCharacter: Character, newCondition: Condition) => {
+                if (newCondition && newCondition.effects && newCondition.effects.length > 0) {
+                    addEffectsFromSource(updatedCharacter, newCondition);
+                }
                 this.plugin.updateCharacter(updatedCharacter);
             }).open();
         });
@@ -947,7 +961,7 @@ export class CharacterSheetView extends ItemView {
         const header = container.createDiv({ cls: 'dh-section-header-box' });
         header.createEl('h3', { text: 'Experience' });
         (data.experiences || []).forEach(exp => {
-            const card = this.createExperienceCard(container, exp.name, `+${exp.value}`, true);
+            const card = this.createExperienceCard(container, exp.name, `+ ${exp.value} `, true);
             card.addEventListener('click', () => {
                 this.diceTray.addModifier(exp.value);
             });
@@ -978,46 +992,6 @@ export class CharacterSheetView extends ItemView {
         tab.addEventListener('click', () => { this.activeManagerTab = id; this.draw(); });
     }
 
-    private equipItem(character: Character, item: InventoryItem, redraw: boolean = true) {
-        if (item._type === 'armor') {
-            character.equippedArmorId = item.instanceId;
-            character.armorSlots.max = item.baseScore;
-            character.damageThresholds = { _type: 'damageThresholds', major: item.baseThresholds.major + character.level, severe: item.baseThresholds.severe + character.level };
-        } else if (item._type === 'weapon') {
-            const weapon = item as InventoryItem & { _type: 'weapon' };
-            if (weapon.burden === 'Two-Handed') {
-                character.equippedWeaponIds = [item.instanceId];
-            } else {
-                const equippedWeapons = character.inventory.filter(i => character.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as (InventoryItem & { _type: 'weapon' })[];
-                const twoHandedEquipped = equippedWeapons.find(w => w.burden === 'Two-Handed');
-                if (twoHandedEquipped) {
-                    character.equippedWeaponIds = [item.instanceId];
-                } else if (equippedWeapons.length < 2) {
-                    character.equippedWeaponIds.push(item.instanceId);
-                } else {
-                    new Notice("You already have two one-handed weapons equipped. Unequip one first.");
-                    return;
-                }
-            }
-        }
-        if (redraw) {
-            this.plugin.updateCharacter(character);
-        }
-    }
-
-    private unequipItem(character: Character, item: InventoryItem, redraw: boolean = true) {
-        if (item._type === 'armor' && character.equippedArmorId === item.instanceId) {
-            character.equippedArmorId = null;
-            character.armorSlots.max = 0;
-            character.damageThresholds = { _type: 'damageThresholds', major: character.level, severe: character.level * 2 };
-        } else if (item._type === 'weapon') {
-            character.equippedWeaponIds = character.equippedWeaponIds.filter(id => id !== item.instanceId);
-        }
-        if (redraw) {
-            this.plugin.updateCharacter(character);
-        }
-    }
-
     private drawInventoryManager(parent: HTMLElement, character: Character) {
         const topBar = parent.createDiv({ cls: 'dh-inventory-topbar' });
         this.drawGoldTracker(topBar, character);
@@ -1027,29 +1001,37 @@ export class CharacterSheetView extends ItemView {
             .addEventListener('click', () => {
                 new AddItemModal(this.app, this.plugin, character, (item) => {
                     if (!character.inventory) character.inventory = [];
-                    let newItem: InventoryItem;
+                    let newItemData: any;
+
                     if (item._type === 'armor') {
                         const [major, severe] = item.base_thresholds.split(' / ').map(s => parseInt(s.trim()));
-                        newItem = {
+                        newItemData = {
                             _type: 'armor', instanceId: uuidv4(), quantity: 1, name: item.name, description: item.feat_text,
                             tier: parseInt(item.tier), baseScore: parseInt(item.base_score), baseThresholds: { major, severe },
                             features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
                             isCustom: item.isCustom,
+                            effects: item.effects,
                         };
                     } else if (item._type === 'weapon') {
-                        const [damageDice, damageType] = item.damage.split(' ');
-                        newItem = {
+                        // The item.damage here is the raw string from compendium, e.g., "d6 phy"
+                        newItemData = {
                             _type: 'weapon', instanceId: uuidv4(), quantity: 1, name: item.name, description: item.feat_text,
                             tier: parseInt(item.tier), burden: item.burden as 'One-Handed' | 'Two-Handed', range: item.range,
                             trait: item.trait, primaryOrSecondary: item.primary_or_secondary as 'Primary' | 'Secondary',
-                            damage: item.damage, damageDice, damageType,
+                            // Pass the raw damage string. initializeInventoryItem will parse this into damageComponents
+                            damage: item.damage,
                             features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
                             isCustom: item.isCustom,
+                            effects: item.effects,
                         };
                     } else {
-                        newItem = { ...item, instanceId: uuidv4(), quantity: 1, isCustom: item.isCustom };
+                        newItemData = { ...item, instanceId: uuidv4(), quantity: 1, isCustom: item.isCustom, effects: item.effects };
                     }
-                    character.inventory.push(newItem);
+
+                    // Hydrate the raw data to have proper ICalculatedStat instances
+                    initializeInventoryItem(newItemData);
+
+                    character.inventory.push(newItemData as InventoryItem);
                     this.plugin.updateCharacter(character);
                 }, () => {
                     new ItemEditModal(this.app, this.plugin, character, null, (newItem) => {
@@ -1104,9 +1086,22 @@ export class CharacterSheetView extends ItemView {
 
             let details = '';
             if (item._type === 'weapon') {
-                details = `${item.damage || ''}, ${item.range || ''}, ${item.burden || ''}`;
+                // Now accessing damage components
+                const numberOfDice = item.damageComponents.numberOfDice.getValue(character);
+                const baseDiceType = item.damageComponents.baseDice;
+                const flatDamageBonus = item.damageComponents.flatBonus.getValue(character);
+                const damageType = item.damageComponents.damageType;
+
+                let damageDisplay = `${numberOfDice}${baseDiceType} `;
+                if (flatDamageBonus !== 0) {
+                    damageDisplay += `${flatDamageBonus > 0 ? '+' : ''}${flatDamageBonus} `;
+                }
+                damageDisplay += ` ${damageType} `;
+
+                details = `${damageDisplay}, ${item.range || ''}, ${item.burden || ''} `;
             } else if (item._type === 'armor') {
-                details = `${item.baseScore || 0} Armor, Thresh: ${item.baseThresholds?.major || 0}/${item.baseThresholds?.severe || 0}`;
+                // Accessing getValue() directly from CalculatedStat
+                details = `${item.baseScore.getValue(character)} Armor, Thresh: ${item.baseThresholds.major.getValue(character)}/${item.baseThresholds.severe.getValue(character)}`;
             } else if (item.description) {
                 details = item.description.substring(0, 30) + (item.description.length > 30 ? '...' : '');
             }
@@ -1118,11 +1113,42 @@ export class CharacterSheetView extends ItemView {
                 setIcon(equipBtn, isEquipped ? 'check-square' : 'square');
                 equipBtn.ariaLabel = isEquipped ? 'Unequip' : 'Equip';
                 equipBtn.addEventListener('click', () => {
+                    // MODIFICATION: Call effects manager on equip/unequip
                     if (isEquipped) {
-                        this.unequipItem(character, item);
+                        // Unequip
+                        if (item._type === 'armor' && character.equippedArmorId === item.instanceId) {
+                            character.equippedArmorId = null;
+                        } else if (item._type === 'weapon') {
+                            character.equippedWeaponIds = character.equippedWeaponIds.filter(id => id !== item.instanceId);
+                        }
+                        removeEffectsFromSource(character, item.instanceId);
                     } else {
-                        this.equipItem(character, item);
+                        // Equip
+                        if (item._type === 'armor') {
+                            character.equippedArmorId = item.instanceId;
+                        } else if (item._type === 'weapon') {
+                            const weapon = item as InventoryItem & { _type: 'weapon' };
+                            if (weapon.burden === 'Two-Handed') {
+                                // Unequip all other weapons first
+                                character.equippedWeaponIds.forEach(wid => removeEffectsFromSource(character, wid));
+                                character.equippedWeaponIds = [item.instanceId];
+                            } else {
+                                const equippedWeapons = character.inventory.filter(i => character.equippedWeaponIds.includes(i.instanceId) && i._type === 'weapon') as (InventoryItem & { _type: 'weapon' })[];
+                                const twoHandedEquipped = equippedWeapons.find(w => w.burden === 'Two-Handed');
+                                if (twoHandedEquipped) {
+                                    removeEffectsFromSource(character, twoHandedEquipped.instanceId);
+                                    character.equippedWeaponIds = [item.instanceId];
+                                } else if (equippedWeapons.length < 2) {
+                                    character.equippedWeaponIds.push(item.instanceId);
+                                } else {
+                                    new Notice("You already have two one-handed weapons equipped. Unequip one first.");
+                                    return; // Prevent update if equip fails
+                                }
+                            }
+                        }
+                        addEffectsFromSource(character, item);
                     }
+                    this.plugin.updateCharacter(character);
                 });
             }
 
@@ -1134,13 +1160,23 @@ export class CharacterSheetView extends ItemView {
                     const index = character.inventory.findIndex(i => i.instanceId === updatedItem.instanceId);
                     if (index > -1) {
                         character.inventory[index] = updatedItem;
+                        // If the edited item is equipped, re-apply its effects
+                        if (isEquipped) {
+                            addEffectsFromSource(character, updatedItem);
+                        }
                         this.plugin.updateCharacter(character);
                     }
                 }, () => {
+                    // On Delete
+                    removeEffectsFromSource(character, item.instanceId);
                     character.inventory = character.inventory.filter(i => i.instanceId !== item.instanceId);
-                    this.unequipItem(character, item, false);
+                    // Also unequip it from the slot
+                    if (isEquipped) {
+                        if (item._type === 'armor') character.equippedArmorId = null;
+                        if (item._type === 'weapon') character.equippedWeaponIds = character.equippedWeaponIds.filter(id => id !== item.instanceId);
+                    }
                     this.plugin.updateCharacter(character);
-                }).open();
+                }).open(); // Call .open() on the new ItemEditModal instance
             });
         });
     }
@@ -1255,7 +1291,29 @@ export class CharacterSheetView extends ItemView {
                     dd.addOption(stanceName, stanceName);
                 });
                 dd.setValue(character.activeStance || '').onChange(async (value) => {
+                    const oldStanceName = character.activeStance;
+                    if (oldStanceName) {
+                        removeEffectsFromSource(character, oldStanceName);
+                    }
+
                     character.activeStance = value;
+                    const newStanceData = this.plugin.compendium.stances.find(s => s.name === value);
+
+                    if (newStanceData) {
+                        const effectSource: DomainCard = {
+                            _type: 'domainCard',
+                            id: newStanceData.name, // Use name as the unique sourceId
+                            name: newStanceData.name,
+                            description: newStanceData.description,
+                            effects: newStanceData.effects,
+                            level: newStanceData.tier,
+                            domain: 'Stance',
+                            type: 'Ability',
+                            recall: 0,
+                        };
+                        addEffectsFromSource(character, effectSource);
+                    }
+
                     await this.plugin.updateCharacter(character);
                 });
             });
@@ -1423,12 +1481,14 @@ export class CharacterSheetView extends ItemView {
                 const traitSource = tokenInfo.source as keyof Character['traits'] | undefined;
 
                 if (tokenInfo.type === 'trait' && traitSource && character.traits[traitSource]) {
-                    const traitValue = character.traits[traitSource].value;
+                    // MODIFICATION: Use getValue() for trait
+                    const traitValue = character.traits[traitSource].getValue(character);
                     baseMaxTokens = tokenInfo.hasMinimumOne ? Math.max(1, traitValue) : traitValue;
                 }
                 else if (tokenInfo.type === 'spellcast' || tokenInfo.type === 'replenish_spellcast') {
                     if (character.spellCastTrait) {
-                        const traitValue = character.traits[character.spellCastTrait as keyof Character['traits']].value;
+                        // MODIFICATION: Use getValue() for trait
+                        const traitValue = character.traits[character.spellCastTrait as keyof Character['traits']].getValue(character);
                         baseMaxTokens = tokenInfo.hasMinimumOne ? Math.max(1, traitValue) : traitValue;
                     }
                 } else if (tokenInfo.type === 'complex' && tokenInfo.source === 'sage_cards') {
@@ -1450,7 +1510,8 @@ export class CharacterSheetView extends ItemView {
                     this.plugin.compendium.getSubclass(character.subclassId)?.spellcast_trait as keyof Character['traits'];
 
                 if (spellcastingTraitName) {
-                    const traitValue = character.traits[spellcastingTraitName]?.value ?? 0;
+                    // MODIFICATION: Use getValue() for trait
+                    const traitValue = character.traits[spellcastingTraitName]?.getValue(character) ?? 0;
                     const rollBox = footer.createEl('div', { cls: 'dh-spellcast-box dh-spellcast-box-inline' });
                     rollBox.createSpan({ cls: 'dh-spellcast-modifier', text: `${traitValue >= 0 ? '+' : ''}${traitValue}` });
                     rollBox.createSpan({ text: ` ${spellcastingTraitName}` });
@@ -1523,7 +1584,8 @@ export class CharacterSheetView extends ItemView {
         const attackCell = statsGrid.createDiv();
         attackCell.createEl('h5', { text: 'Attack' });
         const attackList = attackCell.createEl('ul');
-        const proficiency = character.proficiency;
+        // MODIFICATION: Use getValue() for proficiency
+        const proficiency = character.proficiency.getValue(character);
         attackList.createEl('li', { text: `Range: ${beast.attack.range}` });
         attackList.createEl('li', { text: `Trait: ${beast.attack.trait}` });
         attackList.createEl('li', { text: `Damage: ${proficiency}${beast.attack.dice} ${beast.attack.type}` });
@@ -1559,7 +1621,8 @@ export class CharacterSheetView extends ItemView {
         }
 
         transformBtn.addEventListener('click', () => {
-            if (character.stress.current >= character.stress.max) {
+            // MODIFICATION: Use getValue() for stress
+            if (character.stress.current >= character.stress.max.getValue(character)) {
                 new Notice("You have no Stress slots available to spend.");
                 return;
             }

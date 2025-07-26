@@ -7,11 +7,11 @@ export class CreateCardModal extends Modal {
     private ability: Partial<JsonAbility>;
     private originalName: string;
     private isOriginalCustom: boolean;
+    private effects: string = '';
 
     constructor(
         app: App,
         private plugin: DaggerheartStatblockPlugin,
-        // The callback now provides the new ability data and the original name for lookups.
         private onComplete: (ability: JsonAbility, oldName?: string) => void,
         abilityToEdit?: JsonAbility
     ) {
@@ -19,6 +19,7 @@ export class CreateCardModal extends Modal {
         this.ability = abilityToEdit ? { ...abilityToEdit } : {};
         this.originalName = abilityToEdit?.name || '';
         this.isOriginalCustom = !!abilityToEdit?.isCustom;
+        this.effects = (abilityToEdit?.effects || []).join('\n');
     }
 
     onOpen() {
@@ -80,6 +81,16 @@ export class CreateCardModal extends Modal {
             });
 
         new Setting(contentEl)
+            .setName('Effects')
+            .setDesc('Define mechanical effects, one per line. e.g., "Evasion + 1"')
+            .addTextArea(text => {
+                text.setPlaceholder('Evasion + 1\nHP Max + 5 when Hope > 0')
+                    .setValue(this.effects)
+                    .onChange(value => this.effects = value);
+                text.inputEl.rows = 4;
+            });
+
+        new Setting(contentEl)
             .addButton(button => button
                 .setButtonText('Save Card')
                 .setCta()
@@ -101,6 +112,7 @@ export class CreateCardModal extends Modal {
             recall: this.ability.recall || '0',
             text: this.ability.text,
             isCustom: true,
+            effects: this.effects.split('\n').map(e => e.trim()).filter(e => e),
         };
 
         const nameHasChanged = finalName !== this.originalName;

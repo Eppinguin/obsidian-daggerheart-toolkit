@@ -1,16 +1,23 @@
 import { App, Modal, Setting, Notice, TextAreaComponent, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../main';
-import { Character, DomainCard, Experience, InherentFeature, JsonAncestry, Trait, Stances } from '../types';
+import { Character, Condition, DomainCard, Experience, InherentFeature, JsonAncestry, Stances } from '../types';
 import { createAvatarEditor } from '../views/components/AvatarEditor';
 import { TRAIT_NAMES } from '../constants';
 import { CardSwapModal } from './CardSwapModal';
+import { initializeCharacter } from 'src/services/effects-engine';
+import { addEffectsFromSource } from 'src/services/effects-manager';
 
 export class CharacterManagerModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     character: Character;
     onSave: (character: Character) => void;
-    private tempCharacter: Character;
+    private tempCharacter: Character; // This will hold a mutable copy of the character
+    private originalCharacterId: string; // To know if we're editing an existing one
+    private initialActiveStance: string | undefined; // To track changes for effects
+    private initialEquippedArmorId: string | null;
+    private initialEquippedWeaponIds: string[];
+    private initialConditions: Condition[];
     private sectionStates: { [title: string]: boolean } = {};
     private isMixedAncestry: boolean = false;
     private parentAncestry1: string = '';
@@ -22,9 +29,40 @@ export class CharacterManagerModal extends Modal {
         this.plugin = plugin;
         this.character = character;
         this.onSave = onSave;
-        this.tempCharacter = JSON.parse(JSON.stringify(character));
         this.originalAncestryId = character.ancestryId;
         this.modalEl.addClass('dh-character-manager-modal');
+
+        // Step 1: Create a deep copy of the original character object.
+        // This copy will only contain plain data, losing all CalculatedStat instances.
+        this.tempCharacter = JSON.parse(JSON.stringify(character));
+
+        // Step 2: Hydrate the copied tempCharacter.
+        // This converts all plain object representations of CalculatedStats back into actual CalculatedStat instances.
+        // It also handles nested hydration for inventory items.
+        initializeCharacter(this.tempCharacter);
+
+        // Step 3: Re-apply all active effects to the newly hydrated tempCharacter.
+        // This is CRUCIAL because the `initializeCharacter` process re-creates `CalculatedStat` instances.
+        // The modifiers within `this.tempCharacter.activeEffects` (which were deep copied)
+        // are now "stale" in that they pointed to the *original* character's stats.
+        // We need to re-register these modifiers with the *newly created* CalculatedStat instances
+        // on `this.tempCharacter`.
+        // First, clear existing effects to ensure no duplicates if there were partial updates
+        // or a previous faulty hydration.
+        // A more robust way is to re-iterate the original sources, but for a modal,
+        // re-applying the stored `ActiveEffect` objects' modifications is more direct.
+
+        // To ensure consistency, we'll clear and re-add effects from *known sources*
+        // on the tempCharacter. This is complex because `addEffectsFromSource` takes
+        // a source object. The `activeEffects` array is just the list of applied effects.
+
+        // Simpler for a modal: After `initializeCharacter`, if you're editing base values,
+        // the `getValue` calls will correctly re-evaluate. The main `draw()` function
+        // in `CharacterSheetView` will correctly re-evaluate effects.
+        // The error was specifically because `getValue` wasn't a function at all.
+        // `initializeCharacter(this.tempCharacter)` is the primary fix for that.
+
+        // When saving, we will clear all and re-add from sources to ensure latest state.
 
         const ancestry = this.plugin.compendium.getAncestry(this.tempCharacter.ancestryId);
         if (ancestry?.isCustom) {
@@ -41,14 +79,16 @@ export class CharacterManagerModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        contentEl.createEl("h1", { text: `Edit ${this.character.name}` });
+        contentEl.createEl("h1", { text: `Edit ${this.tempCharacter.name}` }); // Use tempCharacter.name here
         contentEl.createEl("p", { text: "Freely edit all aspects of your character. Changes are saved when you click the save button." });
 
+        // Ensure these helper methods are defined within the CharacterManagerModal class scope
         this.drawCoreDetails(this.createCollapsibleSection(contentEl, 'Core Details & Avatar'));
-        this.drawVitals(this.createCollapsibleSection(contentEl, 'Vitals & Defenses'));
+        this.drawVitals(this.createCollapsibleSection(contentEl, 'Vitals & Defenses')); // This is where the error occurred
         this.drawTraits(this.createCollapsibleSection(contentEl, 'Traits'));
         this.drawHeritageAndClass(this.createCollapsibleSection(contentEl, 'Heritage & Class'));
         this.drawStances(this.createCollapsibleSection(contentEl, 'Stances'));
+        this.drawActiveEffects(this.createCollapsibleSection(contentEl, 'Active Effects'));
         this.drawExperiences(this.createCollapsibleSection(contentEl, 'Experiences'));
         this.drawCardsAndFeatures(this.createCollapsibleSection(contentEl, 'Features & Cards'));
         this.drawDetails(this.createCollapsibleSection(contentEl, 'Background & Connections'));
@@ -80,73 +120,70 @@ export class CharacterManagerModal extends Modal {
                 await this.plugin.saveCustomCompendiumData('user-ancestries.json', newMixedAncestry);
             }
 
+            // IMPORTANT: Before saving, re-apply all effects based on the new base values of tempCharacter.
+            // This ensures all derived stats are correct for the character to be saved.
+            // A quick way to "reset and re-apply" all effects:
+            // 1. Temporarily store the active effects and equipped IDs.
+            const currentActiveEffects = [...this.tempCharacter.activeEffects];
+            const currentEquippedArmorId = this.tempCharacter.equippedArmorId;
+            const currentEquippedWeaponIds = [...this.tempCharacter.equippedWeaponIds];
+            const currentActiveStance = this.tempCharacter.activeStance;
+            const currentConditions = [...this.tempCharacter.conditions];
+
+            // 2. Clear all active effects on the tempCharacter.
+            this.tempCharacter.activeEffects = [];
+            // This step is critical: ensure all CalculatedStats remove modifiers from old effects
+            // before new ones are applied. The `removeEffectsFromSource` is designed for a sourceId.
+            // We need a way to clear *all* modifiers from all CalculatedStats.
+            // The `initializeCharacter` call in the constructor effectively did this by creating new instances.
+            // So, no need to manually clear. The fresh `activeEffects` array is already empty.
+
+            // 3. Re-apply effects from original sources that are still "active" on tempCharacter.
+            // This includes features, loadout cards, equipped items, and active stances/conditions.
+
+            // Re-apply features
+            this.tempCharacter.features.forEach(feat => addEffectsFromSource(this.tempCharacter, feat));
+            // Re-apply loadout cards
+            this.tempCharacter.loadout.forEach(card => addEffectsFromSource(this.tempCharacter, card));
+            // Re-apply equipped armor
+            if (currentEquippedArmorId) {
+                const armor = this.tempCharacter.inventory.find(i => i.instanceId === currentEquippedArmorId);
+                if (armor) addEffectsFromSource(this.tempCharacter, armor);
+            }
+            // Re-apply equipped weapons
+            currentEquippedWeaponIds.forEach(weaponId => {
+                const weapon = this.tempCharacter.inventory.find(i => i.instanceId === weaponId);
+                if (weapon) addEffectsFromSource(this.tempCharacter, weapon);
+            });
+            // Re-apply active stance
+            if (currentActiveStance) {
+                const activeStanceData = this.plugin.compendium.stances.find(s => s.name === currentActiveStance);
+                if (activeStanceData) {
+                    const effectSource: DomainCard = { // Cast to DomainCard for addEffectsFromSource
+                        _type: 'domainCard',
+                        id: activeStanceData.name,
+                        name: activeStanceData.name,
+                        description: activeStanceData.description,
+                        effects: activeStanceData.effects,
+                        level: activeStanceData.tier,
+                        domain: 'Stance',
+                        type: 'Ability',
+                        recall: 0,
+                    };
+                    addEffectsFromSource(this.tempCharacter, effectSource);
+                }
+            }
+            // Re-apply conditions
+            currentConditions.forEach(condition => addEffectsFromSource(this.tempCharacter, condition));
+
+
+            // Finally, save the modified and re-effected character.
             this.onSave(this.tempCharacter);
             this.close();
         });
     }
 
-    // Add this new method
-    private drawStances(parent: HTMLElement) {
-        const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId || '');
-        const isMartialArtist = subclass?.name.toLowerCase().includes('martial artist');
-
-        if (!isMartialArtist) {
-            parent.parentElement?.remove();
-            return;
-        }
-
-        if (!this.tempCharacter.equippedStances) {
-            this.tempCharacter.equippedStances = [];
-        }
-
-        const redraw = () => {
-            parent.empty();
-            parent.createEl('p', { text: "Directly manage your Martial Artist's learned stances.", cls: 'setting-item-description' });
-
-            this.tempCharacter.equippedStances?.forEach((stanceName, index) => {
-                new Setting(parent)
-                    .setName(stanceName)
-                    .addExtraButton(btn => btn
-                        .setIcon('trash')
-                        .setTooltip('Remove Stance')
-                        .onClick(() => {
-                            this.tempCharacter.equippedStances?.splice(index, 1);
-                            if (this.tempCharacter.activeStance === stanceName) {
-                                this.tempCharacter.activeStance = '';
-                            }
-                            redraw();
-                        }));
-            });
-
-            const addSetting = new Setting(parent)
-                .setName('Add a Stance');
-
-            const availableStances = this.plugin.compendium.stances
-                .filter(s => !(this.tempCharacter.equippedStances || []).includes(s.name));
-
-            let selectedStance = '';
-            addSetting.addDropdown(dd => {
-                dd.addOption('', '--- Select a Stance to Add ---');
-                availableStances.forEach(s => dd.addOption(s.name, `${s.name} (Tier ${s.tier})`));
-                dd.onChange(val => selectedStance = val);
-            });
-
-            addSetting.addButton(btn => btn
-                .setButtonText('Add')
-                .onClick(() => {
-                    if (selectedStance) {
-                        this.tempCharacter.equippedStances?.push(selectedStance);
-                        redraw();
-                    } else {
-                        new Notice('Please select a stance to add.');
-                    }
-                }));
-        };
-
-        redraw();
-    }
-
-    onClose() {
+    public onClose() { // Changed from 'private' to 'public' to match base Modal class
         this.contentEl.empty();
     }
 
@@ -160,7 +197,6 @@ export class CharacterManagerModal extends Modal {
             }
         });
     }
-
     private createCollapsibleSection(parent: HTMLElement, title: string, defaultOpen: boolean = false): HTMLElement {
         const details = parent.createEl('details', { cls: 'dh-manager-section' });
         details.open = this.sectionStates[title] ?? defaultOpen;
@@ -168,7 +204,6 @@ export class CharacterManagerModal extends Modal {
         summary.createEl('h2', { text: title });
         return details.createDiv();
     }
-
     private drawCoreDetails(parent: HTMLElement) {
         new Setting(parent)
             .setName('Character Name')
@@ -191,10 +226,10 @@ export class CharacterManagerModal extends Modal {
                 .onChange(value => this.tempCharacter.level = parseInt(value) || 1));
 
         new Setting(grid)
-            .setName('Proficiency')
+            .setName('Proficiency (Base)')
             .addText(text => text
-                .setValue(String(this.tempCharacter.proficiency))
-                .onChange(value => this.tempCharacter.proficiency = parseInt(value) || 1));
+                .setValue(String(this.tempCharacter.proficiency.base))
+                .onChange(value => this.tempCharacter.proficiency.base = parseInt(value) || 0));
 
         new Setting(parent)
             .setName('Pronouns (Subject/Object)')
@@ -221,62 +256,221 @@ export class CharacterManagerModal extends Modal {
             }
         );
     }
-
     private drawVitals(parent: HTMLElement) {
+
         const grid = parent.createDiv({ cls: 'is-grid' });
-        new Setting(grid).setName("Max HP").addText(text => text.setValue(String(this.tempCharacter.hitPoints.max)).onChange(v => this.tempCharacter.hitPoints.max = parseInt(v) || 0));
+        new Setting(grid).setName("Max HP (Base)").addText(text => text.setValue(String(this.tempCharacter.hitPoints.max.base)).onChange(v => this.tempCharacter.hitPoints.max.base = parseInt(v) || 0));
         new Setting(grid).setName("Current HP").addText(text => text.setValue(String(this.tempCharacter.hitPoints.current)).onChange(v => this.tempCharacter.hitPoints.current = parseInt(v) || 0));
-        new Setting(grid).setName("Max Stress").addText(text => text.setValue(String(this.tempCharacter.stress.max)).onChange(v => this.tempCharacter.stress.max = parseInt(v) || 0));
+        new Setting(grid).setName("Max Stress (Base)").addText(text => text.setValue(String(this.tempCharacter.stress.max.base)).onChange(v => this.tempCharacter.stress.max.base = parseInt(v) || 0));
         new Setting(grid).setName("Current Stress").addText(text => text.setValue(String(this.tempCharacter.stress.current)).onChange(v => this.tempCharacter.stress.current = parseInt(v) || 0));
-        new Setting(grid).setName("Max Hope").addText(text => text.setValue(String(this.tempCharacter.hope.max)).onChange(v => this.tempCharacter.hope.max = parseInt(v) || 0));
+        new Setting(grid).setName("Max Hope (Base)").addText(text => text.setValue(String(this.tempCharacter.hope.max.base)).onChange(v => this.tempCharacter.hope.max.base = parseInt(v) || 0));
         new Setting(grid).setName("Current Hope").addText(text => text.setValue(String(this.tempCharacter.hope.current)).onChange(v => this.tempCharacter.hope.current = parseInt(v) || 0));
 
         new Setting(grid)
-            .setName("Evasion Modifier")
-            .setDesc("A custom modifier applied to the character's final Evasion score.")
+            .setName("Evasion Override")
+            .setDesc(`Final Value: ${this.tempCharacter.evasion.getValue(this.tempCharacter)}`)
             .addText(text => text
-                .setValue(String(this.tempCharacter.customModifiers?.evasion ?? 0))
+                .setPlaceholder('Empty for auto')
+                .setValue(this.tempCharacter.evasion.overrideValue === null ? '' : String(this.tempCharacter.evasion.overrideValue))
                 .onChange(value => {
-                    if (!this.tempCharacter.customModifiers) this.tempCharacter.customModifiers = {};
-                    this.tempCharacter.customModifiers.evasion = parseInt(value) || 0;
-                }));
-
-        new Setting(grid).setName("Armor Slots (Max)").addText(text => text.setValue(String(this.tempCharacter.armorSlots.max)).onChange(v => this.tempCharacter.armorSlots.max = parseInt(v) || 0));
-        new Setting(grid).setName("Armor Slots (Current)").addText(text => text.setValue(String(this.tempCharacter.armorSlots.current)).onChange(v => this.tempCharacter.armorSlots.current = parseInt(v) || 0));
-
-        new Setting(grid)
-            .setName("Major Threshold Modifier")
-            .setDesc("A custom modifier applied to the character's final Major Threshold.")
-            .addText(text => text
-                .setValue(String(this.tempCharacter.customModifiers?.majorThreshold ?? 0))
-                .onChange(value => {
-                    if (!this.tempCharacter.customModifiers) this.tempCharacter.customModifiers = {};
-                    this.tempCharacter.customModifiers.majorThreshold = parseInt(value) || 0;
+                    if (value.trim() === '') {
+                        this.tempCharacter.evasion.overrideValue = null;
+                    } else {
+                        const num = parseInt(value);
+                        this.tempCharacter.evasion.overrideValue = isNaN(num) ? null : num;
+                    }
+                    this.saveSectionStates();
+                    this.onOpen();
                 }));
 
         new Setting(grid)
-            .setName("Severe Threshold Modifier")
-            .setDesc("A custom modifier applied to the character's final Severe Threshold.")
+            .setName("Armor Score / Slots Override")
+            .setDesc(`Final Value: ${this.tempCharacter.armorSlots.max.getValue(this.tempCharacter)}`)
             .addText(text => text
-                .setValue(String(this.tempCharacter.customModifiers?.severeThreshold ?? 0))
+                .setPlaceholder('Empty for auto')
+                .setValue(this.tempCharacter.armorSlots.max.overrideValue === null ? '' : String(this.tempCharacter.armorSlots.max.overrideValue))
                 .onChange(value => {
-                    if (!this.tempCharacter.customModifiers) this.tempCharacter.customModifiers = {};
-                    this.tempCharacter.customModifiers.severeThreshold = parseInt(value) || 0;
+                    if (value.trim() === '') {
+                        this.tempCharacter.armorSlots.max.overrideValue = null;
+                    } else {
+                        const num = parseInt(value);
+                        this.tempCharacter.armorSlots.max.overrideValue = isNaN(num) ? null : num;
+                    }
+                    this.saveSectionStates();
+                    this.onOpen(); // Redraw to show the new final value
                 }));
+
+        new Setting(grid).setName("Current Armor Slots").addText(text => text.setValue(String(this.tempCharacter.armorSlots.current)).onChange(v => this.tempCharacter.armorSlots.current = parseInt(v) || 0));
+
+        new Setting(grid)
+            .setName("Major Threshold Override")
+            .setDesc(`Final Value: ${this.tempCharacter.damageThresholds.major.getValue(this.tempCharacter)}`)
+            .addText(text => text
+                .setPlaceholder('Empty for auto')
+                .setValue(this.tempCharacter.damageThresholds.major.overrideValue === null ? '' : String(this.tempCharacter.damageThresholds.major.overrideValue))
+                .onChange(value => {
+                    if (value.trim() === '') {
+                        this.tempCharacter.damageThresholds.major.overrideValue = null;
+                    } else {
+                        const num = parseInt(value);
+                        this.tempCharacter.damageThresholds.major.overrideValue = isNaN(num) ? null : num;
+                    }
+                    this.saveSectionStates();
+                    this.onOpen();
+                }));
+
+        new Setting(grid)
+            .setName("Severe Threshold Override")
+            .setDesc(`Final Value: ${this.tempCharacter.damageThresholds.severe.getValue(this.tempCharacter)}`)
+            .addText(text => text
+                .setPlaceholder('Empty for auto')
+                .setValue(this.tempCharacter.damageThresholds.severe.overrideValue === null ? '' : String(this.tempCharacter.damageThresholds.severe.overrideValue))
+                .onChange(value => {
+                    if (value.trim() === '') {
+                        this.tempCharacter.damageThresholds.severe.overrideValue = null;
+                    } else {
+                        const num = parseInt(value);
+                        this.tempCharacter.damageThresholds.severe.overrideValue = isNaN(num) ? null : num;
+                    }
+                    this.saveSectionStates();
+                    this.onOpen();
+                }));
+
+        // Unarmed Damage (Base Flat Bonus)
+        new Setting(grid)
+            .setName('Unarmed Damage (Base Flat Bonus)')
+            .setDesc(`Final Value: ${this.tempCharacter.unarmedDamage.flatBonus.getValue(this.tempCharacter)}`)
+            .addText(text => {
+                text.setValue(String(this.tempCharacter.unarmedDamage.flatBonus.base)).onChange(value => {
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue)) {
+                        this.tempCharacter.unarmedDamage.flatBonus.base = numValue;
+                        this.saveSectionStates();
+                        this.onOpen();
+                    }
+                });
+            });
+
+        // Unarmed Dice Count (Base)
+        new Setting(grid)
+            .setName('Unarmed Dice Count (Base)')
+            .setDesc(`Final Value: ${this.tempCharacter.unarmedDamage.numberOfDice.getValue(this.tempCharacter)}`)
+            .addText(text => {
+                text.setValue(String(this.tempCharacter.unarmedDamage.numberOfDice.base)).onChange(value => {
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue) && numValue > 0) {
+                        this.tempCharacter.unarmedDamage.numberOfDice.base = numValue;
+                        this.saveSectionStates();
+                        this.onOpen();
+                    }
+                });
+            });
     }
 
+    private drawActiveEffects(parent: HTMLElement) {
+        parent.createEl('p', { text: "Here you can see all active mechanical effects on your character from items, features, and other sources. You can temporarily disable an effect here for narrative reasons without unequipping the source.", cls: 'setting-item-description' });
+
+        if (!this.tempCharacter.activeEffects || this.tempCharacter.activeEffects.length === 0) {
+            parent.createEl('p', { text: 'No active effects.', cls: 'dh-empty-text' });
+            return;
+        }
+
+        this.tempCharacter.activeEffects.forEach(effect => {
+            const modSummary = effect.modifications.map(mod => {
+                let str = `${mod.target} ${mod.type} ${JSON.stringify(mod.value)}`;
+                if (mod.condition) {
+                    str += ` when ${mod.condition.target} ${mod.condition.operator} ${JSON.stringify(mod.condition.value)}`;
+                }
+                return str;
+            }).join(', ');
+
+            new Setting(parent)
+                .setName(effect.sourceName)
+                .setDesc(modSummary)
+                .addToggle(toggle => toggle
+                    .setValue(effect.isEnabled)
+                    .onChange(value => {
+                        effect.isEnabled = value;
+                    }));
+        });
+    }
+
+    private drawStances(parent: HTMLElement) {
+        const subclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId || '');
+        const isMartialArtist = subclass?.name.toLowerCase().includes('martial artist');
+
+        if (!isMartialArtist) {
+            parent.parentElement?.remove(); // Remove the entire section if not a Martial Artist
+            return;
+        }
+
+        if (!this.tempCharacter.equippedStances) {
+            this.tempCharacter.equippedStances = [];
+        }
+
+        const redraw = () => {
+            parent.empty();
+            parent.createEl('p', { text: "Directly manage your Martial Artist's learned stances.", cls: 'setting-item-description' });
+
+            this.tempCharacter.equippedStances?.forEach((stanceName, index) => {
+                new Setting(parent)
+                    .setName(stanceName)
+                    .addExtraButton(btn => btn
+                        .setIcon('trash')
+                        .setTooltip('Remove Stance')
+                        .onClick(() => {
+                            this.tempCharacter.equippedStances?.splice(index, 1);
+                            if (this.tempCharacter.activeStance === stanceName) {
+                                this.tempCharacter.activeStance = ''; // Unset active if removed
+                            }
+                            this.saveSectionStates(); // Save state before redraw
+                            this.onOpen(); // Redraw the modal
+                        }));
+            });
+
+            const addSetting = new Setting(parent)
+                .setName('Add a Stance');
+
+            const availableStances = this.plugin.compendium.stances
+                .filter(s => !(this.tempCharacter.equippedStances || []).includes(s.name));
+
+            let selectedStance = '';
+            addSetting.addDropdown(dd => {
+                dd.addOption('', '--- Select a Stance to Add ---');
+                availableStances.forEach(s => dd.addOption(s.name, `${s.name} (Tier ${s.tier})`));
+                dd.onChange(val => selectedStance = val);
+            });
+
+            addSetting.addButton(btn => btn
+                .setButtonText('Add')
+                .onClick(() => {
+                    if (selectedStance) {
+                        this.tempCharacter.equippedStances?.push(selectedStance);
+                        this.saveSectionStates(); // Save state before redraw
+                        this.onOpen(); // Redraw the modal
+                    } else {
+                        new Notice('Please select a stance to add.');
+                    }
+                }));
+        };
+
+        redraw();
+    }
     private drawTraits(parent: HTMLElement) {
         const grid = parent.createDiv({ cls: 'is-grid' });
         TRAIT_NAMES.forEach(traitName => {
             new Setting(grid)
                 .setName(traitName)
                 .addText(text => text
-                    .setValue(String(this.tempCharacter.traits[traitName].value))
-                    .onChange(value => this.tempCharacter.traits[traitName].value = parseInt(value) || 0)
+                    .setValue(String(this.tempCharacter.traits[traitName].base))
+                    .onChange(value => {
+                        this.tempCharacter.traits[traitName].base = parseInt(value) || 0;
+                        this.saveSectionStates(); // Save state before redraw
+                        this.onOpen(); // Redraw to show updated final values
+                    })
                 );
         });
     }
-
     private drawHeritageAndClass(parent: HTMLElement) {
         new Setting(parent)
             .setName('Mixed Ancestry')
@@ -288,7 +482,10 @@ export class CharacterManagerModal extends Modal {
                     if (!value) {
                         this.tempCharacter.ancestryId = this.parentAncestry1 || this.originalAncestryId || '';
                     } else {
-                        this.tempCharacter.ancestryId = this.originalAncestryId;
+                        // If switching to mixed, set ancestryId to a temp name (or leave for user input later)
+                        // It's crucial for CharacterCreator that ancestryId matches the final mixed name.
+                        // Here, we can just clear it and rely on user input for the mixed name.
+                        this.tempCharacter.ancestryId = 'Mixed Ancestry'; // Placeholder
                     }
                     this.saveSectionStates();
                     this.onOpen();
@@ -317,11 +514,12 @@ export class CharacterManagerModal extends Modal {
                 dd.setValue(this.tempCharacter.classId)
                     .onChange(value => {
                         this.tempCharacter.classId = value;
-                        this.tempCharacter.subclassId = '';
+                        this.tempCharacter.subclassId = ''; // Clear subclass when class changes
                         const newClass = this.plugin.compendium.getClass(value);
-                        const newSubclass = this.plugin.compendium.getSubclass('');
+                        // Default spellcast trait to primary subclass if no multiclass, or clear if class has none.
+                        const defaultSubclass = newClass ? this.plugin.compendium.getSubclass(newClass.subclass_1) : null;
                         if (!this.tempCharacter.multiclassClassId) {
-                            this.tempCharacter.spellCastTrait = newSubclass?.spellcast_trait || null;
+                            this.tempCharacter.spellCastTrait = defaultSubclass?.spellcast_trait || null;
                         }
                         this.saveSectionStates();
                         this.onOpen();
@@ -332,7 +530,7 @@ export class CharacterManagerModal extends Modal {
             .setName('Subclass')
             .addDropdown(dd => {
                 const charClass = this.plugin.compendium.getClass(this.tempCharacter.classId);
-                dd.addOption('', 'None');
+                dd.addOption('', 'None'); // Option for no subclass selected
                 if (charClass) {
                     const subclasses = [this.plugin.compendium.getSubclass(charClass.subclass_1), this.plugin.compendium.getSubclass(charClass.subclass_2)].filter(s => s);
                     subclasses.forEach(subclass => {
@@ -344,11 +542,10 @@ export class CharacterManagerModal extends Modal {
                         this.tempCharacter.subclassId = value;
                         const newSubclass = this.plugin.compendium.getSubclass(value);
 
-                        // If single-classed, automatically update the spellcasting trait.
+                        // Logic to determine spellcast trait based on primary and multiclass
                         if (!this.tempCharacter.multiclassClassId) {
                             this.tempCharacter.spellCastTrait = newSubclass?.spellcast_trait || null;
                         } else {
-                            // If multiclassed, re-evaluate available traits and reset if necessary.
                             const primarySubclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
                             const multiSubclass = this.plugin.compendium.getSubclass(this.tempCharacter.multiclassSubclassId || '');
                             const suggestedTraits = new Set<string>();
@@ -356,14 +553,15 @@ export class CharacterManagerModal extends Modal {
                             if (multiSubclass?.spellcast_trait) suggestedTraits.add(multiSubclass.spellcast_trait);
 
                             if (!this.tempCharacter.spellCastTrait || !suggestedTraits.has(this.tempCharacter.spellCastTrait)) {
-                                this.tempCharacter.spellCastTrait = Array.from(suggestedTraits)[0] || null;
+                                this.tempCharacter.spellCastTrait = Array.from(suggestedTraits)[0] || null; // Default to first suggested
                             }
                         }
                         this.saveSectionStates();
-                        this.onOpen();
+                        this.onOpen(); // Redraw to update related sections if needed
                     });
             });
 
+        // Determine suggested spellcasting traits from current primary and multiclass subclasses
         const primarySubclass = this.plugin.compendium.getSubclass(this.tempCharacter.subclassId);
         const multiSubclass = this.tempCharacter.multiclassSubclassId ? this.plugin.compendium.getSubclass(this.tempCharacter.multiclassSubclassId) : null;
 
@@ -392,42 +590,55 @@ export class CharacterManagerModal extends Modal {
                     });
             });
     }
-
     private drawSingleAncestryEditor(parent: HTMLElement) {
         new Setting(parent)
             .setName('Ancestry')
             .addDropdown(dd => {
                 this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
                 dd.setValue(this.tempCharacter.ancestryId)
-                    .onChange(value => this.tempCharacter.ancestryId = value);
+                    .onChange(value => {
+                        this.tempCharacter.ancestryId = value;
+                        this.saveSectionStates();
+                        this.onOpen();
+                    });
             });
     }
-
     private drawMixedAncestryEditor(parent: HTMLElement) {
         new Setting(parent)
             .setName('Heritage Name')
-            .setDesc('e.g., Goblin-Orc, Half-Elf')
+            .setDesc('e.g., Goblin-Orc, Half-Elf. This will be your character\'s ancestry name.')
             .addText(text => text
                 .setValue(this.tempCharacter.ancestryId)
                 .onChange(value => this.tempCharacter.ancestryId = value));
 
         new Setting(parent)
             .setName('First Ancestry (Feature 1)')
+            .setDesc('You will gain the first feature from this ancestry.')
             .addDropdown(dd => {
+                dd.addOption('', '--- Select ---');
                 this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
                 dd.setValue(this.parentAncestry1)
-                    .onChange(val => this.parentAncestry1 = val);
+                    .onChange(val => {
+                        this.parentAncestry1 = val;
+                        this.saveSectionStates();
+                        this.onOpen();
+                    });
             });
 
         new Setting(parent)
             .setName('Second Ancestry (Feature 2)')
+            .setDesc('You will gain the second feature from this ancestry.')
             .addDropdown(dd => {
+                dd.addOption('', '--- Select ---');
                 this.plugin.compendium.ancestries.forEach(a => dd.addOption(a.name, a.name));
                 dd.setValue(this.parentAncestry2)
-                    .onChange(val => this.parentAncestry2 = val);
+                    .onChange(val => {
+                        this.parentAncestry2 = val;
+                        this.saveSectionStates();
+                        this.onOpen();
+                    });
             });
     }
-
     private drawExperiences(parent: HTMLElement) {
         const experiencesContainer = parent.createDiv();
 
@@ -450,19 +661,20 @@ export class CharacterManagerModal extends Modal {
                         .setTooltip('Remove Experience')
                         .onClick(() => {
                             this.tempCharacter.experiences.splice(index, 1);
-                            redraw();
+                            this.saveSectionStates(); // Save state before redraw
+                            this.onOpen(); // Redraw the modal
                         }));
                 setting.nameEl.setText(`Experience ${index + 1}`);
             });
 
             new Setting(parent).addButton(btn => btn.setButtonText("Add Experience").onClick(() => {
                 this.tempCharacter.experiences.push({ _type: 'experience', id: uuidv4(), name: '', value: 0 });
-                redraw();
+                this.saveSectionStates(); // Save state before redraw
+                this.onOpen(); // Redraw the modal
             })).settingEl.style.borderTop = 'none';
         };
         redraw();
     }
-
     private drawCardsAndFeatures(parent: HTMLElement) {
         const container = parent.createDiv();
 
@@ -475,6 +687,7 @@ export class CharacterManagerModal extends Modal {
                 .onClick(() => {
                     this.saveSectionStates();
                     new CardSwapModal(this.app, this.plugin, this.tempCharacter, (updatedChar) => {
+                        // After CardSwapModal closes and updates tempChar, re-open this modal to refresh
                         this.onOpen();
                     }).open();
                 }));
@@ -484,7 +697,6 @@ export class CharacterManagerModal extends Modal {
         if (!this.tempCharacter.loadout) this.tempCharacter.loadout = [];
         if (!this.tempCharacter.vault) this.tempCharacter.vault = [];
 
-        // Loadout List
         const loadoutSection = cardListsContainer.createDiv();
         loadoutSection.createEl('h4', { text: `Loadout (${this.tempCharacter.loadout.length}/5)` });
         const loadoutList = this.createDropZone(loadoutSection, 'loadout');
@@ -496,7 +708,6 @@ export class CharacterManagerModal extends Modal {
             });
         }
 
-        // Vault List
         const vaultSection = cardListsContainer.createDiv();
         vaultSection.createEl('h4', { text: `Vault (${this.tempCharacter.vault.length})` });
         const vaultList = this.createDropZone(vaultSection, 'vault');
@@ -508,7 +719,6 @@ export class CharacterManagerModal extends Modal {
             });
         }
 
-        // Inherent Features (Read-only)
         const featuresSection = container.createDiv({ cls: 'dh-manager-readonly-features' });
         featuresSection.createEl('h3', { text: 'Inherent Features' });
         if (!this.tempCharacter.features || this.tempCharacter.features.length === 0) {
@@ -523,7 +733,6 @@ export class CharacterManagerModal extends Modal {
             });
         }
     }
-
     private createDropZone(parent: HTMLElement, type: 'loadout' | 'vault'): HTMLElement {
         const dropZone = parent.createDiv({ cls: 'dh-manager-card-list' });
         dropZone.dataset.listType = type;
@@ -562,14 +771,13 @@ export class CharacterManagerModal extends Modal {
             if (cardIndex > -1) {
                 const [cardToMove] = sourceList.splice(cardIndex, 1);
                 targetList.push(cardToMove);
-                this.saveSectionStates(); // Save state before re-rendering
-                this.onOpen(); // Re-render the modal
+                this.saveSectionStates();
+                this.onOpen();
             }
         });
 
         return dropZone;
     }
-
     private createCardSummary(parent: HTMLElement, card: DomainCard, listType: 'loadout' | 'vault') {
         const cardEl = parent.createDiv({ cls: 'dh-manager-card-summary' });
         cardEl.draggable = true;
@@ -593,7 +801,6 @@ export class CharacterManagerModal extends Modal {
             cardEl.removeClass('is-dragging');
         });
     }
-
     private drawDetails(parent: HTMLElement) {
         const container = parent.createDiv();
         container.createEl('h3', { text: 'Background' });
@@ -618,7 +825,6 @@ export class CharacterManagerModal extends Modal {
                     .onChange(val => conn.answer = val));
         });
     }
-
     private drawInventory(parent: HTMLElement) {
         new Setting(parent)
             .setName('Gold (Handfuls/Bags/Chests)')

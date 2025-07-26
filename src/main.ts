@@ -1,6 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu, DropdownComponent, ButtonComponent, addIcon } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter, AllCompendiumData } from './types';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter, AllCompendiumData, ICalculatedStat, DomainCard, InherentFeature, Condition } from './types'; // Import necessary types for hydration and effect re-application
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './views/EncounterBuilderView';
 import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './views/CharacterSheetView';
 import { DaggerheartCompendium } from './services/compendium';
@@ -17,6 +17,10 @@ import * as dddice from './services/dddice-service';
 import type { ITheme } from './services/dddice-service';
 import { DddiceActivationModal } from './services/dddice-activation';
 import { RollCompletedPayload, RollComponent } from './DiceTray';
+// Import hydration and effect management functions
+import { initializeCharacter } from './services/effects-engine';
+import { addEffectsFromSource, removeEffectsFromSource } from './services/effects-manager';
+import { CalculatedStat } from './services/calculated-stat';
 
 declare module "obsidian" {
     interface Workspace {
@@ -84,7 +88,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         this.compendium = new DaggerheartCompendium(this);
         await this.compendium.load();
-        await this.loadCharacters();
+        await this.loadCharacters(); // MODIFIED: This will now hydrate characters
         await this.loadEncounters();
 
         this.isDiceRollerEnabled = this.settings.enableDiceRoller && !!(this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api;
@@ -187,12 +191,19 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
+    // MODIFIED: Ensure characters are hydrated when loaded
     private async loadCharacters() {
         const path = `${this.manifest.dir}/user_data/characters.json`;
         if (await this.app.vault.adapter.exists(path)) {
             try {
                 const data = await this.app.vault.adapter.read(path);
-                this.characters = JSON.parse(data);
+                const rawCharacters: Character[] = JSON.parse(data);
+                this.characters = rawCharacters.map(charData => {
+                    initializeCharacter(charData); // Hydrate each character
+                    this.reapplyAllActiveEffects(charData); // Re-apply effects after hydration
+                    return charData;
+                });
+
                 if (this.characters.length > 0 && !this.activeCharacterId) {
                     this.activeCharacterId = this.characters[0].id;
                 }
@@ -202,6 +213,14 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             }
         } else {
             this.characters = [];
+        }
+        // Ensure active character is also properly set and effects re-applied if it exists
+        const activeChar = this.getActiveCharacter();
+        if (activeChar) {
+            // No need to re-hydrate here, as loadCharacters already hydrated.
+            // But if active character was loaded and then something else changed it,
+            // this ensures its internal state is synced with modifiers.
+            this.reapplyAllActiveEffects(activeChar);
         }
     }
 
@@ -232,10 +251,22 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     public getCharacters(): Character[] { return this.characters; }
     public getCharacter(id: string): Character | undefined { return this.characters.find(c => c.id === id); }
+
+    // MODIFIED: Ensure active character is always hydrated
     public getActiveCharacter(): Character | undefined {
         if (!this.activeCharacterId) return undefined;
-        return this.characters.find(c => c.id === this.activeCharacterId);
+        const activeChar = this.characters.find(c => c.id === this.activeCharacterId);
+
+        // If found and not an instance of CalculatedStat (meaning it's a plain object), hydrate it.
+        // We check a specific property like `evasion` to infer if it's hydrated.
+        if (activeChar && !(activeChar.evasion instanceof CalculatedStat)) {
+            console.warn("Daggerheart: Active character found unhydrated. Hydrating now...");
+            initializeCharacter(activeChar);
+            this.reapplyAllActiveEffects(activeChar); // Re-apply effects after hydration
+        }
+        return activeChar;
     }
+
     public getActiveCharacterId(): string | null { return this.activeCharacterId; }
 
     public async updateDddiceParticipantName() {
@@ -243,21 +274,31 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             return;
         }
 
-        const activeCharacter = this.getActiveCharacter();
+        const activeCharacter = this.getActiveCharacter(); // This will return hydrated char
         const characterName = activeCharacter ? activeCharacter.name : 'Observer';
 
         await dddice.updateParticipantName(this.settings.dddice, characterName);
     }
 
+    // MODIFIED: Ensure character is hydrated when set as active
     public async setActiveCharacterId(id: string | null) {
         this.activeCharacterId = id;
         this.settings.activeCharacterId = id;
         await this.saveSettings();
+        // The getActiveCharacter() call in CharacterSheetView's draw() will handle hydration.
         this.app.workspace.trigger('daggerheart-character-update');
         await this.updateDddiceParticipantName();
     }
 
+    // MODIFIED: Ensure updated character is hydrated and effects re-applied
     public async updateCharacter(character: Character) {
+        // Ensure character is hydrated before storing/updating in the list.
+        // This is important if `character` comes from a modal that modified raw properties
+        // without full hydration.
+        // Re-initialize and re-apply effects to ensure consistency.
+        initializeCharacter(character); // Re-hydrate to ensure all CalculatedStat instances are correct
+        this.reapplyAllActiveEffects(character); // Re-apply all effects to reflect current base stats
+
         const index = this.characters.findIndex(c => c.id === character.id);
         if (index > -1) {
             this.characters[index] = character;
@@ -471,8 +512,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         let total: number | null = null;
 
         const performRoll = async (isRetry: boolean = false) => {
-            const activeChar = this.getActiveCharacter();
-            const rollerName = activeChar ? activeChar.name : undefined;
+            const activeChar = this.getActiveCharacter(); // This will retrieve a hydrated char
+            const rollerName = activeChar ? activeChar.name : 'Observer';
 
             if (this.settings.diceProvider === 'dddice') {
                 try {
@@ -585,7 +626,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                             if (hopeIndex > -1) rollerResults.splice(hopeIndex, 1);
 
                             const fearIndex = rollerResults.indexOf(fearDie);
-                            if (fearIndex > -1) rollerResults.splice(fearIndex, 1);
+                            if (fearIndex > -1) rollerResults.splice(fearDie, 1);
                         }
 
                         rollerResults.forEach((res: any) => {
@@ -632,6 +673,105 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
 
         return total;
+    }
+
+    // NEW HELPER: Gathers all CalculatedStat instances from a character object
+    // This is a duplicate from effects-manager.ts, consider refactoring to a shared utility if possible.
+    // However, for immediate fix, it's placed here.
+    private gatherAllStatsFromCharacter(obj: any, collection: ICalculatedStat[]): void {
+        if (!obj) return;
+
+        // Check if it's an instance of CalculatedStat
+        if (obj instanceof CalculatedStat) {
+            collection.push(obj);
+            return;
+        }
+
+        // Recursively traverse objects and arrays
+        if (typeof obj === 'object') {
+            for (const key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    // Avoid circular references or known non-stat objects for efficiency
+                    if (key === 'character' || key === '_modifiers') continue;
+                    this.gatherAllStatsFromCharacter(obj[key], collection);
+                }
+            }
+        } else if (Array.isArray(obj)) {
+            for (const item of obj) {
+                this.gatherAllStatsFromCharacter(item, collection);
+            }
+        }
+    }
+
+    // NEW HELPER: Reapply all effects for a character
+    private reapplyAllActiveEffects(character: Character): void {
+        // Step 1: Clear all existing modifiers from all CalculatedStats on the character.
+        // This is done by iterating through all stats and calling removeModifiersBySource with a special key.
+        const allStats: ICalculatedStat[] = [];
+        this.gatherAllStatsFromCharacter(character, allStats);
+
+        // This effectively clears all modifiers from all CalculatedStats on the character
+        // Also clears the activeEffects array, as we are rebuilding it.
+        removeEffectsFromSource(character, 'ALL_SOURCES');
+
+        // Step 2: Re-apply effects from all active sources on the character.
+        // This process iterates through active effects, re-parses their modifications,
+        // and re-registers them with the *current* CalculatedStat instances.
+
+        // Features
+        character.features.forEach(feat => addEffectsFromSource(character, feat));
+
+        // Loadout cards
+        character.loadout.forEach(card => addEffectsFromSource(character, card));
+
+        // Equipped Armor
+        if (character.equippedArmorId) {
+            const armor = character.inventory.find(i => i.instanceId === character.equippedArmorId);
+            if (armor) addEffectsFromSource(character, armor);
+        }
+
+        // Equipped Weapons
+        character.equippedWeaponIds.forEach(weaponId => {
+            const weapon = character.inventory.find(i => i.instanceId === weaponId);
+            if (weapon) addEffectsFromSource(character, weapon);
+        });
+
+        // Active Stance
+        if (character.activeStance) {
+            const activeStanceData = this.compendium.stances.find(s => s.name === character.activeStance);
+            if (activeStanceData) {
+                const effectSource: DomainCard = {
+                    _type: 'domainCard',
+                    id: activeStanceData.name,
+                    name: activeStanceData.name,
+                    description: activeStanceData.description,
+                    effects: activeStanceData.effects,
+                    level: activeStanceData.tier,
+                    domain: 'Stance',
+                    type: 'Ability',
+                    recall: 0,
+                };
+                addEffectsFromSource(character, effectSource);
+            }
+        }
+
+        // Conditions
+        character.conditions.forEach(condition => addEffectsFromSource(character, condition));
+
+        // Any other persistent sources of effects (e.g., active beastform, permanent buffs)
+        if (character.activeBeastformName) {
+            const beastform = this.compendium.beastforms.find(b => b.name === character.activeBeastformName);
+            if (beastform) {
+                const effectSource: InherentFeature = {
+                    id: beastform.name,
+                    name: beastform.name,
+                    description: 'Active Beastform',
+                    source: 'Class', // Or a custom source type like 'Beastform'
+                    effects: beastform.effects
+                };
+                addEffectsFromSource(character, effectSource);
+            }
+        }
     }
 
 

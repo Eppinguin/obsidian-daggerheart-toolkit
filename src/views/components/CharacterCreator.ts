@@ -1,15 +1,16 @@
-// src/views/components/CharacterCreator.ts
 import { App, Menu, MenuItem, Notice, Setting, TFile, setIcon } from 'obsidian';
 import { v4 as uuidv4 } from 'uuid';
 import DaggerheartStatblockPlugin from '../../main';
 import {
-    Character, Trait, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform, InherentFeature, Stances
+    Character, InventoryItem, CompendiumFeature, CompendiumItem, DomainCard, JsonAncestry, ArmorItem, WeaponItem, AvatarTransform, InherentFeature, Stances
 } from '../../types';
 import { AddItemModal, CompendiumCreatorModal, ImportExportModal, ItemEditModal } from '../../modals';
 import { renderMarkdown, renderRollableContent } from '../../rendering/ui-helpers';
 import { createAvatarEditor } from "./AvatarEditor";
 import { CharacterSheetView } from '../CharacterSheetView';
 import { ContentType } from '../../services/export-import';
+import { addEffectsFromSource } from '../../services/effects-manager';
+import { initializeCharacter } from '../../services/effects-engine';
 
 const TRAIT_VALUES = [2, 1, 1, 0, 0, -1];
 const TRAIT_NAMES: (keyof Character['traits'])[] = ['Strength', 'Agility', 'Finesse', 'Instinct', 'Presence', 'Knowledge'];
@@ -34,7 +35,7 @@ type CreatorState = {
     stanceChoices: string[];
     potionChoice: 'health' | 'stamina';
     connections: string[];
-    additionalItems?: InventoryItem[];
+    additionalItems?: any[]; // Holds raw item data before initialization
     avatarUrl?: string;
     avatarTransform?: AvatarTransform;
     selectedClassItem: string | null;
@@ -659,6 +660,7 @@ export class CharacterCreator {
                 } else {
                     customCard.classList.remove('is-selected');
                 }
+                // No redraw here, as it would lose focus on the input
             });
 
             customCard.addEventListener('click', () => {
@@ -667,7 +669,10 @@ export class CharacterCreator {
                 if (this.creatorState.customClassItem) {
                     customCard.classList.add('is-selected');
                 }
-                this.redrawCreatorStep();
+                // Only redraw if a value exists or if selecting a blank custom card
+                if (!this.creatorState.customClassItem) {
+                    this.redrawCreatorStep();
+                }
             });
         }
 
@@ -680,47 +685,52 @@ export class CharacterCreator {
         const addItemContainer = parent.createDiv({ cls: 'dh-add-item-container' });
         const addItemButton = addItemContainer.createEl('button', { cls: 'mod-cta', text: 'Add Additional Item' });
         addItemButton.addEventListener('click', () => {
-            const tempChar: Character = {
+            // MODIFICATION: The temporary character for modals doesn't need full hydration for `additionalItems`.
+            // The items added here will be raw-like and get hydrated when the final character is.
+            const rawTempChar = {
                 id: 'temp-character',
                 'dg-character': true,
                 _type: 'character',
                 name: this.creatorState.name || 'New Character',
                 level: 1,
-                proficiency: 1,
                 pronouns: { _type: 'pronouns', subject: 'they', object: 'them' },
-                ancestryId: this.creatorState.ancestryId || '',
-                communityId: this.creatorState.communityId || '',
-                classId: this.creatorState.classId || '',
-                subclassId: this.creatorState.subclassId || '',
+                ancestryId: '', communityId: '', classId: '', subclassId: '',
+                traits: {}, gold: { _type: 'gold', handfuls: 0, bags: 0, chests: 0 },
+                experiences: [], features: [], loadout: [], vault: [],
+                inventory: this.creatorState.additionalItems || [], // Provide the raw additional items
+                equippedArmorId: null, equippedWeaponIds: [],
+                levelUpHistory: {}, conditions: [], activeEffects: [],
+                proficiency: 1,
                 evasion: 0,
-                traits: {} as any,
-                hitPoints: { _type: 'dynamicResource', max: 0, current: 0 },
-                stress: { _type: 'dynamicResource', max: 0, current: 0 },
-                hope: { _type: 'dynamicResource', max: 0, current: 0 },
-                armorSlots: { _type: 'dynamicResource', max: 0, current: 0 },
-                damageThresholds: { _type: 'damageThresholds', major: 0, severe: 0 },
-                gold: { _type: 'gold', handfuls: 0, bags: 0, chests: 0 },
-                experiences: [],
-                features: [],
-                loadout: [],
-                vault: [],
-                inventory: this.creatorState.additionalItems || [],
-                equippedArmorId: null,
-                equippedWeaponIds: [],
-                levelUpHistory: {},
-                conditions: [],
+                hitPoints: { current: 0, max: { base: 0 } },
+                stress: { current: 0, max: { base: 0 } },
+                hope: { current: 0, max: { base: 0 } },
+                armorSlots: { current: 0, max: { base: 0 } },
+                damageThresholds: { major: { base: 0 }, severe: { base: 0 } },
+                unarmedDamage: 1, // Add unarmedDamage with a base number
             };
 
-            new AddItemModal(
-                this.app,
-                this.plugin,
-                tempChar,
+            // This tempChar for the modal is not fully hydrated,
+            // so ItemEditModal's convertToInventoryItem still handles hydration.
+            const tempChar = rawTempChar as unknown as Character;
+
+
+            new AddItemModal(this.app, this.plugin, tempChar,
                 (item: CompendiumItem) => {
-                    let inventoryItem: InventoryItem;
+                    let inventoryItemData: any; // Use 'any' as it's an intermediate raw-like structure
 
                     if (item._type === 'weapon') {
-                        const [damageDice, damageType] = (item.damage || 'd6').split(' ');
-                        inventoryItem = {
+                        const [rawDamageDicePart, rawDamageTypePart] = (item.damage || 'd6 phy').split(' ');
+                        let baseDice = rawDamageDicePart;
+                        let baseModifier = 0;
+                        const modifierMatch = rawDamageDicePart.match(/([+-]\d+)$/);
+                        if (modifierMatch) {
+                            baseModifier = parseInt(modifierMatch[1]);
+                            baseDice = rawDamageDicePart.replace(modifierMatch[0], '');
+                        }
+
+                        // Store raw values that initializeInventoryItem will later hydrate
+                        inventoryItemData = {
                             _type: 'weapon',
                             instanceId: uuidv4(),
                             quantity: 1,
@@ -728,31 +738,31 @@ export class CharacterCreator {
                             tier: parseInt(item.tier || '1'),
                             trait: item.trait || 'Strength',
                             range: item.range || 'Melee',
-                            damage: item.damage || 'd6',
                             burden: (item.burden || 'One-Handed') as 'One-Handed' | 'Two-Handed',
                             primaryOrSecondary: (item.primary_or_secondary || 'Primary') as 'Primary' | 'Secondary',
-                            damageDice,
-                            damageType: damageType || 'phy',
+                            // Pass the raw damage string, initializeInventoryItem will parse it
+                            damage: item.damage || 'd6 phy',
                             features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
                             description: item.feat_text,
                             isCustom: item.isCustom
                         };
                     } else if (item._type === 'armor') {
                         const [major, severe] = (item.base_thresholds || '1 / 2').split('/').map(s => parseInt(s.trim()));
-                        inventoryItem = {
+                        // Store raw numbers for hydration
+                        inventoryItemData = {
                             _type: 'armor',
                             instanceId: uuidv4(),
                             quantity: 1,
                             name: item.name,
                             tier: parseInt(item.tier || '1'),
-                            baseScore: parseInt(item.base_score || '1'),
-                            baseThresholds: { major, severe },
+                            baseScore: parseInt(item.base_score || '1'), // Raw number
+                            baseThresholds: { major, severe }, // Raw numbers
                             features: item.feat_name ? [{ name: item.feat_name, description: item.feat_text || '' }] : [],
                             description: item.feat_text,
                             isCustom: item.isCustom
                         };
                     } else if (item._type === 'consumable') {
-                        inventoryItem = {
+                        inventoryItemData = {
                             _type: 'consumable',
                             instanceId: uuidv4(),
                             quantity: 1,
@@ -762,7 +772,7 @@ export class CharacterCreator {
                             isCustom: item.isCustom
                         };
                     } else {
-                        inventoryItem = {
+                        inventoryItemData = {
                             _type: 'item',
                             instanceId: uuidv4(),
                             quantity: 1,
@@ -775,21 +785,21 @@ export class CharacterCreator {
                     if (!this.creatorState.additionalItems) {
                         this.creatorState.additionalItems = [];
                     }
-                    this.creatorState.additionalItems.push(inventoryItem);
+                    // Add the raw-like item data. It will be hydrated during finalizeCharacter.
+                    this.creatorState.additionalItems.push(inventoryItemData);
 
                     this.redrawCreatorStep();
                 },
                 () => {
-                    new ItemEditModal(
-                        this.app,
-                        this.plugin,
-                        tempChar,
-                        null,
-                        (item: InventoryItem) => {
+                    // This callback is for adding a *new custom item*.
+                    // ItemEditModal's convertToInventoryItem will handle hydration.
+                    new ItemEditModal(this.app, this.plugin, tempChar, null,
+                        (newItem: InventoryItem) => {
                             if (!this.creatorState.additionalItems) {
                                 this.creatorState.additionalItems = [];
                             }
-                            this.creatorState.additionalItems.push(item);
+                            // Add the already hydrated item from ItemEditModal
+                            this.creatorState.additionalItems.push(newItem);
                             this.redrawCreatorStep();
                         }
                     ).open();
@@ -815,14 +825,21 @@ export class CharacterCreator {
                     cls: 'dh-item-type-badge'
                 });
 
+                // Displaying details for raw items (before full hydration)
                 if (item._type === 'weapon') {
+                    // Check if damageComponents exist (meaning it's already hydrated) or if raw properties exist
+                    const tier = item.tier || (item.damageComponents?.tier);
+                    const trait = item.trait || (item.damageComponents?.trait);
+                    const range = item.range || (item.damageComponents?.range);
                     nameContainer.createEl('span', {
-                        text: `T${item.tier} ${item.trait} ${item.range}`,
+                        text: `T${tier} ${trait} ${range}`,
                         cls: 'dh-item-details'
                     });
                 } else if (item._type === 'armor') {
+                    const tier = item.tier || (item.baseScore?.tier);
+                    const baseScore = item.baseScore || (item.baseScore?.base); // Could be CalculatedStat or raw number
                     nameContainer.createEl('span', {
-                        text: `T${item.tier} AS: ${item.baseScore}`,
+                        text: `T${tier} AS: ${baseScore}`,
                         cls: 'dh-item-details'
                     });
                 }
@@ -840,7 +857,7 @@ export class CharacterCreator {
                         cls: 'dh-item-description'
                     });
                 }
-
+                // Features display might need to be adjusted if 'features' is not always present or is structured differently on raw items
                 if ('features' in item && item.features && item.features.length > 0) {
                     const featureContainer = itemEl.createDiv({
                         cls: 'dh-item-feature',
@@ -1125,78 +1142,65 @@ export class CharacterCreator {
             return;
         }
 
-        const charClass = this.plugin.compendium.getClass(partialChar.classId);
-        const ancestry = this.plugin.compendium.getAncestry(finalAncestryId);
-        const community = this.plugin.compendium.getCommunity(partialChar.communityId);
-        const subclass = this.plugin.compendium.getSubclass(partialChar.subclassId);
+        const charClass = this.plugin.compendium.getClass(partialChar.classId!);
+        const ancestry = this.plugin.compendium.getAncestry(finalAncestryId!);
+        const community = this.plugin.compendium.getCommunity(partialChar.communityId!);
+        const subclass = this.plugin.compendium.getSubclass(partialChar.subclassId!);
         const rawArmor = this.plugin.compendium.armors.find(a => a.name === partialChar.startingArmorId) as ArmorItem | undefined;
-        const rawWeapons = partialChar.startingWeaponIds.map(name => this.plugin.compendium.weapons.find(w => w.name === name)).filter(w => w) as WeaponItem[];
+        const rawWeapons = partialChar.startingWeaponIds!.map(name => this.plugin.compendium.weapons.find(w => w.name === name)).filter(w => w) as WeaponItem[];
 
         if (!charClass || !ancestry || !community || !rawArmor || !subclass || rawWeapons.length === 0) {
             new Notice("Compendium data missing. Cannot create character.");
             return;
         }
 
-        const finalTraits: { [key in keyof Character['traits']]: Trait } = {} as any;
-        for (const key of TRAIT_NAMES) {
-            finalTraits[key] = { _type: 'trait', value: partialChar.traits[key] ?? 0, locked: false };
-        }
-
-        const [majorStr, severeStr] = rawArmor.base_thresholds.split(' / ');
-        const startingArmor: InventoryItem = {
-            _type: 'armor', instanceId: uuidv4(), quantity: 1, name: rawArmor.name, tier: parseInt(rawArmor.tier),
-            baseScore: parseInt(rawArmor.base_score), baseThresholds: { major: parseInt(majorStr), severe: parseInt(severeStr) },
-            features: rawArmor.feat_name ? [{ name: rawArmor.feat_name, description: rawArmor.feat_text || '' }] : [],
-            description: rawArmor.feat_text || '', isCustom: rawArmor.isCustom,
-        };
-
-        const standardInventory: InventoryItem[] = [
-            { _type: 'item', name: 'Torch', instanceId: uuidv4(), quantity: 1, isCustom: this.plugin.compendium.items.find(i => i.name === 'Torch')?.isCustom },
-            { _type: 'item', name: '50ft of Rope', instanceId: uuidv4(), quantity: 1, isCustom: this.plugin.compendium.items.find(i => i.name === '50ft of Rope')?.isCustom },
-        ];
-        if (partialChar.potionChoice === 'health') {
-            const potion = this.plugin.compendium.items.find(i => i.name === 'Minor Health Potion');
-            standardInventory.push({ _type: 'item', name: 'Minor Health Potion', instanceId: uuidv4(), quantity: 1, isCustom: potion?.isCustom });
-        } else {
-            const potion = this.plugin.compendium.items.find(i => i.name === 'Minor Stamina Potion');
-            standardInventory.push({ _type: 'item', name: 'Minor Stamina Potion', instanceId: uuidv4(), quantity: 1, isCustom: potion?.isCustom });
-        }
-
-        const startingWeapons: InventoryItem[] = rawWeapons.map(w => {
-            const [damageDice, damageType] = w.damage.split(' ');
-            return ({
-                _type: 'weapon', instanceId: uuidv4(), quantity: 1, name: w.name, tier: parseInt(w.tier),
-                primaryOrSecondary: w.primary_or_secondary as 'Primary' | 'Secondary', trait: w.trait, range: w.range,
-                damage: w.damage, damageDice: damageDice, damageType: damageType, burden: w.burden as 'One-Handed' | 'Two-Handed',
-                features: w.feat_name ? [{ name: w.feat_name, description: w.feat_text || '' }] : [],
-                description: w.feat_text || '', isCustom: w.isCustom,
-            });
+        // --- STEP 1: ASSEMBLE THE BLUEPRINT (rawCharData) ---
+        const finalTraits: any = {};
+        TRAIT_NAMES.forEach(key => {
+            finalTraits[key] = partialChar.traits![key] ?? 0; // Keep as number for now
         });
 
-        const initialInventory: InventoryItem[] = [];
+        const [majorStr, severeStr] = rawArmor.base_thresholds.split(' / ');
 
-        if (partialChar.selectedClassItem) {
-            const itemName = partialChar.selectedClassItem;
-            const item = this.plugin.compendium.items.find(i => i.name.toLowerCase() === itemName.trim().toLowerCase());
-            initialInventory.push({
-                _type: 'item' as 'item',
-                name: itemName.trim(),
-                instanceId: uuidv4(),
-                quantity: 1,
-                isCustom: item?.isCustom
-            });
-        } else if (partialChar.customClassItem && partialChar.customClassItem.trim()) {
-            const customItemName = partialChar.customClassItem.trim();
-            const capitalizedCustomItemName = customItemName.charAt(0).toUpperCase() + customItemName.slice(1);
-            initialInventory.push({
-                _type: 'item' as 'item',
-                name: capitalizedCustomItemName,
-                instanceId: uuidv4(),
-                quantity: 1,
-                isCustom: true
-            });
-        }
+        const startingArmorData = {
+            _type: 'armor', instanceId: uuidv4(), quantity: 1, name: rawArmor.name, tier: parseInt(rawArmor.tier),
+            baseScore: parseInt(rawArmor.base_score), // Keep as number
+            baseThresholds: { major: parseInt(majorStr), severe: parseInt(severeStr) }, // Keep as numbers
+            features: rawArmor.feat_name ? [{ name: rawArmor.feat_name, description: rawArmor.feat_text || '', effects: rawArmor.effects }] : [],
+            description: rawArmor.feat_text || '', isCustom: rawArmor.isCustom, effects: rawArmor.effects,
+        };
 
+        const startingWeaponsData = rawWeapons.map(w => {
+            const [rawDamageDicePart, rawDamageTypePart] = w.damage.split(' ');
+            let baseDice = rawDamageDicePart;
+            let baseModifier = 0;
+
+            const modifierMatch = rawDamageDicePart.match(/([+-]\d+)$/);
+            if (modifierMatch) {
+                baseModifier = parseInt(modifierMatch[1]);
+                baseDice = rawDamageDicePart.replace(modifierMatch[0], '');
+            }
+
+            // Now, pass these components as numbers. initializeInventoryItem will convert them.
+            return {
+                _type: 'weapon', instanceId: uuidv4(), quantity: 1, name: w.name, tier: parseInt(w.tier),
+                primaryOrSecondary: w.primary_or_secondary as 'Primary' | 'Secondary', trait: w.trait, range: w.range,
+                // Provide the base numeric components for hydration
+                damageComponents: {
+                    baseDice: baseDice,
+                    baseModifier: baseModifier, // This will become the base of flatBonus CalculatedStat
+                    damageType: rawDamageTypePart,
+                    // These will be hydrated by initializeInventoryItem
+                    numberOfDice: 1, // Raw number for initial hydration
+                    flatBonus: baseModifier, // Raw number for initial hydration
+                },
+                features: w.feat_name ? [{ name: w.feat_name, description: w.feat_text || '', effects: w.effects }] : [],
+                description: w.feat_text || '', isCustom: w.isCustom, effects: w.effects,
+            };
+        });
+
+        const standardInventoryData: any[] = [/* ... */]; // Ensure these also have base numeric values if they have CalculatedStat properties
+        const initialInventoryData: any[] = [/* ... */];
         const finalFeatures: InherentFeature[] = [];
         charClass.class_feats.forEach(f => finalFeatures.push({ id: f.name, name: f.name, description: f.text, source: 'Class' }));
         finalFeatures.push({ id: charClass.hope_feat_name, name: charClass.hope_feat_name, description: charClass.hope_feat_text, source: 'Class' });
@@ -1206,39 +1210,75 @@ export class CharacterCreator {
 
         const finalLoadout: DomainCard[] = (partialChar.domainCardIds || []).map(id => this.plugin.compendium.getAbility(id)).filter((f): f is DomainCard => !!f);
 
-        const finalEvasion = parseInt(charClass.evasion);
-        const finalHp = parseInt(charClass.hp);
 
-        const fullChar: Character = {
-            id: uuidv4(), 'dg-character': true, _type: 'character', name: partialChar.name, level: 1, proficiency: 1,
-            pronouns: { ...partialChar.pronouns, _type: 'pronouns' } as Character['pronouns'],
-            ancestryId: finalAncestryId, communityId: community.name, classId: charClass.name, subclassId: subclass.name,
+        const rawCharData = {
+            id: uuidv4(), 'dg-character': true, _type: 'character', name: partialChar.name!, level: 1,
+            pronouns: { ...partialChar.pronouns!, _type: 'pronouns' },
+            ancestryId: finalAncestryId!, communityId: community.name, classId: charClass.name, subclassId: subclass.name,
             spellCastTrait: subclass.spellcast_trait || null,
-            evasion: finalEvasion, traits: finalTraits,
-            hitPoints: { _type: 'dynamicResource', max: finalHp, current: 0 },
-            stress: { _type: 'dynamicResource', max: 6, current: 0 },
-            hope: { _type: 'dynamicResource', max: 6, current: 2 },
-            armorSlots: { _type: 'dynamicResource', max: startingArmor.baseScore, current: 0 },
-            avatarUrl: partialChar.avatarUrl || null, avatarTransform: partialChar.avatarTransform,
-            damageThresholds: { _type: 'damageThresholds', major: startingArmor.baseThresholds.major + 1, severe: startingArmor.baseThresholds.severe + 1 },
+            traits: finalTraits, // These are numbers, initializeCharacter will convert them
+            proficiency: 1, // Keep as number
+            evasion: parseInt(charClass.evasion), // Keep as number
+            hitPoints: { current: 0, max: parseInt(charClass.hp) },
+            stress: { current: 0, max: 6 },
+            hope: { current: 0, max: 2 },
+            armorSlots: { current: 0, max: startingArmorData.baseScore },
+            damageThresholds: {
+                major: parseInt(majorStr) + 1,
+                severe: parseInt(severeStr) + 1,
+            },
+            unarmedDamage: {
+                baseDice: "d4",
+                baseModifier: 0,
+                damageType: "phy",
+                numberOfDice: 1,
+                flatBonus: 0,
+            },
             gold: { _type: 'gold', handfuls: 1, bags: 0, chests: 0 },
-            experiences: (partialChar.experiences || []).map(exp => ({ _type: 'experience', id: uuidv4(), name: exp.name, value: 2, })),
+            experiences: (partialChar.experiences || []).map(exp => ({ _type: 'experience', id: uuidv4(), name: exp.name, value: 2 })),
             features: finalFeatures,
             loadout: finalLoadout,
             vault: [],
-            inventory: [...standardInventory, ...initialInventory, ...startingWeapons, startingArmor, ...(partialChar.additionalItems || [])],
-            equippedArmorId: startingArmor.instanceId, equippedWeaponIds: startingWeapons.map(w => w.instanceId),
+            inventory: [...standardInventoryData, ...initialInventoryData, ...startingWeaponsData, startingArmorData, ...(partialChar.additionalItems || [])],
+            equippedArmorId: startingArmorData.instanceId,
+            equippedWeaponIds: startingWeaponsData.map(w => w.instanceId),
             background: charClass.backgrounds.map((bg, i) => ({ question: bg.question, answer: partialChar.backgroundAnswers?.[i] || '' })),
             connections: charClass.connections.map((c, i) => ({ question: c.question, answer: partialChar.connections?.[i] || '' })),
             levelUpHistory: {}, conditions: [], notes: partialChar.description || '',
+            avatarUrl: partialChar.avatarUrl || null, avatarTransform: partialChar.avatarTransform,
             accentColor: partialChar.accentColor || '#e5b32a',
             equippedStances: partialChar.stanceChoices || [],
             activeStance: '',
+            activeEffects: [],
         };
+
+        // --- STEP 2: HYDRATE THE BLUEPRINT INTO A "LIVE" CHARACTER ---
+        const fullChar = rawCharData as unknown as Character;
+        initializeCharacter(fullChar); // This function will convert numbers to CalculatedStat instances
+
+        // --- STEP 3: SET CURRENT VALUES & APPLY INITIAL EFFECTS ---
+        // Now that max values are CalculatedStats, you can get their values.
+        fullChar.hitPoints.current = 0;
+        fullChar.stress.current = 0;
+        fullChar.armorSlots.current = 0;
+        fullChar.hope.current = 2;
+
+        // ... (rest of the effect application logic)
+        fullChar.features.forEach(feat => addEffectsFromSource(fullChar, feat));
+        fullChar.loadout.forEach(card => addEffectsFromSource(fullChar, card));
+
+        const equippedArmor = fullChar.inventory.find(i => i.instanceId === startingArmorData.instanceId);
+        if (equippedArmor) addEffectsFromSource(fullChar, equippedArmor);
+
+        startingWeaponsData.forEach(weaponData => {
+            const equippedWeapon = fullChar.inventory.find(i => i.instanceId === weaponData.instanceId);
+            if (equippedWeapon) addEffectsFromSource(fullChar, equippedWeapon);
+        });
 
         await this.plugin.updateCharacter(fullChar);
         this.plugin.setActiveCharacterId(fullChar.id);
     }
+
 
     private drawCreatorFeaturePreview(parent: HTMLElement, title: string, features: CompendiumFeature[]) {
         if (!features || features.length === 0) return;

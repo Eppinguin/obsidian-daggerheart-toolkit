@@ -1,6 +1,8 @@
+// AddItemModal.ts
 import { App, Modal, Setting, Menu, MenuItem, TextComponent, setIcon } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
 import { Character, CompendiumItem, WeaponItem, ArmorItem } from '../types';
+import { initializeInventoryItem } from '../services/effects-engine'; // Ensure this is imported
 
 export class AddItemModal extends Modal {
     private searchInput: TextComponent;
@@ -23,7 +25,7 @@ export class AddItemModal extends Modal {
         app: App,
         private plugin: DaggerheartStatblockPlugin,
         private character: Character,
-        private onAdd: (item: CompendiumItem) => void,
+        private onAdd: (item: CompendiumItem) => void, // This should take raw item data
         private onCustom: () => void
     ) {
         super(app);
@@ -240,6 +242,8 @@ export class AddItemModal extends Modal {
                     createTag(weapon.range);
                     createTag(weapon.trait, 'Primary Trait');
                     createTag(weapon.primary_or_secondary);
+                    // Display the raw damage string from compendium for preview
+                    createTag(weapon.damage, 'Damage Formula');
                     if (weapon.feat_name) {
                         createTag(`Feat: ${weapon.feat_name}`, weapon.feat_text).addClass('dh-item-feature');
                     }
@@ -266,6 +270,8 @@ export class AddItemModal extends Modal {
                 }
             }
             itemEl.addEventListener('click', () => {
+                // When adding, we pass the raw compendium item directly.
+                // It will be converted to InventoryItem in the callback.
                 this.onAdd(item);
                 this.close();
             });

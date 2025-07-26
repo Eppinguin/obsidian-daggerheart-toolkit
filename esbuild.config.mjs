@@ -2,8 +2,26 @@ import esbuild from 'esbuild';
 import process from 'process';
 import fs from 'fs';
 import path from 'path';
+import peggy from 'peggy';
 
 const isProduction = process.argv[2] === 'production';
+
+const peggyPlugin = {
+  name: "peggy",
+  setup(build) {
+    build.onLoad({ filter: /\.pegjs$/ }, async (args) => {
+      const source = await fs.promises.readFile(args.path, "utf8");
+      const parser = peggy.generate(source, {
+        output: "source",
+        format: "es",
+      });
+      return {
+        contents: parser,
+        loader: "js",
+      };
+    });
+  },
+};
 
 const commonConfig = {
     entryPoints: ["./src/main.ts", "./src/styles.css"],
@@ -15,6 +33,7 @@ const commonConfig = {
     logLevel: 'info',
     sourcemap: isProduction ? false : 'inline',
     treeShaking: true,
+    plugins: [peggyPlugin],
 };
 
 if (isProduction) {
