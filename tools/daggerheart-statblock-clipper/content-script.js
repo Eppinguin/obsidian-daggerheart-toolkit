@@ -30,7 +30,7 @@
   }
 
   function autoExtract() {
-    return globalThis.DHStatblockParser.parseFromDocument(document, location);
+    return globalThis.DHStatblockParser.parseManyFromDocument(document, location);
   }
 
   function startSelection() {
@@ -66,12 +66,12 @@
       event.preventDefault();
       event.stopPropagation();
       const clicked = hovered || event.target;
-      const target = clicked.closest?.('[role="dialog"],dialog,article,[class*="modal"],[class*="statblock"],[class*="stat-block"]') || clicked;
+      const target = clicked.closest?.('[role="dialog"],dialog,article,[class*="modal"],[class*="drawer"],[class*="statblock"],[class*="stat-block"]') || clicked;
       cleanup();
       try {
-        const result = globalThis.DHStatblockParser.parseFromDocument(document, location, target);
-        await storage.local.set({ lastExtraction: result, lastExtractionUrl: location.href, lastExtractionManual: true });
-        toast(`Captured: ${result.name || 'statblock'}. Reopen the extension.`);
+        const items = globalThis.DHStatblockParser.parseManyFromDocument(document, location, target);
+        await storage.local.set({ lastExtractions: items, lastExtractionUrl: location.href, lastExtractionManual: true });
+        toast(items.length === 1 ? `Captured: ${items[0].name || 'statblock'}. Reopen the extension.` : `Captured ${items.length} statblocks. Reopen the extension.`);
       } catch (error) {
         toast(`Could not parse selection: ${error.message}`, true);
       }
@@ -87,13 +87,13 @@
     document.addEventListener('mousemove', onMove, true);
     document.addEventListener('click', onClick, true);
     document.addEventListener('keydown', onKey, true);
-    toast('Click the statblock container. Press Esc to cancel.');
+    toast('Click one statblock or a container holding several. Press Esc to cancel.');
   }
 
   runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'DH_EXTRACT') {
       try {
-        sendResponse({ ok: true, data: autoExtract() });
+        sendResponse({ ok: true, items: autoExtract() });
       } catch (error) {
         sendResponse({ ok: false, error: error.message });
       }
