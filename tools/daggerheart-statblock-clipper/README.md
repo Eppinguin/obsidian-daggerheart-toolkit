@@ -33,13 +33,16 @@ Source website, URL, author, and extraction date are preserved in a `source` obj
 3. Confirm the displayed name and feature count.
 4. Copy the result or choose **Add to Obsidian**.
 
-The extractor first reads FreshCutGrass application state for the requested homebrew ID. If that state is unavailable, version 0.4.1 repairs the rendered-card result before export.
+The extractor first reads FreshCutGrass application state for the requested homebrew ID. If that state is unavailable, version 0.4.2 repairs the rendered-card result before export.
 
 The rendered repair:
 
 - reads HP and Stress when labels and values are separate elements,
 - reconstructs major/severe thresholds from the HP & STRESS track,
-- reconstructs Standard Attack fields from separate name, range, damage, type, and modifier elements,
+- parses combined attack rows such as `Moon Staff: Far | 2d10+3`,
+- rejects navigation headings such as `COMMUNITY ADVERSARIES & ENVIRONMENTS` as attack names,
+- limits description extraction to the current card intro before Difficulty, Attack, or Features,
+- rejects comment placeholders such as `No comments yet. Be the first to comment!`,
 - stops feature parsing before HP & STRESS, comments, likes, library counts, and attribution/footer content,
 - joins wrapped feature descriptions instead of treating continuation lines as new features,
 - infers Fear, Stress, and Hope costs from feature descriptions,
@@ -48,7 +51,7 @@ The rendered repair:
 
 The MAIN-world React collector also traverses Fiber `child` and `sibling` links while keeping those cyclic links out of copied results.
 
-Regression fixtures cover `homebrew?id=uoHvyG83mBqs4YAxPpGB8n` and verify the complete **Shadow Hag** record from both app state and the rendered preview fallback.
+Regression fixtures cover `homebrew?id=uoHvyG83mBqs4YAxPpGB8n` and `homebrew?id=c4SRR7SGMMdryPwgfDzvpP`.
 
 ### Encounter pages
 
