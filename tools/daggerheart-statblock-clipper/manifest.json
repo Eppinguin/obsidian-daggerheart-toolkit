@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Daggerheart Statblock Clipper",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Extract Daggerheart homebrew statblocks into Obsidian Daggerheart Toolkit Markdown or JSON.",
   "permissions": [
     "activeTab",
