@@ -26,9 +26,12 @@ button.icon { width: 34px; height: 34px; padding: 0; font-size: 18px; }
 details { margin-top: 12px; border-top: 1px solid color-mix(in srgb, CanvasText 14%, transparent); padding-top: 10px; }
 summary { cursor: pointer; font-weight: 600; }
 label { display: block; margin-top: 10px; font-size: 12px; }
-input[type="text"] { width: 100%; margin-top: 5px; padding: 8px; border: 1px solid color-mix(in srgb, CanvasText 20%, transparent); border-radius: 7px; background: Field; color: FieldText; }
+input[type="text"], select { width: 100%; margin-top: 5px; padding: 8px; border: 1px solid color-mix(in srgb, CanvasText 20%, transparent); border-radius: 7px; background: Field; color: FieldText; }
 label.check { display: flex; align-items: center; gap: 7px; }
 label.check input { margin: 0; }
+#collection { margin-bottom: 8px; }
+#collection label:first-child { margin-top: 0; }
+select { width: 100%; margin-top: 5px; padding: 8px; border: 1px solid color-mix(in srgb, CanvasText 20%, transparent); border-radius: 7px; background: Field; color: FieldText; }
 details button { margin-top: 10px; width: 100%; }
 footer { margin-top: 14px; line-height: 1.4; }
 .options { max-width: 520px; min-width: 0; }
