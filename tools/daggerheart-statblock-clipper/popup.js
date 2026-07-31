@@ -85,6 +85,23 @@
     await api.scripting.executeScript({ target: { tabId }, files: ['parser.js', 'parser-patch.js', 'content-script.js'] });
   }
 
+  async function collectFreshCutGrassState(tab) {
+    if (!tab?.id || !/^https?:\/\/freshcutgrass\.app\//i.test(tab.url || '')) return null;
+    const targetId = new URL(tab.url).searchParams.get('id') || '';
+    try {
+      const executions = await api.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: 'MAIN',
+        func: globalThis.DHFreshCutGrassCollector,
+        args: [targetId]
+      });
+      return executions?.[0]?.result || null;
+    } catch (error) {
+      console.warn('FreshCutGrass app-state extraction was unavailable; using visible DOM.', error);
+      return null;
+    }
+  }
+
   async function extract() {
     try {
       enableActions(false);
@@ -94,12 +111,20 @@
       currentTab = tab;
       $('site').textContent = new URL(tab.url).hostname;
       await inject(tab.id);
-      const response = await api.tabs.sendMessage(tab.id, { type: 'DH_EXTRACT' });
+      const [response, appState] = await Promise.all([
+        api.tabs.sendMessage(tab.id, { type: 'DH_EXTRACT' }),
+        collectFreshCutGrassState(tab)
+      ]);
       if (!response?.ok) throw new Error(response?.error || 'No statblock found.');
+
+      const stateItems = appState
+        ? globalThis.DHStatblockParser.parseFreshCutGrassState(appState, tab.url, response.items || [])
+        : [];
+      const automaticItems = stateItems.length ? stateItems : response.items;
 
       const saved = await api.storage.local.get(['lastExtractions', 'lastExtractionUrl', 'lastExtractionManual']);
       const useManual = saved.lastExtractionManual && saved.lastExtractionUrl === tab.url && Array.isArray(saved.lastExtractions) && saved.lastExtractions.length;
-      const chosen = useManual ? saved.lastExtractions : response.items;
+      const chosen = useManual ? saved.lastExtractions : automaticItems;
       if (useManual) await api.storage.local.remove('lastExtractionManual');
       renderItems(chosen);
     } catch (error) {
