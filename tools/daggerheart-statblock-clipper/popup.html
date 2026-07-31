@@ -16,6 +16,15 @@
       <button id="refresh" class="icon" title="Refresh extraction">↻</button>
     </header>
 
+    <section id="collection" class="card hidden">
+      <label for="itemSelect">Detected statblocks</label>
+      <select id="itemSelect"></select>
+      <label id="exportAllLabel" class="check hidden">
+        <input id="exportAll" type="checkbox" checked>
+        <span id="exportAllText">Export all detected statblocks</span>
+      </label>
+    </section>
+
     <section id="result" class="card hidden">
       <h2 id="name">Statblock</h2>
       <p id="summary"></p>
@@ -28,7 +37,7 @@
       <button id="copyMarkdown" disabled>Copy Toolkit Markdown</button>
       <button id="copyJson" disabled>Copy Toolkit JSON</button>
       <button id="sendObsidian" class="primary" disabled>Add to Obsidian</button>
-      <button id="selectBlock" class="secondary">Pick block on page</button>
+      <button id="selectBlock" class="secondary">Pick block(s) on page</button>
     </section>
 
     <details>
@@ -53,6 +62,7 @@
     </footer>
   </main>
   <script src="parser.js"></script>
+  <script src="parser-patch.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
