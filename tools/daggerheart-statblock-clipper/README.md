@@ -32,7 +32,9 @@ Source website, URL, author, and extraction date are preserved in a `source` obj
 3. Confirm the displayed name and feature count.
 4. Copy the result or choose **Add to Obsidian**.
 
-The extractor identifies the statblock card itself and ignores interface controls such as **Manage**.
+Version 0.4 first reads FreshCutGrass's in-page React state for the requested homebrew ID, then merges any missing values from the visible preview. This avoids treating surrounding controls such as **Manage** as statblock content.
+
+A regression fixture covers `homebrew?id=uoHvyG83mBqs4YAxPpGB8n` and verifies the complete **Shadow Hag** record: core stats, thresholds, Moon Staff attack, motives, both experiences, all six features, and Fear/Stress costs.
 
 ### Encounter pages
 
@@ -77,4 +79,4 @@ When automatic extraction does not select the intended content:
 
 ## Privacy
 
-The extension requests temporary access to the active tab, user-triggered script injection, settings storage, and clipboard write access. It has no persistent all-sites host permission and sends no data to an external service.
+The extension requests temporary access to the active tab, user-triggered script injection, settings storage, and clipboard write access. On FreshCutGrass it inspects only JSON-safe objects that resemble statblocks in the current page's application state. It does not return cookies, authentication tokens, or arbitrary account data. It has no persistent all-sites host permission and sends no data to an external service.
