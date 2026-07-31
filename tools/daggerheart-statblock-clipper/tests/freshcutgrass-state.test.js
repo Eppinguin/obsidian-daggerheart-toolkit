@@ -18,6 +18,25 @@ root.__reactProps$fixture = {
   }
 };
 
+root.__reactFiber$fixture = {
+  child: {
+    sibling: {
+      memoizedProps: {
+        homebrewRecord: {
+          id: 'uoHvyG83mBqs4YAxPpGB8n',
+          name: 'Shadow Hag Fiber',
+          tier: 2,
+          role: 'Solo',
+          difficulty: 16,
+          hp: 8,
+          stress: 6,
+          features: [{ name: 'Fey Disguise', type: 'Passive', description: 'Fiber text.' }]
+        }
+      }
+    }
+  }
+};
+
 const emptyStorage = { length: 0, key: () => null, getItem: () => null };
 global.document = {
   documentElement: root,
@@ -32,4 +51,5 @@ require('../freshcutgrass-state.js');
 const result = globalThis.DHFreshCutGrassCollector('uoHvyG83mBqs4YAxPpGB8n');
 assert.equal(result.targetId, 'uoHvyG83mBqs4YAxPpGB8n');
 assert.ok(result.candidates.some((candidate) => JSON.stringify(candidate.value).includes('Shadow Hag')));
+assert.ok(result.candidates.some((candidate) => JSON.stringify(candidate.value).includes('Shadow Hag Fiber')));
 console.log('FreshCutGrass MAIN-world state collector test passed');
