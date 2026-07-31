@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Daggerheart Statblock Clipper</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Daggerheart Clipper</h1>
+        <p id="site">Reading current page…</p>
+      </div>
+      <button id="refresh" class="icon" title="Refresh extraction">↻</button>
+    </header>
+
+    <section id="result" class="card hidden">
+      <h2 id="name">Statblock</h2>
+      <p id="summary"></p>
+      <p id="source" class="muted"></p>
+    </section>
+
+    <p id="status" class="status">Extracting…</p>
+
+    <section class="actions">
+      <button id="copyMarkdown" disabled>Copy Toolkit Markdown</button>
+      <button id="copyJson" disabled>Copy Toolkit JSON</button>
+      <button id="sendObsidian" class="primary" disabled>Add to Obsidian</button>
+      <button id="selectBlock" class="secondary">Pick block on page</button>
+    </section>
+
+    <details>
+      <summary>Obsidian Markdown import</summary>
+      <label>
+        Vault name or ID
+        <input id="vault" type="text" placeholder="My Vault">
+      </label>
+      <label>
+        Folder
+        <input id="folder" type="text" placeholder="Daggerheart/Homebrew">
+      </label>
+      <label class="check">
+        <input id="overwrite" type="checkbox">
+        Overwrite an existing note with the same name
+      </label>
+      <button id="saveSettings" class="secondary">Save settings</button>
+    </details>
+
+    <footer>
+      User-triggered extraction only. No bulk crawling or account access.
+    </footer>
+  </main>
+  <script src="parser.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
