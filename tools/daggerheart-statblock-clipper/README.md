@@ -22,6 +22,7 @@ Source website, URL, author, and extraction date are preserved in a `source` obj
 3. Remove or reload any older Daggerheart Statblock Clipper installation.
 4. Choose **Load unpacked**.
 5. Select this folder.
+6. Refresh any already-open FreshCutGrass tabs after installing or reloading the extension.
 
 ## FreshCutGrass
 
