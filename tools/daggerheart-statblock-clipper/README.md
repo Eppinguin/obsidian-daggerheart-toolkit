@@ -22,29 +22,70 @@ Source website, URL, author, and extraction date are preserved in a `source` obj
 3. Remove or reload any older Daggerheart Statblock Clipper installation.
 4. Choose **Load unpacked**.
 5. Select this folder.
-6. Refresh any already-open FreshCutGrass tabs after installing or reloading the extension.
 
 ## FreshCutGrass
 
-The extractor first reads FreshCutGrass application state for the requested homebrew ID. If that state is unavailable, version 0.4.2 repairs the rendered-card result before export.
+### Homebrew stat preview
 
-Version 0.4.2:
+1. Open a community adversary or environment preview.
+2. Open the extension.
+3. Confirm the displayed name and feature count.
+4. Copy the result or choose **Add to Obsidian**.
 
-- parses combined attack rows such as `Moon Staff: Far | 2d10+3`,
-- rejects navigation headings such as `COMMUNITY ADVERSARIES & ENVIRONMENTS` as attack names,
-- limits description extraction to the current card intro before Difficulty, Attack, or Features,
-- rejects comment placeholders such as `No comments yet. Be the first to comment!`,
-- retains the HP, Stress, threshold, feature, cost, and attribution repairs from 0.4.1.
+The extractor first tries the page's application state, then repairs the rendered preview when needed. Version 0.4.3 also reads descriptions from the nearest visible community card before considering broad page text. This prevents short or visually wrapped summaries from inheriting the next card's description.
 
-Regression fixtures cover the Shadow Hag and Mushroom entanglement pages.
+The rendered repair also:
+
+- reads HP and Stress when labels and values are separate elements,
+- reconstructs major/severe thresholds from the HP & STRESS track,
+- reconstructs Standard Attack fields from separate or combined attack rows,
+- rejects navigation headings as attack names,
+- stops feature parsing before comments, likes, library counts, and footer content,
+- joins wrapped feature descriptions,
+- infers Fear, Stress, and Hope costs,
+- rejects timestamps and comment placeholders as descriptions,
+- prefers explicit “made by” attribution over profile labels.
+
+### Encounter pages
+
+The extension detects each complete adversary or environment card separately. When several statblocks are found:
+
+- choose an individual entry from the selector, or
+- keep **Export all detected statblocks** enabled.
+
+**Add to Obsidian** creates one note containing all selected `daggerheart-statblock` blocks. The toolkit can load every block from that note.
 
 ## Heart of Daggers
 
-The parser reads the full Features section, including separate Passive, Action, and Reaction groups. Fear, Stress, and Hope cost lines are converted to `parsedCost`.
+The parser reads the full **Features** section, including separate Passive, Action, and Reaction groups. Fear, Stress, and Hope cost lines are converted to `parsedCost`.
 
 ## Use with Obsidian Daggerheart Toolkit
 
-Use **Add to Obsidian** for a Markdown note or **Copy Toolkit JSON** for the toolkit import modal. Set the same compendium folder in the toolkit and extension settings for one-click Markdown import.
+### One-click Markdown import
+
+1. In the toolkit settings, set **Compendium Folder** to a vault folder such as `Daggerheart/Homebrew`.
+2. Enter that same folder in the clipper's **Obsidian Markdown import** settings.
+3. Open a stat preview, individual statblock, or encounter.
+4. Click **Add to Obsidian**.
+
+The toolkit loads every `daggerheart-statblock` block from the created note.
+
+### Native JSON import
+
+1. Click **Copy Toolkit JSON**.
+2. In Obsidian, run **Import Daggerheart Content**.
+3. Select **Adversary** or **Environment**.
+4. Paste the JSON and import it.
+
+For a multi-statblock encounter, Markdown import is currently the most convenient route because one note can contain every detected block.
+
+## Extraction fallback
+
+When automatic extraction does not select the intended content:
+
+1. Click **Pick block(s) on page**.
+2. Click one statblock, or a container holding several statblocks.
+3. Reopen the extension.
 
 ## Privacy
 
