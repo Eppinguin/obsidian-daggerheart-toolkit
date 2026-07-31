@@ -29,8 +29,83 @@
     setTimeout(() => node.remove(), 3500);
   }
 
+  const clean = (value) => String(value ?? '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
+  const lines = (value) => String(value ?? '').replace(/\r/g, '').split('\n').map(clean).filter(Boolean);
+  const CARD_SECTION = /^(?:motives\s*(?:&|and)\s*tactics|tone\s*(?:&|and)\s*feel|impulses|potential adversaries)\s*:?$/i;
+  const CARD_STOP = /^(?:motives\s*(?:&|and)\s*tactics|tone\s*(?:&|and)\s*feel|impulses|potential adversaries|difficulty|standard attack|attack|features|experiences?|hp\s*&\s*stress|comments?)\s*:?$/i;
+  const CARD_META = /^(?:tier\s*)?\d+$|^(?:bruiser|horde|leader|minion|ranged|skulk|social|solo|standard|support|traversal|event|exploration|environment(?:exploration|event|social|traversal)?)$/i;
+  const CARD_UI = /^(?:manage|preview|edit|delete|community adversaries?\s*&\s*environments?|liked|in library|comments?)\b/i;
+
+  function cardDescriptionFromText(text, name) {
+    const source = lines(text);
+    const wanted = clean(name).toLowerCase();
+    const start = source.findIndex((line) => clean(line).toLowerCase() === wanted);
+    if (start < 0) return '';
+    const parts = [];
+    for (let index = start + 1; index < source.length; index += 1) {
+      const line = source[index];
+      if (CARD_STOP.test(line)) break;
+      if (CARD_META.test(line) || CARD_UI.test(line) || /^[+−-]?\d+(?:\s*[♡♥🔖])?$/.test(line)) {
+        if (parts.length && /^\d+/.test(line)) break;
+        continue;
+      }
+      if (line.length < 3 || line.length > 800) continue;
+      parts.push(line);
+    }
+    const description = clean(parts.join(' '));
+    return description.split(/\s+/).length >= 4 ? description : '';
+  }
+
+  function exactNameNodes(root, name) {
+    if (!root?.querySelectorAll || !name) return [];
+    const wanted = clean(name).toLowerCase();
+    const preferred = Array.from(root.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"],[data-testid*="name"],[class*="name"],[class*="title"]'));
+    const exact = preferred.filter((node) => clean(node.innerText || node.textContent).toLowerCase() === wanted);
+    if (exact.length) return exact;
+    return Array.from(root.querySelectorAll('*')).filter((node) => !node.children?.length && clean(node.innerText || node.textContent).toLowerCase() === wanted).slice(0, 20);
+  }
+
+  function cardContainer(root, nameNode) {
+    let node = nameNode?.parentElement || null;
+    let fallback = null;
+    for (let depth = 0; node && depth < 12; depth += 1, node = node.parentElement) {
+      if (node !== root && root?.contains && !root.contains(node)) break;
+      const text = node.innerText || node.textContent || '';
+      const textLines = lines(text);
+      const length = clean(text).length;
+      if (length > 30 && length < 6000) {
+        const cardish = node.matches?.('article,li,[role="listitem"],[data-testid*="card"],[class*="card"],[class*="tile"],[class*="preview"]');
+        if (cardish && !fallback) fallback = node;
+        if (textLines.some((line) => CARD_SECTION.test(line))) return node;
+      }
+      if (node === root) break;
+    }
+    return fallback;
+  }
+
+  function domCardDescription(root, name) {
+    for (const nameNode of exactNameNodes(root, name)) {
+      const card = cardContainer(root, nameNode);
+      if (!card) continue;
+      const description = cardDescriptionFromText(card.innerText || card.textContent || '', name);
+      if (description) return description;
+    }
+    return '';
+  }
+
+  function enrichFreshCutGrassItems(items, doc = document, currentLocation = location) {
+    if (!/freshcutgrass\.app$/i.test(currentLocation?.hostname || '')) return items;
+    return (Array.isArray(items) ? items : []).map((item) => {
+      const description = domCardDescription(doc.body || doc.documentElement || doc, item?.name || '');
+      return description ? { ...item, desc: description, __cardDescription: description } : item;
+    });
+  }
+
+  globalThis.DHFreshCutGrassCardBoundary = { cardDescriptionFromText, domCardDescription, enrichFreshCutGrassItems };
+
   function autoExtract() {
-    return globalThis.DHStatblockParser.parseManyFromDocument(document, location);
+    const items = globalThis.DHStatblockParser.parseManyFromDocument(document, location);
+    return enrichFreshCutGrassItems(items);
   }
 
   function startSelection() {
