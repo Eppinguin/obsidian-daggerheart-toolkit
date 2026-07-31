@@ -32,9 +32,22 @@ Source website, URL, author, and extraction date are preserved in a `source` obj
 3. Confirm the displayed name and feature count.
 4. Copy the result or choose **Add to Obsidian**.
 
-Version 0.4 first reads FreshCutGrass's in-page React state for the requested homebrew ID, then merges any missing values from the visible preview. This avoids treating surrounding controls such as **Manage** as statblock content.
+The extractor first reads FreshCutGrass application state for the requested homebrew ID. If that state is unavailable, version 0.4.1 repairs the rendered-card result before export.
 
-A regression fixture covers `homebrew?id=uoHvyG83mBqs4YAxPpGB8n` and verifies the complete **Shadow Hag** record: core stats, thresholds, Moon Staff attack, motives, both experiences, all six features, and Fear/Stress costs.
+The rendered repair:
+
+- reads HP and Stress when labels and values are separate elements,
+- reconstructs major/severe thresholds from the HP & STRESS track,
+- reconstructs Standard Attack fields from separate name, range, damage, type, and modifier elements,
+- stops feature parsing before HP & STRESS, comments, likes, library counts, and attribution/footer content,
+- joins wrapped feature descriptions instead of treating continuation lines as new features,
+- infers Fear, Stress, and Hope costs from feature descriptions,
+- rejects timestamps as descriptions,
+- prefers explicit “made by” attribution over the profile/uploader label.
+
+The MAIN-world React collector also traverses Fiber `child` and `sibling` links while keeping those cyclic links out of copied results.
+
+Regression fixtures cover `homebrew?id=uoHvyG83mBqs4YAxPpGB8n` and verify the complete **Shadow Hag** record from both app state and the rendered preview fallback.
 
 ### Encounter pages
 
