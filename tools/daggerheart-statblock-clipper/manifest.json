@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Daggerheart Statblock Clipper",
+  "version": "0.2.0",
+  "description": "Extract Daggerheart homebrew statblocks into Obsidian Daggerheart Toolkit Markdown or JSON.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "clipboardWrite"
+  ],
+  "action": {
+    "default_title": "Clip Daggerheart statblock",
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  }
+}
