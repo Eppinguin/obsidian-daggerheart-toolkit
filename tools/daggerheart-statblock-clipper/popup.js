@@ -117,10 +117,14 @@
       ]);
       if (!response?.ok) throw new Error(response?.error || 'No statblock found.');
 
+      const isFreshCutGrass = /^https?:\/\/freshcutgrass\.app\//i.test(tab.url || '');
+      const domItems = isFreshCutGrass
+        ? (response.items || []).map((item) => globalThis.DHStatblockParser.repairFreshCutGrassDomItem(item, tab.url))
+        : (response.items || []);
       const stateItems = appState
-        ? globalThis.DHStatblockParser.parseFreshCutGrassState(appState, tab.url, response.items || [])
+        ? globalThis.DHStatblockParser.parseFreshCutGrassState(appState, tab.url, domItems)
         : [];
-      const automaticItems = stateItems.length ? stateItems : response.items;
+      const automaticItems = stateItems.length ? stateItems : domItems;
 
       const saved = await api.storage.local.get(['lastExtractions', 'lastExtractionUrl', 'lastExtractionManual']);
       const useManual = saved.lastExtractionManual && saved.lastExtractionUrl === tab.url && Array.isArray(saved.lastExtractions) && saved.lastExtractions.length;
