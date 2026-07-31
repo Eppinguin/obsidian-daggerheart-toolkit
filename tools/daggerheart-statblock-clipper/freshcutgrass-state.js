@@ -99,10 +99,10 @@
       }
       if (score >= 8 || (localTarget && score >= 3)) addCandidate(value, path, score + (localTarget ? 20 : 0));
 
-      const preferred = ['memoizedProps', 'pendingProps', 'memoizedState', 'baseState', 'data', 'item', 'adversary', 'environment', 'homebrew', 'statblock', 'features', 'feats'];
+      const preferred = ['memoizedProps', 'pendingProps', 'memoizedState', 'baseState', 'data', 'item', 'adversary', 'environment', 'homebrew', 'statblock', 'features', 'feats', 'child', 'sibling'];
       const ordered = [...new Set([...preferred.filter((key) => keys.includes(key)), ...keys])];
       for (const key of ordered.slice(0, 150)) {
-        if (/^(ownerDocument|parentNode|parentElement|stateNode|return|child|sibling|alternate)$/i.test(key)) continue;
+        if (/^(ownerDocument|parentNode|parentElement|stateNode|return|alternate)$/i.test(key)) continue;
         let entry;
         try { entry = value[key]; } catch (_error) { continue; }
         if (entry && typeof entry === 'object') walk(entry, `${path}.${key}`, depth + 1, localTarget);
