@@ -8,6 +8,8 @@
   const renderedLines = (value) => String(value ?? '').replace(/\r/g, '').split('\n').map(clean).filter(Boolean);
   const DATE_LINE = /^(?:\d{1,2}[\/.\-]){2}\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?$/i;
   const FOOTER_LINE = /^(?:Daggerheart.*Compatible|Terms at Daggerheart|BY\s+\S+|LIKED(?:\s*\(\d+\))?|IN LIBRARY(?:\s*\(\d+\))?|COMMENTS?|refleximage|report|share|download)$/i;
+  const COMMENT_LINE = /^(?:no comments? yet(?:[.!]\s*)?(?:be the first to comment[.!]?)?|be the first to comment[.!]?|sign in to comment|log in to comment)$/i;
+  const UI_CHROME_LINE = /^(?:community adversaries?\s*&\s*environments?|community homebrew|homebrew vault|manage|preview|edit|delete|add to encounter|back to homebrew)$/i;
   const SECTION_LINE = /^(?:features|passives?|actions?|reactions?|hp\s*&\s*stress|standard attack|motives\s*(?:&|and)\s*tactics|experiences?|minor|major|severe)$/i;
 
   function numberFrom(value) {
@@ -57,7 +59,13 @@
     return major != null || severe != null ? `${major ?? '—'}/${severe ?? '—'}` : '';
   }
 
-  function renderedAttack(lines) {
+  function parseInlineAttack(value) {
+    const match = clean(value).match(/^(.{1,100}?)\s*:\s*(Melee|Very Close|Close|Far|Very Far)\s*\|\s*(\d+d\d+(?:\s*[+−-]\s*\d+)?(?:\s+(?:Physical|Magical|phy|mag))?)$/i);
+    if (!match || UI_CHROME_LINE.test(match[1])) return null;
+    return { weapon: clean(match[1]), range: clean(match[2]), damage: clean(match[3]) };
+  }
+
+  function renderedAttack(lines, existing = {}) {
     const text = lines.join('\n');
     const compact = text.match(/ATK\s*:?\s*([+−-]?\d+)\s*\|\s*([^|\n:]+)\s*:\s*([^|\n]+)\s*\|\s*([^\n]+)/i);
     if (compact) {
@@ -75,23 +83,32 @@
     const types = /^(?:Physical|Magical?|phy|mag)$/i;
     const labels = /^(?:name|weapon|range|damage|damage type|attack mod(?:ifier)?|modifier|atk)\s*:?$/i;
 
-    let weapon = lineValue(block, ['(?:name|weapon|attack name)']);
-    let range = lineValue(block, ['range']);
-    let damage = lineValue(block, ['damage']);
+    const inline = [existing.damage, existing.weapon, ...block, ...lines]
+      .map(parseInlineAttack)
+      .find(Boolean);
+
+    let weapon = inline?.weapon || lineValue(block, ['(?:name|weapon|attack name)']);
+    let range = inline?.range || lineValue(block, ['range']);
+    let damage = inline?.damage || lineValue(block, ['damage']);
     let damageType = lineValue(block, ['damage type']);
     let attackValue = lineValue(block, ['(?:attack mod(?:ifier)?|modifier|atk)']);
 
     if (!range) range = block.find((line) => ranges.test(line)) || '';
     if (!damage) damage = block.find((line) => /\b\d+d\d+(?:\s*[+−-]\s*\d+)?\b/i.test(line)) || '';
-    if (!damageType) damageType = block.find((line) => types.test(line)) || '';
+    if (!damageType) {
+      const damageIndex = block.findIndex((line) => line === damage || parseInlineAttack(line));
+      const adjacent = damageIndex >= 0 ? block[damageIndex + 1] : '';
+      damageType = (adjacent && types.test(adjacent) ? adjacent : '') || block.find((line) => types.test(line)) || '';
+    }
     if (!attackValue) {
       const modifiers = block.filter((line) => /^[+−-]?\d+$/.test(line));
-      attackValue = modifiers.find((line) => /^[+−-]/.test(line)) || modifiers.at(-1) || '';
+      attackValue = modifiers.find((line) => /^[+−-]/.test(line)) || modifiers.at(-1) || existing.attack || '';
     }
     if (!weapon) {
-      weapon = block.find((line) => !labels.test(line) && !ranges.test(line) && !types.test(line) &&
+      weapon = block.find((line) => !labels.test(line) && !ranges.test(line) && !types.test(line) && !UI_CHROME_LINE.test(line) &&
         !/^\d+d\d+/i.test(line) && !/^[+−-]?\d+$/.test(line) && !SECTION_LINE.test(line) && !FOOTER_LINE.test(line)) || '';
     }
+    if (UI_CHROME_LINE.test(weapon)) weapon = '';
     if (damage && damageType && !new RegExp(`\\b${damageType}\\b`, 'i').test(damage)) damage = clean(`${damage} ${damageType}`);
     const parsedModifier = numberFrom(attackValue);
     return {
@@ -100,12 +117,28 @@
     };
   }
 
+  function invalidDescription(line) {
+    const value = clean(line);
+    if (!value || DATE_LINE.test(value) || FOOTER_LINE.test(value) || COMMENT_LINE.test(value) || UI_CHROME_LINE.test(value)) return true;
+    if (/\bno comments? yet\b|\bbe the first to comment\b/i.test(value)) return true;
+    if (/^(?:this adversary was made by|this environment was made by|created by|designed by|author\b|https?:\/\/)/i.test(value)) return true;
+    return false;
+  }
+
   function renderedDescription(lines, name) {
     const nameIndex = lines.findIndex((line) => clean(line).toLowerCase() === clean(name).toLowerCase());
-    const candidates = (nameIndex >= 0 ? lines.slice(nameIndex + 1) : lines).filter((line) => {
-      if (line.length < 20 || line.length > 500 || DATE_LINE.test(line) || FOOTER_LINE.test(line) || SECTION_LINE.test(line)) return false;
-      if (/^(?:tier|solo|leader|bruiser|horde|minion|ranged|skulk|social|standard|support|traversal|event|exploration|difficulty|hp|stress|atk|attack|thresholds?)\b/i.test(line)) return false;
-      if (/^(?:this adversary was made by|this environment was made by|created by|designed by|author\b|https?:\/\/)/i.test(line)) return false;
+    const start = nameIndex >= 0 ? nameIndex + 1 : 0;
+    let end = lines.length;
+    for (let index = start; index < lines.length; index += 1) {
+      if (/^(?:difficulty|standard attack|attack|features|motives\s*(?:&|and)\s*tactics|experiences?|hp\s*&\s*stress)$/i.test(lines[index])) {
+        end = index;
+        break;
+      }
+    }
+    const scoped = lines.slice(start, end);
+    const candidates = scoped.filter((line) => {
+      if (line.length < 20 || line.length > 500 || invalidDescription(line) || SECTION_LINE.test(line)) return false;
+      if (/^(?:tier|solo|leader|bruiser|horde|minion|ranged|skulk|social|standard|support|traversal|event|exploration|environment(?:exploration|event|social|traversal)?|difficulty|hp|stress|atk|attack|thresholds?)\b/i.test(line)) return false;
       if (/\b(?:HP|Stress|Fear|Hope)\b/i.test(line) && /\b(?:mark|spend|clear|take)\b/i.test(line)) return false;
       return line.split(/\s+/).length >= 5;
     });
@@ -201,10 +234,11 @@
     if (stress != null) result.stress = stress;
     const thresholds = renderedThresholds(lines);
     if (thresholds) result.thresholds = thresholds;
-    Object.assign(result, renderedAttack(lines));
+    Object.assign(result, renderedAttack(lines, result));
 
     const description = renderedDescription(lines, result.name || '');
-    if (description && (!result.desc || DATE_LINE.test(result.desc) || FOOTER_LINE.test(result.desc))) result.desc = description;
+    if (description) result.desc = description;
+    else if (invalidDescription(result.desc || '')) delete result.desc;
     result.author = renderedAuthor(lines, result.author || '');
 
     const features = renderedFeatures(lines);
