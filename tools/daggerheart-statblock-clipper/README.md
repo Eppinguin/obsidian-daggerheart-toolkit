@@ -9,8 +9,8 @@ The extension targets the native statblock format used by **Obsidian Daggerheart
 
 ## Outputs
 
-- **Toolkit Markdown** using a `daggerheart-statblock` YAML code block.
-- **Toolkit JSON** using the toolkit export wrapper (`type`, `version`, `exportDate`, and `data`).
+- **Toolkit Markdown** using one or more `daggerheart-statblock` YAML code blocks.
+- **Toolkit JSON** using the toolkit export wrapper for one item, or an array of native toolkit statblocks for several items.
 - **Add to Obsidian**, which creates a Markdown note through the official `obsidian://new` URI.
 
 Source website, URL, author, and extraction date are preserved in a `source` object.
@@ -19,8 +19,33 @@ Source website, URL, author, and extraction date are preserved in a `source` obj
 
 1. Open the browser's extensions page, such as `chrome://extensions`.
 2. Enable **Developer mode**.
-3. Choose **Load unpacked**.
-4. Select this folder.
+3. Remove or reload any older Daggerheart Statblock Clipper installation.
+4. Choose **Load unpacked**.
+5. Select this folder.
+
+## FreshCutGrass
+
+### Homebrew stat preview
+
+1. Open a community adversary or environment preview.
+2. Open the extension.
+3. Confirm the displayed name and feature count.
+4. Copy the result or choose **Add to Obsidian**.
+
+The extractor identifies the statblock card itself and ignores interface controls such as **Manage**.
+
+### Encounter pages
+
+The extension detects each complete adversary or environment card separately. When several statblocks are found:
+
+- choose an individual entry from the selector, or
+- keep **Export all detected statblocks** enabled.
+
+**Add to Obsidian** creates one note containing all selected `daggerheart-statblock` blocks. The toolkit can load every block from that note.
+
+## Heart of Daggers
+
+The parser reads the full **Features** section, including separate Passive, Action, and Reaction groups. Fear, Stress, and Hope cost lines are converted to `parsedCost`.
 
 ## Use with Obsidian Daggerheart Toolkit
 
@@ -28,10 +53,10 @@ Source website, URL, author, and extraction date are preserved in a `source` obj
 
 1. In the toolkit settings, set **Compendium Folder** to a vault folder such as `Daggerheart/Homebrew`.
 2. Enter that same folder in the clipper's **Obsidian Markdown import** settings.
-3. Open an individual statblock or statblock modal.
+3. Open a stat preview, individual statblock, or encounter.
 4. Click **Add to Obsidian**.
 
-The extension creates a note containing a `daggerheart-statblock` block. The toolkit loads it from the configured compendium folder.
+The toolkit loads every `daggerheart-statblock` block from the created note.
 
 ### Native JSON import
 
@@ -40,23 +65,16 @@ The extension creates a note containing a `daggerheart-statblock` block. The too
 3. Select **Adversary** or **Environment**.
 4. Paste the JSON and import it.
 
-The JSON is saved through the toolkit's custom compendium system rather than as a Markdown note.
+For a multi-statblock encounter, Markdown import is currently the most convenient route because one note can contain every detected block.
 
 ## Extraction fallback
 
-FreshCutGrass is a JavaScript application and may change its modal structure. When automatic extraction selects the wrong content:
+When automatic extraction does not select the intended content:
 
-1. Click **Pick block on page**.
-2. Click the visible statblock container.
+1. Click **Pick block(s) on page**.
+2. Click one statblock, or a container holding several statblocks.
 3. Reopen the extension.
-
-## Limitations
-
-- This is a user-triggered current-page extractor, not a bulk crawler.
-- Complex or newly redesigned feature layouts may need minor cleanup.
-- The Obsidian Markdown method requires the extension folder and the toolkit's Compendium Folder setting to match.
-- Firefox should be close to compatible with Manifest V3, but this package is currently tested structurally for Chromium browsers.
 
 ## Privacy
 
-The extension requests temporary access to the active tab, script injection initiated by the user, settings storage, and clipboard write access. It has no persistent all-sites host permission and sends no data to an external service.
+The extension requests temporary access to the active tab, user-triggered script injection, settings storage, and clipboard write access. It has no persistent all-sites host permission and sends no data to an external service.
