@@ -8,16 +8,15 @@ Local-install browser extension for importing Daggerheart community homebrew fro
 The extension targets the native statblock format used by **Obsidian Daggerheart Toolkit**.
 
 
-## Interface in 0.5.1
+## Interface in 0.5.2
 
-Version 0.5.1 uses a restrained browser-extension interface rather than a decorative dashboard:
+Version 0.5.2 keeps the restrained visual style while returning the popup to a compact extension-sized layout:
 
-- neutral surfaces with one purple accent,
-- standard buttons, fields, and status messages,
-- lighter typography and fewer rounded containers,
-- a compact stat preview without gradients, large icon tiles, or decorative accent bars,
-- a single-column layout at normal popup widths,
-- a two-column workspace when a browser provides a wide popover, avoiding unused space,
+- a deliberate 400-pixel popup width with a 360-pixel minimum,
+- one consistent single-column flow at every size,
+- no wide two-column workspace,
+- tighter header, status, content, and footer spacing,
+- centered content only as a fallback when a browser forces a larger host surface,
 - native light and dark themes with keyboard-visible focus states.
 
 ## Outputs
