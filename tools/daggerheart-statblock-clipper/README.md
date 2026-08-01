@@ -7,7 +7,6 @@ Local-install browser extension for importing Daggerheart community homebrew fro
 
 The extension targets the native statblock format used by **Obsidian Daggerheart Toolkit**.
 
-
 ## Interface in 0.5.2
 
 Version 0.5.2 keeps the restrained visual style while returning the popup to a compact extension-sized layout:
