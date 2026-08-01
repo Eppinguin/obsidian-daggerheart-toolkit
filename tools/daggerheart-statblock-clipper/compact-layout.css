@@ -1,0 +1,21 @@
+/* Compact popup sizing and spacing. Loaded after the shared visual system. */
+html.popup-root,
+body.popup-page {
+  width: 400px;
+  min-width: 360px;
+  max-width: 400px;
+  overflow-x: hidden;
+}
+
+.app-shell {
+  width: min(400px, 100vw);
+  margin: 0 auto;
+}
+
+.app-header { padding: 11px 12px; }
+.notice { padding-inline: 12px; }
+.popup-content { gap: 9px; padding: 10px; }
+.workspace { grid-template-columns: minmax(0, 1fr); }
+.side-column { position: static; }
+.stat-card { height: auto; padding: 14px; }
+.app-footer { padding: 0 10px 10px; }
