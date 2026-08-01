@@ -6,10 +6,13 @@
 
   const clean = (value) => String(value ?? '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
   const INVALID = /^(?:no comments? yet(?:[.!]\s*)?(?:be the first to comment[.!]?)?|be the first to comment[.!]?|sign in to comment|log in to comment)$/i;
+  const DATE_PREFIX = /^(?:\d{1,2}[\/.\-]){2}\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?/i;
+  const ATTRIBUTION_TEXT = /\bthis\s+(?:adversary|environment)\s+was\s+made\s+by\b|\byou\s+can\s+find\s+more\s+of\b|\b(?:created|designed|submitted|uploaded)\s+by\b|https?:\/\/|\b(?:ko-fi|patreon)\.com\b/i;
 
   function validCardDescription(value) {
     const text = clean(value);
-    return text.length >= 12 && text.split(/\s+/).length >= 4 && !INVALID.test(text) && !/\bno comments? yet\b|\bbe the first to comment\b/i.test(text);
+    return text.length >= 12 && text.split(/\s+/).length >= 4 && !INVALID.test(text) &&
+      !/\bno comments? yet\b|\bbe the first to comment\b/i.test(text) && !DATE_PREFIX.test(text) && !ATTRIBUTION_TEXT.test(text);
   }
 
   function descriptionMap(items) {
