@@ -80,3 +80,49 @@ const repaired = parser.repairFreshCutGrassDomItem({
 assert.equal(repaired.desc, 'A fey creature that wields shadows and secrets');
 assert.equal(repaired.__cardDescription, undefined);
 console.log('FreshCutGrass five-card description boundary regression passed');
+
+const duplicateLayoutText = [
+  'SHADOW HAG',
+  'Moving plants, crawling through the ground and entangling their victims.',
+  '134',
+  '365',
+  'SHADOW HAG',
+  'SOLO',
+  '2',
+  'A fey creature that wields',
+  'shadows and secrets',
+  '134',
+  '365',
+  'Motives & Tactics:',
+  'Feed on nightmares, summon hellspawn, make deals',
+  'LIVING VINES',
+  'STANDARD',
+  '1',
+  'Moving plants, crawling through the ground and entangling their victims.',
+  'Motives & Tactics:',
+  'Entangle, choke out'
+].join('\n');
+
+const duplicateCandidates = helper.cardDescriptionCandidatesFromText(duplicateLayoutText, 'Shadow Hag');
+assert.equal(duplicateCandidates[0].description, 'A fey creature that wields shadows and secrets');
+assert.equal(helper.cardDescriptionFromText(duplicateLayoutText, 'Shadow Hag'), 'A fey creature that wields shadows and secrets');
+
+const duplicateBody = new MockElement({
+  text: duplicateLayoutText,
+  children: [
+    new MockElement({ text: 'SHADOW HAG', tagName: 'H2' }),
+    new MockElement({ text: 'SHADOW HAG', tagName: 'H2' })
+  ]
+});
+assert.equal(helper.domCardDescription(duplicateBody, 'Shadow Hag'), 'A fey creature that wields shadows and secrets');
+
+const statePreferred = parser.repairFreshCutGrassDomItem({
+  name: 'Shadow Hag',
+  desc: 'A fey creature that wields shadows and secrets',
+  extractionMethod: 'freshcutgrass-app-state',
+  __cardDescription: 'Moving plants, crawling through the ground and entangling their victims.',
+  rawText: duplicateLayoutText
+}, 'https://freshcutgrass.app/homebrew?id=uoHvyG83mBqs4YAxPpGB8n');
+assert.equal(statePreferred.desc, 'A fey creature that wields shadows and secrets');
+assert.equal(statePreferred.__cardDescription, undefined);
+console.log('FreshCutGrass duplicate second-column description regression passed');
