@@ -36,24 +36,63 @@
   const CARD_META = /^(?:tier\s*)?\d+$|^(?:bruiser|horde|leader|minion|ranged|skulk|social|solo|standard|support|traversal|event|exploration|environment(?:exploration|event|social|traversal)?)$/i;
   const CARD_UI = /^(?:manage|preview|edit|delete|community adversaries?\s*&\s*environments?|liked|in library|comments?)\b/i;
 
-  function cardDescriptionFromText(text, name) {
+  function validCardDescription(value) {
+    const text = clean(value);
+    if (text.length < 12 || text.split(/\s+/).length < 4) return false;
+    if (/\bno comments? yet\b|\bbe the first to comment\b|\bsign in to comment\b/i.test(text)) return false;
+    return true;
+  }
+
+  function looksLikeNextCard(linesSource, index) {
+    const line = linesSource[index] || '';
+    if (!line || line.length > 90 || CARD_STOP.test(line) || CARD_META.test(line) || CARD_UI.test(line)) return false;
+    if (!/^[A-Z0-9][A-Z0-9 '\-–—]+$/.test(line) || line.split(/\s+/).length > 8) return false;
+    const nearby = linesSource.slice(index + 1, index + 6);
+    return nearby.some((entry) => CARD_META.test(entry)) && nearby.some((entry) => /^\d+$/.test(entry));
+  }
+
+  function cardDescriptionCandidatesFromText(text, name) {
     const source = lines(text);
     const wanted = clean(name).toLowerCase();
-    const start = source.findIndex((line) => clean(line).toLowerCase() === wanted);
-    if (start < 0) return '';
-    const parts = [];
-    for (let index = start + 1; index < source.length; index += 1) {
-      const line = source[index];
-      if (CARD_STOP.test(line)) break;
-      if (CARD_META.test(line) || CARD_UI.test(line) || /^[+−-]?\d+(?:\s*[♡♥🔖])?$/.test(line)) {
-        if (parts.length && /^\d+/.test(line)) break;
-        continue;
+    const output = [];
+    for (let start = 0; start < source.length; start += 1) {
+      if (clean(source[start]).toLowerCase() !== wanted) continue;
+      const parts = [];
+      let stoppedBySection = false;
+      for (let index = start + 1; index < source.length && index <= start + 16; index += 1) {
+        const line = source[index];
+        if (clean(line).toLowerCase() === wanted) break;
+        if (CARD_STOP.test(line)) {
+          stoppedBySection = true;
+          break;
+        }
+        if (parts.length && looksLikeNextCard(source, index)) break;
+        if (CARD_META.test(line) || CARD_UI.test(line) || /^[+−-]?\d+(?:\s*[♡♥🔖])?$/.test(line)) continue;
+        if (line.length < 3 || line.length > 800) continue;
+        parts.push(line);
+        if (parts.join(' ').length > 650) break;
       }
-      if (line.length < 3 || line.length > 800) continue;
-      parts.push(line);
+      const description = clean(parts.join(' '));
+      if (!validCardDescription(description)) continue;
+      let score = 0;
+      if (stoppedBySection) score += 100;
+      if (description.length <= 350) score += 20;
+      if (/^[A-Z]/.test(description)) score += 5;
+      if (/[.!?]$/.test(description)) score += 3;
+      score -= Math.min(start / 1000, 2);
+      output.push({ description, score, start, stoppedBySection });
     }
-    const description = clean(parts.join(' '));
-    return description.split(/\s+/).length >= 4 ? description : '';
+    const seen = new Set();
+    return output.filter((entry) => {
+      const key = entry.description.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort((a, b) => b.score - a.score || a.start - b.start || a.description.length - b.description.length);
+  }
+
+  function cardDescriptionFromText(text, name) {
+    return cardDescriptionCandidatesFromText(text, name)[0]?.description || '';
   }
 
   function exactNameNodes(root, name) {
@@ -84,13 +123,17 @@
   }
 
   function domCardDescription(root, name) {
+    const pageText = root?.innerText || root?.textContent || '';
+    const candidates = cardDescriptionCandidatesFromText(pageText, name).map((entry) => ({ ...entry, source: 'page' }));
     for (const nameNode of exactNameNodes(root, name)) {
       const card = cardContainer(root, nameNode);
       if (!card) continue;
-      const description = cardDescriptionFromText(card.innerText || card.textContent || '', name);
-      if (description) return description;
+      for (const entry of cardDescriptionCandidatesFromText(card.innerText || card.textContent || '', name)) {
+        candidates.push({ ...entry, score: entry.score + 25, source: 'container' });
+      }
     }
-    return '';
+    candidates.sort((a, b) => b.score - a.score || a.start - b.start || a.description.length - b.description.length);
+    return candidates[0]?.description || '';
   }
 
   function enrichFreshCutGrassItems(items, doc = document, currentLocation = location) {
@@ -101,7 +144,12 @@
     });
   }
 
-  globalThis.DHFreshCutGrassCardBoundary = { cardDescriptionFromText, domCardDescription, enrichFreshCutGrassItems };
+  globalThis.DHFreshCutGrassCardBoundary = {
+    cardDescriptionCandidatesFromText,
+    cardDescriptionFromText,
+    domCardDescription,
+    enrichFreshCutGrassItems
+  };
 
   function autoExtract() {
     const items = globalThis.DHStatblockParser.parseManyFromDocument(document, location);
