@@ -33,13 +33,16 @@
   const lines = (value) => String(value ?? '').replace(/\r/g, '').split('\n').map(clean).filter(Boolean);
   const CARD_SECTION = /^(?:motives\s*(?:&|and)\s*tactics|tone\s*(?:&|and)\s*feel|impulses|potential adversaries)\s*:?$/i;
   const CARD_STOP = /^(?:motives\s*(?:&|and)\s*tactics|tone\s*(?:&|and)\s*feel|impulses|potential adversaries|difficulty|standard attack|attack|features|experiences?|hp\s*&\s*stress|comments?)\s*:?$/i;
-  const CARD_META = /^(?:tier\s*)?\d+$|^(?:bruiser|horde|leader|minion|ranged|skulk|social|solo|standard|support|traversal|event|exploration|environment(?:exploration|event|social|traversal)?)$/i;
+  const CARD_META = /^(?:tier|type|role)\s*:?$|^(?:tier\s*)?\d+$|^(?:bruiser|horde|leader|minion|ranged|skulk|social|solo|standard|support|traversal|event|exploration|environment(?:exploration|event|social|traversal)?)$/i;
   const CARD_UI = /^(?:manage|preview|edit|delete|community adversaries?\s*&\s*environments?|liked|in library|comments?)\b/i;
+  const DATE_PREFIX = /^(?:\d{1,2}[\/.\-]){2}\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?/i;
+  const ATTRIBUTION_TEXT = /\bthis\s+(?:adversary|environment)\s+was\s+made\s+by\b|\byou\s+can\s+find\s+more\s+of\b|\b(?:created|designed|submitted|uploaded)\s+by\b|https?:\/\/|\b(?:ko-fi|patreon)\.com\b/i;
 
   function validCardDescription(value) {
     const text = clean(value);
     if (text.length < 12 || text.split(/\s+/).length < 4) return false;
     if (/\bno comments? yet\b|\bbe the first to comment\b|\bsign in to comment\b/i.test(text)) return false;
+    if (DATE_PREFIX.test(text) || ATTRIBUTION_TEXT.test(text)) return false;
     return true;
   }
 
@@ -66,6 +69,7 @@
           stoppedBySection = true;
           break;
         }
+        if (DATE_PREFIX.test(line) || ATTRIBUTION_TEXT.test(line)) break;
         if (parts.length && looksLikeNextCard(source, index)) break;
         if (CARD_META.test(line) || CARD_UI.test(line) || /^[+−-]?\d+(?:\s*[♡♥🔖])?$/.test(line)) continue;
         if (line.length < 3 || line.length > 800) continue;
