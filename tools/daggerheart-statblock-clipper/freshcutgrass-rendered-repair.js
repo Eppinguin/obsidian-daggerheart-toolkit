@@ -7,6 +7,8 @@
   const clean = (value) => String(value ?? '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, ' ').trim();
   const renderedLines = (value) => String(value ?? '').replace(/\r/g, '').split('\n').map(clean).filter(Boolean);
   const DATE_LINE = /^(?:\d{1,2}[\/.\-]){2}\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?$/i;
+  const DATE_PREFIX = /^(?:\d{1,2}[\/.\-]){2}\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?)?/i;
+  const ATTRIBUTION_TEXT = /\bthis\s+(?:adversary|environment)\s+was\s+made\s+by\b|\byou\s+can\s+find\s+more\s+of\b|\b(?:created|designed|submitted|uploaded)\s+by\b|https?:\/\/|\b(?:ko-fi|patreon)\.com\b/i;
   const FOOTER_LINE = /^(?:Daggerheart.*Compatible|Terms at Daggerheart|BY\s+\S+|LIKED(?:\s*\(\d+\))?|IN LIBRARY(?:\s*\(\d+\))?|COMMENTS?|refleximage|report|share|download)$/i;
   const COMMENT_LINE = /^(?:no comments? yet(?:[.!]\s*)?(?:be the first to comment[.!]?)?|be the first to comment[.!]?|sign in to comment|log in to comment)$/i;
   const UI_CHROME_LINE = /^(?:community adversaries?\s*&\s*environments?|community homebrew|homebrew vault|manage|preview|edit|delete|add to encounter|back to homebrew)$/i;
@@ -119,30 +121,44 @@
 
   function invalidDescription(line) {
     const value = clean(line);
-    if (!value || DATE_LINE.test(value) || FOOTER_LINE.test(value) || COMMENT_LINE.test(value) || UI_CHROME_LINE.test(value)) return true;
+    if (!value || DATE_LINE.test(value) || DATE_PREFIX.test(value) || FOOTER_LINE.test(value) || COMMENT_LINE.test(value) || UI_CHROME_LINE.test(value)) return true;
     if (/\bno comments? yet\b|\bbe the first to comment\b/i.test(value)) return true;
-    if (/^(?:this adversary was made by|this environment was made by|created by|designed by|author\b|https?:\/\/)/i.test(value)) return true;
+    if (ATTRIBUTION_TEXT.test(value) || /^(?:author\b)/i.test(value)) return true;
     return false;
   }
 
   function renderedDescription(lines, name) {
-    const nameIndex = lines.findIndex((line) => clean(line).toLowerCase() === clean(name).toLowerCase());
-    const start = nameIndex >= 0 ? nameIndex + 1 : 0;
-    let end = lines.length;
-    for (let index = start; index < lines.length; index += 1) {
-      if (/^(?:difficulty|standard attack|attack|features|motives\s*(?:&|and)\s*tactics|experiences?|hp\s*&\s*stress)$/i.test(lines[index])) {
-        end = index;
-        break;
+    const wanted = clean(name).toLowerCase();
+    const outputs = [];
+    const meta = /^(?:tier|type|role)\s*:?$|^(?:tier\s*)?\d+$|^(?:solo|leader|bruiser|horde|minion|ranged|skulk|social|standard|support|traversal|event|exploration|environment(?:exploration|event|social|traversal)?)$/i;
+    const stop = /^(?:difficulty|standard attack|attack|features|motives\s*(?:&|and)\s*tactics|tone\s*(?:&|and)\s*feel|impulses|potential adversaries|experiences?|hp\s*&\s*stress)\s*:?\s*$/i;
+
+    for (let start = 0; start < lines.length; start += 1) {
+      if (clean(lines[start]).toLowerCase() !== wanted) continue;
+      const parts = [];
+      let stoppedBySection = false;
+      for (let index = start + 1; index < lines.length && index <= start + 18; index += 1) {
+        const line = clean(lines[index]);
+        if (line.toLowerCase() === wanted) break;
+        if (stop.test(line)) { stoppedBySection = true; break; }
+        if (DATE_PREFIX.test(line) || ATTRIBUTION_TEXT.test(line)) break;
+        if (invalidDescription(line) || meta.test(line) || UI_CHROME_LINE.test(line) || /^[+−-]?\d+(?:\s*[♡♥🔖])?$/.test(line)) continue;
+        if (line.length < 3 || line.length > 500 || SECTION_LINE.test(line)) continue;
+        if (/\b(?:HP|Stress|Fear|Hope)\b/i.test(line) && /\b(?:mark|spend|clear|take)\b/i.test(line)) break;
+        parts.push(line);
+        if (parts.join(' ').length > 500) break;
       }
+      const description = clean(parts.join(' '));
+      if (description.length < 20 || description.split(/\s+/).length < 5 || invalidDescription(description)) continue;
+      let score = stoppedBySection ? 100 : 0;
+      if (description.length <= 350) score += 20;
+      if (/^[A-Z]/.test(description)) score += 5;
+      if (/[.!?]$/.test(description)) score += 3;
+      outputs.push({ description, score, start });
     }
-    const scoped = lines.slice(start, end);
-    const candidates = scoped.filter((line) => {
-      if (line.length < 20 || line.length > 500 || invalidDescription(line) || SECTION_LINE.test(line)) return false;
-      if (/^(?:tier|solo|leader|bruiser|horde|minion|ranged|skulk|social|standard|support|traversal|event|exploration|environment(?:exploration|event|social|traversal)?|difficulty|hp|stress|atk|attack|thresholds?)\b/i.test(line)) return false;
-      if (/\b(?:HP|Stress|Fear|Hope)\b/i.test(line) && /\b(?:mark|spend|clear|take)\b/i.test(line)) return false;
-      return line.split(/\s+/).length >= 5;
-    });
-    return candidates.find((line) => /^[A-Z]/.test(line) && /[.!?]$/.test(line)) || candidates[0] || '';
+
+    outputs.sort((a, b) => b.score - a.score || a.start - b.start || a.description.length - b.description.length);
+    return outputs[0]?.description || '';
   }
 
   function renderedAuthor(lines, existing = '') {
