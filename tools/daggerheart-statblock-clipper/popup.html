@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="popup-root">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -10,14 +10,8 @@
   <div class="app-shell">
     <header class="app-header">
       <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" role="img">
-            <path d="M16 2.8 27.5 9v13.8L16 29.2 4.5 22.8V9L16 2.8Z" fill="currentColor" opacity=".16"/>
-            <path d="m16 5.6 8.7 4.8v10.9L16 26.2l-8.7-4.9V10.4L16 5.6Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M18.2 8.2 12 17h4.2l-2.1 7 6.2-9h-4.1l2-6.8Z" fill="currentColor"/>
-          </svg>
-        </div>
-        <div>
+        <img class="app-icon" src="icons/icon-32.png" width="28" height="28" alt="">
+        <div class="brand-copy">
           <h1>Statblock Clipper</h1>
           <div class="site-context">
             <span id="siteIndicator" class="site-indicator" aria-hidden="true"></span>
@@ -51,10 +45,10 @@
       <section id="collection" class="panel selection-panel hidden" aria-labelledby="collectionTitle">
         <div class="section-heading">
           <div>
-            <span class="eyebrow">Page results</span>
-            <h2 id="collectionTitle"><span id="resultCount">0</span> statblocks found</h2>
+            <span class="eyebrow">Detected on this page</span>
+            <h2 id="collectionTitle"><span id="resultCount">0</span> statblocks</h2>
           </div>
-          <span id="currentPosition" class="count-pill">1 of 1</span>
+          <span id="currentPosition" class="count-label">1 of 1</span>
         </div>
         <label class="field" for="itemSelect">
           <span class="field-label">Preview</span>
@@ -63,109 +57,101 @@
         <label id="exportAllLabel" class="switch-row hidden">
           <span>
             <strong id="exportAllText">Export all detected statblocks</strong>
-            <small>Creates one note containing every selected block.</small>
+            <small>Put every detected block in the same note.</small>
           </span>
           <input id="exportAll" class="switch-input" type="checkbox" checked>
           <span class="switch" aria-hidden="true"></span>
         </label>
       </section>
 
-      <section id="result" class="stat-card hidden" aria-labelledby="name">
-        <div class="stat-card-accent" aria-hidden="true"></div>
-        <div class="stat-card-header">
-          <div class="badge-row">
-            <span id="categoryBadge" class="badge">Adversary</span>
-            <span id="typeBadge" class="badge badge--quiet">Solo</span>
+      <div class="workspace">
+        <section id="result" class="stat-card hidden" aria-labelledby="name">
+          <div class="stat-card-header">
+            <div class="type-line">
+              <span id="categoryBadge" class="badge">Adversary</span>
+              <span aria-hidden="true">·</span>
+              <span id="typeBadge" class="badge badge--quiet">Solo</span>
+            </div>
+            <h2 id="name">Statblock</h2>
+            <p id="description" class="description hidden"></p>
           </div>
-          <h2 id="name">Statblock</h2>
-          <p id="description" class="description hidden"></p>
-        </div>
 
-        <div class="stats-grid" aria-label="Statblock summary">
-          <div class="stat-tile"><span>Tier</span><strong id="tierValue">—</strong></div>
-          <div class="stat-tile"><span>Difficulty</span><strong id="difficultyValue">—</strong></div>
-          <div class="stat-tile"><span>HP</span><strong id="hpValue">—</strong></div>
-          <div class="stat-tile"><span>Stress</span><strong id="stressValue">—</strong></div>
-        </div>
+          <dl class="stats-grid" aria-label="Statblock summary">
+            <div class="stat-tile"><dt>Tier</dt><dd id="tierValue">—</dd></div>
+            <div class="stat-tile"><dt>Difficulty</dt><dd id="difficultyValue">—</dd></div>
+            <div class="stat-tile"><dt>HP</dt><dd id="hpValue">—</dd></div>
+            <div class="stat-tile"><dt>Stress</dt><dd id="stressValue">—</dd></div>
+          </dl>
 
-        <div id="attackSection" class="detail-row hidden">
-          <span class="detail-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="m14.5 5.5 4-4 4 4-4 4M13 7l4 4M4 20l9-9M3 21l4-1-3-3-1 4Z"/></svg>
-          </span>
-          <div class="detail-copy">
-            <span>Standard attack</span>
-            <strong id="attackName">Attack</strong>
-            <small id="attackDetails"></small>
+          <div id="attackSection" class="detail-row hidden">
+            <div class="detail-copy">
+              <span>Standard attack</span>
+              <strong id="attackName">Attack</strong>
+              <small id="attackDetails"></small>
+            </div>
           </div>
-        </div>
 
-        <div class="stat-card-footer">
-          <span id="featureCount" class="meta-chip">0 features</span>
-          <span id="source" class="source-line"></span>
-        </div>
-      </section>
-
-      <section class="action-stack" aria-label="Export actions">
-        <button id="sendObsidian" class="button button--primary button--hero" type="button" disabled>
-          <span class="button-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="m12 2 8.5 5v10L12 22l-8.5-5V7L12 2Z"/><path d="m12 6 4.4 2.6v5.1L12 18l-4.4-4.3V8.6L12 6Z"/></svg>
-          </span>
-          <span class="button-copy"><strong id="sendLabel">Add to Obsidian</strong><small id="sendHint">Create a toolkit-ready Markdown note</small></span>
-          <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-        </button>
-
-        <div class="action-grid">
-          <button id="copyMarkdown" class="button button--secondary" type="button" disabled>
-            <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3h9a2 2 0 0 1 2 2v14H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Z"/><path d="M8 3v16M11 8h5M11 12h5"/></svg></span>
-            <span class="button-copy"><strong id="markdownLabel">Copy Markdown</strong><small>Toolkit code block</small></span>
-          </button>
-          <button id="copyJson" class="button button--secondary" type="button" disabled>
-            <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/><path d="m10 8-3 4 3 4M14 8l3 4-3 4"/></svg></span>
-            <span class="button-copy"><strong id="jsonLabel">Copy JSON</strong><small>Native import format</small></span>
-          </button>
-        </div>
-
-        <button id="selectBlock" class="button button--ghost" type="button">
-          <span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3M12 8v8M8 12h8"/></svg></span>
-          Pick a different block on this page
-        </button>
-      </section>
-
-      <details id="settings" class="panel settings-panel">
-        <summary>
-          <span class="summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M9 18h6"/></svg></span>
-          <span class="summary-copy"><strong>Obsidian destination</strong><small id="destinationSummary">Daggerheart/Homebrew</small></span>
-          <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-        </summary>
-        <div class="settings-body">
-          <div class="field-grid">
-            <label class="field">
-              <span class="field-label">Vault name or ID</span>
-              <input id="vault" type="text" placeholder="Optional">
-              <small>Leave blank to use the active vault.</small>
-            </label>
-            <label class="field">
-              <span class="field-label">Destination folder</span>
-              <input id="folder" type="text" placeholder="Daggerheart/Homebrew">
-            </label>
+          <div class="stat-card-footer">
+            <span id="featureCount" class="meta-chip">0 features</span>
+            <span id="source" class="source-line"></span>
           </div>
-          <label class="switch-row switch-row--compact">
-            <span><strong>Overwrite matching note</strong><small>Use the same note name on repeat imports.</small></span>
-            <input id="overwrite" class="switch-input" type="checkbox">
-            <span class="switch" aria-hidden="true"></span>
-          </label>
-          <div class="settings-actions">
-            <button id="openOptions" class="button button--ghost button--small" type="button">Open full settings</button>
-            <button id="saveSettings" class="button button--secondary button--small" type="button">Save destination</button>
-          </div>
+        </section>
+
+        <div class="side-column">
+          <section class="action-stack" aria-label="Export actions">
+            <button id="sendObsidian" class="button button--primary button--hero" type="button" disabled>
+              <svg class="button-leading-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8.5 5v10L12 22l-8.5-5V7L12 2Z"/><path d="m12 6 4.4 2.6v5.1L12 18l-4.4-4.3V8.6L12 6Z"/></svg>
+              <span class="button-copy"><strong id="sendLabel">Add to Obsidian</strong><small id="sendHint">Create a toolkit-ready Markdown note</small></span>
+              <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+
+            <div class="action-grid">
+              <button id="copyMarkdown" class="button button--secondary" type="button" disabled>
+                <span class="button-copy"><strong id="markdownLabel">Copy Markdown</strong><small>Toolkit code block</small></span>
+              </button>
+              <button id="copyJson" class="button button--secondary" type="button" disabled>
+                <span class="button-copy"><strong id="jsonLabel">Copy JSON</strong><small>Native import format</small></span>
+              </button>
+            </div>
+
+            <button id="selectBlock" class="button button--text" type="button">
+              Pick a different block on this page
+            </button>
+          </section>
+
+          <details id="settings" class="panel settings-panel">
+            <summary>
+              <span class="summary-copy"><strong>Obsidian destination</strong><small id="destinationSummary">Daggerheart/Homebrew</small></span>
+              <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            </summary>
+            <div class="settings-body">
+              <div class="field-grid">
+                <label class="field">
+                  <span class="field-label">Vault name or ID</span>
+                  <input id="vault" type="text" placeholder="Optional">
+                  <small>Leave blank to use the active vault.</small>
+                </label>
+                <label class="field">
+                  <span class="field-label">Destination folder</span>
+                  <input id="folder" type="text" placeholder="Daggerheart/Homebrew">
+                </label>
+              </div>
+              <label class="switch-row switch-row--compact">
+                <span><strong>Overwrite matching note</strong><small>Use the same note name on repeat imports.</small></span>
+                <input id="overwrite" class="switch-input" type="checkbox">
+                <span class="switch" aria-hidden="true"></span>
+              </label>
+              <div class="settings-actions">
+                <button id="openOptions" class="button button--text button--small" type="button">Full settings</button>
+                <button id="saveSettings" class="button button--secondary button--small" type="button">Save</button>
+              </div>
+            </div>
+          </details>
         </div>
-      </details>
+      </div>
     </main>
 
-    <footer class="app-footer">
-      <span class="privacy-dot" aria-hidden="true"></span>
-      Runs locally in your browser. Nothing is uploaded.
-    </footer>
+    <footer class="app-footer">Runs locally in your browser.</footer>
   </div>
 
   <script src="parser.js"></script>
