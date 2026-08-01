@@ -24,7 +24,13 @@ assert.match(styles, /\.button--primary/);
 assert.match(popupJs, /toToolkitStatblock/);
 assert.match(popupJs, /openOptionsPage/);
 assert.match(options, /Obsidian destination/);
-assert.equal(manifest.version, '0.5.0');
+assert.match(popup, /class="popup-root"/);
+assert.match(styles, /@media \(min-width:\s*620px\)/);
+assert.doesNotMatch(styles, /\.popup-page\s*\{[^}]*width:\s*400px/s);
+assert.doesNotMatch(styles, /\.app-header\s*\{[^}]*linear-gradient/s);
+assert.match(styles, /\.workspace\s*\{/);
+
+assert.equal(manifest.version, '0.5.1');
 for (const size of [16, 32, 48, 128]) {
   const icon = manifest.icons[String(size)];
   assert.ok(icon, `missing manifest icon ${size}`);
