@@ -63,6 +63,8 @@ The extension detects each complete adversary or environment card separately. Wh
 
 ## Heart of Daggers
 
+Version 0.4.6 filters attribution and licensing prose from the detected-statblock list. A Heart of Daggers result must have a non-attribution title plus tier, role, difficulty, and complete adversary or environment core fields. Text such as conversion notes, Reddit credits, image credits, and Creative Commons license notices is never offered as a second statblock.
+
 The parser reads the full **Features** section, including separate Passive, Action, and Reaction groups. Fear, Stress, and Hope cost lines are converted to `parsedCost`.
 
 ## Use with Obsidian Daggerheart Toolkit
