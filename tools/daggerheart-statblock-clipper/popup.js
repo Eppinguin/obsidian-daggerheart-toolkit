@@ -82,7 +82,7 @@
   }
 
   async function inject(tabId) {
-    await api.scripting.executeScript({ target: { tabId }, files: ['parser.js', 'parser-patch.js', 'content-script.js'] });
+    await api.scripting.executeScript({ target: { tabId }, files: ['parser.js', 'parser-patch.js', 'heartofdaggers-filter.js', 'content-script.js'] });
   }
 
   async function collectFreshCutGrassState(tab) {
