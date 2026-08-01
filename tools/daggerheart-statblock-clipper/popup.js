@@ -7,16 +7,33 @@
   let currentTab = null;
 
   const $ = (id) => document.getElementById(id);
-  const status = $('status');
-  const buttons = ['copyMarkdown', 'copyJson', 'sendObsidian'].map($);
+  const actionButtons = ['copyMarkdown', 'copyJson', 'sendObsidian'].map($);
+  const statusIcons = {
+    loading: '<svg class="spinner" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/></svg>',
+    success: '<svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>',
+    error: '<svg viewBox="0 0 24 24"><path d="M12 8v5M12 17h.01"/><path d="M10.3 3.7 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0Z"/></svg>',
+    neutral: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'
+  };
 
-  function setStatus(message, error = false) {
-    status.textContent = message;
-    status.classList.toggle('error', error);
+  function setStatus(message, type = 'neutral') {
+    const status = $('status');
+    status.className = `notice notice--${type}`;
+    status.querySelector('.notice-icon').innerHTML = statusIcons[type] || statusIcons.neutral;
+    $('statusText').textContent = message;
+  }
+
+  function setLoading(loading) {
+    $('loadingCard').classList.toggle('hidden', !loading);
+    $('refresh').classList.toggle('is-spinning', loading);
+    $('refresh').disabled = loading;
+    if (loading) {
+      $('result').classList.add('hidden');
+      $('collection').classList.add('hidden');
+    }
   }
 
   function enableActions(enabled) {
-    buttons.forEach((button) => { button.disabled = !enabled; });
+    actionButtons.forEach((button) => { button.disabled = !enabled; });
   }
 
   function sanitizeFilename(value) {
@@ -27,6 +44,10 @@
       .slice(0, 120) || 'Untitled Statblock';
   }
 
+  function clean(value) {
+    return String(value ?? '').replace(/\s+/g, ' ').trim();
+  }
+
   function current() {
     return currentItems[currentIndex] || null;
   }
@@ -35,36 +56,100 @@
     return $('exportAll').checked && currentItems.length > 1 ? currentItems : (current() ? [current()] : []);
   }
 
+  function toolkitView(data) {
+    try {
+      return globalThis.DHStatblockParser.toToolkitStatblock(data);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function sourceLabel(data, toolkit) {
+    const site = clean(data.sourceSite || toolkit?.source?.site)
+      .replace(/^www\./i, '')
+      .replace(/^heartofdaggers\.com$/i, 'Heart of Daggers')
+      .replace(/^freshcutgrass\.app$/i, 'FreshCutGrass');
+    const author = clean(data.author || toolkit?.source?.author);
+    return author ? `${site || 'Source'} · ${author}` : site;
+  }
+
+  function setSiteContext(url) {
+    let hostname = '';
+    try { hostname = new URL(url).hostname.replace(/^www\./, ''); } catch (_error) { /* ignored */ }
+    if (/freshcutgrass\.app$/i.test(hostname)) {
+      document.body.dataset.site = 'freshcutgrass';
+      $('site').textContent = 'FreshCutGrass';
+    } else if (/heartofdaggers\.com$/i.test(hostname)) {
+      document.body.dataset.site = 'heartofdaggers';
+      $('site').textContent = 'Heart of Daggers';
+    } else {
+      document.body.dataset.site = 'other';
+      $('site').textContent = hostname || 'Unsupported page';
+    }
+  }
+
+  function updateDestinationSummary() {
+    const vault = $('vault').value.trim();
+    const folder = $('folder').value.trim().replace(/^\/+|\/+$/g, '');
+    const location = folder || 'Vault root';
+    $('destinationSummary').textContent = vault ? `${location} · ${vault}` : location;
+  }
+
   function updateActionLabels() {
     const count = selectedItems().length;
-    $('copyMarkdown').textContent = count > 1 ? `Copy ${count} as Markdown` : 'Copy Toolkit Markdown';
-    $('copyJson').textContent = count > 1 ? `Copy ${count} as JSON` : 'Copy Toolkit JSON';
-    $('sendObsidian').textContent = count > 1 ? `Add ${count} to Obsidian` : 'Add to Obsidian';
+    const many = count > 1;
+    $('sendLabel').textContent = many ? `Add ${count} statblocks to Obsidian` : 'Add to Obsidian';
+    $('sendHint').textContent = many ? 'Create one note with every detected block' : 'Create a toolkit-ready Markdown note';
+    $('markdownLabel').textContent = many ? `Copy ${count} blocks` : 'Copy Markdown';
+    $('jsonLabel').textContent = many ? `Copy ${count} items` : 'Copy JSON';
+    $('currentPosition').textContent = `${Math.min(currentIndex + 1, currentItems.length)} of ${currentItems.length || 1}`;
   }
 
   function renderCurrent() {
     const data = current();
     if (!data) return;
+    const toolkit = toolkitView(data) || {};
+    const category = toolkit.category || (data.impulses || data.tone ? 'environment' : 'adversary');
+    const attack = toolkit.attack || {};
+    const hpStress = toolkit.hp_stress || {};
+    const features = Array.isArray(toolkit.features) ? toolkit.features : (Array.isArray(data.features) ? data.features : []);
+    const description = clean(toolkit.description || data.desc || data.description);
+
     $('result').classList.remove('hidden');
-    $('name').textContent = data.name || 'Untitled Statblock';
-    const parts = [];
-    if (data.tier != null) parts.push(`Tier ${data.tier}`);
-    if (data.type) parts.push(data.type);
-    if (data.difficulty != null) parts.push(`Difficulty ${data.difficulty}`);
-    if (data.hp != null) parts.push(`HP ${data.hp}`);
-    $('summary').textContent = parts.join(' · ') || 'Parsed statblock';
-    $('source').textContent = data.author ? `${data.sourceSite || 'Source'} · ${data.author}` : (data.sourceSite || data.source || '');
+    $('name').textContent = toolkit.name || data.name || 'Untitled Statblock';
+    $('categoryBadge').textContent = category === 'environment' ? 'Environment' : 'Adversary';
+    $('categoryBadge').classList.toggle('badge--environment', category === 'environment');
+    $('typeBadge').textContent = clean(toolkit.type || data.type) || 'Homebrew';
+
+    $('description').textContent = description;
+    $('description').classList.toggle('hidden', !description);
+    $('tierValue').textContent = toolkit.tier ?? data.tier ?? '—';
+    $('difficultyValue').textContent = toolkit.difficulty ?? data.difficulty ?? '—';
+    $('hpValue').textContent = category === 'adversary' ? (hpStress.hp ?? data.hp ?? '—') : '—';
+    $('stressValue').textContent = category === 'adversary' ? (hpStress.stress ?? data.stress ?? '—') : '—';
+
+    const attackName = clean(attack.name || data.weapon);
+    const attackDetails = [attack.modifier, attack.range, attack.damage].filter((value) => clean(value)).join(' · ');
+    const showAttack = category === 'adversary' && Boolean(attackName || attackDetails);
+    $('attackSection').classList.toggle('hidden', !showAttack);
+    $('attackName').textContent = attackName || 'Standard attack';
+    $('attackDetails').textContent = attackDetails;
+
+    $('featureCount').textContent = `${features.length} feature${features.length === 1 ? '' : 's'}`;
+    $('source').textContent = sourceLabel(data, toolkit);
+
     enableActions(true);
     updateActionLabels();
-    if (data.extractionWarning) setStatus(data.extractionWarning, true);
-    else if (currentItems.length > 1) setStatus(`${currentItems.length} statblocks found. Select one or export all.`);
-    else setStatus(data.features?.length ? `Ready. ${data.features.length} feature(s) found.` : 'Ready. No features were detected.');
+    if (data.extractionWarning) setStatus(data.extractionWarning, 'error');
+    else if (currentItems.length > 1) setStatus(`${currentItems.length} statblocks detected. Choose one or export the complete set.`, 'success');
+    else setStatus(features.length ? `Ready to export · ${features.length} feature${features.length === 1 ? '' : 's'} detected.` : 'Ready to export. No features were detected.', 'success');
   }
 
   function renderItems(items) {
     currentItems = Array.isArray(items) ? items.filter(Boolean) : [];
     currentIndex = 0;
-    if (!currentItems.length) throw new Error('No statblock found. Open a stat preview or use Pick block(s) on page.');
+    setLoading(false);
+    if (!currentItems.length) throw new Error('No statblock found. Open a stat preview or pick a block manually.');
 
     const select = $('itemSelect');
     select.replaceChildren();
@@ -74,10 +159,13 @@
       option.textContent = item.name || `Statblock ${index + 1}`;
       select.appendChild(option);
     });
-    $('collection').classList.toggle('hidden', currentItems.length <= 1);
-    $('exportAllLabel').classList.toggle('hidden', currentItems.length <= 1);
-    $('exportAll').checked = currentItems.length > 1;
-    $('exportAllText').textContent = `Export all ${currentItems.length} detected statblocks`;
+
+    const multiple = currentItems.length > 1;
+    $('collection').classList.toggle('hidden', !multiple);
+    $('exportAllLabel').classList.toggle('hidden', !multiple);
+    $('exportAll').checked = multiple;
+    $('resultCount').textContent = String(currentItems.length);
+    $('exportAllText').textContent = `Export all ${currentItems.length} statblocks`;
     renderCurrent();
   }
 
@@ -105,11 +193,12 @@
   async function extract() {
     try {
       enableActions(false);
-      setStatus('Extracting…');
+      setLoading(true);
+      setStatus('Extracting statblock…', 'loading');
       const [tab] = await api.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id || !/^https?:/i.test(tab.url || '')) throw new Error('Open a FreshCutGrass or Heart of Daggers page first.');
       currentTab = tab;
-      $('site').textContent = new URL(tab.url).hostname;
+      setSiteContext(tab.url);
       await inject(tab.id);
       const [response, appState] = await Promise.all([
         api.tabs.sendMessage(tab.id, { type: 'DH_EXTRACT' }),
@@ -133,16 +222,17 @@
       renderItems(chosen);
     } catch (error) {
       currentItems = [];
+      setLoading(false);
       $('collection').classList.add('hidden');
       $('result').classList.add('hidden');
       enableActions(false);
-      setStatus(error.message, true);
+      setStatus(error.message, 'error');
     }
   }
 
   async function copy(text, label) {
     await navigator.clipboard.writeText(text);
-    setStatus(`${label} copied.`);
+    setStatus(`${label} copied to the clipboard.`, 'success');
   }
 
   async function loadSettings() {
@@ -150,15 +240,17 @@
     $('vault').value = settings.vault;
     $('folder').value = settings.folder;
     $('overwrite').checked = settings.overwrite;
+    updateDestinationSummary();
   }
 
-  async function saveSettings() {
+  async function saveSettings(announce = true) {
     await api.storage.sync.set({
       vault: $('vault').value.trim(),
       folder: $('folder').value.trim().replace(/^\/+|\/+$/g, ''),
       overwrite: $('overwrite').checked
     });
-    setStatus('Settings saved.');
+    updateDestinationSummary();
+    if (announce) setStatus('Obsidian destination saved.', 'success');
   }
 
   function collectionFilename(items) {
@@ -169,26 +261,32 @@
   async function sendToObsidian() {
     const items = selectedItems();
     if (!items.length) return;
-    await saveSettings();
-    const markdown = globalThis.DHStatblockParser.toToolkitMarkdownMany(items);
-    await navigator.clipboard.writeText(markdown);
-
-    const vault = $('vault').value.trim();
-    const folder = $('folder').value.trim().replace(/^\/+|\/+$/g, '');
-    const filename = collectionFilename(items);
-    const file = folder ? `${folder}/${filename}` : filename;
-    const params = new URLSearchParams();
-    if (vault) params.set('vault', vault);
-    params.set('file', file);
-    params.set('clipboard', '');
-    if ($('overwrite').checked) params.set('overwrite', '');
-    const uri = `obsidian://new?${params.toString().replace(/=$/g, '')}`;
-
-    setStatus(`${items.length === 1 ? 'Statblock' : `${items.length} statblocks`} copied; opening Obsidian…`);
+    $('sendObsidian').disabled = true;
+    setStatus('Preparing Obsidian note…', 'loading');
     try {
-      await api.tabs.create({ url: uri });
-    } catch (_error) {
-      window.location.href = uri;
+      await saveSettings(false);
+      const markdown = globalThis.DHStatblockParser.toToolkitMarkdownMany(items);
+      await navigator.clipboard.writeText(markdown);
+
+      const vault = $('vault').value.trim();
+      const folder = $('folder').value.trim().replace(/^\/+|\/+$/g, '');
+      const filename = collectionFilename(items);
+      const file = folder ? `${folder}/${filename}` : filename;
+      const params = new URLSearchParams();
+      if (vault) params.set('vault', vault);
+      params.set('file', file);
+      params.set('clipboard', '');
+      if ($('overwrite').checked) params.set('overwrite', '');
+      const uri = `obsidian://new?${params.toString().replace(/=$/g, '')}`;
+
+      setStatus(`${items.length === 1 ? 'Statblock' : `${items.length} statblocks`} copied. Opening Obsidian…`, 'success');
+      try {
+        await api.tabs.create({ url: uri });
+      } catch (_error) {
+        window.location.href = uri;
+      }
+    } finally {
+      $('sendObsidian').disabled = false;
     }
   }
 
@@ -202,7 +300,10 @@
     return copy(globalThis.DHStatblockParser.toToolkitJsonMany(items), items.length > 1 ? `${items.length} toolkit statblocks` : 'Toolkit JSON');
   });
   $('sendObsidian').addEventListener('click', sendToObsidian);
-  $('saveSettings').addEventListener('click', saveSettings);
+  $('saveSettings').addEventListener('click', () => saveSettings(true));
+  $('openOptions').addEventListener('click', () => api.runtime.openOptionsPage());
+  $('vault').addEventListener('input', updateDestinationSummary);
+  $('folder').addEventListener('input', updateDestinationSummary);
   $('itemSelect').addEventListener('change', (event) => {
     currentIndex = Number(event.target.value) || 0;
     renderCurrent();
@@ -218,7 +319,7 @@
       await api.tabs.sendMessage(currentTab.id, { type: 'DH_SELECT' });
       window.close();
     } catch (error) {
-      setStatus(error.message, true);
+      setStatus(error.message, 'error');
     }
   });
 
