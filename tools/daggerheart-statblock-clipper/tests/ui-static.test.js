@@ -5,6 +5,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const popup = fs.readFileSync(path.join(root, 'popup.html'), 'utf8');
 const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+const compactStyles = fs.readFileSync(path.join(root, 'compact-layout.css'), 'utf8');
 const popupJs = fs.readFileSync(path.join(root, 'popup.js'), 'utf8');
 const options = fs.readFileSync(path.join(root, 'options.html'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
@@ -25,12 +26,15 @@ assert.match(popupJs, /toToolkitStatblock/);
 assert.match(popupJs, /openOptionsPage/);
 assert.match(options, /Obsidian destination/);
 assert.match(popup, /class="popup-root"/);
-assert.match(styles, /@media \(min-width:\s*620px\)/);
-assert.doesNotMatch(styles, /\.popup-page\s*\{[^}]*width:\s*400px/s);
+assert.match(popup, /compact-layout\.css/);
+assert.match(compactStyles, /html\.popup-root,[\s\S]*body\.popup-page[\s\S]*width:\s*400px/);
+assert.match(compactStyles, /max-width:\s*400px/);
+assert.match(compactStyles, /\.app-shell\s*\{[^}]*width:\s*min\(400px,\s*100vw\)/s);
+assert.match(compactStyles, /\.workspace\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/s);
 assert.doesNotMatch(styles, /\.app-header\s*\{[^}]*linear-gradient/s);
 assert.match(styles, /\.workspace\s*\{/);
 
-assert.equal(manifest.version, '0.5.1');
+assert.equal(manifest.version, '0.5.2');
 for (const size of [16, 32, 48, 128]) {
   const icon = manifest.icons[String(size)];
   assert.ok(icon, `missing manifest icon ${size}`);
