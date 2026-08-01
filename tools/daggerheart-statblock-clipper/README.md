@@ -7,6 +7,19 @@ Local-install browser extension for importing Daggerheart community homebrew fro
 
 The extension targets the native statblock format used by **Obsidian Daggerheart Toolkit**.
 
+## Interface in 0.5.0
+
+Version 0.5.0 redesigns the extension as a polished product while preserving the existing extraction behavior:
+
+- branded popup and extension icons, with native light and dark themes,
+- clear loading, success, warning, and error states,
+- a toolkit-style stat preview with category, role, tier, difficulty, HP, Stress, attack, feature count, and source,
+- an explicit multi-statblock selector and export-all scope,
+- one prominent **Add to Obsidian** action with grouped Markdown and JSON alternatives,
+- a compact destination panel in the popup plus a full settings page,
+- keyboard-visible focus states, semantic status announcements, and larger interaction targets,
+- local-processing and privacy messaging directly in the interface.
+
 ## Outputs
 
 - **Toolkit Markdown** using one or more `daggerheart-statblock` YAML code blocks.
@@ -63,9 +76,9 @@ The extension detects each complete adversary or environment card separately. Wh
 
 ## Heart of Daggers
 
-Heart of Daggers displays the same homebrew in two columns: an overview/detail panel and the finished printable card. Version 0.4.7 extracts only the finished card. It identifies that card by its compact `Tier N Role` line and condensed stat rows, then selects the smallest matching card container. The left overview panel is ignored even when it contains enough fields to look like a complete statblock.
+Heart of Daggers detail pages contain both a labelled overview panel and a compact printable card. The extractor selects only the compact card by its combined tier/role and stat-row signature, so the same homebrew is not offered twice. Attribution, conversion, image-credit, and licensing prose remain excluded as a secondary safeguard.
 
-The parser reads the full **Features** section, including separate Passive, Action, and Reaction groups. Fear, Stress, and Hope cost lines are converted to `parsedCost`. Attribution, conversion, image-credit, and licensing prose are also excluded.
+The parser reads the full **Features** section, including separate Passive, Action, and Reaction groups. Fear, Stress, and Hope cost lines are converted to `parsedCost`.
 
 ## Use with Obsidian Daggerheart Toolkit
 
