@@ -237,8 +237,9 @@
     Object.assign(result, renderedAttack(lines, result));
 
     const description = renderedDescription(lines, result.name || '');
-    if (description) result.desc = description;
-    else if (invalidDescription(result.desc || '')) delete result.desc;
+    const preserveStateDescription = result.extractionMethod === 'freshcutgrass-app-state' && !invalidDescription(result.desc || '');
+    if (description && !preserveStateDescription) result.desc = description;
+    else if (!preserveStateDescription && invalidDescription(result.desc || '')) delete result.desc;
     result.author = renderedAuthor(lines, result.author || '');
 
     const features = renderedFeatures(lines);
