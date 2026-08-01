@@ -7,18 +7,18 @@ Local-install browser extension for importing Daggerheart community homebrew fro
 
 The extension targets the native statblock format used by **Obsidian Daggerheart Toolkit**.
 
-## Interface in 0.5.0
 
-Version 0.5.0 redesigns the extension as a polished product while preserving the existing extraction behavior:
+## Interface in 0.5.1
 
-- branded popup and extension icons, with native light and dark themes,
-- clear loading, success, warning, and error states,
-- a toolkit-style stat preview with category, role, tier, difficulty, HP, Stress, attack, feature count, and source,
-- an explicit multi-statblock selector and export-all scope,
-- one prominent **Add to Obsidian** action with grouped Markdown and JSON alternatives,
-- a compact destination panel in the popup plus a full settings page,
-- keyboard-visible focus states, semantic status announcements, and larger interaction targets,
-- local-processing and privacy messaging directly in the interface.
+Version 0.5.1 uses a restrained browser-extension interface rather than a decorative dashboard:
+
+- neutral surfaces with one purple accent,
+- standard buttons, fields, and status messages,
+- lighter typography and fewer rounded containers,
+- a compact stat preview without gradients, large icon tiles, or decorative accent bars,
+- a single-column layout at normal popup widths,
+- a two-column workspace when a browser provides a wide popover, avoiding unused space,
+- native light and dark themes with keyboard-visible focus states.
 
 ## Outputs
 
