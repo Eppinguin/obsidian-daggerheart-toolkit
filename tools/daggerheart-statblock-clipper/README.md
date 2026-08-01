@@ -32,7 +32,7 @@ Source website, URL, author, and extraction date are preserved in a `source` obj
 3. Confirm the displayed name and feature count.
 4. Copy the result or choose **Add to Obsidian**.
 
-The extractor first tries the page's application state, then repairs the rendered preview when needed. Version 0.4.3 also reads descriptions from the nearest visible community card before considering broad page text. This prevents short or visually wrapped summaries from inheriting the next card's description.
+The extractor first tries the page's application state, then repairs the rendered preview when needed. Version 0.4.4 also reads descriptions from the nearest visible community card before considering broad page text. This prevents short or visually wrapped summaries from inheriting the next card's description.
 
 The rendered repair also:
 
@@ -45,6 +45,10 @@ The rendered repair also:
 - infers Fear, Stress, and Hope costs,
 - rejects timestamps and comment placeholders as descriptions,
 - prefers explicit “made by” attribution over profile labels.
+
+### Duplicate card layouts
+
+Version 0.4.4 evaluates every exact-name occurrence on FreshCutGrass instead of accepting the first DOM match. It prefers a description block that ends at the selected card’s own **Motives & Tactics** or **Tone & Feel** heading. This prevents hidden/responsive copies of the second grid column from borrowing the next card’s summary. Application-state descriptions also take precedence over rendered-card fallbacks.
 
 ### Encounter pages
 
