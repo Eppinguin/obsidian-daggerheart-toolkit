@@ -25,8 +25,10 @@
   const originalRepair = base.repairFreshCutGrassDomItem;
   function repairFreshCutGrassDomItem(item, sourceUrl = '') {
     const cardDescription = clean(item?.__cardDescription);
+    const inputStateDescription = item?.extractionMethod === 'freshcutgrass-app-state' && validCardDescription(item?.desc) ? clean(item.desc) : '';
     const repaired = typeof originalRepair === 'function' ? originalRepair(item, sourceUrl) : { ...(item || {}) };
-    if (validCardDescription(cardDescription)) repaired.desc = cardDescription;
+    if (inputStateDescription) repaired.desc = inputStateDescription;
+    else if (validCardDescription(cardDescription)) repaired.desc = cardDescription;
     delete repaired.__cardDescription;
     return repaired;
   }
@@ -38,7 +40,8 @@
     return (Array.isArray(parsed) ? parsed : []).map((item) => {
       const description = byName.get(clean(item?.name).toLowerCase()) || clean(item?.__cardDescription);
       const output = { ...item };
-      if (validCardDescription(description)) output.desc = description;
+      const stateDescription = output.extractionMethod === 'freshcutgrass-app-state' && validCardDescription(output.desc);
+      if (validCardDescription(description) && !stateDescription) output.desc = description;
       delete output.__cardDescription;
       return output;
     });
