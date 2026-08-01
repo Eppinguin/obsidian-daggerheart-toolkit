@@ -126,3 +126,64 @@ const statePreferred = parser.repairFreshCutGrassDomItem({
 assert.equal(statePreferred.desc, 'A fey creature that wields shadows and secrets');
 assert.equal(statePreferred.__cardDescription, undefined);
 console.log('FreshCutGrass duplicate second-column description regression passed');
+
+const attributionLine = '10/18/2025 10:03:46 PM This adversary was made by RightKnighttoFight. You can find more of his work at https://ko-fi.com/rightknighttofight';
+const attributionOnly = [
+  'SHADOW HAG',
+  'SOLO',
+  '2',
+  attributionLine,
+  'Motives & Tactics:',
+  'Feed on nightmares, summon hellspawn, make deals'
+].join('\n');
+assert.equal(helper.cardDescriptionFromText(attributionOnly, 'Shadow Hag'), '');
+
+const attributionDuplicateLayout = [
+  'SHADOW HAG',
+  'SOLO',
+  '2',
+  attributionLine,
+  'SHADOW HAG',
+  'SOLO',
+  '2',
+  'A fey creature that wields',
+  'shadows and secrets',
+  'Motives & Tactics:',
+  'Feed on nightmares, summon hellspawn, make deals'
+].join('\n');
+assert.equal(
+  helper.cardDescriptionFromText(attributionDuplicateLayout, 'Shadow Hag'),
+  'A fey creature that wields shadows and secrets'
+);
+
+const repairedAttribution = parser.repairFreshCutGrassDomItem({
+  name: 'Shadow Hag',
+  desc: attributionLine,
+  rawText: attributionDuplicateLayout + '\nDifficulty\n16\nFEATURES\nFey Disguise\nThe Hag can disguise herself.'
+}, 'https://freshcutgrass.app/homebrew?id=uoHvyG83mBqs4YAxPpGB8n');
+assert.equal(repairedAttribution.desc, 'A fey creature that wields shadows and secrets');
+
+const stateWithAttribution = parser.parseFreshCutGrassState({
+  targetId: 'uoHvyG83mBqs4YAxPpGB8n',
+  candidates: [{
+    value: {
+      id: 'uoHvyG83mBqs4YAxPpGB8n',
+      name: 'Shadow Hag',
+      tier: 2,
+      role: 'Solo',
+      difficulty: 16,
+      hp: 8,
+      stress: 6,
+      description: attributionLine,
+      features: [{ name: 'Fey Disguise', type: 'Passive', description: 'The Hag can disguise herself.' }]
+    }
+  }]
+}, 'https://freshcutgrass.app/homebrew?id=uoHvyG83mBqs4YAxPpGB8n', [{
+  name: 'Shadow Hag',
+  desc: attributionLine,
+  __cardDescription: 'A fey creature that wields shadows and secrets',
+  rawText: attributionDuplicateLayout
+}]);
+assert.equal(stateWithAttribution.length, 1);
+assert.equal(stateWithAttribution[0].desc, 'A fey creature that wields shadows and secrets');
+console.log('FreshCutGrass combined timestamp attribution regression passed');
