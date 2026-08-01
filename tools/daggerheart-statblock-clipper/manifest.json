@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Daggerheart Statblock Clipper",
-  "version": "0.5.0",
-  "description": "Polished Daggerheart statblock imports for Obsidian from FreshCutGrass and Heart of Daggers.",
+  "version": "0.5.1",
+  "description": "Import Daggerheart statblocks into Obsidian from FreshCutGrass and Heart of Daggers.",
   "permissions": [
     "activeTab",
     "scripting",
