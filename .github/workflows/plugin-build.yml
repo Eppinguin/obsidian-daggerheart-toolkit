@@ -1,0 +1,34 @@
+name: Plugin Build
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'scripts/test-compendium-path.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/plugin-build.yml'
+  push:
+    paths:
+      - 'src/**'
+      - 'scripts/test-compendium-path.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/plugin-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run test:compendium
+      - run: pnpm run build
