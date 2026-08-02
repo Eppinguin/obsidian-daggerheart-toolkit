@@ -19,3 +19,18 @@ body.popup-page {
 .side-column { position: static; }
 .stat-card { height: auto; padding: 14px; }
 .app-footer { padding: 0 10px 10px; }
+
+.utility-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  padding-top: 2px;
+}
+
+.utility-actions .button--text {
+  min-height: 30px;
+  padding-inline: 4px;
+  font-size: 12px;
+}
