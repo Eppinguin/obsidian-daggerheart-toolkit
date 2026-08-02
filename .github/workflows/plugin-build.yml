@@ -30,6 +30,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # The existing repository lockfile predates the current root package manifest.
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm run test:compendium
       - run: pnpm run build
