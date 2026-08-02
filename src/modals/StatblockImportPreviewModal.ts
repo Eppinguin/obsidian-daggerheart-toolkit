@@ -45,6 +45,7 @@ export class StatblockImportPreviewModal extends Modal {
             })
             .filter((candidate): candidate is ImportCandidate => candidate !== null);
         this.modalEl.addClass('dh-statblock-import-preview-modal');
+        this.contentEl.addClass('dh-statblock-import-preview-content');
     }
 
     onOpen(): void {
@@ -84,11 +85,16 @@ export class StatblockImportPreviewModal extends Modal {
     private renderCandidate(parent: HTMLElement, candidate: ImportCandidate): void {
         const card = parent.createDiv('dh-import-preview-item');
         const header = card.createDiv('dh-import-preview-item-header');
-        const title = header.createDiv();
+        const title = header.createDiv('dh-import-preview-item-title');
         title.createEl('strong', { text: candidate.data.name });
         title.createEl('small', { text: `${candidate.data.category} · Tier ${candidate.data.tier ?? '—'} · ${candidate.data.type || 'Unknown role'}` });
 
-        const actionControl = new DropdownComponent(header);
+        const action = header.createDiv('dh-import-preview-action');
+        action.createSpan({
+            text: candidate.conflict ? 'Existing entry' : 'Import action',
+            cls: 'dh-import-preview-action-label'
+        });
+        const actionControl = new DropdownComponent(action);
         actionControl.addOption('rename', 'Import as copy');
         actionControl.addOption('update', candidate.conflict ? 'Replace existing' : 'Import');
         actionControl.addOption('skip', 'Skip');
