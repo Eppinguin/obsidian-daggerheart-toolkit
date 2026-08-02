@@ -5,9 +5,23 @@ import { openStatblockImportPreviewFromJson } from '../modals/StatblockImportPre
 
 const installed = new WeakSet<object>();
 
+async function readClipboardText(): Promise<string> {
+    try {
+        return await navigator.clipboard.readText();
+    } catch (webClipboardError) {
+        try {
+            const electronClipboard = (window as any).require?.('electron')?.clipboard;
+            if (electronClipboard?.readText) return electronClipboard.readText();
+        } catch (electronClipboardError) {
+            console.debug('Daggerheart | Electron clipboard fallback unavailable:', electronClipboardError);
+        }
+        throw webClipboardError;
+    }
+}
+
 async function openClipboardImport(plugin: DaggerheartStatblockPlugin, sourceLabel: string): Promise<void> {
     try {
-        const text = await navigator.clipboard.readText();
+        const text = await readClipboardText();
         if (!text.trim()) {
             new Notice('The clipboard is empty. Copy statblock JSON first.');
             return;
