@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/**'
       - 'scripts/test-compendium-path.mjs'
+      - 'scripts/test-encounter-thresholds.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/plugin-build.yml'
@@ -13,6 +14,7 @@ on:
     paths:
       - 'src/**'
       - 'scripts/test-compendium-path.mjs'
+      - 'scripts/test-encounter-thresholds.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/plugin-build.yml'
@@ -33,4 +35,5 @@ jobs:
       # The existing repository lockfile predates the current root package manifest.
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm run test:compendium
+      - run: pnpm run test:thresholds
       - run: pnpm run build
