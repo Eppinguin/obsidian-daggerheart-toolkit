@@ -1,6 +1,6 @@
 import { Notice } from 'obsidian';
-import DaggerheartStatblockPlugin from '../main';
-import { StatblockData } from '../types';
+import type DaggerheartStatblockPlugin from '../main';
+import type { StatblockData } from '../types';
 
 const USER_COMPENDIUM_FOLDER = 'user_data';
 
