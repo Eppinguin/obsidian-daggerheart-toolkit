@@ -1,0 +1,112 @@
+/* Compact Daggerheart-style damage thresholds for encounter adversary cards. */
+.dh-encounter-view .dh-instance-card-content .dh-threshold-bar {
+    --dh-encounter-threshold-surface: var(--background-secondary-alt);
+    --dh-encounter-threshold-border: var(--background-modifier-border);
+    display: grid;
+    grid-template-columns: minmax(52px, 1fr) 38px minmax(52px, 1fr) 38px minmax(52px, 1fr);
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
+    margin: 0 0 var(--size-4-3, 12px);
+}
+
+/* Some legacy or custom adversaries only define the major threshold. */
+.dh-encounter-view .dh-instance-card-content .dh-threshold-bar:not(:has(.dh-threshold-severe)) {
+    grid-template-columns: minmax(72px, 1fr) 44px minmax(72px, 1fr);
+}
+
+.dh-encounter-view .dh-instance-card-content .dh-threshold-segment {
+    min-width: 0;
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 7px;
+    color: var(--text-normal);
+    background: var(--dh-encounter-threshold-surface);
+    box-shadow:
+        inset 0 2px 0 var(--interactive-accent),
+        inset 0 0 0 1px var(--dh-encounter-threshold-border);
+    clip-path: polygon(
+        6px 0,
+        calc(100% - 6px) 0,
+        100% 6px,
+        100% calc(50% - 5px),
+        calc(100% - 5px) 50%,
+        100% calc(50% + 5px),
+        100% calc(100% - 6px),
+        calc(100% - 6px) 100%,
+        6px 100%,
+        0 calc(100% - 6px),
+        0 calc(50% + 5px),
+        5px 50%,
+        0 calc(50% - 5px),
+        0 6px
+    );
+    font-size: 10px;
+    font-weight: var(--font-bold);
+    line-height: 1;
+    letter-spacing: 0.06em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.dh-encounter-view .dh-instance-card-content .dh-threshold-segment::after {
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.02em;
+}
+
+.dh-encounter-view .dh-instance-card-content .dh-threshold-minor::after {
+    content: "1 HP";
+}
+
+.dh-encounter-view .dh-instance-card-content .dh-threshold-major::after {
+    content: "2 HP";
+}
+
+.dh-encounter-view .dh-instance-card-content .dh-threshold-severe::after {
+    content: "3 HP";
+}
+
+.dh-encounter-view .dh-instance-card-content .dh-threshold-bar > .dh-threshold-value {
+    min-width: 0;
+    min-height: 40px;
+    display: grid;
+    place-items: center;
+    position: relative;
+    isolation: isolate;
+    color: var(--text-accent);
+    background: var(--background-primary);
+    border-top: 2px solid var(--dh-encounter-threshold-border);
+    border-bottom: 2px solid var(--dh-encounter-threshold-border);
+    font-size: 1.55em;
+    font-weight: var(--font-black, 800);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.dh-encounter-view .dh-instance-card-content .dh-threshold-bar > .dh-threshold-value::before {
+    content: "";
+    position: absolute;
+    inset: 50% -4px auto;
+    z-index: -1;
+    height: 2px;
+    background: var(--dh-encounter-threshold-border);
+    transform: translateY(-50%);
+}
+
+@media (forced-colors: active) {
+    .dh-encounter-view .dh-instance-card-content .dh-threshold-segment {
+        clip-path: none;
+        border: 1px solid CanvasText;
+        box-shadow: none;
+    }
+
+    .dh-encounter-view .dh-instance-card-content .dh-threshold-bar > .dh-threshold-value {
+        border: 1px solid CanvasText;
+    }
+}
