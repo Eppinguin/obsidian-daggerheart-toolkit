@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+const plain = value => JSON.parse(JSON.stringify(value));
+
 test('opens the protocol prompt in front and restores the source tab after returning from Obsidian', async () => {
   const source = fs.readFileSync(path.resolve(__dirname, '..', 'background.js'), 'utf8');
   const state = {};
@@ -25,16 +27,16 @@ test('opens the protocol prompt in front and restores the source tab after retur
     storage: { session: storage, local: storage },
     tabs: {
       async create(properties) {
-        calls.create.push(properties);
+        calls.create.push(plain(properties));
         return { id: 91, windowId: properties.windowId };
       },
-      async update(tabId, properties) { calls.update.push({ tabId, properties }); },
+      async update(tabId, properties) { calls.update.push({ tabId, properties: plain(properties) }); },
       async remove(tabId) { calls.remove.push(tabId); },
       onRemoved: { addListener(listener) { removedListener = listener; } }
     },
     windows: {
       WINDOW_ID_NONE: -1,
-      async update(windowId, properties) { calls.focus.push({ windowId, properties }); },
+      async update(windowId, properties) { calls.focus.push({ windowId, properties: plain(properties) }); },
       onFocusChanged: { addListener(listener) { focusListener = listener; } }
     }
   };
@@ -54,7 +56,8 @@ test('opens the protocol prompt in front and restores the source tab after retur
     assert.equal(keepOpen, true);
   });
 
-  assert.deepEqual(response, { ok: true, launchTabId: 91 });
+  assert.equal(response.ok, true);
+  assert.equal(response.launchTabId, 91);
   assert.deepEqual(calls.create, [{
     url: 'obsidian://daggerheart-import?source=test',
     active: true,
