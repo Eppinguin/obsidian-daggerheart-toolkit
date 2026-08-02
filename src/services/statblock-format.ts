@@ -1,5 +1,8 @@
+// The framework-free shared runtime is bundled by esbuild and also copied into
+// browser-extension builds. Its public surface is typed below.
+// @ts-ignore JavaScript runtime intentionally has no standalone declaration file.
 import '../../shared/statblock-format.js';
-import { StatblockData } from '../types';
+import type { StatblockData } from '../types';
 
 export interface StatblockValidation {
     valid: boolean;
