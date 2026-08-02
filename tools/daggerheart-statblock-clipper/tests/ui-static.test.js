@@ -25,6 +25,7 @@ assert.match(compact, /width:\s*400px/);
 assert.match(compact, /\.utility-actions/);
 assert.doesNotMatch(styles, /linear-gradient/);
 assert.match(popupJs, /obsidian:\/\/daggerheart-import/);
+assert.match(popupJs, /tabs\.create\(\{\s*url:\s*uri,\s*active:\s*false\s*\}\)/);
 assert.match(popupJs, /copyDiagnostics/);
 assert.match(popupJs, /motives_tactics/);
 assert.equal(baseManifest.manifest_version, 3);
