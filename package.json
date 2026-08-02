@@ -7,6 +7,7 @@
         "dev": "node esbuild.config.mjs",
         "test:compendium": "node scripts/test-compendium-path.mjs",
         "test:thresholds": "node scripts/test-encounter-thresholds.mjs",
+        "test:statblock-format": "node scripts/test-statblock-format.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
         "release": "pnpm run build && git add . && git commit -m \"Release $npm_package_version\" && git tag $npm_package_version && git push && git push --tags"
     },
