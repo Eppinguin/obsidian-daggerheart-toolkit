@@ -1,8 +1,9 @@
-import { App, ButtonComponent, DropdownComponent, Modal, Notice, Setting } from 'obsidian';
+import { App, ButtonComponent, DropdownComponent, Modal, Notice } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
 import { AllCompendiumData, StatblockData } from '../types';
 import { ContentType, ExportedData, parseImportJson } from '../services/export-import';
 import { validateStatblockData } from '../services/statblock-format';
+import { saveStatblockBatch } from '../services/statblock-import-batch';
 
 type ConflictAction = 'rename' | 'update' | 'skip';
 
@@ -61,10 +62,11 @@ export class StatblockImportPreviewModal extends Modal {
 
         const validCount = this.candidates.filter(candidate => candidate.errors.length === 0 && candidate.action !== 'skip').length;
         const conflictCount = this.candidates.filter(candidate => candidate.conflict).length;
+        const warningCount = this.candidates.reduce((total, candidate) => total + candidate.warnings.length, 0);
         const summary = contentEl.createDiv('dh-import-preview-summary');
         summary.createSpan({ text: `${validCount} ready` });
         summary.createSpan({ text: `${conflictCount} conflict${conflictCount === 1 ? '' : 's'}` });
-        summary.createSpan({ text: `${this.candidates.reduce((total, candidate) => total + candidate.warnings.length, 0)} warning${this.candidates.reduce((total, candidate) => total + candidate.warnings.length, 0) === 1 ? '' : 's'}` });
+        summary.createSpan({ text: `${warningCount} warning${warningCount === 1 ? '' : 's'}` });
 
         const list = contentEl.createDiv('dh-import-preview-list');
         for (const candidate of this.candidates) this.renderCandidate(list, candidate);
@@ -141,7 +143,7 @@ export class StatblockImportPreviewModal extends Modal {
                     return data;
                 });
             if (!selected.length) return;
-            await this.plugin.addCustomCompendiumItems(selected);
+            await saveStatblockBatch(this.plugin, selected);
             new Notice(`Imported ${selected.length} statblock${selected.length === 1 ? '' : 's'}.`);
             this.close();
         } catch (error) {
