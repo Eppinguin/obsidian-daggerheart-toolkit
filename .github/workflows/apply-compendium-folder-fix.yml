@@ -1,11 +1,13 @@
 name: Apply compendium folder fix
 
 on:
-  push:
-    branches:
-      - agent/statblock-homebrew-import
+  pull_request:
     paths:
       - '.github/workflows/apply-compendium-folder-fix.yml'
+      - '.github/scripts/apply_compendium_fix.py'
+      - 'src/services/compendium-path.ts'
+      - 'scripts/test-compendium-path.mjs'
+      - 'package.json'
   workflow_dispatch:
 
 permissions:
