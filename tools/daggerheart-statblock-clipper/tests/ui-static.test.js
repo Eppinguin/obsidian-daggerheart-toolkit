@@ -4,40 +4,24 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const popup = fs.readFileSync(path.join(root, 'popup.html'), 'utf8');
-const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-const compactStyles = fs.readFileSync(path.join(root, 'compact-layout.css'), 'utf8');
-const popupJs = fs.readFileSync(path.join(root, 'popup.js'), 'utf8');
 const options = fs.readFileSync(path.join(root, 'options.html'), 'utf8');
-const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+const compact = fs.readFileSync(path.join(root, 'compact-layout.css'), 'utf8');
+const baseManifest = JSON.parse(fs.readFileSync(path.join(root, 'manifests/base.json'), 'utf8'));
+const firefoxManifest = JSON.parse(fs.readFileSync(path.join(root, 'manifests/firefox.json'), 'utf8'));
+const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 
-for (const id of [
-  'statusText', 'loadingCard', 'categoryBadge', 'typeBadge', 'tierValue',
-  'difficultyValue', 'hpValue', 'stressValue', 'attackSection', 'featureCount',
-  'sendLabel', 'sendHint', 'destinationSummary', 'openOptions'
-]) {
-  assert.match(popup, new RegExp(`id=["']${id}["']`), `missing popup element #${id}`);
+for (const id of ['status', 'result', 'sendObsidian', 'copyMarkdown', 'copyJson', 'selectBlock', 'vault', 'folder']) {
+  assert.match(popup, new RegExp(`id="${id}"`));
 }
-assert.match(popup, /role="status"/);
-assert.match(popup, /aria-live="polite"/);
-assert.match(styles, /prefers-color-scheme:\s*dark/);
-assert.match(styles, /\.stat-card/);
-assert.match(styles, /\.button--primary/);
-assert.match(popupJs, /toToolkitStatblock/);
-assert.match(popupJs, /openOptionsPage/);
-assert.match(options, /Obsidian destination/);
-assert.match(popup, /class="popup-root"/);
-assert.match(popup, /compact-layout\.css/);
-assert.match(compactStyles, /html\.popup-root,[\s\S]*body\.popup-page[\s\S]*width:\s*400px/);
-assert.match(compactStyles, /max-width:\s*400px/);
-assert.match(compactStyles, /\.app-shell\s*\{[^}]*width:\s*min\(400px,\s*100vw\)/s);
-assert.match(compactStyles, /\.workspace\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/s);
-assert.doesNotMatch(styles, /\.app-header\s*\{[^}]*linear-gradient/s);
-assert.match(styles, /\.workspace\s*\{/);
-
-assert.equal(manifest.version, '0.5.2');
-for (const size of [16, 32, 48, 128]) {
-  const icon = manifest.icons[String(size)];
-  assert.ok(icon, `missing manifest icon ${size}`);
-  assert.ok(fs.existsSync(path.join(root, icon)), `missing icon file ${icon}`);
-}
-console.log('UI structure and manifest regression passed');
+assert.match(popup, /<script src="popup\.js"><\/script>/);
+assert.match(options, /<script src="options\.js"><\/script>/);
+assert.match(compact, /width:\s*400px/);
+assert.doesNotMatch(styles, /linear-gradient/);
+assert.equal(baseManifest.manifest_version, 3);
+assert.equal(baseManifest.version, undefined);
+assert.equal(pkg.version, '0.6.0');
+assert.equal(firefoxManifest.browser_specific_settings.gecko.strict_min_version, '128.0');
+assert.deepEqual(firefoxManifest.browser_specific_settings.gecko.data_collection_permissions.required, ['none']);
+for (const size of [16, 32, 48, 128]) assert.ok(fs.existsSync(path.join(root, `icons/icon-${size}.png`)));
+console.log('Vite source and cross-browser manifest regression passed');

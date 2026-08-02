@@ -1,0 +1,36 @@
+name: Statblock Clipper
+
+on:
+  pull_request:
+    paths:
+      - 'tools/daggerheart-statblock-clipper/**'
+      - '.github/workflows/statblock-clipper.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/daggerheart-statblock-clipper/**'
+      - '.github/workflows/statblock-clipper.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/daggerheart-statblock-clipper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm test
+      - run: npm run build
+      - run: npm run validate
+      - run: npm run lint:firefox
+      - run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: daggerheart-statblock-clipper
+          path: tools/daggerheart-statblock-clipper/artifacts/*
+          if-no-files-found: error

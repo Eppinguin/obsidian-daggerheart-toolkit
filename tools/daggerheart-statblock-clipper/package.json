@@ -1,0 +1,27 @@
+{
+  "name": "daggerheart-statblock-clipper",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "Cross-browser Daggerheart statblock importer for Obsidian.",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "vite --mode chromium",
+    "build": "npm run build:chromium && npm run build:firefox",
+    "build:chromium": "node scripts/build.mjs chromium",
+    "build:firefox": "node scripts/build.mjs firefox",
+    "test": "node --test tests/*.test.js",
+    "validate": "node scripts/validate-build.mjs",
+    "lint:firefox": "web-ext lint --source-dir dist/firefox",
+    "package": "npm run package:chromium && npm run package:firefox",
+    "package:chromium": "web-ext build --source-dir dist/chromium --artifacts-dir artifacts --filename daggerheart-statblock-clipper-chromium.zip --overwrite-dest",
+    "package:firefox": "web-ext build --source-dir dist/firefox --artifacts-dir artifacts --filename daggerheart-statblock-clipper-firefox.xpi --overwrite-dest",
+    "ci": "npm test && npm run build && npm run validate && npm run lint:firefox && npm run package"
+  },
+  "devDependencies": {
+    "vite": "8.1.5",
+    "web-ext": "10.5.0"
+  }
+}
