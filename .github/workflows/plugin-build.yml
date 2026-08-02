@@ -1,20 +1,24 @@
-# Validates the Obsidian plugin and Markdown compendium folder regressions.
+# Validates the Obsidian plugin and shared statblock regressions.
 name: Plugin Build
 
 on:
   pull_request:
     paths:
       - 'src/**'
+      - 'shared/**'
       - 'scripts/test-compendium-path.mjs'
       - 'scripts/test-encounter-thresholds.mjs'
+      - 'scripts/test-statblock-format.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/plugin-build.yml'
   push:
     paths:
       - 'src/**'
+      - 'shared/**'
       - 'scripts/test-compendium-path.mjs'
       - 'scripts/test-encounter-thresholds.mjs'
+      - 'scripts/test-statblock-format.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/plugin-build.yml'
@@ -32,8 +36,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # The existing repository lockfile predates the current root package manifest.
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm run test:compendium
       - run: pnpm run test:thresholds
+      - run: pnpm run test:statblock-format
       - run: pnpm run build
