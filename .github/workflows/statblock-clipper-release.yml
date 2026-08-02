@@ -1,0 +1,122 @@
+name: Statblock Clipper Release
+
+on:
+  push:
+    tags:
+      - 'statblock-clipper-v*'
+  workflow_dispatch:
+    inputs:
+      publish_stores:
+        description: 'Publish to configured browser stores'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/daggerheart-statblock-clipper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/daggerheart-statblock-clipper/package.json
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - run: npm run build
+      - run: npm run validate
+      - run: xvfb-run -a npm run test:browser
+      - run: npm run lint:firefox
+      - run: npm run package
+      - name: Create source archive
+        run: |
+          git archive --format=zip --output=artifacts/daggerheart-statblock-clipper-source.zip HEAD \
+            shared/statblock-format.js tools/daggerheart-statblock-clipper
+      - uses: actions/upload-artifact@v4
+        with:
+          name: statblock-clipper-release
+          path: tools/daggerheart-statblock-clipper/artifacts/*
+          if-no-files-found: error
+
+  github-release:
+    if: startsWith(github.ref, 'refs/tags/statblock-clipper-v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: statblock-clipper-release
+          path: release-artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-artifacts/*
+
+  firefox-sign:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+      AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: statblock-clipper-release
+          path: release-artifacts
+      - name: Sign and submit Firefox extension
+        if: env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != '' && (startsWith(github.ref, 'refs/tags/statblock-clipper-v') || inputs.publish_stores)
+        working-directory: tools/daggerheart-statblock-clipper
+        run: |
+          npm install
+          npm run build:firefox
+          npx web-ext sign \
+            --source-dir dist/firefox \
+            --artifacts-dir signed-artifacts \
+            --channel listed \
+            --api-key "$AMO_JWT_ISSUER" \
+            --api-secret "$AMO_JWT_SECRET"
+      - uses: actions/upload-artifact@v4
+        if: env.AMO_JWT_ISSUER != '' && env.AMO_JWT_SECRET != ''
+        with:
+          name: statblock-clipper-firefox-signed
+          path: tools/daggerheart-statblock-clipper/signed-artifacts/*
+          if-no-files-found: warn
+
+  chrome-publish:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      SERVICE_ACCOUNT_JSON: ${{ secrets.CHROME_WEBSTORE_SERVICE_ACCOUNT_JSON }}
+      CHROME_WEBSTORE_PUBLISHER_ID: ${{ vars.CHROME_WEBSTORE_PUBLISHER_ID }}
+      CHROME_WEBSTORE_ITEM_ID: ${{ vars.CHROME_WEBSTORE_ITEM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: statblock-clipper-release
+          path: release-artifacts
+      - uses: google-github-actions/auth@v2
+        id: google-auth
+        if: env.SERVICE_ACCOUNT_JSON != '' && env.CHROME_WEBSTORE_PUBLISHER_ID != '' && env.CHROME_WEBSTORE_ITEM_ID != '' && (startsWith(github.ref, 'refs/tags/statblock-clipper-v') || inputs.publish_stores)
+        with:
+          credentials_json: ${{ secrets.CHROME_WEBSTORE_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+      - name: Publish Chrome Web Store package
+        if: steps.google-auth.outcome == 'success'
+        env:
+          CHROME_WEBSTORE_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+        run: |
+          node tools/daggerheart-statblock-clipper/scripts/publish-chrome.mjs \
+            release-artifacts/daggerheart-statblock-clipper-chromium.zip
