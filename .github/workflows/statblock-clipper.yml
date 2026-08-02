@@ -3,11 +3,13 @@ name: Statblock Clipper
 on:
   pull_request:
     paths:
+      - 'shared/statblock-format.js'
       - 'tools/daggerheart-statblock-clipper/**'
       - '.github/workflows/statblock-clipper.yml'
   push:
     branches: [main]
     paths:
+      - 'shared/statblock-format.js'
       - 'tools/daggerheart-statblock-clipper/**'
       - '.github/workflows/statblock-clipper.yml'
   workflow_dispatch:
@@ -23,10 +25,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: tools/daggerheart-statblock-clipper/package.json
       - run: npm install
+      - run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run build
       - run: npm run validate
+      - run: xvfb-run -a npm run test:browser
       - run: npm run lint:firefox
       - run: npm run package
       - uses: actions/upload-artifact@v4
