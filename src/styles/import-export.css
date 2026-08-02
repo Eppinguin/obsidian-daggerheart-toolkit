@@ -84,19 +84,39 @@
 .dh-floating-import-export button svg { width: 18px; height: 18px; }
 
 /* Reviewed statblock batch import */
-.dh-statblock-import-preview-modal .modal-content {
-    width: min(720px, 90vw);
-    max-height: 80vh;
+.dh-statblock-import-preview-modal {
+    width: min(720px, calc(100vw - 48px));
+    max-width: min(720px, calc(100vw - 48px));
+    max-height: min(820px, calc(100vh - 48px));
+}
+
+.dh-statblock-import-preview-content {
+    min-width: 0;
+    max-width: 100%;
+    max-height: calc(100vh - 96px);
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
-.dh-import-preview-intro { color: var(--text-muted); }
+.dh-statblock-import-preview-content h2 {
+    margin: 0 0 var(--size-4-3);
+    font-size: 1.55em;
+    line-height: 1.2;
+}
+
+.dh-import-preview-intro {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
 .dh-import-preview-summary {
     display: flex;
     flex-wrap: wrap;
     gap: var(--size-4-2);
-    margin: var(--size-4-2) 0 var(--size-4-3);
+    margin: var(--size-4-3) 0;
 }
 .dh-import-preview-summary span {
     padding: var(--size-2-1) var(--size-4-2);
@@ -104,35 +124,68 @@
     border-radius: var(--radius-s);
     background: var(--background-secondary);
     font-size: var(--font-ui-small);
+    white-space: nowrap;
 }
+
 .dh-import-preview-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: var(--size-4-2);
-    overflow-y: auto;
-    min-height: 0;
-    padding-right: var(--size-2-2);
+    padding: 1px var(--size-2-2) 1px 1px;
 }
+
 .dh-import-preview-item {
+    min-width: 0;
     padding: var(--size-4-3);
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
     background: var(--background-secondary);
 }
+
 .dh-import-preview-item-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--size-4-3);
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(160px, auto);
+    align-items: start;
+    gap: var(--size-4-4);
 }
-.dh-import-preview-item-header > div {
+
+.dh-import-preview-item-title {
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: var(--size-2-1);
 }
-.dh-import-preview-item-header strong { overflow-wrap: anywhere; }
-.dh-import-preview-item-header small { color: var(--text-muted); }
+.dh-import-preview-item-title strong {
+    font-size: var(--font-ui-large);
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+.dh-import-preview-item-title small {
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+
+.dh-import-preview-action {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--size-2-1);
+}
+.dh-import-preview-action-label {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+}
+.dh-import-preview-action select {
+    width: 100%;
+    max-width: 210px;
+}
+
 .dh-import-preview-errors, .dh-import-preview-warnings {
     margin: var(--size-4-2) 0 0;
     padding-left: var(--size-4-5);
@@ -144,4 +197,37 @@
     margin: var(--size-4-2) 0 0;
     color: var(--text-accent);
     font-size: var(--font-ui-small);
+    line-height: 1.4;
+}
+
+.dh-statblock-import-preview-content > .dh-modal-buttons {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--size-4-2);
+    margin-top: var(--size-4-3);
+    padding-top: var(--size-4-3);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+@media (max-width: 600px) {
+    .dh-statblock-import-preview-modal {
+        width: calc(100vw - 24px);
+        max-width: calc(100vw - 24px);
+        max-height: calc(100vh - 24px);
+    }
+    .dh-statblock-import-preview-content {
+        max-height: calc(100vh - 64px);
+    }
+    .dh-import-preview-item-header {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--size-4-3);
+    }
+    .dh-import-preview-action select {
+        max-width: none;
+    }
+    .dh-statblock-import-preview-content > .dh-modal-buttons button {
+        flex: 1 1 180px;
+    }
 }
