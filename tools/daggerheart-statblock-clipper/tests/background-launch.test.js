@@ -39,7 +39,7 @@ test('opens the protocol prompt in front and restores the source tab after retur
     }
   };
 
-  vm.runInNewContext(source, { browser, chrome: undefined, Date, Number, String, Error, globalThis: undefined });
+  vm.runInNewContext(source, { browser, chrome: undefined, Date, Number, String, Error });
   assert.equal(typeof messageListener, 'function');
   assert.equal(typeof focusListener, 'function');
   assert.equal(typeof removedListener, 'function');
