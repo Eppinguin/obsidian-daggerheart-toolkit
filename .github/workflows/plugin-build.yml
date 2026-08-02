@@ -9,6 +9,7 @@ on:
       - 'scripts/test-compendium-path.mjs'
       - 'scripts/test-encounter-thresholds.mjs'
       - 'scripts/test-statblock-format.mjs'
+      - 'scripts/test-statblock-import-integration.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/plugin-build.yml'
@@ -19,6 +20,7 @@ on:
       - 'scripts/test-compendium-path.mjs'
       - 'scripts/test-encounter-thresholds.mjs'
       - 'scripts/test-statblock-format.mjs'
+      - 'scripts/test-statblock-import-integration.mjs'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/plugin-build.yml'
@@ -40,4 +42,5 @@ jobs:
       - run: pnpm run test:compendium
       - run: pnpm run test:thresholds
       - run: pnpm run test:statblock-format
+      - run: pnpm run test:statblock-import
       - run: pnpm run build
