@@ -12,7 +12,9 @@ test('generates browser-specific MV3 manifests', async () => {
   const firefox = await createManifest(root, 'firefox');
   assert.equal(chromium.version, pkg.version);
   assert.equal(chromium.browser_specific_settings, undefined);
+  assert.equal(chromium.background.service_worker, 'background.js');
   assert.equal(firefox.version, pkg.version);
+  assert.deepEqual(firefox.background.scripts, ['background.js']);
   assert.equal(firefox.browser_specific_settings.gecko.id, 'daggerheart-statblock-clipper@eppinguin.dev');
   assert.deepEqual(firefox.browser_specific_settings.gecko.data_collection_permissions.required, ['none']);
 });
