@@ -4,8 +4,10 @@ import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
 const required = [
-  'popup.html', 'options.html', 'manifest.json', 'parser.js', 'parser-patch.js',
-  'heartofdaggers-filter.js', 'freshcutgrass-parser.js', 'freshcutgrass-state.js',
+  'popup.html', 'options.html', 'manifest.json',
+  'statblock-format.js', 'parser.js', 'parser-patch.js', 'statblock-format-adapter.js',
+  'heartofdaggers-filter.js', 'extraction-diagnostics.js',
+  'freshcutgrass-parser.js', 'freshcutgrass-state.js',
   'freshcutgrass-rendered-repair.js', 'freshcutgrass-card-boundary.js', 'content-script.js',
   'icons/icon-16.png', 'icons/icon-32.png', 'icons/icon-48.png', 'icons/icon-128.png'
 ];
