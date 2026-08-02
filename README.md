@@ -4,12 +4,6 @@ Obsidian plugin for Daggerheart adversary statblocks, environments, encounters, 
 
 ## Markdown homebrew compendium
 
-Set **Compendium Folder** in the plugin settings to a vault-relative folder such as:
+Set **Compendium Folder** to a vault-relative path such as `Daggerheart/Homebrew`; do not include the vault name.
 
-```text
-Daggerheart/Homebrew
-```
-
-The plugin scans that folder and all nested folders for fenced `daggerheart-statblock` blocks. Do not include the vault name. Folder paths are normalized automatically, so leading/trailing slashes and Windows-style backslashes are accepted.
-
-Changes are applied after a short typing delay without rebuilding the settings screen. Creating, editing, renaming, or deleting Markdown files inside the configured folder automatically reloads the compendium.
+The plugin scans that folder and all nested folders for fenced `daggerheart-statblock` blocks. Leading/trailing slashes and Windows-style backslashes are normalized automatically. Creating, editing, renaming, or deleting Markdown files inside the configured folder reloads the compendium automatically.
