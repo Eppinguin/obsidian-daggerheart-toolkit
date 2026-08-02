@@ -1,4 +1,6 @@
 // This file serves as a barrel to export all modals from one place.
+import '../services/statblock-import-integration';
+
 export { AddItemModal } from './AddItemModal';
 export { AdversaryReferenceModal } from './AdversaryReferenceModal';
 export { DowntimeModal } from './DowntimeModal';
@@ -15,6 +17,7 @@ export { ConfirmationModal } from './ConfirmationModal';
 export { ConditionModal } from './ConditionModal';
 export { GoldModal } from './GoldModal';
 export { ImportExportModal } from './ImportExportModal';
+export { StatblockImportPreviewModal } from './StatblockImportPreviewModal';
 export { ItemEditModal } from './ItemEditModal';
 export { CompendiumCreatorModal } from './CompendiumCreatorModal';
 export { CompendiumEntryTypeSuggester } from './CompendiumEntryTypeSuggester';
