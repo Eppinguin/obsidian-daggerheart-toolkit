@@ -135,6 +135,10 @@
     $('attackName').textContent = attackName || 'Standard attack';
     $('attackDetails').textContent = attackDetails;
 
+    const motives = clean(toolkit.motives_tactics || data.motives);
+    $('motivesSection').classList.toggle('hidden', category !== 'adversary' || !motives);
+    $('motivesValue').textContent = motives;
+
     $('featureCount').textContent = `${features.length} feature${features.length === 1 ? '' : 's'}`;
     $('source').textContent = sourceLabel(data, toolkit);
 

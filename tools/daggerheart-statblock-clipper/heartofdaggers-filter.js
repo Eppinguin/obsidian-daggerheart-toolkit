@@ -96,11 +96,35 @@
     return smallest.sort(documentOrder);
   }
 
+  function motivesFromText(value) {
+    const lines = textLines(value);
+    const boundary = /^(?:Difficulty|Thresholds?|HP|Stress|ATK|Attack|Experience|Features|Passives?|Actions?|Reactions?)\b/i;
+    for (let index = 0; index < lines.length; index += 1) {
+      const inline = lines[index].match(/^Motives\s*(?:&|and)\s*Tactics\s*:\s*(.*)$/i);
+      const heading = /^Motives\s*(?:&|and)\s*Tactics\s*:?$/i.test(lines[index]);
+      if (!inline && !heading) continue;
+      const parts = [];
+      if (inline?.[1]) parts.push(inline[1]);
+      for (let next = index + 1; next < lines.length; next += 1) {
+        if (boundary.test(lines[next])) break;
+        parts.push(lines[next]);
+      }
+      return clean(parts.join(' '));
+    }
+    return '';
+  }
+
+  function restoreMotives(item) {
+    if (!item || typeof item !== 'object' || clean(item.motives)) return item;
+    const motives = motivesFromText(item.rawText || '');
+    return motives ? { ...item, motives } : item;
+  }
+
   function filterHeartOfDaggersItems(items, location) {
     const input = Array.isArray(items) ? items : [];
     if (!isHeartOfDaggers(location)) return input;
     const seen = new Set();
-    return input.filter(completeHeartOfDaggersItem).filter((item) => {
+    return input.map(restoreMotives).filter(completeHeartOfDaggersItem).filter((item) => {
       const key = `${clean(item.name).toLowerCase()}|${item.tier ?? ''}|${clean(item.type).toLowerCase()}|${item.difficulty ?? ''}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -128,6 +152,8 @@
     completeHeartOfDaggersItem,
     renderedCardSignature,
     renderedCardRoots,
+    motivesFromText,
+    restoreMotives,
     filterHeartOfDaggersItems,
     parseManyFromDocument,
     parseFromDocument: (doc, location, selected) => parseManyFromDocument(doc, location, selected)[0]

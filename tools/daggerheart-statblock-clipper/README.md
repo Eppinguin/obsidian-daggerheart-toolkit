@@ -54,6 +54,10 @@ The local Firefox XPI is unsigned. Permanent installation in standard Firefox re
 
 The extension exports toolkit-native `daggerheart-statblock` Markdown and wrapped JSON. **Add to Obsidian** copies Markdown and opens an `obsidian://new` link. It never reads the vault and sends no data to an external service.
 
+## Motives & Tactics
+
+Version 0.6.1 restores adversary **Motives & Tactics** across both supported sites. Heart of Dagers compact cards use a spaced label form such as `Motives & Tactics : ...`; the parser now accepts whitespace around the colon and continues searching when the Features section appears before Motives & Tactics. The value is preserved as `motives_tactics` in Toolkit Markdown and JSON and is shown in the popup preview.
+
 ## Extraction behavior
 
-The existing FreshCutGrass and Heart of Daggers parsers remain unchanged. Regression tests cover application-state extraction, rendered-card fallbacks, multi-statblock pages, feature parsing, card boundaries, attribution filtering, and toolkit serialization.
+Regression tests cover FreshCutGrass application-state extraction, rendered-card fallbacks, multi-statblock pages, feature parsing, card boundaries, attribution filtering, Motives & Tactics parsing, and toolkit serialization.
