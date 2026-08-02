@@ -22,6 +22,7 @@ import {
     Stances
 } from '../types';
 import DaggerheartStatblockPlugin from '../main';
+import { normalizeCompendiumPath } from './compendium-path';
 import { v4 as uuidv4 } from 'uuid';
 
 const DATA_PATH = "data";
@@ -214,7 +215,7 @@ export class DaggerheartCompendium {
     }
 
     private async loadMarkdownStatblocks(): Promise<StatblockData[]> {
-        const folderPath = this.plugin.settings.compendiumFolder;
+        const folderPath = normalizeCompendiumPath(this.plugin.settings.compendiumFolder);
         if (!folderPath) return [];
 
         const abstractFileOrFolder = this.plugin.app.vault.getAbstractFileByPath(folderPath);
@@ -223,10 +224,16 @@ export class DaggerheartCompendium {
             const content = await this.plugin.app.vault.cachedRead(abstractFileOrFolder);
             this.extractStatblocksFromFile(content, abstractFileOrFolder.path, mdStatblocks);
         } else if (abstractFileOrFolder instanceof TFolder) {
-            for (const file of abstractFileOrFolder.children.filter((f): f is TFile => f instanceof TFile && f.extension === 'md')) {
+            const folderPrefix = `${abstractFileOrFolder.path}/`;
+            const markdownFiles = this.plugin.app.vault.getMarkdownFiles()
+                .filter(file => file.path.startsWith(folderPrefix))
+                .sort((a, b) => a.path.localeCompare(b.path));
+            for (const file of markdownFiles) {
                 const content = await this.plugin.app.vault.cachedRead(file);
                 this.extractStatblocksFromFile(content, file.path, mdStatblocks);
             }
+        } else {
+            console.warn(`Daggerheart | Configured compendium path was not found: ${folderPath}`);
         }
         return mdStatblocks;
     }
