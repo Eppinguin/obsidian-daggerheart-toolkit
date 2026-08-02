@@ -30,7 +30,7 @@ jobs:
           cache: pnpm
       - name: Apply source patch
         run: python .github/scripts/apply_compendium_fix.py
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --no-frozen-lockfile
       - run: pnpm run test:compendium
       - run: pnpm run build
       - name: Commit source fix
