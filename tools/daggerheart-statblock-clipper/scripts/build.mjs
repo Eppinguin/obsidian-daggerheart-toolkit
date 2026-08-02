@@ -17,7 +17,8 @@ await mkdir(output, { recursive: true });
 
 const fixedFiles = [
   'parser.js', 'parser-patch.js', 'statblock-format-adapter.js',
-  'heartofdaggers-filter.js', 'freshcutgrass-parser.js', 'freshcutgrass-state.js',
+  'heartofdaggers-filter.js', 'extraction-diagnostics.js',
+  'freshcutgrass-parser.js', 'freshcutgrass-state.js',
   'freshcutgrass-rendered-repair.js', 'freshcutgrass-card-boundary.js',
   'content-script.js', 'popup.js', 'options.js'
 ];
