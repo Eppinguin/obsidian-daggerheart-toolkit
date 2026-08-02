@@ -1,3 +1,4 @@
+# Validates the Obsidian plugin and Markdown compendium folder regressions.
 name: Plugin Build
 
 on:
