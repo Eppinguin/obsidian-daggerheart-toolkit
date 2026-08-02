@@ -26,105 +26,20 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Apply source changes
-        shell: bash
-        run: |
-          python <<'PY'
-          from pathlib import Path
-          import json
-
-          def replace_once(path, old, new):
-              file = Path(path)
-              text = file.read_text()
-              if new in text:
-                  return
-              if old not in text:
-                  raise RuntimeError(f'Expected source block not found in {path}')
-              file.write_text(text.replace(old, new, 1))
-
-          main = 'src/main.ts'
-          replace_once(
-              main,
-              "import { ContentType } from './services/export-import';\n",
-              "import { ContentType } from './services/export-import';\nimport { normalizeCompendiumPath, isPathInsideCompendium } from './services/compendium-path';\n"
-          )
-          replace_once(
-              main,
-              "    public settingsTab: DaggerheartSettingTab | null = null;\n",
-              "    public settingsTab: DaggerheartSettingTab | null = null;\n    private compendiumReloadTimer: number | null = null;\n"
-          )
-          replace_once(
-              main,
-              "        this.settingsTab = new DaggerheartSettingTab(this.app, this);\n        this.addSettingTab(this.settingsTab);\n    }\n",
-              "        this.settingsTab = new DaggerheartSettingTab(this.app, this);\n        this.addSettingTab(this.settingsTab);\n\n        this.registerEvent(this.app.vault.on('create', (file) => {\n            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);\n        }));\n        this.registerEvent(this.app.vault.on('modify', (file) => {\n            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);\n        }));\n        this.registerEvent(this.app.vault.on('delete', (file) => {\n            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);\n        }));\n        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {\n            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);\n            this.scheduleMarkdownCompendiumReload(oldPath);\n        }));\n    }\n"
-          )
-          replace_once(
-              main,
-              "    private async ensureUserCompendiumFolderExists() {\n",
-              "    private scheduleMarkdownCompendiumReload(path: string) {\n        const configuredPath = normalizeCompendiumPath(this.settings.compendiumFolder);\n        if (!isPathInsideCompendium(path, configuredPath)) return;\n\n        if (this.compendiumReloadTimer !== null) {\n            window.clearTimeout(this.compendiumReloadTimer);\n        }\n        this.compendiumReloadTimer = window.setTimeout(() => {\n            this.compendiumReloadTimer = null;\n            this.triggerCompendiumUpdate().catch(error => {\n                console.error('Daggerheart | Failed to reload Markdown compendium:', error);\n            });\n        }, 250);\n    }\n\n    private async ensureUserCompendiumFolderExists() {\n"
-          )
-          replace_once(
-              main,
-              "        await this.saveData(settingsToSave);\n\n        if (this.settingsTab) {\n            this.settingsTab.display();\n        }\n",
-              "        await this.saveData(settingsToSave);\n"
-          )
-          replace_once(
-              main,
-              "    onunload() {\n        dddice.destroyDddiceRenderer();\n",
-              "    onunload() {\n        if (this.compendiumReloadTimer !== null) {\n            window.clearTimeout(this.compendiumReloadTimer);\n            this.compendiumReloadTimer = null;\n        }\n        dddice.destroyDddiceRenderer();\n"
-          )
-          replace_once(
-              main,
-              "    private _dddiceObserverInterval: number | null = null;\n",
-              "    private _dddiceObserverInterval: number | null = null;\n    private compendiumFolderSaveTimer: number | null = null;\n"
-          )
-          replace_once(
-              main,
-              "    renderCompendiumSettings(containerEl: HTMLElement) {\n",
-              "    private scheduleCompendiumFolderUpdate(value: string) {\n        this.plugin.settings.compendiumFolder = normalizeCompendiumPath(value);\n        if (this.compendiumFolderSaveTimer !== null) {\n            window.clearTimeout(this.compendiumFolderSaveTimer);\n        }\n        this.compendiumFolderSaveTimer = window.setTimeout(async () => {\n            this.compendiumFolderSaveTimer = null;\n            try {\n                await this.plugin.saveSettings();\n                await this.plugin.triggerCompendiumUpdate();\n            } catch (error) {\n                console.error('Daggerheart | Failed to update compendium folder:', error);\n                new Notice('Could not reload the configured compendium folder. Check the developer console.');\n            }\n        }, 400);\n    }\n\n    renderCompendiumSettings(containerEl: HTMLElement) {\n"
-          )
-          replace_once(
-              main,
-              "                    .onChange(async (value) => {\n                        this.plugin.settings.compendiumFolder = value.trim();\n                        await this.plugin.saveSettings();\n                        this.plugin.app.workspace.trigger('daggerheart-compendium-update');\n                    });\n",
-              "                    .onChange((value) => {\n                        this.scheduleCompendiumFolderUpdate(value);\n                    });\n"
-          )
-
-          compendium = 'src/services/compendium.ts'
-          replace_once(
-              compendium,
-              "import DaggerheartStatblockPlugin from '../main';\n",
-              "import DaggerheartStatblockPlugin from '../main';\nimport { normalizeCompendiumPath } from './compendium-path';\n"
-          )
-          replace_once(
-              compendium,
-              "    private async loadMarkdownStatblocks(): Promise<StatblockData[]> {\n        const folderPath = this.plugin.settings.compendiumFolder;\n        if (!folderPath) return [];\n\n        const abstractFileOrFolder = this.plugin.app.vault.getAbstractFileByPath(folderPath);\n        const mdStatblocks: StatblockData[] = [];\n        if (abstractFileOrFolder instanceof TFile && abstractFileOrFolder.extension === 'md') {\n            const content = await this.plugin.app.vault.cachedRead(abstractFileOrFolder);\n            this.extractStatblocksFromFile(content, abstractFileOrFolder.path, mdStatblocks);\n        } else if (abstractFileOrFolder instanceof TFolder) {\n            for (const file of abstractFileOrFolder.children.filter((f): f is TFile => f instanceof TFile && f.extension === 'md')) {\n                const content = await this.plugin.app.vault.cachedRead(file);\n                this.extractStatblocksFromFile(content, file.path, mdStatblocks);\n            }\n        }\n        return mdStatblocks;\n    }\n",
-              "    private async loadMarkdownStatblocks(): Promise<StatblockData[]> {\n        const folderPath = normalizeCompendiumPath(this.plugin.settings.compendiumFolder);\n        if (!folderPath) return [];\n\n        const abstractFileOrFolder = this.plugin.app.vault.getAbstractFileByPath(folderPath);\n        const mdStatblocks: StatblockData[] = [];\n        if (abstractFileOrFolder instanceof TFile && abstractFileOrFolder.extension === 'md') {\n            const content = await this.plugin.app.vault.cachedRead(abstractFileOrFolder);\n            this.extractStatblocksFromFile(content, abstractFileOrFolder.path, mdStatblocks);\n        } else if (abstractFileOrFolder instanceof TFolder) {\n            const folderPrefix = `${abstractFileOrFolder.path}/`;\n            const markdownFiles = this.plugin.app.vault.getMarkdownFiles()\n                .filter(file => file.path.startsWith(folderPrefix))\n                .sort((a, b) => a.path.localeCompare(b.path));\n            for (const file of markdownFiles) {\n                const content = await this.plugin.app.vault.cachedRead(file);\n                this.extractStatblocksFromFile(content, file.path, mdStatblocks);\n            }\n        } else {\n            console.warn(`Daggerheart | Configured compendium path was not found: ${folderPath}`);\n        }\n        return mdStatblocks;\n    }\n"
-          )
-
-          Path('src/services/compendium-path.ts').write_text("""export function normalizeCompendiumPath(value: string | null | undefined): string {\n    return String(value ?? '')\n        .trim()\n        .replace(/\\\\/g, '/')\n        .replace(/\\/{2,}/g, '/')\n        .replace(/^\\/+|\\/+$/g, '');\n}\n\nexport function isPathInsideCompendium(candidatePath: string, configuredPath: string): boolean {\n    const candidate = normalizeCompendiumPath(candidatePath);\n    const configured = normalizeCompendiumPath(configuredPath);\n    if (!configured || !candidate.toLowerCase().endsWith('.md')) return false;\n    return candidate === configured || candidate.startsWith(`${configured}/`);\n}\n""")
-
-          Path('scripts/test-compendium-path.mjs').write_text("""import assert from 'node:assert/strict';\nimport { readFile, rm, writeFile } from 'node:fs/promises';\nimport { resolve } from 'node:path';\nimport { pathToFileURL } from 'node:url';\nimport { build } from 'esbuild';\n\nconst root = resolve(import.meta.dirname, '..');\nconst temporaryModule = resolve(root, '.compendium-path-test.mjs');\nconst result = await build({\n    entryPoints: [resolve(root, 'src/services/compendium-path.ts')],\n    bundle: true,\n    platform: 'node',\n    format: 'esm',\n    write: false\n});\nawait writeFile(temporaryModule, result.outputFiles[0].text);\ntry {\n    const helpers = await import(`${pathToFileURL(temporaryModule).href}?${Date.now()}`);\n    assert.equal(helpers.normalizeCompendiumPath('  /Daggerheart\\\\Homebrew// '), 'Daggerheart/Homebrew');\n    assert.equal(helpers.normalizeCompendiumPath('Daggerheart/Homebrew/'), 'Daggerheart/Homebrew');\n    assert.equal(helpers.isPathInsideCompendium('Daggerheart/Homebrew/Shadow Hag.md', 'Daggerheart/Homebrew'), true);\n    assert.equal(helpers.isPathInsideCompendium('Daggerheart/Homebrew/Nested/Hag.md', 'Daggerheart/Homebrew/'), true);\n    assert.equal(helpers.isPathInsideCompendium('Daggerheart/Other/Hag.md', 'Daggerheart/Homebrew'), false);\n    assert.equal(helpers.isPathInsideCompendium('Daggerheart/Homebrew/image.png', 'Daggerheart/Homebrew'), false);\n\n    const main = await readFile(resolve(root, 'src/main.ts'), 'utf8');\n    const saveSettings = main.match(/async saveSettings\\(\\)[\\s\\S]*?\\n    }/m)?.[0] || '';\n    assert.doesNotMatch(saveSettings, /settingsTab\\.display/);\n    assert.match(main, /scheduleCompendiumFolderUpdate/);\n    assert.match(main, /await this\\.plugin\\.triggerCompendiumUpdate\\(\\)/);\n\n    const compendium = await readFile(resolve(root, 'src/services/compendium.ts'), 'utf8');\n    assert.match(compendium, /getMarkdownFiles\\(\\)/);\n    assert.match(compendium, /file\\.path\\.startsWith\\(folderPrefix\\)/);\n    console.log('Compendium folder path and reload regressions passed');\n} finally {\n    await rm(temporaryModule, { force: true });\n}\n""")
-
-          package_path = Path('package.json')
-          package = json.loads(package_path.read_text())
-          scripts = package.setdefault('scripts', {})
-          scripts['test:compendium'] = 'node scripts/test-compendium-path.mjs'
-          package_path.write_text(json.dumps(package, indent=4) + '\n')
-
-          Path('.github/workflows/plugin-build.yml').write_text("""name: Plugin Build\n\non:\n  pull_request:\n    paths:\n      - 'src/**'\n      - 'scripts/test-compendium-path.mjs'\n      - 'package.json'\n      - 'pnpm-lock.yaml'\n      - '.github/workflows/plugin-build.yml'\n  push:\n    paths:\n      - 'src/**'\n      - 'scripts/test-compendium-path.mjs'\n      - 'package.json'\n      - 'pnpm-lock.yaml'\n      - '.github/workflows/plugin-build.yml'\n  workflow_dispatch:\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: pnpm/action-setup@v4\n        with:\n          version: 9\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n          cache: pnpm\n      - run: pnpm install --frozen-lockfile\n      - run: pnpm run test:compendium\n      - run: pnpm run build\n""")
-          PY
+      - name: Apply source patch
+        run: python .github/scripts/apply_compendium_fix.py
       - run: pnpm install --frozen-lockfile
       - run: pnpm run test:compendium
       - run: pnpm run build
       - name: Commit source fix
         shell: bash
         run: |
-          if [[ -z "$(git status --porcelain)" ]]; then
+          if [[ -z "$(git status --porcelain src/main.ts src/services/compendium.ts)" ]]; then
             echo 'No source changes to commit.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src scripts package.json .github/workflows/plugin-build.yml
+          git add src/main.ts src/services/compendium.ts
           git commit -m 'fix: reload Markdown compendium folders reliably'
           git push origin HEAD:agent/statblock-homebrew-import
