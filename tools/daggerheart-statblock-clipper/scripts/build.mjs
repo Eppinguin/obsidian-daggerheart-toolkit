@@ -16,6 +16,7 @@ await build({ configFile: resolve(root, 'vite.config.mjs'), mode: target });
 await mkdir(output, { recursive: true });
 
 const fixedFiles = [
+  'background.js',
   'parser.js', 'parser-patch.js', 'statblock-format-adapter.js',
   'heartofdaggers-filter.js', 'extraction-diagnostics.js',
   'freshcutgrass-parser.js', 'freshcutgrass-state.js',
