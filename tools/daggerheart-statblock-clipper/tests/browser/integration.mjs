@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { createServer } from 'node:http';
+import selfsigned from 'selfsigned';
+import { createServer } from 'node:https';
 import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
@@ -11,14 +12,27 @@ const manifestPath = resolve(extensionDir, 'manifest.json');
 const originalManifest = await readFile(manifestPath, 'utf8');
 const manifest = JSON.parse(originalManifest);
 manifest.permissions = [...new Set([...(manifest.permissions || []), 'tabs'])];
-manifest.host_permissions = [...new Set([...(manifest.host_permissions || []), 'http://freshcutgrass.app/*', 'http://heartofdaggers.com/*'])];
+manifest.host_permissions = [...new Set([...(manifest.host_permissions || []), 'https://freshcutgrass.app/*', 'https://heartofdaggers.com/*'])];
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 
 const fixtures = {
   'freshcutgrass.app': await readFile(resolve(import.meta.dirname, 'fixtures', 'freshcutgrass.html')),
   'heartofdaggers.com': await readFile(resolve(import.meta.dirname, 'fixtures', 'heartofdaggers.html'))
 };
-const server = createServer((request, response) => {
+const certificates = await selfsigned.generate(
+  [{ name: 'commonName', value: 'freshcutgrass.app' }],
+  {
+    days: 1,
+    keySize: 2048,
+    algorithm: 'sha256',
+    extensions: [{ name: 'subjectAltName', altNames: [
+      { type: 2, value: 'freshcutgrass.app' },
+      { type: 2, value: 'heartofdaggers.com' },
+      { type: 7, ip: '127.0.0.1' }
+    ] }]
+  }
+);
+const server = createServer({ key: certificates.private, cert: certificates.cert }, (request, response) => {
   const hostname = String(request.headers.host || '').split(':')[0];
   const fixture = fixtures[hostname];
   if (!fixture) {
@@ -29,7 +43,9 @@ const server = createServer((request, response) => {
   response.end(fixture);
 });
 await new Promise(resolveListen => server.listen(0, '127.0.0.1', resolveListen));
-const port = server.address().port;
+const address = server.address();
+if (!address || typeof address === 'string') throw new Error('Fixture server did not expose a TCP port.');
+const port = address.port;
 const profile = await mkdtemp(join(tmpdir(), 'dh-clipper-playwright-'));
 
 async function extensionId() {
@@ -62,24 +78,26 @@ let context;
 try {
   context = await chromium.launchPersistentContext(profile, {
     headless: false,
+    ignoreHTTPSErrors: true,
     args: [
       `--disable-extensions-except=${extensionDir}`,
       `--load-extension=${extensionDir}`,
       '--host-resolver-rules=MAP freshcutgrass.app 127.0.0.1, MAP heartofdaggers.com 127.0.0.1',
+      '--ignore-certificate-errors',
       '--no-sandbox'
     ]
   });
   const id = await extensionId();
   const fixturePage = context.pages()[0] || await context.newPage();
 
-  const freshUrl = `http://freshcutgrass.app:${port}/homebrew?id=uoHvyG83mBqs4YAxPpGB8n`;
+  const freshUrl = `https://freshcutgrass.app:${port}/homebrew?id=uoHvyG83mBqs4YAxPpGB8n`;
   await fixturePage.goto(freshUrl);
   const freshPopup = await openPopup(context, id, freshUrl);
   assert.equal(await freshPopup.locator('#name').textContent(), 'SHADOW HAG');
   assert.equal(await freshPopup.locator('#hpValue').textContent(), '8');
   assert.equal(await freshPopup.locator('#stressValue').textContent(), '6');
-  assert.match(await freshPopup.locator('#attackDetails').textContent(), /\+2.*Far.*2d10\+3/i);
-  assert.match(await freshPopup.locator('#motivesValue').textContent(), /Feed on nightmares/i);
+  assert.match((await freshPopup.locator('#attackDetails').textContent()) || '', /\+2.*Far.*2d10\+3/i);
+  assert.match((await freshPopup.locator('#motivesValue').textContent()) || '', /Feed on nightmares/i);
   await freshPopup.locator('#copyMarkdown').click();
   const freshMarkdown = await freshPopup.evaluate(() => navigator.clipboard.readText());
   assert.match(freshMarkdown, /name: "SHADOW HAG"/);
@@ -87,12 +105,12 @@ try {
   assert.match(freshMarkdown, /major_hp: 14/);
   await freshPopup.close();
 
-  const heartUrl = `http://heartofdaggers.com:${port}/homebrew/adversaries/rules-lawyer/`;
+  const heartUrl = `https://heartofdaggers.com:${port}/homebrew/adversaries/rules-lawyer/`;
   await fixturePage.goto(heartUrl);
   const heartPopup = await openPopup(context, id, heartUrl);
   assert.equal(await heartPopup.locator('#name').textContent(), 'RULES LAWYER');
   assert.equal(await heartPopup.locator('#collection').evaluate(node => node.classList.contains('hidden')), true);
-  assert.match(await heartPopup.locator('#motivesValue').textContent(), /Change the pace/);
+  assert.match((await heartPopup.locator('#motivesValue').textContent()) || '', /Change the pace/);
   await heartPopup.locator('#copyMarkdown').click();
   const heartMarkdown = await heartPopup.evaluate(() => navigator.clipboard.readText());
   assert.equal((heartMarkdown.match(/```daggerheart-statblock/g) || []).length, 1);
