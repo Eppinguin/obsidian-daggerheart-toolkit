@@ -247,7 +247,11 @@
   }
 
   async function openObsidianUri(uri) {
-    try { await api.tabs.create({ url: uri }); } catch (_error) { window.location.href = uri; }
+    try {
+      await api.tabs.create({ url: uri, active: false });
+    } catch (_error) {
+      window.location.href = uri;
+    }
   }
 
   async function importIntoToolkit() {
