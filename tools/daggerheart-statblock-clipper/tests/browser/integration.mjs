@@ -67,9 +67,17 @@ async function extensionId() {
 
 async function openPopup(context, id, targetUrl) {
   const popup = await context.newPage();
-  const origin = `chrome-extension://${id}`;
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
-  await popup.goto(`${origin}/popup.html?targetUrl=${encodeURIComponent(targetUrl)}`);
+  await popup.addInitScript(() => {
+    globalThis.__DH_TEST_CLIPBOARD = '';
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async text => { globalThis.__DH_TEST_CLIPBOARD = String(text); },
+        readText: async () => globalThis.__DH_TEST_CLIPBOARD
+      }
+    });
+  });
+  await popup.goto(`chrome-extension://${id}/popup.html?targetUrl=${encodeURIComponent(targetUrl)}`);
   await popup.locator('#name').waitFor({ state: 'visible', timeout: 15000 });
   return popup;
 }
@@ -99,7 +107,7 @@ try {
   assert.match((await freshPopup.locator('#attackDetails').textContent()) || '', /\+2.*Far.*2d10\+3/i);
   assert.match((await freshPopup.locator('#motivesValue').textContent()) || '', /Feed on nightmares/i);
   await freshPopup.locator('#copyMarkdown').click();
-  const freshMarkdown = await freshPopup.evaluate(() => navigator.clipboard.readText());
+  const freshMarkdown = await freshPopup.evaluate(() => globalThis.__DH_TEST_CLIPBOARD);
   assert.match(freshMarkdown, /name: "SHADOW HAG"/);
   assert.match(freshMarkdown, /motives_tactics: "Feed on nightmares/);
   assert.match(freshMarkdown, /major_hp: 14/);
@@ -112,7 +120,7 @@ try {
   assert.equal(await heartPopup.locator('#collection').evaluate(node => node.classList.contains('hidden')), true);
   assert.match((await heartPopup.locator('#motivesValue').textContent()) || '', /Change the pace/);
   await heartPopup.locator('#copyMarkdown').click();
-  const heartMarkdown = await heartPopup.evaluate(() => navigator.clipboard.readText());
+  const heartMarkdown = await heartPopup.evaluate(() => globalThis.__DH_TEST_CLIPBOARD);
   assert.equal((heartMarkdown.match(/```daggerheart-statblock/g) || []).length, 1);
   assert.match(heartMarkdown, /name: "RULES LAWYER"/);
   assert.match(heartMarkdown, /damage: "3d6\+15 mag"/i);
