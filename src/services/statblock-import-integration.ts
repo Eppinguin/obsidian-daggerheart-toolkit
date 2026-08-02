@@ -1,6 +1,6 @@
 import { Notice } from 'obsidian';
 import { DaggerheartCompendium } from './compendium';
-import DaggerheartStatblockPlugin from '../main';
+import type DaggerheartStatblockPlugin from '../main';
 import { openStatblockImportPreviewFromJson } from '../modals/StatblockImportPreviewModal';
 
 const installed = new WeakSet<object>();
@@ -40,15 +40,15 @@ export function installStatblockImportIntegration(plugin: DaggerheartStatblockPl
     });
 }
 
-// main.ts already imports the modal barrel after DaggerheartCompendium. Installing
-// this side effect from the barrel lets us register once when the compendium is
-// first loaded without adding more lifecycle code to main.ts.
+// main.ts imports the modal barrel before constructing/loading the compendium.
+// Install the integration at the first compendium load without adding another
+// dependency to the already-large main plugin module.
 const originalLoad = DaggerheartCompendium.prototype.load;
 if (!(DaggerheartCompendium.prototype as any).__statblockImportIntegration) {
     (DaggerheartCompendium.prototype as any).__statblockImportIntegration = true;
-    DaggerheartCompendium.prototype.load = async function (...args: any[]): Promise<void> {
+    DaggerheartCompendium.prototype.load = async function (): Promise<void> {
         const plugin = (this as any).plugin as DaggerheartStatblockPlugin;
         installStatblockImportIntegration(plugin);
-        return originalLoad.apply(this, args as []);
+        return originalLoad.call(this);
     };
 }
