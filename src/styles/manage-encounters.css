@@ -1,3 +1,5 @@
+@import "./encounter-thresholds.css";
+
 /* Styles for the ManageEncountersModal */
 .dh-manage-encounters-modal .dh-manage-list-item {
     display: flex;
