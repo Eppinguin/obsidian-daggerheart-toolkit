@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" class="popup-root">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Daggerheart Statblock Clipper</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="compact-layout.css">
+</head>
+<body class="popup-page">
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand-lockup">
+        <img class="app-icon" src="icons/icon-32.png" width="28" height="28" alt="">
+        <div class="brand-copy">
+          <h1>Statblock Clipper</h1>
+          <div class="site-context"><span id="siteIndicator" class="site-indicator" aria-hidden="true"></span><span id="site">Reading current page…</span></div>
+        </div>
+      </div>
+      <button id="refresh" class="icon-button" type="button" title="Refresh extraction" aria-label="Refresh extraction">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7"/></svg>
+      </button>
+    </header>
+
+    <div id="status" class="notice notice--loading" role="status" aria-live="polite">
+      <span class="notice-icon" aria-hidden="true"><svg class="spinner" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/></svg></span>
+      <span id="statusText">Extracting statblock…</span>
+    </div>
+
+    <main class="popup-content">
+      <section id="loadingCard" class="stat-card stat-card--loading" aria-hidden="true">
+        <div class="skeleton skeleton--badge"></div><div class="skeleton skeleton--title"></div><div class="skeleton skeleton--line"></div>
+        <div class="skeleton-grid"><span class="skeleton skeleton--stat"></span><span class="skeleton skeleton--stat"></span><span class="skeleton skeleton--stat"></span><span class="skeleton skeleton--stat"></span></div>
+      </section>
+
+      <section id="collection" class="panel selection-panel hidden" aria-labelledby="collectionTitle">
+        <div class="section-heading"><div><span class="eyebrow">Detected on this page</span><h2 id="collectionTitle"><span id="resultCount">0</span> statblocks</h2></div><span id="currentPosition" class="count-label">1 of 1</span></div>
+        <label class="field" for="itemSelect"><span class="field-label">Preview</span><select id="itemSelect"></select></label>
+        <label id="exportAllLabel" class="switch-row hidden">
+          <span><strong id="exportAllText">Export all detected statblocks</strong><small>Review every detected block in one import.</small></span>
+          <input id="exportAll" class="switch-input" type="checkbox" checked><span class="switch" aria-hidden="true"></span>
+        </label>
+      </section>
+
+      <div class="workspace">
+        <section id="result" class="stat-card hidden" aria-labelledby="name">
+          <div class="stat-card-header">
+            <div class="type-line"><span id="categoryBadge" class="badge">Adversary</span><span aria-hidden="true">·</span><span id="typeBadge" class="badge badge--quiet">Solo</span></div>
+            <h2 id="name">Statblock</h2><p id="description" class="description hidden"></p>
+          </div>
+          <dl class="stats-grid" aria-label="Statblock summary">
+            <div class="stat-tile"><dt>Tier</dt><dd id="tierValue">—</dd></div><div class="stat-tile"><dt>Difficulty</dt><dd id="difficultyValue">—</dd></div><div class="stat-tile"><dt>HP</dt><dd id="hpValue">—</dd></div><div class="stat-tile"><dt>Stress</dt><dd id="stressValue">—</dd></div>
+          </dl>
+          <div id="attackSection" class="detail-row hidden"><div class="detail-copy"><span>Standard attack</span><strong id="attackName">Attack</strong><small id="attackDetails"></small></div></div>
+          <div id="motivesSection" class="detail-row hidden"><div class="detail-copy"><span>Motives &amp; tactics</span><small id="motivesValue"></small></div></div>
+          <div class="stat-card-footer"><span id="featureCount" class="meta-chip">0 features</span><span id="source" class="source-line"></span></div>
+        </section>
+
+        <div class="side-column">
+          <section class="action-stack" aria-label="Export actions">
+            <button id="sendObsidian" class="button button--primary button--hero" type="button" disabled>
+              <svg class="button-leading-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8.5 5v10L12 22l-8.5-5V7L12 2Z"/><path d="m12 6 4.4 2.6v5.1L12 18l-4.4-4.3V8.6L12 6Z"/></svg>
+              <span class="button-copy"><strong id="sendLabel">Import into toolkit</strong><small id="sendHint">Review and add to the compendium</small></span>
+              <svg class="button-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            <div class="action-grid">
+              <button id="copyMarkdown" class="button button--secondary" type="button" disabled><span class="button-copy"><strong id="markdownLabel">Copy Markdown</strong><small>Toolkit code block</small></span></button>
+              <button id="copyJson" class="button button--secondary" type="button" disabled><span class="button-copy"><strong id="jsonLabel">Copy JSON</strong><small>Native import format</small></span></button>
+            </div>
+            <div class="utility-actions">
+              <button id="createNote" class="button button--text" type="button" disabled>Create Markdown note</button>
+              <button id="selectBlock" class="button button--text" type="button">Pick a different block</button>
+              <button id="copyDiagnostics" class="button button--text" type="button" disabled>Copy diagnostics</button>
+            </div>
+          </section>
+
+          <details id="settings" class="panel settings-panel">
+            <summary><span class="summary-copy"><strong>Obsidian destination</strong><small id="destinationSummary">Daggerheart/Homebrew</small></span><svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>
+            <div class="settings-body">
+              <div class="field-grid">
+                <label class="field"><span class="field-label">Vault name or ID</span><input id="vault" type="text" placeholder="Optional"><small>Leave blank to use the active vault.</small></label>
+                <label class="field"><span class="field-label">Markdown folder</span><input id="folder" type="text" placeholder="Daggerheart/Homebrew"></label>
+              </div>
+              <label class="switch-row switch-row--compact"><span><strong>Overwrite matching note</strong><small>Used only by Create Markdown note.</small></span><input id="overwrite" class="switch-input" type="checkbox"><span class="switch" aria-hidden="true"></span></label>
+              <div class="settings-actions"><button id="openOptions" class="button button--text button--small" type="button">Full settings</button><button id="saveSettings" class="button button--secondary button--small" type="button">Save</button></div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </main>
+    <footer class="app-footer">Runs locally. Imports always require confirmation in Obsidian.</footer>
+  </div>
+
+  <script src="statblock-format.js"></script>
+  <script src="parser.js"></script>
+  <script src="parser-patch.js"></script>
+  <script src="statblock-format-adapter.js"></script>
+  <script src="heartofdaggers-filter.js"></script>
+  <script src="freshcutgrass-parser.js"></script>
+  <script src="freshcutgrass-state.js"></script>
+  <script src="freshcutgrass-rendered-repair.js"></script>
+  <script src="freshcutgrass-card-boundary.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

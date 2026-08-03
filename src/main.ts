@@ -7,6 +7,7 @@ import { DaggerheartCompendium } from './services/compendium';
 import { renderStatblockCard } from './rendering/statblock';
 import { createInteractiveTrack } from './rendering/ui-helpers';
 import { ContentType } from './services/export-import';
+import { normalizeCompendiumPath, isPathInsideCompendium } from './services/compendium-path';
 import {
     AdversaryReferenceModal,
     EncounterLinkModal,
@@ -75,6 +76,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     private encounters: SavedEncounter[] = [];
     private activeCharacterId: string | null = null;
     public settingsTab: DaggerheartSettingTab | null = null;
+    private compendiumReloadTimer: number | null = null;
 
     async onload() {
         await this.loadSettings();
@@ -133,6 +135,20 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         this.settingsTab = new DaggerheartSettingTab(this.app, this);
         this.addSettingTab(this.settingsTab);
+
+        this.registerEvent(this.app.vault.on('create', (file) => {
+            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
+        }));
+        this.registerEvent(this.app.vault.on('modify', (file) => {
+            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
+        }));
+        this.registerEvent(this.app.vault.on('delete', (file) => {
+            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
+        }));
+        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
+            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
+            this.scheduleMarkdownCompendiumReload(oldPath);
+        }));
     }
 
     async processStatblock(source: string, el: HTMLElement) {
@@ -328,6 +344,21 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             });
             this.app.workspace.revealLeaf(leaf);
         }
+    }
+
+    private scheduleMarkdownCompendiumReload(path: string) {
+        const configuredPath = normalizeCompendiumPath(this.settings.compendiumFolder);
+        if (!isPathInsideCompendium(path, configuredPath)) return;
+
+        if (this.compendiumReloadTimer !== null) {
+            window.clearTimeout(this.compendiumReloadTimer);
+        }
+        this.compendiumReloadTimer = window.setTimeout(() => {
+            this.compendiumReloadTimer = null;
+            this.triggerCompendiumUpdate().catch(error => {
+                console.error('Daggerheart | Failed to reload Markdown compendium:', error);
+            });
+        }, 250);
     }
 
     private async ensureUserCompendiumFolderExists() {
@@ -651,13 +682,13 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
 
         await this.saveData(settingsToSave);
-
-        if (this.settingsTab) {
-            this.settingsTab.display();
-        }
     }
 
     onunload() {
+        if (this.compendiumReloadTimer !== null) {
+            window.clearTimeout(this.compendiumReloadTimer);
+            this.compendiumReloadTimer = null;
+        }
         dddice.destroyDddiceRenderer();
         if (this.settings.enableEncounterView) {
             this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
@@ -688,6 +719,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
     private _dddiceDropdownsToRefresh: DropdownComponent[] = [];
     private _themeSelectorsToRefresh: string[] = [];
     private _dddiceObserverInterval: number | null = null;
+    private compendiumFolderSaveTimer: number | null = null;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin) {
         super(app, plugin);
@@ -914,6 +946,23 @@ class DaggerheartSettingTab extends PluginSettingTab {
         }
     }
 
+    private scheduleCompendiumFolderUpdate(value: string) {
+        this.plugin.settings.compendiumFolder = normalizeCompendiumPath(value);
+        if (this.compendiumFolderSaveTimer !== null) {
+            window.clearTimeout(this.compendiumFolderSaveTimer);
+        }
+        this.compendiumFolderSaveTimer = window.setTimeout(async () => {
+            this.compendiumFolderSaveTimer = null;
+            try {
+                await this.plugin.saveSettings();
+                await this.plugin.triggerCompendiumUpdate();
+            } catch (error) {
+                console.error('Daggerheart | Failed to update compendium folder:', error);
+                new Notice('Could not reload the configured compendium folder. Check the developer console.');
+            }
+        }, 400);
+    }
+
     renderCompendiumSettings(containerEl: HTMLElement) {
         containerEl.createEl('h3', { text: 'Compendium Settings' });
         new Setting(containerEl)
@@ -922,10 +971,8 @@ class DaggerheartSettingTab extends PluginSettingTab {
             .addText((text: TextComponent) => {
                 text.setPlaceholder('Example: Path/To/Adversaries')
                     .setValue(this.plugin.settings.compendiumFolder)
-                    .onChange(async (value) => {
-                        this.plugin.settings.compendiumFolder = value.trim();
-                        await this.plugin.saveSettings();
-                        this.plugin.app.workspace.trigger('daggerheart-compendium-update');
+                    .onChange((value) => {
+                        this.scheduleCompendiumFolderUpdate(value);
                     });
             });
 
