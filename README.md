@@ -1,6 +1,6 @@
 # Obsidian Daggerheart Toolkit
 
-Obsidian plugin for Daggerheart adversary statblocks, environments, encounters, and character sheets.
+Obsidian plugin for Daggerheart GMs: adversary statblocks, environments, encounters, Fear, countdowns, and dice rolling.
 
 ## Markdown homebrew compendium
 

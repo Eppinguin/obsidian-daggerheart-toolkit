@@ -84,9 +84,8 @@ export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string,
  * @param text The text to process.
  * @param containerEl The parent element for the rendered content.
  * @param context A string describing what the roll is for (e.g., an attack or feature name).
- * @param isCharacterContext Whether this is being rendered in a character sheet context (vs. encounter/statblock).
  */
-export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement, context: string, isCharacterContext: boolean = false) {
+export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement, context: string) {
     const pattern = /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear))|\b(Countdown\s*\((Loop\s+)?(.*?)\))/gi;
     let lastIndex = 0;
     let match;
@@ -123,63 +122,10 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
                 plugin.rollDice(diceString, context, traitName);
             });
         } else if (costPart) {
-            // Parse stress/hope costs and make them clickable to mark/spend resources
-            const markStressMatch = costPart.match(/Mark\s+(a|\d+)\s+stress/i);
-            const spendHopeMatch = costPart.match(/Spend\s+(a|\d+)\s+hope/i);
-            const spendFearMatch = costPart.match(/Spend\s+(a|\d+)\s+fear/i);
-
-            const costEl = containerEl.createEl('strong', {
+            containerEl.createEl('strong', {
                 text: costPart,
                 cls: 'dh-feature-cost-text dh-interactive-cost'
             });
-
-            if (markStressMatch || spendHopeMatch || spendFearMatch) {
-                const resourceType = markStressMatch ? 'stress' : (spendHopeMatch ? 'hope' : 'fear');
-                const amountText = (markStressMatch ? markStressMatch[1] :
-                    (spendHopeMatch ? spendHopeMatch[1] : spendFearMatch![1])).toLowerCase();
-                const amount = amountText === 'a' ? 1 : parseInt(amountText);
-
-                // Only make stress and hope clickable in character contexts
-                if (isCharacterContext && resourceType !== 'fear') {
-                    costEl.addClass('dh-clickable-cost');
-                    costEl.title = `Click to ${markStressMatch ? 'mark' : 'spend'} ${amount} ${resourceType}`;
-
-                    costEl.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const activeChar = plugin.getActiveCharacter();
-                        if (!activeChar) {
-                            new Notice('No active character selected.');
-                            return;
-                        }
-
-                        if (resourceType === 'stress') {
-                            if (!activeChar.stress) {
-                                new Notice('Character does not have stress tracking enabled.');
-                                return;
-                            }
-
-                            const newStress = Math.min(activeChar.stress.max, activeChar.stress.current + amount);
-                            activeChar.stress.current = newStress;
-                            plugin.updateCharacter(activeChar);
-                            new Notice(`Marked ${amount} stress on ${activeChar.name}.`);
-                        } else { // hope
-                            if (!activeChar.hope) {
-                                new Notice('Character does not have hope tracking enabled.');
-                                return;
-                            }
-
-                            if (activeChar.hope.current < amount) {
-                                new Notice(`Not enough hope. Current: ${activeChar.hope.current}`);
-                                return;
-                            }
-
-                            activeChar.hope.current -= amount;
-                            plugin.updateCharacter(activeChar);
-                            new Notice(`Spent ${amount} hope from ${activeChar.name}.`);
-                        }
-                    });
-                }
-            }
         } else if (countdownPart && countdownValue) {
             const countdownEl = containerEl.createSpan({
                 text: countdownPart,

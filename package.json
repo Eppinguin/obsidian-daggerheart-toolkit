@@ -1,7 +1,7 @@
 {
     "name": "daggerheart-toolkit",
     "version": "0.0.2",
-    "description": "Obsidian plugin for Daggerheart Adversary statblocks and Character Sheets",
+    "description": "Obsidian plugin for Daggerheart GMs, adversary statblocks, environments, and encounters",
     "main": "main.js",
     "scripts": {
         "dev": "node esbuild.config.mjs",

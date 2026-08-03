@@ -155,7 +155,6 @@
     if (!input || typeof input !== 'object') return 'unknown';
     const explicit = clean(input.category || input._type).toLowerCase();
     if (explicit === 'adversary' || explicit === 'environment') return explicit;
-    if (input['dg-character'] && input.ancestryId) return 'character';
     if (Array.isArray(input.adversaries) && Array.isArray(input.adversaryGroupOrder)) return 'encounter';
     if (input.impulses || input.potential_adversaries || input.tone) return 'environment';
     if (input.hp_stress || input.hp !== undefined || input.stress !== undefined || input.weapon || input.motives || input.motives_tactics) return 'adversary';

@@ -1,5 +1,4 @@
 import { Condition } from './types';
-import { Character } from './types';
 
 export const ENCOUNTER_BUILDER_VIEW_TYPE = "dh-encounter-builder-view";
 
@@ -15,14 +14,3 @@ export const EVENT_REMOVE_CONDITION = 'dh-remove-condition';
 export const EVENT_REMOVE_INSTANCE = 'dh-remove-instance';
 export const EVENT_EDIT_INSTANCE = 'dh-edit-instance';
 export const EVENT_CREATE_COUNTDOWN = 'dh-create-countdown';
-export const CHARACTER_SHEET_VIEW_TYPE = "dh-character-sheet-view";
-
-export const TRAIT_NAMES: (keyof Character['traits'])[] = ['Strength', 'Agility', 'Finesse', 'Instinct', 'Presence', 'Knowledge'];
-
-
-export const getTier = (level: number): number => {
-    if (level >= 8) return 4;
-    if (level >= 5) return 3;
-    if (level >= 2) return 2;
-    return 1;
-};

@@ -18,19 +18,9 @@ export interface ExportedData<T> {
 }
 
 export enum ContentType {
-    CHARACTER = 'character',
     ENCOUNTER = 'encounter',
     ADVERSARY = 'adversary',
-    ENVIRONMENT = 'environment',
-    ABILITY = 'ability',
-    CLASS = 'class',
-    SUBCLASS = 'subclass',
-    ANCESTRY = 'ancestry',
-    COMMUNITY = 'community',
-    ARMOR = 'armor',
-    WEAPON = 'weapon',
-    ITEM = 'item',
-    CONSUMABLE = 'consumable'
+    ENVIRONMENT = 'environment'
 }
 
 export interface ContentTypeInfo {
@@ -42,19 +32,9 @@ export interface ContentTypeInfo {
 }
 
 export const CONTENT_TYPE_INFO: Record<ContentType, ContentTypeInfo> = {
-    [ContentType.CHARACTER]: { type: ContentType.CHARACTER, displayName: 'Character', description: 'Export or import character sheets', icon: 'user', collection: 'characters' },
     [ContentType.ENCOUNTER]: { type: ContentType.ENCOUNTER, displayName: 'Encounter', description: 'Export or import saved encounters', icon: 'swords', collection: 'encounters' },
     [ContentType.ADVERSARY]: { type: ContentType.ADVERSARY, displayName: 'Adversary', description: 'Export or import adversary statblocks', icon: 'skull', collection: 'statblocks' },
-    [ContentType.ENVIRONMENT]: { type: ContentType.ENVIRONMENT, displayName: 'Environment', description: 'Export or import environment statblocks', icon: 'mountain-snow', collection: 'statblocks' },
-    [ContentType.ABILITY]: { type: ContentType.ABILITY, displayName: 'Ability', description: 'Export or import abilities', icon: 'zap', collection: 'abilities' },
-    [ContentType.CLASS]: { type: ContentType.CLASS, displayName: 'Class', description: 'Export or import classes', icon: 'shield-half', collection: 'classes' },
-    [ContentType.SUBCLASS]: { type: ContentType.SUBCLASS, displayName: 'Subclass', description: 'Export or import subclasses', icon: 'shield-half', collection: 'subclasses' },
-    [ContentType.ANCESTRY]: { type: ContentType.ANCESTRY, displayName: 'Ancestry', description: 'Export or import ancestries', icon: 'dna', collection: 'ancestries' },
-    [ContentType.COMMUNITY]: { type: ContentType.COMMUNITY, displayName: 'Community', description: 'Export or import communities', icon: 'home', collection: 'communities' },
-    [ContentType.ARMOR]: { type: ContentType.ARMOR, displayName: 'Armor', description: 'Export or import armor', icon: 'shield', collection: 'armors' },
-    [ContentType.WEAPON]: { type: ContentType.WEAPON, displayName: 'Weapon', description: 'Export or import weapons', icon: 'sword', collection: 'weapons' },
-    [ContentType.ITEM]: { type: ContentType.ITEM, displayName: 'Item', description: 'Export or import items', icon: 'backpack', collection: 'items' },
-    [ContentType.CONSUMABLE]: { type: ContentType.CONSUMABLE, displayName: 'Consumable', description: 'Export or import consumables', icon: 'potion', collection: 'consumables' }
+    [ContentType.ENVIRONMENT]: { type: ContentType.ENVIRONMENT, displayName: 'Environment', description: 'Export or import environment statblocks', icon: 'mountain-snow', collection: 'statblocks' }
 };
 
 function isStatblockType(type: string): boolean {
@@ -73,19 +53,9 @@ export function exportToJsonString<T>(type: string, data: T): string {
 function detectContentType(data: any): ContentType | 'unknown' {
     if (!data || typeof data !== 'object') return 'unknown';
     if (data._type && Object.values(ContentType).includes(data._type as ContentType)) return data._type as ContentType;
-    if (data['dg-character'] && data.ancestryId) return ContentType.CHARACTER;
     if (Array.isArray(data.adversaries) && Array.isArray(data.adversaryGroupOrder)) return ContentType.ENCOUNTER;
-    if (Array.isArray(data.class_feats) && data.domain_1) return ContentType.CLASS;
-    if (Array.isArray(data.foundations) && Array.isArray(data.specializations)) return ContentType.SUBCLASS;
-    if (Array.isArray(data.feats) && data.note) return ContentType.COMMUNITY;
-    if (data.recall && data.domain) return ContentType.ABILITY;
-    if (data.base_score && data.base_thresholds) return ContentType.ARMOR;
-    if (data.primary_or_secondary && data.damage) return ContentType.WEAPON;
-    if (data.roll && data.name && data.description) return ContentType.CONSUMABLE;
     if (data.category === 'environment' || data.impulses || data.potential_adversaries || data.tone) return ContentType.ENVIRONMENT;
     if (data.category === 'adversary' || data.hp_stress || data.hp !== undefined || data.stress !== undefined || data.weapon || data.motives || data.motives_tactics) return ContentType.ADVERSARY;
-    if (Array.isArray(data.feats)) return ContentType.ANCESTRY;
-    if (data.name && data.description) return ContentType.ITEM;
     return 'unknown';
 }
 
@@ -157,7 +127,7 @@ export function importFromJsonString<T extends AllCompendiumData>(jsonString: st
 }
 
 export { normalizeStatblockData };
-export { isValidCharacterData, isValidContentData } from './content-validators';
+export { isValidContentData } from './content-validators';
 
 export async function copyToClipboard(text: string): Promise<void> {
     try {

@@ -1,8 +1,7 @@
 import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu, DropdownComponent, ButtonComponent, addIcon } from 'obsidian';
 import * as YAML from 'js-yaml';
-import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, Character, JsonAbility, JsonClass, JsonSubclass, JsonAncestry, SavedEncounter, AllCompendiumData } from './types';
+import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, SavedEncounter } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './views/EncounterBuilderView';
-import { CharacterSheetView, CHARACTER_SHEET_VIEW_TYPE } from './views/CharacterSheetView';
 import { DaggerheartCompendium } from './services/compendium';
 import { renderStatblockCard } from './rendering/statblock';
 import { createInteractiveTrack } from './rendering/ui-helpers';
@@ -21,8 +20,6 @@ import { RollCompletedPayload, RollComponent } from './DiceTray';
 
 declare module "obsidian" {
     interface Workspace {
-        on(name: 'daggerheart-character-update', callback: () => void, ctx?: any): EventRef;
-        trigger(name: 'daggerheart-character-update'): void;
         on(name: 'daggerheart-compendium-update', callback: () => void, ctx?: any): EventRef;
         trigger(name: 'daggerheart-compendium-update'): void;
         on(name: 'daggerheart-encounter-update', callback: () => void, ctx?: any): EventRef;
@@ -72,21 +69,17 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;
     compendium: DaggerheartCompendium;
     isDiceRollerEnabled: boolean = false;
-    private characters: Character[] = [];
     private encounters: SavedEncounter[] = [];
-    private activeCharacterId: string | null = null;
     public settingsTab: DaggerheartSettingTab | null = null;
     private compendiumReloadTimer: number | null = null;
 
     async onload() {
         await this.loadSettings();
-        this.activeCharacterId = this.settings.activeCharacterId;
 
         this.initializeDddiceIfNeeded();
 
         this.compendium = new DaggerheartCompendium(this);
         await this.compendium.load();
-        await this.loadCharacters();
         await this.loadEncounters();
 
         this.isDiceRollerEnabled = this.settings.enableDiceRoller && !!(this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api;
@@ -97,27 +90,17 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             this.addCommand({ id: 'open-daggerheart-encounter-builder', name: 'Open Encounter Builder', callback: () => this.activateEncounterBuilderView() });
         }
 
-        if (this.settings.enableCharacterSheet) {
-            this.registerView(CHARACTER_SHEET_VIEW_TYPE, (leaf: WorkspaceLeaf) => new CharacterSheetView(leaf, this));
-            this.addRibbonIcon('user-round', 'Open Daggerheart Characters', () => this.activateCharacterSheetView());
-            this.addCommand({ id: 'open-daggerheart-character-sheet', name: 'Open Characters', callback: () => this.activateCharacterSheetView() });
+        this.addCommand({
+            id: 'export-daggerheart-content',
+            name: 'Export Daggerheart Content',
+            callback: () => new ImportExportModal(this.app, this, 'export').open()
+        });
 
-            this.addCommand({
-                id: 'export-daggerheart-content',
-                name: 'Export Daggerheart Content',
-                callback: () => {
-                    new ImportExportModal(this.app, this, 'export').open();
-                }
-            });
-
-            this.addCommand({
-                id: 'import-daggerheart-content',
-                name: 'Import Daggerheart Content',
-                callback: () => {
-                    new ImportExportModal(this.app, this, 'import').open();
-                }
-            });
-        }
+        this.addCommand({
+            id: 'import-daggerheart-content',
+            name: 'Import Daggerheart Content',
+            callback: () => new ImportExportModal(this.app, this, 'import').open()
+        });
 
         this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el) => { this.processStatblock(source, el); });
         this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el) => { this.processEmbed(source, el); });
@@ -203,29 +186,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
-    private async loadCharacters() {
-        const path = `${this.manifest.dir}/user_data/characters.json`;
-        if (await this.app.vault.adapter.exists(path)) {
-            try {
-                const data = await this.app.vault.adapter.read(path);
-                this.characters = JSON.parse(data);
-                if (this.characters.length > 0 && !this.activeCharacterId) {
-                    this.activeCharacterId = this.characters[0].id;
-                }
-            } catch (e) {
-                console.error("Daggerheart: Error loading characters.json. It might be corrupted.", e);
-                this.characters = [];
-            }
-        } else {
-            this.characters = [];
-        }
-    }
-
-    private async saveCharacters() {
-        const path = `${this.manifest.dir}/user_data/characters.json`;
-        await this.app.vault.adapter.write(path, JSON.stringify(this.characters, null, 2));
-    }
-
     private async loadEncounters() {
         const path = `${this.manifest.dir}/user_data/encounters.json`;
         if (await this.app.vault.adapter.exists(path)) {
@@ -246,54 +206,12 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         await this.app.vault.adapter.write(path, JSON.stringify(this.encounters, null, 2));
     }
 
-    public getCharacters(): Character[] { return this.characters; }
-    public getCharacter(id: string): Character | undefined { return this.characters.find(c => c.id === id); }
-    public getActiveCharacter(): Character | undefined {
-        if (!this.activeCharacterId) return undefined;
-        return this.characters.find(c => c.id === this.activeCharacterId);
-    }
-    public getActiveCharacterId(): string | null { return this.activeCharacterId; }
-
     public async updateDddiceParticipantName() {
         if (this.settings.diceProvider !== 'dddice' || !this.settings.dddice.apiKey || !this.settings.dddice.room) {
             return;
         }
 
-        const activeCharacter = this.getActiveCharacter();
-        const characterName = activeCharacter ? activeCharacter.name : 'Observer';
-
-        await dddice.updateParticipantName(this.settings.dddice, characterName);
-    }
-
-    public async setActiveCharacterId(id: string | null) {
-        this.activeCharacterId = id;
-        this.settings.activeCharacterId = id;
-        await this.saveSettings();
-        this.app.workspace.trigger('daggerheart-character-update');
-        await this.updateDddiceParticipantName();
-    }
-
-    public async updateCharacter(character: Character) {
-        const index = this.characters.findIndex(c => c.id === character.id);
-        if (index > -1) {
-            this.characters[index] = character;
-        } else {
-            this.characters.push(character);
-        }
-        await this.saveCharacters();
-        this.app.workspace.trigger('daggerheart-character-update');
-        if (character.id === this.activeCharacterId) {
-            await this.updateDddiceParticipantName();
-        }
-    }
-
-    public async deleteCharacter(id: string) {
-        this.characters = this.characters.filter(c => c.id !== id);
-        if (this.activeCharacterId === id) {
-            this.activeCharacterId = this.characters.length > 0 ? this.characters[0].id : null;
-        }
-        await this.saveCharacters();
-        this.app.workspace.trigger('daggerheart-character-update');
+        await dddice.updateParticipantName(this.settings.dddice, 'GM');
     }
 
     getSavedEncounters(): SavedEncounter[] {
@@ -334,18 +252,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }
     }
 
-    async activateCharacterSheetView() {
-        this.app.workspace.detachLeavesOfType(CHARACTER_SHEET_VIEW_TYPE);
-        const leaf = this.app.workspace.getRightLeaf(false);
-        if (leaf) {
-            await leaf.setViewState({
-                type: CHARACTER_SHEET_VIEW_TYPE,
-                active: true,
-            });
-            this.app.workspace.revealLeaf(leaf);
-        }
-    }
-
     private scheduleMarkdownCompendiumReload(path: string) {
         const configuredPath = normalizeCompendiumPath(this.settings.compendiumFolder);
         if (!isPathInsideCompendium(path, configuredPath)) return;
@@ -370,7 +276,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     public async triggerCompendiumUpdate() {
         await this.compendium.load();
-        this.app.workspace.trigger('daggerheart-character-update');
         this.app.workspace.trigger('daggerheart-compendium-update');
     }
 
@@ -403,52 +308,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         await this.app.vault.adapter.write(path, JSON.stringify(compendium, null, 2));
         await this.triggerCompendiumUpdate();
-    }
-
-    public async addCustomCompendiumItem(contentType: ContentType, data: AllCompendiumData) {
-        let fileName: string | null = null;
-
-        switch (contentType) {
-            case ContentType.ADVERSARY:
-            case ContentType.ENVIRONMENT:
-                fileName = this.settings.userCompendiumFile;
-                break;
-            case ContentType.ABILITY:
-                fileName = this.settings.userAbilitiesFile;
-                break;
-            case ContentType.CLASS:
-                fileName = this.settings.userClassesFile;
-                break;
-            case ContentType.SUBCLASS:
-                fileName = this.settings.userSubclassesFile;
-                break;
-            case ContentType.ANCESTRY:
-                fileName = this.settings.userAncestriesFile;
-                break;
-            case ContentType.COMMUNITY:
-                fileName = this.settings.userCommunitiesFile;
-                break;
-            case ContentType.ARMOR:
-                fileName = this.settings.userArmorFile;
-                break;
-            case ContentType.WEAPON:
-                fileName = this.settings.userWeaponsFile;
-                break;
-            case ContentType.ITEM:
-                fileName = this.settings.userItemsFile;
-                break;
-            case ContentType.CONSUMABLE:
-                fileName = this.settings.userConsumablesFile;
-                break;
-            default:
-                new Notice(`Cannot import type "${contentType}" as it has no configured save location.`);
-                console.error(`Unhandled content type in addCustomCompendiumItem: ${contentType}`);
-                return;
-        }
-
-        if (fileName) {
-            await this.saveCustomCompendiumData(fileName, data);
-        }
     }
 
     public async renameCustomCompendiumEntry(fileName: string, oldName: string, newData: any) {
@@ -502,8 +361,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         let total: number | null = null;
 
         const performRoll = async (isRetry: boolean = false) => {
-            const activeChar = this.getActiveCharacter();
-            const rollerName = activeChar ? activeChar.name : undefined;
+            const rollerName = 'GM';
 
             if (this.settings.diceProvider === 'dddice') {
                 try {
@@ -692,9 +550,6 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         dddice.destroyDddiceRenderer();
         if (this.settings.enableEncounterView) {
             this.app.workspace.detachLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
-        }
-        if (this.settings.enableCharacterSheet) {
-            this.app.workspace.detachLeavesOfType(CHARACTER_SHEET_VIEW_TYPE);
         }
     }
 
@@ -917,18 +772,6 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 window.location.reload();
             }
         };
-
-        new Setting(containerEl)
-            .setName('Enable Character Sheet')
-            .setDesc('Enable or disable the Character Sheet view. Changes will take effect after restarting Obsidian.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableCharacterSheet)
-                .onChange(async (value) => {
-                    this.plugin.settings.enableCharacterSheet = value;
-                    await this.plugin.saveSettings();
-                    new Notice('Character Sheet setting changed. Please reload Obsidian for the change to take effect.');
-                    await promptReload();
-                }));
 
         this.renderCompendiumSettings(containerEl);
         this.renderEncounterViewSettings(containerEl);

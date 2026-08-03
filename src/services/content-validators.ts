@@ -1,11 +1,6 @@
 // src/services/content-validators.ts
 import { ContentType } from './export-import';
-import { Character, SavedEncounter } from '../types';
-
-export function isValidCharacterData(data: any): data is Character {
-    return typeof data === 'object' && data !== null &&
-        typeof data.id === 'string' && data._type === 'character' && typeof data.name === 'string';
-}
+import { SavedEncounter } from '../types';
 
 export function debugEncounterValidation(data: any): { valid: boolean; details: Record<string, boolean> } {
     const details = {
@@ -32,8 +27,6 @@ function isValidStatblockData(data: any, category: 'adversary' | 'environment'):
 
 export function isValidContentData(data: any, contentType: ContentType): boolean {
     switch (contentType) {
-        case ContentType.CHARACTER:
-            return isValidCharacterData(data);
         case ContentType.ENCOUNTER:
             return isValidEncounterData(data);
         case ContentType.ADVERSARY:

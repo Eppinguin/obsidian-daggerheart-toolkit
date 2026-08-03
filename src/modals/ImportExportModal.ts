@@ -1,9 +1,9 @@
 import { App, Modal, Setting, Notice, TextAreaComponent, ButtonComponent, TextComponent, DropdownComponent } from 'obsidian';
 import DaggerheartStatblockPlugin from '../main';
 import { ContentType, exportToJsonString, copyToClipboard, saveToFile, importFromJsonString, fetchJsonFromUrl } from '../services/export-import';
-import { isValidCharacterData, isValidEncounterData } from '../services/content-validators';
+import { isValidEncounterData } from '../services/content-validators';
 import { v4 as uuidv4 } from 'uuid';
-import { Character, SavedEncounter, AllCompendiumData } from '../types';
+import { SavedEncounter } from '../types';
 import { StatblockImportPreviewModal } from './StatblockImportPreviewModal';
 
 export interface ContentTypeInfo {
@@ -15,19 +15,9 @@ export interface ContentTypeInfo {
 }
 
 export const CONTENT_TYPE_INFO: Record<ContentType, ContentTypeInfo> = {
-    [ContentType.CHARACTER]: { type: ContentType.CHARACTER, displayName: 'Character', description: 'Export or import character sheets', icon: 'user', collection: 'characters' },
     [ContentType.ENCOUNTER]: { type: ContentType.ENCOUNTER, displayName: 'Encounter', description: 'Export or import saved encounters', icon: 'swords', collection: 'encounters' },
     [ContentType.ADVERSARY]: { type: ContentType.ADVERSARY, displayName: 'Adversary', description: 'Export or import adversary statblocks', icon: 'skull', collection: 'statblocks' },
-    [ContentType.ENVIRONMENT]: { type: ContentType.ENVIRONMENT, displayName: 'Environment', description: 'Export or import environment statblocks', icon: 'mountain-snow', collection: 'statblocks' },
-    [ContentType.ABILITY]: { type: ContentType.ABILITY, displayName: 'Ability', description: 'Export or import abilities', icon: 'zap', collection: 'abilities' },
-    [ContentType.CLASS]: { type: ContentType.CLASS, displayName: 'Class', description: 'Export or import classes', icon: 'shield', collection: 'classes' },
-    [ContentType.SUBCLASS]: { type: ContentType.SUBCLASS, displayName: 'Subclass', description: 'Export or import subclasses', icon: 'shield-half', collection: 'subclasses' },
-    [ContentType.ANCESTRY]: { type: ContentType.ANCESTRY, displayName: 'Ancestry', description: 'Export or import ancestries', icon: 'dna', collection: 'ancestries' },
-    [ContentType.COMMUNITY]: { type: ContentType.COMMUNITY, displayName: 'Community', description: 'Export or import communities', icon: 'home', collection: 'communities' },
-    [ContentType.ARMOR]: { type: ContentType.ARMOR, displayName: 'Armor', description: 'Export or import armor', icon: 'shield', collection: 'armors' },
-    [ContentType.WEAPON]: { type: ContentType.WEAPON, displayName: 'Weapon', description: 'Export or import weapons', icon: 'sword', collection: 'weapons' },
-    [ContentType.ITEM]: { type: ContentType.ITEM, displayName: 'Item', description: 'Export or import items', icon: 'backpack', collection: 'items' },
-    [ContentType.CONSUMABLE]: { type: ContentType.CONSUMABLE, displayName: 'Consumable', description: 'Export or import consumables', icon: 'potion', collection: 'consumables' }
+    [ContentType.ENVIRONMENT]: { type: ContentType.ENVIRONMENT, displayName: 'Environment', description: 'Export or import environment statblocks', icon: 'mountain-snow', collection: 'statblocks' }
 };
 
 export class ImportExportModal extends Modal {
@@ -44,7 +34,7 @@ export class ImportExportModal extends Modal {
     private contentSelection: DropdownComponent | null = null;
     private selectedContentId: string | null = null;
 
-    constructor(app: App, plugin: DaggerheartStatblockPlugin, mode: 'import' | 'export' = 'import', contentType: ContentType = ContentType.CHARACTER, contentId: string | null = null) {
+    constructor(app: App, plugin: DaggerheartStatblockPlugin, mode: 'import' | 'export' = 'import', contentType: ContentType = ContentType.ENCOUNTER, contentId: string | null = null) {
         super(app);
         this.plugin = plugin;
         this.mode = mode;
@@ -75,7 +65,7 @@ export class ImportExportModal extends Modal {
             this.contentTypeInfo = CONTENT_TYPE_INFO[this.contentType];
             this.onOpen();
         });
-        if (this.mode === 'export' && ![ContentType.CHARACTER, ContentType.ENCOUNTER].includes(this.contentType)) {
+        if (this.mode === 'export' && this.contentType !== ContentType.ENCOUNTER) {
             contentEl.createEl('p', { text: 'Only custom entries are available for export.', cls: 'dh-info-message' });
         }
     }
@@ -153,8 +143,7 @@ export class ImportExportModal extends Modal {
         this.contentSelection = new DropdownComponent(setting.controlEl).addOption('', `Select ${this.contentTypeInfo.displayName}…`);
         const collectionName = this.contentTypeInfo.collection;
         let items: { id: string; name: string }[] = [];
-        if (collectionName === 'characters') items = this.plugin.getCharacters();
-        else if (collectionName === 'encounters') items = this.plugin.getSavedEncounters();
+        if (collectionName === 'encounters') items = this.plugin.getSavedEncounters();
         else if ((this.plugin.compendium as any)[collectionName]) {
             items = (this.plugin.compendium as any)[collectionName].filter((item: any) => item.isCustom).map((item: any) => ({ id: item.name, name: item.name }));
         }
@@ -173,8 +162,7 @@ export class ImportExportModal extends Modal {
     private prepareExportData(contentId: string): any {
         const collectionName = this.contentTypeInfo.collection;
         let data: any = null;
-        if (collectionName === 'characters') data = this.plugin.getCharacters().find(item => item.id === contentId);
-        else if (collectionName === 'encounters') data = this.plugin.getSavedEncounter(contentId);
+        if (collectionName === 'encounters') data = this.plugin.getSavedEncounter(contentId);
         else data = (this.plugin.compendium as any)[collectionName]?.find((item: any) => item.name === contentId);
         if (data) this.exportJsonStr = exportToJsonString(this.contentType, data);
         return data;
@@ -199,13 +187,8 @@ export class ImportExportModal extends Modal {
                 return;
             }
 
-            if (this.contentType === ContentType.CHARACTER) await this.importCharacter(matching[0].data as unknown as Character);
-            else if (this.contentType === ContentType.ENCOUNTER) await this.importEncounter(matching[0].data as unknown as SavedEncounter);
-            else {
-                for (const entry of matching) await this.importCompendiumItem(entry.data);
-                new Notice(`Imported ${matching.length} ${this.contentTypeInfo.displayName.toLowerCase()} item${matching.length === 1 ? '' : 's'}.`);
-            }
-            if (matching.length > 1 && [ContentType.CHARACTER, ContentType.ENCOUNTER].includes(this.contentType)) new Notice('Only the first character or encounter was imported.');
+            await this.importEncounter(matching[0].data as unknown as SavedEncounter);
+            if (matching.length > 1 && this.contentType === ContentType.ENCOUNTER) new Notice('Only the first encounter was imported.');
             this.close();
         } catch (error) {
             console.error(`Error importing ${this.contentTypeInfo.displayName}:`, error);
@@ -215,29 +198,12 @@ export class ImportExportModal extends Modal {
         }
     }
 
-    private async importCharacter(data: Character): Promise<void> {
-        if (!isValidCharacterData(data)) return void new Notice('Invalid character data.');
-        if (this.plugin.getCharacters().some(item => item.name.toLowerCase() === data.name.toLowerCase())) data.name += ' (Imported)';
-        data.id = uuidv4();
-        await this.plugin.updateCharacter(data);
-        await this.plugin.setActiveCharacterId(data.id);
-        new Notice(`Character "${data.name}" imported.`);
-    }
-
     private async importEncounter(data: SavedEncounter): Promise<void> {
         if (!isValidEncounterData(data)) return void new Notice('Invalid encounter data.');
         if (this.plugin.getSavedEncounters().some(item => item.name.toLowerCase() === data.name.toLowerCase())) data.name += ' (Imported)';
         data.id = uuidv4();
         await this.plugin.updateSavedEncounter(data);
         new Notice(`Encounter "${data.name}" imported.`);
-    }
-
-    private async importCompendiumItem(data: AllCompendiumData): Promise<void> {
-        if (!data || !('name' in data) || typeof data.name !== 'string') throw new Error('Invalid compendium item.');
-        const collection = (this.plugin.compendium as any)[this.contentTypeInfo.collection] as AllCompendiumData[];
-        if (collection?.some(item => 'name' in item && item.name.toLowerCase() === data.name.toLowerCase())) data.name += ' (Imported)';
-        (data as any).isCustom = true;
-        await this.plugin.addCustomCompendiumItem(this.contentType, data);
     }
 
     private setLoading(loading: boolean): void {

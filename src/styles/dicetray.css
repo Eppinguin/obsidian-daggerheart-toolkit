@@ -1,11 +1,4 @@
 /* --- Dice Tray Theming --- */
-.dh-character-sheet-view {
-  /* Use character-specific theme colors */
-  --dh-tray-accent-color: var(--dh-sheet-accent);
-  --dh-tray-accent-glow: var(--dh-sheet-accent-glow);
-  --dh-tray-fear-color: var(--dh-sheet-purple);
-}
-
 .dh-encounter-builder-container {
   position: relative;
   --dh-tray-accent-color: var(--interactive-accent);
