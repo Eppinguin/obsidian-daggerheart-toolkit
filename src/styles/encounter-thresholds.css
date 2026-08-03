@@ -1,4 +1,13 @@
 /* Compact Daggerheart-style damage thresholds for encounter adversary cards. */
+.dh-encounter-view .dh-instance-card-content .dh-features-section:has(+ .dh-hp-stress-container) .dh-features-list {
+    margin-bottom: 0;
+}
+
+.dh-encounter-view .dh-instance-card-content .dh-features-section + .dh-hp-stress-container {
+    margin-top: var(--size-4-1, 4px);
+    padding-top: var(--size-4-1, 4px);
+}
+
 .dh-encounter-view .dh-instance-card-content .dh-threshold-bar {
     --dh-encounter-threshold-surface: var(--background-secondary-alt);
     --dh-encounter-threshold-border: var(--background-modifier-border);
