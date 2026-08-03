@@ -1,5 +1,6 @@
 // This file serves as a barrel to export all modals from one place.
 import '../services/statblock-import-integration';
+import '../services/encounter-instance-controls';
 
 export { AddItemModal } from './AddItemModal';
 export { AdversaryReferenceModal } from './AdversaryReferenceModal';
