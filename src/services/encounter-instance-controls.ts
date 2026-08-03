@@ -9,12 +9,13 @@ const PATCH_FLAG = '__dhAdditionalInstanceConditionControls';
  * instance receives the same condition menu button as the first group member.
  */
 void import('../views/EncounterBuilderView').then(({ EncounterBuilderView }) => {
-    const prototype = EncounterBuilderView.prototype as typeof EncounterBuilderView.prototype & Record<string, unknown>;
+    type EncounterBuilderInstance = InstanceType<typeof EncounterBuilderView>;
+    const prototype = EncounterBuilderView.prototype as EncounterBuilderInstance & Record<string, unknown>;
     if (prototype[PATCH_FLAG]) return;
 
     const originalRender = prototype.renderAdditionalTrackerRow;
     prototype.renderAdditionalTrackerRow = function (
-        this: EncounterBuilderView,
+        this: EncounterBuilderInstance,
         instance: AdversaryInstance,
         parentEl: HTMLElement
     ): void {
