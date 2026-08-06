@@ -28,7 +28,10 @@ const TARGETS = {
         // version-bump.mjs runs from npm's `version` hook and syncs
         // manifest.json and versions.json.
         verify: ['run lint', 'run build'],
-        files: ['manifest.json', 'package.json', 'versions.json'],
+        files: ['CHANGELOG.md', 'manifest.json', 'package.json', 'versions.json'],
+        // release.yml builds its notes from this section and fails without it.
+        // Checking here turns that into a local error before the tag exists.
+        changelog: true,
     },
     extension: {
         cwd: CLIPPER_DIR,
@@ -94,6 +97,21 @@ const tag = config.tag(version);
 // Under --dry-run the bump above never ran, so this is the *current* version,
 // not the one a real run would produce. Say so rather than looking authoritative.
 if (dryRun) console.log(`\n  (dry-run: version unchanged, so the tag below reflects ${version}, not the ${bump} bump)`);
+
+// The bump has happened, so this is the version the release will carry.
+if (config.changelog && !dryRun) {
+    try {
+        execFileSync('node', ['scripts/changelog-section.mjs', version], { stdio: 'pipe' });
+    } catch {
+        const paths = config.files.join(' ');
+        console.error(`\nCHANGELOG.md has no section for ${version}.`);
+        console.error('Add one under `## [Unreleased]`, rename that heading, then re-run.');
+        // version-bump.mjs stages what it rewrites, so unstage before checkout.
+        console.error(`\nThe version bump is applied and partly staged; undo it with:`);
+        console.error(`  git reset HEAD ${paths} && git checkout ${paths}`);
+        process.exit(1);
+    }
+}
 
 console.log(`\n== Committing and tagging ${tag} ==`);
 run('git', ['add', ...config.files]);
