@@ -1,24 +1,51 @@
-import { App, Plugin, PluginSettingTab, Setting, TextComponent, WorkspaceLeaf, Notice, Editor, TFile, EventRef, Modal, Menu, DropdownComponent, ButtonComponent, addIcon } from 'obsidian';
+import {
+    App,
+    Plugin,
+    PluginSettingTab,
+    Setting,
+    WorkspaceLeaf,
+    Notice,
+    Editor,
+    TFile,
+    EventRef,
+    Modal,
+    DropdownComponent,
+    ButtonComponent,
+    addIcon,
+} from 'obsidian';
 import * as YAML from 'js-yaml';
 import { StatblockData, DaggerheartPluginSettings, DEFAULT_SETTINGS, SavedEncounter } from './types';
 import { EncounterBuilderView, ENCOUNTER_BUILDER_VIEW_TYPE } from './views/EncounterBuilderView';
 import { DaggerheartCompendium } from './services/compendium';
 import { renderStatblockCard } from './rendering/statblock';
 import { createInteractiveTrack } from './rendering/ui-helpers';
-import { ContentType } from './services/export-import';
-import { normalizeCompendiumPath, isPathInsideCompendium } from './services/compendium-path';
+import { isPathInsideCompendium } from './services/compendium-path';
+import {
+    BUILTIN_SOURCE_IDS,
+    ContentSource,
+    ensureDefaultWriteSource,
+    isSourceWritable,
+    markdownSources,
+    migrateContentSources,
+    reorderSource,
+    slugifySourceId,
+    sourceFileName,
+    syncLegacyCompendiumSettings,
+} from './services/content-source';
+import { StatblockStore } from './services/statblock-store';
 import {
     AdversaryReferenceModal,
     EncounterLinkModal,
     CompendiumEntryTypeSuggester,
-    ImportExportModal
+    ImportExportModal,
+    ManageCompendiumModal,
 } from './modals/index';
 import * as dddice from './services/dddice-service';
 import type { ITheme } from './services/dddice-service';
 import { DddiceActivationModal } from './services/dddice-activation';
 import { RollCompletedPayload, RollComponent } from './DiceTray';
 
-declare module "obsidian" {
+declare module 'obsidian' {
     interface Workspace {
         on(name: 'daggerheart-compendium-update', callback: () => void, ctx?: any): EventRef;
         trigger(name: 'daggerheart-compendium-update'): void;
@@ -31,7 +58,10 @@ declare module "obsidian" {
 
 const USER_COMPENDIUM_FOLDER = 'user_data';
 
-addIcon('brush-cleaning', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-brush-cleaning-icon lucide-brush-cleaning"><path d="m16 22-1-4"/><path d="M19 13.99a1 1 0 0 0 1-1V12a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v.99a1 1 0 0 0 1 1"/><path d="M5 14h14l1.973 6.767A1 1 0 0 1 20 22H4a1 1 0 0 1-.973-1.233z"/><path d="m8 22 1-4"/></svg>');
+addIcon(
+    'brush-cleaning',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-brush-cleaning-icon lucide-brush-cleaning"><path d="m16 22-1-4"/><path d="M19 13.99a1 1 0 0 0 1-1V12a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v.99a1 1 0 0 0 1 1"/><path d="M5 14h14l1.973 6.767A1 1 0 0 1 20 22H4a1 1 0 0 1-.973-1.233z"/><path d="m8 22 1-4"/></svg>',
+);
 
 /**
  * Expands a dice string like "2d12+3" into "1d12+1d12+3".
@@ -68,6 +98,7 @@ function getThemePreviewUrl(theme: ITheme): string | undefined {
 export default class DaggerheartStatblockPlugin extends Plugin {
     settings: DaggerheartPluginSettings;
     compendium: DaggerheartCompendium;
+    statblockStore: StatblockStore;
     isDiceRollerEnabled: boolean = false;
     private encounters: SavedEncounter[] = [];
     public settingsTab: DaggerheartSettingTab | null = null;
@@ -78,35 +109,84 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         this.initializeDddiceIfNeeded();
 
+        this.statblockStore = new StatblockStore(this);
         this.compendium = new DaggerheartCompendium(this);
+        // Runs before the first load so recovered sources appear immediately.
+        await this.rescueOrphanedSourceFiles();
         await this.compendium.load();
         await this.loadEncounters();
 
-        this.isDiceRollerEnabled = this.settings.enableDiceRoller && !!(this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api;
+        this.isDiceRollerEnabled =
+            this.settings.enableDiceRoller && !!(this.app as any).plugins.getPlugin('obsidian-dice-roller')?.api;
 
         if (this.settings.enableEncounterView) {
-            this.registerView(ENCOUNTER_BUILDER_VIEW_TYPE, (leaf: WorkspaceLeaf) => new EncounterBuilderView(leaf, this));
-            this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () => this.activateEncounterBuilderView());
-            this.addCommand({ id: 'open-daggerheart-encounter-builder', name: 'Open Encounter Builder', callback: () => this.activateEncounterBuilderView() });
+            this.registerView(
+                ENCOUNTER_BUILDER_VIEW_TYPE,
+                (leaf: WorkspaceLeaf) => new EncounterBuilderView(leaf, this),
+            );
+            this.addRibbonIcon('swords', 'Open Daggerheart Encounter Builder', () =>
+                this.activateEncounterBuilderView(),
+            );
+            this.addCommand({
+                id: 'open-daggerheart-encounter-builder',
+                name: 'Open Encounter Builder',
+                callback: () => this.activateEncounterBuilderView(),
+            });
         }
 
         this.addCommand({
             id: 'export-daggerheart-content',
             name: 'Export Daggerheart Content',
-            callback: () => new ImportExportModal(this.app, this, 'export').open()
+            callback: () => new ImportExportModal(this.app, this, 'export').open(),
         });
 
         this.addCommand({
             id: 'import-daggerheart-content',
             name: 'Import Daggerheart Content',
-            callback: () => new ImportExportModal(this.app, this, 'import').open()
+            callback: () => new ImportExportModal(this.app, this, 'import').open(),
         });
 
-        this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el) => { this.processStatblock(source, el); });
-        this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el) => { this.processEmbed(source, el); });
-        this.addCommand({ id: 'insert-adversary-statblock', name: 'Insert Adversary Statblock', editorCallback: (editor: Editor) => { new AdversaryReferenceModal(this.app, this, (adversary) => editor.replaceSelection(`\`\`\`daggerheart-embed\nadversary: ${adversary.name}\n\`\`\``), 'adversary').open(); } });
-        this.addCommand({ id: 'insert-environment-statblock', name: 'Insert Environment Statblock', editorCallback: (editor: Editor) => { new AdversaryReferenceModal(this.app, this, (environment) => editor.replaceSelection(`\`\`\`daggerheart-embed\nenvironment: ${environment.name}\n\`\`\``), 'environment').open(); } });
-        this.addCommand({ id: 'insert-encounter-link', name: 'Insert Encounter Link', editorCallback: (editor: Editor) => { new EncounterLinkModal(this.app, this, (encounter) => editor.replaceSelection(`[${encounter.name}](obsidian://dh-encounter?id=${encounter.id})`)).open(); } });
+        this.registerMarkdownCodeBlockProcessor('daggerheart-statblock', (source, el) => {
+            this.processStatblock(source, el);
+        });
+        this.registerMarkdownCodeBlockProcessor('daggerheart-embed', (source, el) => {
+            this.processEmbed(source, el);
+        });
+        this.addCommand({
+            id: 'insert-adversary-statblock',
+            name: 'Insert Adversary Statblock',
+            editorCallback: (editor: Editor) => {
+                new AdversaryReferenceModal(
+                    this.app,
+                    this,
+                    (adversary) =>
+                        editor.replaceSelection(`\`\`\`daggerheart-embed\nadversary: ${adversary.name}\n\`\`\``),
+                    'adversary',
+                ).open();
+            },
+        });
+        this.addCommand({
+            id: 'insert-environment-statblock',
+            name: 'Insert Environment Statblock',
+            editorCallback: (editor: Editor) => {
+                new AdversaryReferenceModal(
+                    this.app,
+                    this,
+                    (environment) =>
+                        editor.replaceSelection(`\`\`\`daggerheart-embed\nenvironment: ${environment.name}\n\`\`\``),
+                    'environment',
+                ).open();
+            },
+        });
+        this.addCommand({
+            id: 'insert-encounter-link',
+            name: 'Insert Encounter Link',
+            editorCallback: (editor: Editor) => {
+                new EncounterLinkModal(this.app, this, (encounter) =>
+                    editor.replaceSelection(`[${encounter.name}](obsidian://dh-encounter?id=${encounter.id})`),
+                ).open();
+            },
+        });
 
         this.addCommand({
             id: 'add-custom-compendium-entry',
@@ -119,26 +199,34 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         this.settingsTab = new DaggerheartSettingTab(this.app, this);
         this.addSettingTab(this.settingsTab);
 
-        this.registerEvent(this.app.vault.on('create', (file) => {
-            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
-        }));
-        this.registerEvent(this.app.vault.on('modify', (file) => {
-            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
-        }));
-        this.registerEvent(this.app.vault.on('delete', (file) => {
-            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
-        }));
-        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
-            if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
-            this.scheduleMarkdownCompendiumReload(oldPath);
-        }));
+        this.registerEvent(
+            this.app.vault.on('create', (file) => {
+                if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
+            }),
+        );
+        this.registerEvent(
+            this.app.vault.on('modify', (file) => {
+                if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
+            }),
+        );
+        this.registerEvent(
+            this.app.vault.on('delete', (file) => {
+                if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
+            }),
+        );
+        this.registerEvent(
+            this.app.vault.on('rename', (file, oldPath) => {
+                if (file instanceof TFile) this.scheduleMarkdownCompendiumReload(file.path);
+                this.scheduleMarkdownCompendiumReload(oldPath);
+            }),
+        );
     }
 
     async processStatblock(source: string, el: HTMLElement) {
         try {
             const cleanedSource = source.replace(/\u00A0/g, ' ');
             const data = YAML.load(cleanedSource) as StatblockData;
-            if (!data || typeof data !== 'object') throw new Error("Parsed data is not a valid object.");
+            if (!data || typeof data !== 'object') throw new Error('Parsed data is not a valid object.');
             renderStatblockCard(this, data, el, false, data.name);
         } catch (e: any) {
             console.error('Daggerheart Statblock: Error processing code block.', e);
@@ -149,13 +237,16 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     async processEmbed(source: string, el: HTMLElement) {
         try {
-            const params = source.split('\n').reduce((acc, line) => {
-                const [key, ...valueParts] = line.split(':');
-                if (key && valueParts.length > 0) {
-                    acc[key.trim()] = valueParts.join(':').trim();
-                }
-                return acc;
-            }, {} as Record<string, string>);
+            const params = source.split('\n').reduce(
+                (acc, line) => {
+                    const [key, ...valueParts] = line.split(':');
+                    if (key && valueParts.length > 0) {
+                        acc[key.trim()] = valueParts.join(':').trim();
+                    }
+                    return acc;
+                },
+                {} as Record<string, string>,
+            );
 
             const items = this.compendium.getStatblocks();
             let itemToRender: StatblockData | undefined;
@@ -165,11 +256,15 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             if (params.adversary) {
                 itemName = params.adversary;
                 itemType = 'adversary';
-                itemToRender = items.find(i => i.name.toLowerCase() === itemName?.toLowerCase() && i.category === 'adversary');
+                itemToRender = items.find(
+                    (i) => i.name.toLowerCase() === itemName?.toLowerCase() && i.category === 'adversary',
+                );
             } else if (params.environment) {
                 itemName = params.environment;
                 itemType = 'environment';
-                itemToRender = items.find(i => i.name.toLowerCase() === itemName?.toLowerCase() && i.category === 'environment');
+                itemToRender = items.find(
+                    (i) => i.name.toLowerCase() === itemName?.toLowerCase() && i.category === 'environment',
+                );
             }
 
             if (itemToRender) {
@@ -177,7 +272,9 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             } else if (itemName) {
                 el.createEl('div', { text: `Could not find ${itemType} "${itemName}" in compendium.` });
             } else {
-                el.createEl('div', { text: 'Invalid embed. Use "adversary: [Name]" or "environment: [Name]".' });
+                el.createEl('div', {
+                    text: 'Invalid embed. Use "adversary: [Name]" or "environment: [Name]".',
+                });
             }
         } catch (e: any) {
             console.error('Daggerheart Embed: Error processing embed block.', e);
@@ -193,7 +290,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                 const data = await this.app.vault.adapter.read(path);
                 this.encounters = JSON.parse(data);
             } catch (e) {
-                console.error("Daggerheart: Error loading encounters.json. It might be corrupted.", e);
+                console.error('Daggerheart: Error loading encounters.json. It might be corrupted.', e);
                 this.encounters = [];
             }
         } else {
@@ -219,11 +316,11 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     getSavedEncounter(id: string): SavedEncounter | undefined {
-        return this.encounters.find(e => e.id === id);
+        return this.encounters.find((e) => e.id === id);
     }
 
     async updateSavedEncounter(encounter: SavedEncounter): Promise<void> {
-        const index = this.encounters.findIndex(e => e.id === encounter.id);
+        const index = this.encounters.findIndex((e) => e.id === encounter.id);
         if (index >= 0) {
             this.encounters[index] = encounter;
         } else {
@@ -234,7 +331,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     async removeSavedEncounter(id: string): Promise<void> {
-        this.encounters = this.encounters.filter(e => e.id !== id);
+        this.encounters = this.encounters.filter((e) => e.id !== id);
         await this.saveEncounters();
         this.app.workspace.trigger('daggerheart-encounter-update');
     }
@@ -244,7 +341,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         await this.app.workspace.getRightLeaf(false)?.setViewState({
             type: ENCOUNTER_BUILDER_VIEW_TYPE,
             active: true,
-            state: { currentEncounterId: encounterId }
+            state: { currentEncounterId: encounterId },
         });
         const leaves = this.app.workspace.getLeavesOfType(ENCOUNTER_BUILDER_VIEW_TYPE);
         if (leaves.length > 0) {
@@ -253,15 +350,17 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     private scheduleMarkdownCompendiumReload(path: string) {
-        const configuredPath = normalizeCompendiumPath(this.settings.compendiumFolder);
-        if (!isPathInsideCompendium(path, configuredPath)) return;
+        // Any configured folder can trigger the reload, not just the original
+        // one, or notes in folders added later would never refresh.
+        const watched = markdownSources(this.getContentSources());
+        if (!watched.some((source) => isPathInsideCompendium(path, source.path))) return;
 
         if (this.compendiumReloadTimer !== null) {
             window.clearTimeout(this.compendiumReloadTimer);
         }
         this.compendiumReloadTimer = window.setTimeout(() => {
             this.compendiumReloadTimer = null;
-            this.triggerCompendiumUpdate().catch(error => {
+            this.triggerCompendiumUpdate().catch((error) => {
                 console.error('Daggerheart | Failed to reload Markdown compendium:', error);
             });
         }, 250);
@@ -279,78 +378,197 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         this.app.workspace.trigger('daggerheart-compendium-update');
     }
 
-    public async saveCustomCompendiumData(fileName: string, dataToSave: any) {
-        await this.ensureUserCompendiumFolderExists();
-        const path = `${this.manifest.dir}/${USER_COMPENDIUM_FOLDER}/${fileName}`;
-        let compendium: any[] = [];
-        if (await this.app.vault.adapter.exists(path)) {
-            try {
-                const rawData = await this.app.vault.adapter.read(path);
-                if (rawData.trim() !== '') {
-                    compendium = JSON.parse(rawData);
-                }
-            } catch (e) {
-                new Notice(`Error reading ${fileName}. Check console. Overwriting.`);
-                compendium = [];
-            }
-        }
+    // --- Content source registry -------------------------------------------
 
-        dataToSave.isCustom = true;
+    public getContentSources(): ContentSource[] {
+        return this.settings.contentSources ?? [];
+    }
 
-        const existingIndex = compendium.findIndex(c => c.name.toLowerCase() === dataToSave.name.toLowerCase());
-        if (existingIndex > -1) {
-            compendium[existingIndex] = dataToSave;
-            new Notice(`Updated custom entry: ${dataToSave.name}`);
-        } else {
-            compendium.push(dataToSave);
-            new Notice(`Saved new custom entry: ${dataToSave.name}`);
-        }
+    public getSource(sourceId: string | undefined | null): ContentSource | undefined {
+        if (!sourceId) return undefined;
+        return this.getContentSources().find((source) => source.id === sourceId);
+    }
 
-        await this.app.vault.adapter.write(path, JSON.stringify(compendium, null, 2));
+    public getWritableSources(): ContentSource[] {
+        return this.getContentSources().filter(isSourceWritable);
+    }
+
+    /** Where new and imported entries land when nothing more specific applies. */
+    public getDefaultWriteSourceId(): string {
+        const configured = this.getSource(this.settings.defaultWriteSourceId);
+        if (isSourceWritable(configured)) return configured!.id;
+
+        // Repair a registry that points at a deleted or read-only source.
+        if (ensureDefaultWriteSource(this.settings)) void this.saveSettings();
+        return this.settings.defaultWriteSourceId ?? BUILTIN_SOURCE_IDS.userJson;
+    }
+
+    /**
+     * Move a source through the precedence order.
+     *
+     * Later sources win name clashes, so this is what lets the user decide
+     * whether their homebrew or the SRD version of a creature is the live one.
+     */
+    public async moveContentSource(sourceId: string, delta: number): Promise<boolean> {
+        const reordered = reorderSource(this.getContentSources(), sourceId, delta);
+        if (!reordered) return false;
+        this.settings.contentSources = reordered;
+        await this.saveSettings();
+        await this.triggerCompendiumUpdate();
+        return true;
+    }
+
+    public async addContentSource(source: ContentSource): Promise<void> {
+        this.settings.contentSources = [...this.getContentSources(), source];
+        await this.saveSettings();
         await this.triggerCompendiumUpdate();
     }
 
-    public async renameCustomCompendiumEntry(fileName: string, oldName: string, newData: any) {
-        await this.ensureUserCompendiumFolderExists();
-        const path = `${this.manifest.dir}/${USER_COMPENDIUM_FOLDER}/${fileName}`;
-        let compendium: any[] = [];
-        if (await this.app.vault.adapter.exists(path)) {
-            try {
-                const rawData = await this.app.vault.adapter.read(path);
-                if (rawData.trim() !== '') {
-                    compendium = JSON.parse(rawData);
-                }
-            } catch (e) {
-                new Notice(`Error reading ${fileName}. Cannot rename.`);
+    public async updateContentSource(sourceId: string, patch: Partial<ContentSource>): Promise<void> {
+        const sources = this.getContentSources();
+        const index = sources.findIndex((source) => source.id === sourceId);
+        if (index < 0) return;
+        // id is the registry key and entries reference it; never let it change.
+        const { id: _id, ...safePatch } = patch;
+        sources[index] = { ...sources[index], ...safePatch };
+        await this.saveSettings();
+        await this.triggerCompendiumUpdate();
+    }
+
+    /**
+     * Register JSON files in user_data/ that no source claims.
+     *
+     * This exists mainly to rescue the `user-environments.json` written by the
+     * old EditAdversaryModal, which the loader never read back. Runs once, so a
+     * source the user deliberately deleted does not reappear on next load.
+     */
+    public async rescueOrphanedSourceFiles(): Promise<void> {
+        if (this.settings.sourcesRescued) return;
+        this.settings.sourcesRescued = true;
+
+        const folder = `${this.manifest.dir}/${USER_COMPENDIUM_FOLDER}`;
+        try {
+            if (!(await this.app.vault.adapter.exists(folder))) {
+                await this.saveSettings();
                 return;
             }
+
+            // Files belonging to other features are matched dynamically, since
+            // the character-sheet settings keys are not declared in this repo.
+            const reserved = new Set<string>(['encounters.json']);
+            for (const [key, value] of Object.entries(this.settings as unknown as Record<string, unknown>)) {
+                if (/^user.*File$/.test(key) && typeof value === 'string' && value) {
+                    reserved.add(value.toLowerCase());
+                }
+            }
+            for (const source of this.getContentSources()) {
+                if (source.kind === 'user-json') reserved.add(source.path.toLowerCase());
+            }
+
+            const listing = await this.app.vault.adapter.list(folder);
+            const rescued: ContentSource[] = [];
+            for (const filePath of listing.files) {
+                const fileName = filePath.split('/').pop() ?? '';
+                const lower = fileName.toLowerCase();
+                if (!lower.endsWith('.json')) continue;
+                if (reserved.has(lower) || lower.startsWith('characters')) continue;
+                if (!(await this.fileLooksLikeStatblockArray(filePath))) continue;
+
+                const label =
+                    fileName
+                        .replace(/\.json$/i, '')
+                        .replace(/[-_]+/g, ' ')
+                        .trim() || fileName;
+                const taken = new Set([...this.getContentSources(), ...rescued].map((source) => source.id));
+                rescued.push({
+                    id: slugifySourceId(label, taken),
+                    label: label.replace(/\b\w/g, (character) => character.toUpperCase()),
+                    kind: 'user-json',
+                    path: sourceFileName(fileName),
+                    enabled: true,
+                    priority: 100,
+                    removable: true,
+                    writable: true,
+                });
+            }
+
+            if (rescued.length) {
+                this.settings.contentSources = [...this.getContentSources(), ...rescued];
+                new Notice(`Daggerheart: recovered ${rescued.length} unlisted content source(s).`);
+            }
+        } catch (error) {
+            console.error('Daggerheart | Could not scan user_data for orphaned sources:', error);
         }
 
-        newData.isCustom = true;
-
-        const existingIndex = compendium.findIndex(c => c.name.toLowerCase() === oldName.toLowerCase());
-
-        if (existingIndex !== -1) {
-            compendium[existingIndex] = newData;
-            await this.app.vault.adapter.write(path, JSON.stringify(compendium, null, 2));
-            new Notice(`Renamed "${oldName}" to "${newData.name}".`);
-        } else {
-            await this.saveCustomCompendiumData(fileName, newData);
-        }
-
-        await this.triggerCompendiumUpdate();
+        await this.saveSettings();
     }
 
-    public createInteractiveTrack(parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string, currentValue: number, updateCallback: (newValue: number) => void) {
+    private async fileLooksLikeStatblockArray(path: string): Promise<boolean> {
+        try {
+            let raw = await this.app.vault.adapter.read(path);
+            if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
+            if (!raw.trim()) return false;
+            const parsed = JSON.parse(raw);
+            return (
+                Array.isArray(parsed) &&
+                parsed.every(
+                    (entry) =>
+                        entry &&
+                        typeof entry === 'object' &&
+                        typeof entry.name === 'string' &&
+                        (entry.category === 'adversary' || entry.category === 'environment'),
+                ) &&
+                parsed.length > 0
+            );
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * @deprecated Prefer `statblockStore.upsert(sourceId, data)`. Kept so older
+     * call sites keep working; resolves the file name back to a source.
+     */
+    public async saveCustomCompendiumData(fileName: string, dataToSave: any) {
+        await this.statblockStore.upsert(this.resolveSourceIdForFile(fileName), dataToSave);
+    }
+
+    /** @deprecated Prefer `statblockStore.rename(sourceId, oldName, newData)`. */
+    public async renameCustomCompendiumEntry(fileName: string, oldName: string, newData: any) {
+        await this.statblockStore.rename(this.resolveSourceIdForFile(fileName), oldName, newData);
+    }
+
+    /** Map a legacy user_data file name onto a registry source. */
+    public resolveSourceIdForFile(fileName: string): string {
+        const normalized = sourceFileName(fileName).toLowerCase();
+        const match = this.getContentSources().find(
+            (source) => source.kind === 'user-json' && source.path.toLowerCase() === normalized,
+        );
+        return match?.id ?? this.getDefaultWriteSourceId();
+    }
+
+    public createInteractiveTrack(
+        parentEl: HTMLElement,
+        label: string,
+        maxValue: number,
+        trackIdPrefix: string,
+        currentValue: number,
+        updateCallback: (newValue: number) => void,
+    ) {
         createInteractiveTrack(parentEl, label, maxValue, trackIdPrefix, currentValue, updateCallback);
     }
 
-    public async rollDice(diceString: string, context: string, traitName?: string, isHidden?: boolean): Promise<number | null> {
+    public async rollDice(
+        diceString: string,
+        context: string,
+        traitName?: string,
+        isHidden?: boolean,
+    ): Promise<number | null> {
         const trimmedDiceString = diceString.trim().toLowerCase();
         const dualityKeywords = ['dr', 'duality'];
 
-        const containsKeyword = dualityKeywords.some(kw => trimmedDiceString.includes(kw));
-        const startsWithKeyword = dualityKeywords.some(kw => trimmedDiceString.startsWith(kw));
+        const containsKeyword = dualityKeywords.some((kw) => trimmedDiceString.includes(kw));
+        const startsWithKeyword = dualityKeywords.some((kw) => trimmedDiceString.startsWith(kw));
 
         if (containsKeyword && !startsWithKeyword) {
             new Notice("Duality rolls ('dr' or 'duality') must be at the start of the formula.", 5000);
@@ -365,7 +583,13 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
             if (this.settings.diceProvider === 'dddice') {
                 try {
-                    const dddiceResult = await dddice.rollWithDddice(this.settings.dddice, diceString, context, traitName, isHidden);
+                    const dddiceResult = await dddice.rollWithDddice(
+                        this.settings.dddice,
+                        diceString,
+                        context,
+                        traitName,
+                        isHidden,
+                    );
 
                     if (dddiceResult) {
                         resultPayload = {
@@ -387,15 +611,15 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                     return;
                 } catch (e) {
                     if (e instanceof dddice.DddiceRoomNotFoundError && !isRetry) {
-                        new Notice("dddice room not found. Creating a new one and retrying...", 4000);
+                        new Notice('dddice room not found. Creating a new one and retrying...', 4000);
                         try {
                             const apiKey = this.settings.dddice.apiKey;
-                            if (!apiKey) throw new Error("Missing dddice API key for recovery.");
+                            if (!apiKey) throw new Error('Missing dddice API key for recovery.');
 
                             const api = dddice.initializeDddiceApi(apiKey);
                             const newRoom = (await api.room.create())?.data;
                             if (!newRoom || !newRoom.slug) {
-                                throw new Error("Failed to create a new dddice room during recovery.");
+                                throw new Error('Failed to create a new dddice room during recovery.');
                             }
                             this.settings.dddice.room = newRoom.slug;
                             await this.saveSettings();
@@ -405,15 +629,14 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                             // Retry the roll once with the new settings
                             await performRoll(true);
                         } catch (retryError) {
-                            new Notice("Failed to recover dddice connection. Please check settings.", 10000);
-                            console.error("Daggerheart: dddice self-healing failed:", retryError);
+                            new Notice('Failed to recover dddice connection. Please check settings.', 10000);
+                            console.error('Daggerheart: dddice self-healing failed:', retryError);
                         }
                     } else if (e instanceof dddice.DddiceRoomNotFoundError && isRetry) {
-                        new Notice("Failed to roll in the new dddice room. Please check settings.", 10000);
+                        new Notice('Failed to roll in the new dddice room. Please check settings.', 10000);
                     } else {
-                        const errorMessage = e instanceof Error ? e.message : String(e);
-                        new Notice("An unexpected error occurred with dddice. Check the console.");
-                        console.error("Daggerheart: Unhandled error rolling with dddice:", e);
+                        new Notice('An unexpected error occurred with dddice. Check the console.');
+                        console.error('Daggerheart: Unhandled error rolling with dddice:', e);
                     }
                     // For other errors or failed retry, total remains null
                     return;
@@ -421,12 +644,12 @@ export default class DaggerheartStatblockPlugin extends Plugin {
             } else {
                 // ... (dice-roller logic remains the same as it doesn't support hidden rolls)
                 if (!this.settings.enableDiceRoller || !this.isDiceRollerEnabled) {
-                    new Notice("Dice Roller integration is not enabled in plugin settings.");
+                    new Notice('Dice Roller integration is not enabled in plugin settings.');
                     return;
                 }
-                const diceRollerPlugin = (this.app as any).plugins.getPlugin("obsidian-dice-roller");
+                const diceRollerPlugin = (this.app as any).plugins.getPlugin('obsidian-dice-roller');
                 if (!diceRollerPlugin || typeof diceRollerPlugin.api?.getRoller !== 'function') {
-                    new Notice("Dice Roller plugin API not available or plugin is disabled.", 4000);
+                    new Notice('Dice Roller plugin API not available or plugin is disabled.', 4000);
                     return;
                 }
                 try {
@@ -448,7 +671,10 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                     }
 
                     const roller = await diceRollerPlugin.api.getRoller(rollerDiceString);
-                    await roller.roll({ showDice: this.settings.useGraphicalDice, throw: this.settings.useGraphicalDice });
+                    await roller.roll({
+                        showDice: this.settings.useGraphicalDice,
+                        throw: this.settings.useGraphicalDice,
+                    });
 
                     total = roller.result;
 
@@ -456,7 +682,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                     const totalStr = String(total);
                     let outcome: string | undefined = undefined;
                     const structuredResult: RollComponent[] = [];
-                    const rollerResults = (roller.results && Array.isArray(roller.results)) ? [...roller.results] : [];
+                    const rollerResults = roller.results && Array.isArray(roller.results) ? [...roller.results] : [];
 
                     if (isDaggerheartActionRoll && rollerResults.length > 0) {
                         const d12s = rollerResults.filter((r: any) => r.type === 'die' && r.dice?.faces === 12);
@@ -470,7 +696,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                             structuredResult.push({ value: hopeValue, label: 'Hope', type: 'hope' });
                             structuredResult.push({ value: fearValue, label: 'Fear', type: 'fear' });
 
-                            outcome = hopeValue > fearValue ? "with Hope" : (fearValue > hopeValue ? "with Fear" : "Critical!");
+                            outcome =
+                                hopeValue > fearValue ? 'with Hope' : fearValue > hopeValue ? 'with Fear' : 'Critical!';
 
                             // Remove processed d12s to avoid double counting
                             const hopeIndex = rollerResults.indexOf(hopeDie);
@@ -483,18 +710,29 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                         rollerResults.forEach((res: any) => {
                             if (res.type === 'die' && res.dice?.faces === 6) {
                                 if (res.dice?.negative) {
-                                    structuredResult.push({ value: -res.result, label: 'Disadvantage', type: 'disadvantage' });
+                                    structuredResult.push({
+                                        value: -res.result,
+                                        label: 'Disadvantage',
+                                        type: 'disadvantage',
+                                    });
                                 } else {
-                                    structuredResult.push({ value: res.result, label: 'Advantage', type: 'advantage' });
+                                    structuredResult.push({
+                                        value: res.result,
+                                        label: 'Advantage',
+                                        type: 'advantage',
+                                    });
                                 }
                             } else if (res.type === 'modifier') {
-                                structuredResult.push({ value: res.modifier, label: traitName || 'Mod', type: 'modifier' });
+                                structuredResult.push({
+                                    value: res.modifier,
+                                    label: traitName || 'Mod',
+                                    type: 'modifier',
+                                });
                             } else if (res.type === 'die') {
                                 const value = res.dice?.negative ? -res.result : res.result;
                                 structuredResult.push({ value, label: `d${res.dice?.faces}`, type: 'die' });
                             }
                         });
-
                     } else if (rollerResults.length > 0) {
                         rollerResults.forEach((res: any) => {
                             if (res.type === 'die') {
@@ -506,10 +744,16 @@ export default class DaggerheartStatblockPlugin extends Plugin {
                         });
                     }
 
-                    resultPayload = { rollerName, context, result: resultDisplay, total: totalStr, outcome, structuredResult };
-
+                    resultPayload = {
+                        rollerName,
+                        context,
+                        result: resultDisplay,
+                        total: totalStr,
+                        outcome,
+                        structuredResult,
+                    };
                 } catch (e) {
-                    console.error("Daggerheart: Error rolling dice with Dice Roller:", e);
+                    console.error('Daggerheart: Error rolling dice with Dice Roller:', e);
                     new Notice(`Error rolling dice for "${diceString}".`);
                 }
             }
@@ -519,23 +763,31 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         if (resultPayload) {
             this.app.workspace.trigger('daggerheart-roll-completed', resultPayload);
-        } else if (total === null && this.settings.diceProvider === 'dice-roller') { // only show if not dddice (which has its own notices)
+        } else if (total === null && this.settings.diceProvider === 'dice-roller') {
+            // only show if not dddice (which has its own notices)
             new Notice(`Failed to roll: ${diceString}`);
         }
 
         return total;
     }
 
-
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        // Installs predating the source registry get one built from their old
+        // SRD toggles and file names, so loading behaviour is unchanged.
+        if (migrateContentSources(this.settings)) {
+            await this.saveSettings();
+        }
     }
 
     async saveSettings() {
+        // Mirror the registry onto the pre-registry keys so downgrading to an
+        // older build still finds the same toggles and user file.
+        syncLegacyCompendiumSettings(this.settings);
         const settingsToSave = Object.assign({}, this.settings);
 
         if (settingsToSave.dddice) {
-            const { rooms, themes, ...dddiceToSave } = settingsToSave.dddice;
+            const { rooms: _rooms, themes: _themes, ...dddiceToSave } = settingsToSave.dddice;
             settingsToSave.dddice = dddiceToSave;
         }
 
@@ -555,9 +807,14 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
     public initializeDddiceIfNeeded() {
         const { diceProvider, dddice: dddiceSettings } = this.settings;
-        if (diceProvider === 'dddice' && dddiceSettings.apiKey && dddiceSettings.renderInObsidian && dddiceSettings.room) {
+        if (
+            diceProvider === 'dddice' &&
+            dddiceSettings.apiKey &&
+            dddiceSettings.renderInObsidian &&
+            dddiceSettings.room
+        ) {
             dddice.initializeDddiceRenderer(dddiceSettings, this);
-            this.updateDddiceParticipantName();
+            // this.updateDddiceParticipantName();
         }
     }
 }
@@ -574,7 +831,6 @@ class DaggerheartSettingTab extends PluginSettingTab {
     private _dddiceDropdownsToRefresh: DropdownComponent[] = [];
     private _themeSelectorsToRefresh: string[] = [];
     private _dddiceObserverInterval: number | null = null;
-    private compendiumFolderSaveTimer: number | null = null;
 
     constructor(app: App, plugin: DaggerheartStatblockPlugin) {
         super(app, plugin);
@@ -612,17 +868,17 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
                 if (room) {
                     // Update the room in the array if it exists, otherwise add it
-                    const existingRoomIndex = this.plugin.settings.dddice.rooms.findIndex(r => r.slug === room.slug);
+                    const existingRoomIndex = this.plugin.settings.dddice.rooms.findIndex((r) => r.slug === room.slug);
 
                     if (existingRoomIndex >= 0) {
                         this.plugin.settings.dddice.rooms[existingRoomIndex] = {
                             slug: room.slug,
-                            name: room.name
+                            name: room.name,
                         };
                     } else {
                         this.plugin.settings.dddice.rooms.push({
                             slug: room.slug,
-                            name: room.name
+                            name: room.name,
                         });
                     }
 
@@ -630,25 +886,22 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 }
             }
 
-            if (!this.plugin.settings.dddice.rooms || this.plugin.settings.dddice.rooms.length <= 1 || roomCacheExpired) {
+            if (
+                !this.plugin.settings.dddice.rooms ||
+                this.plugin.settings.dddice.rooms.length <= 1 ||
+                roomCacheExpired
+            ) {
                 const allRooms = await dddice.fetchDddiceRooms(dddiceApi);
 
                 if (allRooms && allRooms.length > 0) {
-                    // Create a map of existing rooms by slug for quick lookup
-                    const existingRoomsMap = new Map(
-                        this.plugin.settings.dddice.rooms?.map(r => [r.slug, r]) || []
-                    );
-
                     // Create a new array with all unique rooms
-                    const updatedRooms = allRooms.map(room => ({
+                    const updatedRooms = allRooms.map((room) => ({
                         slug: room.slug,
-                        name: room.name
+                        name: room.name,
                     }));
 
                     // Remove any duplicates by using a Map
-                    const uniqueRooms = Array.from(
-                        new Map(updatedRooms.map(r => [r.slug, r])).values()
-                    );
+                    const uniqueRooms = Array.from(new Map(updatedRooms.map((r) => [r.slug, r])).values());
 
                     this.plugin.settings.dddice.rooms = uniqueRooms;
                     this.dddiceRoomsCacheTimestamp = now;
@@ -661,8 +914,8 @@ class DaggerheartSettingTab extends PluginSettingTab {
             const selectedThemeIds = [
                 this.plugin.settings.dddice.theme,
                 this.plugin.settings.dddice.hopeTheme,
-                this.plugin.settings.dddice.fearTheme
-            ].filter(id => id);
+                this.plugin.settings.dddice.fearTheme,
+            ].filter((id) => id);
 
             // Initialize themes array if it doesn't exist
             if (!this.plugin.settings.dddice.themes) {
@@ -670,13 +923,12 @@ class DaggerheartSettingTab extends PluginSettingTab {
             }
 
             const existingThemes = this.plugin.settings.dddice.themes || [];
-            const missingThemeIds = selectedThemeIds.filter(id =>
-                !existingThemes.some(theme => theme?.id === id)
-            );
+            const missingThemeIds = selectedThemeIds.filter((id) => !existingThemes.some((theme) => theme?.id === id));
 
             const needsSelectedThemesReload = missingThemeIds.length > 0;
-            const needsAllThemesReload = loadAllThemes &&
-                (existingThemes.length === 0 || (now - this.dddiceThemesCacheTimestamp > this.CACHE_TTL));
+            const needsAllThemesReload =
+                loadAllThemes &&
+                (existingThemes.length === 0 || now - this.dddiceThemesCacheTimestamp > this.CACHE_TTL);
 
             const needsThemesReload = needsSelectedThemesReload || needsAllThemesReload;
 
@@ -693,15 +945,13 @@ class DaggerheartSettingTab extends PluginSettingTab {
                                 return await dddice.fetchDddiceTheme(dddiceApi, themeId);
                             }
                             return null;
-                        })
+                        }),
                     );
 
                     const validThemes = fetchedThemes.filter((theme: ITheme | null): theme is ITheme => theme !== null);
 
                     if (validThemes.length > 0) {
-                        const themesMap = new Map(
-                            existingThemes.map((theme: ITheme) => [theme.id, theme])
-                        );
+                        const themesMap = new Map(existingThemes.map((theme: ITheme) => [theme.id, theme]));
 
                         validThemes.forEach((theme: ITheme) => {
                             themesMap.set(theme.id, theme);
@@ -717,7 +967,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 this.display();
             }
         } catch (e) {
-            console.error("Error preloading dddice data:", e);
+            console.error('Error preloading dddice data:', e);
         } finally {
             this._isPreloading = false;
         }
@@ -741,28 +991,30 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('Enable Encounter View')
-            .setDesc('Enable or disable the Encounter Builder view. Changes will take effect after restarting Obsidian.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableEncounterView)
-                .onChange(async (value) => {
+            .setDesc(
+                'Enable or disable the Encounter Builder view. Changes will take effect after restarting Obsidian.',
+            )
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.enableEncounterView).onChange(async (value) => {
                     this.plugin.settings.enableEncounterView = value;
                     await this.plugin.saveSettings();
                     new Notice('Encounter View setting changed. Please reload Obsidian for the change to take effect.');
                     await promptReload();
-                }));
+                }),
+            );
 
         const promptReload = async () => {
-            const shouldReload = await new Promise(resolve => {
+            const shouldReload = await new Promise((resolve) => {
                 const notice = new Notice('Would you like to reload Obsidian now?', 0);
                 notice.noticeEl.createEl('button', {
                     text: 'Yes',
-                    cls: 'mod-cta'
+                    cls: 'mod-cta',
                 }).onclick = () => {
                     notice.hide();
                     resolve(true);
                 };
                 notice.noticeEl.createEl('button', {
-                    text: 'No'
+                    text: 'No',
                 }).onclick = () => {
                     notice.hide();
                     resolve(false);
@@ -780,80 +1032,114 @@ class DaggerheartSettingTab extends PluginSettingTab {
         // Start preload after the UI is built if needed
         if (startingPreload) {
             setTimeout(() => {
-                this.preloadDddiceData(false).catch(error => {
-                    console.error("Error during dddice data preload:", error);
-                }).finally(() => {
-                    this._isPreloading = false;
-                });
+                this.preloadDddiceData(false)
+                    .catch((error) => {
+                        console.error('Error during dddice data preload:', error);
+                    })
+                    .finally(() => {
+                        this._isPreloading = false;
+                    });
             }, 0);
         }
     }
 
-    private scheduleCompendiumFolderUpdate(value: string) {
-        this.plugin.settings.compendiumFolder = normalizeCompendiumPath(value);
-        if (this.compendiumFolderSaveTimer !== null) {
-            window.clearTimeout(this.compendiumFolderSaveTimer);
-        }
-        this.compendiumFolderSaveTimer = window.setTimeout(async () => {
-            this.compendiumFolderSaveTimer = null;
-            try {
-                await this.plugin.saveSettings();
-                await this.plugin.triggerCompendiumUpdate();
-            } catch (error) {
-                console.error('Daggerheart | Failed to update compendium folder:', error);
-                new Notice('Could not reload the configured compendium folder. Check the developer console.');
-            }
-        }, 400);
-    }
-
     renderCompendiumSettings(containerEl: HTMLElement) {
         containerEl.createEl('h3', { text: 'Compendium Settings' });
+
+        // The source list lives solely in the manager. Duplicating it here only
+        // ever offered toggles, so it was a strictly worse second copy; these
+        // two buttons open the manager on the relevant tab instead.
+        const total = this.plugin.compendium.getStatblocks().length;
+        const sources = this.plugin.getContentSources();
+        const active = sources.filter((source) => source.enabled).length;
+
         new Setting(containerEl)
-            .setName('Compendium Folder')
-            .setDesc('Path to the folder containing your Daggerheart statblock Markdown files (e.g., "System/Daggerheart/Adversaries"). Leave empty to disable user compendium from markdown.')
-            .addText((text: TextComponent) => {
-                text.setPlaceholder('Example: Path/To/Adversaries')
-                    .setValue(this.plugin.settings.compendiumFolder)
-                    .onChange((value) => {
-                        this.scheduleCompendiumFolderUpdate(value);
-                    });
+            .setName('Manage compendium')
+            .setDesc(
+                `${total} ${total === 1 ? 'statblock' : 'statblocks'} from ${active} of ${sources.length} ` +
+                    `${sources.length === 1 ? 'source' : 'sources'}. Browse and edit entries, or configure where they come from.`,
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText('Sources')
+                    .onClick(() => new ManageCompendiumModal(this.app, this.plugin, 'sources').open()),
+            )
+            .addButton((button) =>
+                button
+                    .setButtonText('Browse entries')
+                    .setCta()
+                    .onClick(() => new ManageCompendiumModal(this.app, this.plugin, 'entries').open()),
+            );
+
+        new Setting(containerEl)
+            .setName('Destination for new entries')
+            .setDesc('Where newly created and imported statblocks are saved by default.')
+            .addDropdown((dropdown) => {
+                for (const source of this.plugin.getWritableSources()) {
+                    dropdown.addOption(source.id, source.label);
+                }
+                dropdown.setValue(this.plugin.getDefaultWriteSourceId());
+                dropdown.onChange(async (value) => {
+                    this.plugin.settings.defaultWriteSourceId = value;
+                    await this.plugin.saveSettings();
+                });
             });
-
-        new Setting(containerEl)
-            .setName('Use SRD Adversaries')
-            .setDesc(`Include the Daggerheart SRD adversaries from the plugin's "adversaries.json" file.`)
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.useSrdAdversaries)
-                .onChange(async (value) => {
-                    this.plugin.settings.useSrdAdversaries = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.app.workspace.trigger('daggerheart-compendium-update');
-                }));
-
-        new Setting(containerEl)
-            .setName('Use SRD Environments')
-            .setDesc(`Include the Daggerheart SRD environments from the plugin's "environments.json" file.`)
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.useSrdEnvironments)
-                .onChange(async (value) => {
-                    this.plugin.settings.useSrdEnvironments = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.app.workspace.trigger('daggerheart-compendium-update');
-                }));
     }
 
     renderEncounterViewSettings(containerEl: HTMLElement) {
         containerEl.createEl('h3', { text: 'Encounter View Settings' });
-        new Setting(containerEl)
-            .setName('Show Description on Instance Cards')
-            .setDesc('If enabled, the full description will be shown on adversary cards in the encounter builder.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.showDescriptionOnCards)
-                .onChange(async (value) => {
-                    this.plugin.settings.showDescriptionOnCards = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.app.workspace.trigger('daggerheart-compendium-update');
-                }));
+
+        const encounterToggle = (
+            name: string,
+            desc: string,
+            key:
+                | 'showDescriptionOnCards'
+                | 'showFeatureDetailsOnCards'
+                | 'enableFearTracker'
+                | 'enableEncounterBudget'
+                | 'enableCountdownTracker',
+        ) => {
+            new Setting(containerEl)
+                .setName(name)
+                .setDesc(desc)
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings[key]).onChange(async (value) => {
+                        this.plugin.settings[key] = value;
+                        await this.plugin.saveSettings();
+                        this.plugin.app.workspace.trigger('daggerheart-compendium-update');
+                    }),
+                );
+        };
+
+        encounterToggle(
+            'Show Description on Instance Cards',
+            'If enabled, the full description will be shown on adversary cards in the encounter builder.',
+            'showDescriptionOnCards',
+        );
+
+        encounterToggle(
+            'Expand Feature Details on Cards',
+            'If enabled, adversary features start expanded instead of collapsed.',
+            'showFeatureDetailsOnCards',
+        );
+
+        encounterToggle(
+            'Enable Fear Tracker',
+            'Show the Fear tracker in the encounter builder header.',
+            'enableFearTracker',
+        );
+
+        encounterToggle(
+            'Enable Encounter Budget',
+            'Show the battle point budget in the encounter builder header.',
+            'enableEncounterBudget',
+        );
+
+        encounterToggle(
+            'Enable Countdown Tracker',
+            'Show the countdowns button and popup in the encounter builder.',
+            'enableCountdownTracker',
+        );
     }
 
     renderIntegrationSettings(containerEl: HTMLElement) {
@@ -862,15 +1148,17 @@ class DaggerheartSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Dice Provider')
             .setDesc('Choose which service to use for rolling dice.')
-            .addDropdown(dropdown => dropdown
-                .addOption('dice-roller', 'Obsidian Dice Roller')
-                .addOption('dddice', 'dddice.com')
-                .setValue(this.plugin.settings.diceProvider)
-                .onChange(async (value: 'dice-roller' | 'dddice') => {
-                    this.plugin.settings.diceProvider = value;
-                    await this.plugin.saveSettings();
-                    this.display(); // Re-render settings
-                }));
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOption('dice-roller', 'Obsidian Dice Roller')
+                    .addOption('dddice', 'dddice.com')
+                    .setValue(this.plugin.settings.diceProvider)
+                    .onChange(async (value: 'dice-roller' | 'dddice') => {
+                        this.plugin.settings.diceProvider = value;
+                        await this.plugin.saveSettings();
+                        this.display(); // Re-render settings
+                    }),
+            );
 
         if (this.plugin.settings.diceProvider === 'dddice') {
             this.renderDddiceSettings(containerEl);
@@ -883,24 +1171,25 @@ class DaggerheartSettingTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName('Enable Dice Roller Integration')
             .setDesc('Enable integration with the Dice Roller plugin for rolling dice in statblocks.')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableDiceRoller)
-                .onChange(async (value) => {
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.enableDiceRoller).onChange(async (value) => {
                     this.plugin.settings.enableDiceRoller = value;
                     await this.plugin.saveSettings();
-                    this.plugin.isDiceRollerEnabled = value && (this.app as any).plugins.getPlugin("obsidian-dice-roller")?.api != null;
+                    this.plugin.isDiceRollerEnabled =
+                        value && (this.app as any).plugins.getPlugin('obsidian-dice-roller')?.api != null;
                     if (value && !this.plugin.isDiceRollerEnabled) {
                         new Notice('Dice Roller plugin not found or is disabled. Please install and enable it.');
                     }
                     this.display();
-                }));
+                }),
+            );
 
         if (this.plugin.settings.enableDiceRoller) {
             const isPluginAvailable = this.plugin.isDiceRollerEnabled;
             new Setting(containerEl)
                 .setName('Use Graphical Dice')
                 .setDesc('If enabled, dice rolls will use graphical 3D dice (requires Dice Roller plugin).')
-                .addToggle(toggle => {
+                .addToggle((toggle) => {
                     toggle
                         .setValue(isPluginAvailable && this.plugin.settings.useGraphicalDice)
                         .setDisabled(!isPluginAvailable)
@@ -909,7 +1198,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettings();
                         });
                 })
-                .then(setting => {
+                .then((setting) => {
                     if (setting.controlEl.parentElement && !isPluginAvailable) {
                         setting.controlEl.parentElement.addClass('setting-disabled');
                     }
@@ -935,7 +1224,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
             const apiKey = this.plugin.settings.dddice.apiKey;
             if (!apiKey) {
                 new Notice('You must connect to dddice first before joining a room.');
-                throw new Error("API key not found.");
+                throw new Error('API key not found.');
             }
 
             const dddiceApi = dddice.initializeDddiceApi(apiKey);
@@ -952,10 +1241,10 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
             // Refresh settings UI
             await this.preloadDddiceData(true); // Force a refresh of rooms list
-
         } catch (error: any) {
             console.error('Failed to join dddice room via link:', error);
-            const errorMessage = error?.response?.data?.data?.message || 'Failed to join room. Check the link and passcode.';
+            const errorMessage =
+                error?.response?.data?.data?.message || 'Failed to join room. Check the link and passcode.';
             new Notice(errorMessage);
         } finally {
             button.setButtonText('Join').setDisabled(false);
@@ -972,48 +1261,50 @@ class DaggerheartSettingTab extends PluginSettingTab {
         new Setting(connectSection)
             .setName('Connect to dddice')
             .setDesc(apiKeyDesc)
-            .addButton(button => button
-                .setButtonText('Activate with dddice.com')
-                .setCta()
-                .onClick(() => {
-                    new DddiceActivationModal(this.plugin).open();
-                }));
+            .addButton((button) =>
+                button
+                    .setButtonText('Activate with dddice.com')
+                    .setCta()
+                    .onClick(() => {
+                        new DddiceActivationModal(this.plugin).open();
+                    }),
+            );
 
         const isConnected = this.plugin.settings.dddice.apiKey;
         if (isConnected) {
             new Setting(containerEl)
                 .setName('Join Room with Link')
                 .setDesc('Paste a dddice room share link to join it.')
-                .addText(text => text
-                    .setPlaceholder('https://dddice.com/room/...'))
-                .addButton(button => button
-                    .setButtonText('Join')
-                    .onClick(async () => {
-                        const inputEl = containerEl.querySelector('.dddice-join-link-container input') as HTMLInputElement;
+                .addText((text) => text.setPlaceholder('https://dddice.com/room/...'))
+                .addButton((button) =>
+                    button.setButtonText('Join').onClick(async () => {
+                        const inputEl = containerEl.querySelector(
+                            '.dddice-join-link-container input',
+                        ) as HTMLInputElement;
                         if (inputEl && inputEl.value) {
                             await this.handleJoinRoomWithLink(inputEl.value, button);
                             inputEl.value = ''; // Clear input after attempting to join
                         } else {
                             new Notice('Please enter a room link.');
                         }
-                    }))
+                    }),
+                )
                 .settingEl.addClass('dddice-join-link-container');
-
 
             new Setting(containerEl)
                 .setName('Render dice in Obsidian')
                 .setDesc('If enabled, 3D dice will be rendered over the Obsidian window.')
-                .addToggle(toggle => toggle
-                    .setValue(this.plugin.settings.dddice.renderInObsidian)
-                    .onChange(async (value) => {
+                .addToggle((toggle) =>
+                    toggle.setValue(this.plugin.settings.dddice.renderInObsidian).onChange(async (value) => {
                         this.plugin.settings.dddice.renderInObsidian = value;
                         await this.plugin.saveSettings();
-                    }));
+                    }),
+                );
 
             new Setting(containerEl)
                 .setName('dddice Room')
                 .setDesc('Select the room to send dice rolls to.')
-                .addDropdown(dropdown => {
+                .addDropdown((dropdown) => {
                     const hasRooms = this.plugin.settings.dddice.rooms && this.plugin.settings.dddice.rooms.length > 0;
                     const isLoading = !hasRooms;
 
@@ -1023,15 +1314,19 @@ class DaggerheartSettingTab extends PluginSettingTab {
                         dropdown.selectEl.options.length = 1;
 
                         const availableRooms = this.plugin.settings.dddice.rooms || [];
-                        availableRooms.forEach(room =>
-                            dropdown.addOption(room.slug, room.name));
+                        availableRooms.forEach((room) => dropdown.addOption(room.slug, room.name));
 
                         dropdown.setValue(this.plugin.settings.dddice.room || '');
                     }
 
                     // Add this dropdown to the refresh list
-                    if (!hasRooms || (this.plugin.settings.dddice.room &&
-                        !this.plugin.settings.dddice.rooms?.some(r => r.slug === this.plugin.settings.dddice.room))) {
+                    if (
+                        !hasRooms ||
+                        (this.plugin.settings.dddice.room &&
+                            !this.plugin.settings.dddice.rooms?.some(
+                                (r) => r.slug === this.plugin.settings.dddice.room,
+                            ))
+                    ) {
                         this._dddiceDropdownsToRefresh.push(dropdown);
                     }
 
@@ -1044,7 +1339,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                         const needsReload =
                             !this.plugin.settings.dddice.rooms ||
                             this.plugin.settings.dddice.rooms.length === 0 ||
-                            (now - this.dddiceRoomsCacheTimestamp > this.CACHE_TTL);
+                            now - this.dddiceRoomsCacheTimestamp > this.CACHE_TTL;
 
                         if (needsReload) {
                             if (isLoadingRooms) return;
@@ -1061,19 +1356,23 @@ class DaggerheartSettingTab extends PluginSettingTab {
                                 const dddiceApi = dddice.initializeDddiceApi(this.plugin.settings.dddice.apiKey);
 
                                 if (this.plugin.settings.dddice.room) {
-                                    const room = await dddice.fetchDddiceRoom(dddiceApi, this.plugin.settings.dddice.room);
+                                    const room = await dddice.fetchDddiceRoom(
+                                        dddiceApi,
+                                        this.plugin.settings.dddice.room,
+                                    );
 
                                     if (room) {
                                         if (!this.plugin.settings.dddice.rooms) {
                                             this.plugin.settings.dddice.rooms = [];
                                         }
 
-                                        this.plugin.settings.dddice.rooms = this.plugin.settings.dddice.rooms
-                                            .filter(r => r.slug !== room.slug);
+                                        this.plugin.settings.dddice.rooms = this.plugin.settings.dddice.rooms.filter(
+                                            (r) => r.slug !== room.slug,
+                                        );
 
                                         this.plugin.settings.dddice.rooms.push({
                                             slug: room.slug,
-                                            name: room.name
+                                            name: room.name,
                                         });
                                     }
                                 }
@@ -1082,14 +1381,18 @@ class DaggerheartSettingTab extends PluginSettingTab {
                                 const rooms = await dddice.fetchDddiceRooms(dddiceApi);
 
                                 // Cache the rooms temporarily and update the timestamp
-                                this.plugin.settings.dddice.rooms = rooms.map(r => ({ slug: r.slug, name: r.name }));
+                                this.plugin.settings.dddice.rooms = rooms.map((r) => ({
+                                    slug: r.slug,
+                                    name: r.name,
+                                }));
                                 this.dddiceRoomsCacheTimestamp = now;
 
                                 // Rebuild dropdown options
                                 dropdown.selectEl.options.length = 0;
                                 dropdown.addOption('', 'Select a room...');
-                                this.plugin.settings.dddice.rooms.forEach(room =>
-                                    dropdown.addOption(room.slug, room.name));
+                                this.plugin.settings.dddice.rooms.forEach((room) =>
+                                    dropdown.addOption(room.slug, room.name),
+                                );
 
                                 // Set the current value
                                 dropdown.setValue(this.plugin.settings.dddice.room || '');
@@ -1097,21 +1400,20 @@ class DaggerheartSettingTab extends PluginSettingTab {
                                 // Simulate a click to open the dropdown now that it's loaded
                                 dropdown.selectEl.click();
                             } catch (e) {
-                                console.error("Failed to load dddice rooms:", e);
+                                console.error('Failed to load dddice rooms:', e);
                                 dropdown.selectEl.options.length = 0;
                                 dropdown.addOption('', 'Failed to load rooms');
-                                new Notice("Failed to load dddice rooms.");
+                                new Notice('Failed to load dddice rooms.');
                             } finally {
                                 isLoadingRooms = false;
                             }
                         }
                     });
 
-                    dropdown.setValue(this.plugin.settings.dddice.room || '')
-                        .onChange(async (value) => {
-                            this.plugin.settings.dddice.room = value;
-                            await this.plugin.saveSettings();
-                        });
+                    dropdown.setValue(this.plugin.settings.dddice.room || '').onChange(async (value) => {
+                        this.plugin.settings.dddice.room = value;
+                        await this.plugin.saveSettings();
+                    });
                 });
 
             this.renderThemeSelector(containerEl, 'Default Theme', 'theme');
@@ -1144,7 +1446,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
 
         // If we have themes loaded and a theme is selected, show it
         const themes = this.plugin.settings.dddice.themes || [];
-        let selectedTheme = themes.find(t => t?.id === selectedThemeId);
+        let selectedTheme = themes.find((t) => t?.id === selectedThemeId);
 
         if (selectedTheme) {
             const previewUrl = getThemePreviewUrl(selectedTheme);
@@ -1156,7 +1458,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 // Then create the image
                 const img = card.createEl('img', {
                     attr: { src: previewUrl, alt: selectedTheme.name || 'Theme preview' },
-                    cls: 'dh-theme-preview'
+                    cls: 'dh-theme-preview',
                 });
 
                 // Remove placeholder when image loads
@@ -1190,14 +1492,14 @@ class DaggerheartSettingTab extends PluginSettingTab {
         } else {
             card.createDiv({ text: 'Select a theme', cls: 'dh-theme-loading-placeholder' });
             card.createDiv({ text: 'No theme selected', cls: 'dh-theme-name' });
-        }        // Refresh after a short delay if the theme is loading
+        } // Refresh after a short delay if the theme is loading
         if (selectedThemeId && !selectedTheme) {
             // The theme is already being tracked for refresh via the _themeSelectorsToRefresh array
             // We'll rely on the observer to update the UI when data is available
 
             // Also check if themes have been loaded since we started rendering
             const newThemes = this.plugin.settings.dddice.themes || [];
-            const refreshedTheme = newThemes.find(t => t?.id === selectedThemeId);
+            const refreshedTheme = newThemes.find((t) => t?.id === selectedThemeId);
 
             if (refreshedTheme) {
                 // Clear the card and update it with the loaded theme
@@ -1211,7 +1513,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     // Then create the image
                     const img = card.createEl('img', {
                         attr: { src: previewUrl, alt: refreshedTheme.name || 'Theme preview' },
-                        cls: 'dh-theme-preview'
+                        cls: 'dh-theme-preview',
                     });
 
                     // Remove placeholder when image loads
@@ -1244,8 +1546,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
         dropdown.addOption('', 'Select a room...');
 
         // Add available rooms
-        this.plugin.settings.dddice.rooms.forEach(room =>
-            dropdown.addOption(room.slug, room.name));
+        this.plugin.settings.dddice.rooms.forEach((room) => dropdown.addOption(room.slug, room.name));
 
         // Set current value
         dropdown.setValue(this.plugin.settings.dddice.room || '');
@@ -1261,7 +1562,7 @@ class DaggerheartSettingTab extends PluginSettingTab {
                 const dropdowns = [...this._dddiceDropdownsToRefresh];
                 this._dddiceDropdownsToRefresh = [];
 
-                dropdowns.forEach(dropdown => {
+                dropdowns.forEach((dropdown) => {
                     this.refreshDddiceRoomDropdown(dropdown);
                 });
             }
@@ -1303,7 +1604,12 @@ class ThemeSelectionModal extends Modal {
     private bottomLoadingEl: HTMLElement | null = null;
     private autoLoadTimeout: number | null = null;
 
-    constructor(app: App, plugin: DaggerheartStatblockPlugin, settingKey: 'theme' | 'hopeTheme' | 'fearTheme', onSelect: (themeId: string) => void) {
+    constructor(
+        app: App,
+        plugin: DaggerheartStatblockPlugin,
+        settingKey: 'theme' | 'hopeTheme' | 'fearTheme',
+        onSelect: (themeId: string) => void,
+    ) {
         super(app);
         this.plugin = plugin;
         this.settingKey = settingKey;
@@ -1334,14 +1640,14 @@ class ThemeSelectionModal extends Modal {
                 this.displayThemes(existingThemes);
             }
 
-            const selectedTheme = selectedThemeId ? existingThemes.find(t => t?.id === selectedThemeId) : undefined;
+            const selectedTheme = selectedThemeId ? existingThemes.find((t) => t?.id === selectedThemeId) : undefined;
 
             // If the selected theme isn't loaded yet, fetch it first
             if (selectedThemeId && !selectedTheme) {
                 const theme = await dddice.fetchDddiceTheme(this.dddiceApi, selectedThemeId);
                 if (theme) {
                     // Make sure we don't have duplicates
-                    existingThemes = existingThemes.filter(t => t?.id !== theme.id);
+                    existingThemes = existingThemes.filter((t) => t?.id !== theme.id);
                     existingThemes.push(theme);
                     this.plugin.settings.dddice.themes = existingThemes;
 
@@ -1358,7 +1664,7 @@ class ThemeSelectionModal extends Modal {
             const mergedThemes = [...existingThemes];
             const newThemes = [];
             for (const theme of themes) {
-                if (!mergedThemes.some(t => t?.id === theme.id)) {
+                if (!mergedThemes.some((t) => t?.id === theme.id)) {
                     mergedThemes.push(theme);
                     newThemes.push(theme);
                 }
@@ -1383,11 +1689,14 @@ class ThemeSelectionModal extends Modal {
                 this.removeBottomLoadingIndicator();
             }
         } catch (e) {
-            console.error("Failed to load themes in modal:", e);
+            console.error('Failed to load themes in modal:', e);
             if (this.bottomLoadingEl) {
                 this.bottomLoadingEl.setText('Failed to load themes. Please try again.');
             } else {
-                this.themeGrid.createEl('p', { text: 'Failed to load themes. Please try again.', cls: 'theme-loading-indicator' });
+                this.themeGrid.createEl('p', {
+                    text: 'Failed to load themes. Please try again.',
+                    cls: 'theme-loading-indicator',
+                });
             }
         }
     }
@@ -1397,7 +1706,7 @@ class ThemeSelectionModal extends Modal {
             return;
         }
 
-        themes.forEach(theme => {
+        themes.forEach((theme) => {
             // Skip if this theme is already displayed
             if (this.themeGrid.querySelector(`[data-theme-id="${theme.id}"]`)) {
                 return;
@@ -1405,7 +1714,7 @@ class ThemeSelectionModal extends Modal {
 
             const card = this.themeGrid.createDiv({
                 cls: 'dh-theme-card',
-                attr: { 'data-theme-id': theme.id }
+                attr: { 'data-theme-id': theme.id },
             });
 
             if (this.plugin.settings.dddice[this.settingKey] === theme.id) {
@@ -1416,7 +1725,7 @@ class ThemeSelectionModal extends Modal {
             if (previewUrl) {
                 const img = card.createEl('img', {
                     attr: { alt: theme.name || 'Theme preview' },
-                    cls: 'dh-theme-preview'
+                    cls: 'dh-theme-preview',
                 });
 
                 // Add loading state and handle loading
@@ -1441,7 +1750,7 @@ class ThemeSelectionModal extends Modal {
 
             card.onClickEvent(() => {
                 // Highlight the selected card
-                this.themeGrid.querySelectorAll('.dh-theme-card').forEach(el => {
+                this.themeGrid.querySelectorAll('.dh-theme-card').forEach((el) => {
                     el.removeClass('is-selected');
                 });
                 card.addClass('is-selected');
@@ -1465,7 +1774,7 @@ class ThemeSelectionModal extends Modal {
 
         this.loadMoreButton = this.contentEl.createEl('button', {
             text: 'Load More Themes',
-            cls: 'load-more-button'
+            cls: 'load-more-button',
         });
 
         this.loadMoreButton.addEventListener('click', async () => {
@@ -1485,7 +1794,7 @@ class ThemeSelectionModal extends Modal {
                 const newThemes = [];
 
                 for (const theme of themes) {
-                    if (!mergedThemes.some(t => t?.id === theme.id)) {
+                    if (!mergedThemes.some((t) => t?.id === theme.id)) {
                         mergedThemes.push(theme);
                         newThemes.push(theme);
                     }
@@ -1504,7 +1813,7 @@ class ThemeSelectionModal extends Modal {
                     this.loadMoreButton = null;
                 }
             } catch (e) {
-                console.error("Failed to load more themes:", e);
+                console.error('Failed to load more themes:', e);
                 this.loadMoreButton!.setText('Failed to Load More - Try Again');
                 this.loadMoreButton!.removeAttribute('disabled');
             } finally {
@@ -1521,7 +1830,7 @@ class ThemeSelectionModal extends Modal {
 
         this.bottomLoadingEl = this.contentEl.createEl('p', {
             text: 'Loading more themes...',
-            cls: 'theme-loading-indicator bottom-loading-indicator'
+            cls: 'theme-loading-indicator bottom-loading-indicator',
         });
     }
 
@@ -1566,7 +1875,7 @@ class ThemeSelectionModal extends Modal {
             const newThemes = [];
 
             for (const theme of themes) {
-                if (!mergedThemes.some(t => t?.id === theme.id)) {
+                if (!mergedThemes.some((t) => t?.id === theme.id)) {
                     mergedThemes.push(theme);
                     newThemes.push(theme);
                 }
@@ -1582,7 +1891,7 @@ class ThemeSelectionModal extends Modal {
                 this.removeBottomLoadingIndicator();
             }
         } catch (e) {
-            console.error("Failed to load more themes:", e);
+            console.error('Failed to load more themes:', e);
             if (this.bottomLoadingEl) {
                 this.bottomLoadingEl.setText('Failed to load more themes. Retrying...');
                 // Try again after a delay

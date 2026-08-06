@@ -1,9 +1,9 @@
 /* --- Dice Tray Theming --- */
 .dh-encounter-builder-container {
-  position: relative;
-  --dh-tray-accent-color: var(--interactive-accent);
-  --dh-tray-accent-glow: rgba(var(--interactive-accent-rgb), 0.4);
-  --dh-tray-fear-color: var(--color-purple);
+    position: relative;
+    --dh-tray-accent-color: var(--interactive-accent);
+    --dh-tray-accent-glow: rgba(var(--interactive-accent-rgb), 0.4);
+    --dh-tray-fear-color: var(--color-purple);
 }
 /* --- Dice Tray Button --- */
 .dh-dice-tray-button {
@@ -115,7 +115,9 @@
     grid-row: 2 / 3;
 }
 
-.dh-dice-button, .dh-duality-button, .dh-adv-dis-button {
+.dh-dice-button,
+.dh-duality-button,
+.dh-adv-dis-button {
     background-color: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
     color: var(--text-muted);
@@ -131,7 +133,9 @@
     justify-content: center;
 }
 
-.dh-dice-button:hover, .dh-duality-button:hover, .dh-adv-dis-button:hover {
+.dh-dice-button:hover,
+.dh-duality-button:hover,
+.dh-adv-dis-button:hover {
     color: var(--text-normal);
     border-color: var(--dh-tray-accent-color, var(--interactive-accent));
     background-color: var(--background-modifier-hover);
@@ -140,11 +144,24 @@
 .dh-adv-dis-button {
     width: 42px;
 }
-.dh-advantage-button { color: var(--color-green); border-color: var(--color-green); }
-.dh-advantage-button:hover { background-color: rgba(var(--color-green-rgb), 0.1); border-color: var(--color-green) !important; color: var(--color-green) !important;}
-.dh-disadvantage-button { color: var(--color-red); border-color: var(--color-red); }
-.dh-disadvantage-button:hover { background-color: rgba(var(--color-red-rgb), 0.1); border-color: var(--color-red) !important; color: var(--color-red) !important;}
-
+.dh-advantage-button {
+    color: var(--color-green);
+    border-color: var(--color-green);
+}
+.dh-advantage-button:hover {
+    background-color: rgba(var(--color-green-rgb), 0.1);
+    border-color: var(--color-green) !important;
+    color: var(--color-green) !important;
+}
+.dh-disadvantage-button {
+    color: var(--color-red);
+    border-color: var(--color-red);
+}
+.dh-disadvantage-button:hover {
+    background-color: rgba(var(--color-red-rgb), 0.1);
+    border-color: var(--color-red) !important;
+    color: var(--color-red) !important;
+}
 
 /* MODIFIED: Button Row Layout */
 .dh-button-row {
@@ -189,7 +206,7 @@
     cursor: pointer;
     transition: all 0.2s;
     padding: 0;
-    width: 36px;  /* Fixed size for icon buttons */
+    width: 36px; /* Fixed size for icon buttons */
     height: 36px;
     display: flex;
     align-items: center;
@@ -202,17 +219,17 @@
     background-color: var(--background-modifier-hover) !important;
 }
 
-
-.dh-button-row button:first-of-type { /* Roll Button */
+.dh-button-row button:first-of-type {
+    /* Roll Button */
     background-color: var(--dh-tray-accent-color, var(--interactive-accent));
     color: var(--text-on-accent);
 }
-.dh-button-row button:first-of-type:hover { /* Roll Button Hover */
+.dh-button-row button:first-of-type:hover {
+    /* Roll Button Hover */
     background-color: var(--dh-tray-accent-color, var(--interactive-accent));
     transform: scale(1.05);
     box-shadow: 0 0 10px var(--dh-tray-accent-glow, rgba(var(--interactive-accent-rgb), 0.4));
 }
-
 
 .dh-stepper-wrapper {
     display: flex;
@@ -231,7 +248,7 @@
     transition: all 0.2s ease-in-out;
 }
 
-.dh-stepper-wrapper input[type="number"] {
+.dh-stepper-wrapper input[type='number'] {
     width: 40px;
     text-align: center;
     border: 1px solid var(--background-modifier-border);
@@ -244,8 +261,8 @@
     appearance: textfield;
 }
 
-.dh-stepper-wrapper input[type="number"]::-webkit-outer-spin-button,
-.dh-stepper-wrapper input[type="number"]::-webkit-inner-spin-button {
+.dh-stepper-wrapper input[type='number']::-webkit-outer-spin-button,
+.dh-stepper-wrapper input[type='number']::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
@@ -259,7 +276,6 @@
     border-top-right-radius: var(--radius-s);
     border-bottom-right-radius: var(--radius-s);
 }
-
 
 .dh-history-entry {
     background-color: var(--background-primary);
@@ -310,28 +326,100 @@
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-
-.dh-history-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--size-4-1); word-break: break-word; }
-.dh-history-equation { display: flex; flex-wrap: wrap; align-items: center; row-gap: var(--size-4-1); column-gap: var(--size-4-2); line-height: 1.5; font-size: var(--font-ui-medium); }
-.dh-roll-value { padding: 1px 5px; border-radius: var(--radius-s); font-weight: var(--font-bold); cursor: default; }
-.dh-roll-value.hope { background-color: rgba(var(--color-yellow-rgb), 0.2); color: var(--color-yellow); }
-.dh-roll-value.fear { background-color: rgba(var(--color-purple-rgb), 0.2); color: var(--dh-tray-fear-color, var(--color-purple)); }
-.dh-roll-value.advantage { background-color: rgba(var(--color-green-rgb), 0.2); color: var(--color-green); }
-.dh-roll-value.disadvantage { background-color: rgba(var(--color-red-rgb), 0.2); color: var(--color-red); }
-.dh-roll-value.modifier { background-color: transparent; color: var(--text-normal); padding: 1px 0; }
-.dh-roll-value.die { background-color: var(--background-secondary-alt); color: var(--text-normal); }
-.dh-roll-operator { font-weight: var(--font-light); color: var(--text-muted); }
-.dh-history-total-container { display: flex; align-items: center; gap: var(--size-4-3); }
-.dh-history-equals { font-size: 1.6em; font-weight: var(--font-light); color: var(--text-muted); }
-.dh-history-total { font-size: 2em; font-weight: var(--font-black); color: var(--dh-tray-accent-color, var(--interactive-accent)); line-height: 1; }
-.dh-history-outcome { font-weight: bold; font-size: var(--font-ui-small); text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-s); }
-.dh-history-outcome.with-hope { color: var(--color-yellow); background-color: rgba(var(--color-yellow-rgb), 0.1); }
-.dh-history-outcome.with-fear { color: var(--dh-tray-fear-color, var(--color-purple)); background-color: rgba(var(--color-purple-rgb), 0.1); }
-.dh-history-outcome.critical { color: var(--color-orange); background-color: rgba(var(--color-orange-rgb), 0.1); }
+.dh-history-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--size-4-1);
+    word-break: break-word;
+}
+.dh-history-equation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: var(--size-4-1);
+    column-gap: var(--size-4-2);
+    line-height: 1.5;
+    font-size: var(--font-ui-medium);
+}
+.dh-roll-value {
+    padding: 1px 5px;
+    border-radius: var(--radius-s);
+    font-weight: var(--font-bold);
+    cursor: default;
+}
+.dh-roll-value.hope {
+    background-color: rgba(var(--color-yellow-rgb), 0.2);
+    color: var(--color-yellow);
+}
+.dh-roll-value.fear {
+    background-color: rgba(var(--color-purple-rgb), 0.2);
+    color: var(--dh-tray-fear-color, var(--color-purple));
+}
+.dh-roll-value.advantage {
+    background-color: rgba(var(--color-green-rgb), 0.2);
+    color: var(--color-green);
+}
+.dh-roll-value.disadvantage {
+    background-color: rgba(var(--color-red-rgb), 0.2);
+    color: var(--color-red);
+}
+.dh-roll-value.modifier {
+    background-color: transparent;
+    color: var(--text-normal);
+    padding: 1px 0;
+}
+.dh-roll-value.die {
+    background-color: var(--background-secondary-alt);
+    color: var(--text-normal);
+}
+.dh-roll-operator {
+    font-weight: var(--font-light);
+    color: var(--text-muted);
+}
+.dh-history-total-container {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3);
+}
+.dh-history-equals {
+    font-size: 1.6em;
+    font-weight: var(--font-light);
+    color: var(--text-muted);
+}
+.dh-history-total {
+    font-size: 2em;
+    font-weight: var(--font-black);
+    color: var(--dh-tray-accent-color, var(--interactive-accent));
+    line-height: 1;
+}
+.dh-history-outcome {
+    font-weight: bold;
+    font-size: var(--font-ui-small);
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: var(--radius-s);
+}
+.dh-history-outcome.with-hope {
+    color: var(--color-yellow);
+    background-color: rgba(var(--color-yellow-rgb), 0.1);
+}
+.dh-history-outcome.with-fear {
+    color: var(--dh-tray-fear-color, var(--color-purple));
+    background-color: rgba(var(--color-purple-rgb), 0.1);
+}
+.dh-history-outcome.critical {
+    color: var(--color-orange);
+    background-color: rgba(var(--color-orange-rgb), 0.1);
+}
 
 /* --- History-Only View for Auto-Popup --- */
 .dh-dice-tray-container.is-history-only .dh-dice-tray-controls-wrapper {

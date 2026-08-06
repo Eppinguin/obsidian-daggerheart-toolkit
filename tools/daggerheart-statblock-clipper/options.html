@@ -1,54 +1,60 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Daggerheart Clipper Settings</title>
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body class="options-page">
-  <main class="options-shell">
-    <header class="options-hero">
-      <div>
-        <h1>Statblock Clipper settings</h1>
-        <p>Choose where imported Markdown notes are created.</p>
-      </div>
-    </header>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Daggerheart Clipper Settings</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body class="options-page">
+        <main class="options-shell">
+            <header class="options-hero">
+                <div>
+                    <h1>Statblock Clipper settings</h1>
+                    <p>Choose where imported Markdown notes are created.</p>
+                </div>
+            </header>
 
-    <section class="panel options-card">
-      <div class="options-section">
-        <h2>Obsidian destination</h2>
-        <p>The clipper copies Markdown to your clipboard and opens an <code>obsidian://new</code> link. It never reads your vault.</p>
-        <div class="field-grid">
-          <label class="field">
-            <span class="field-label">Vault name or ID</span>
-            <input id="vault" type="text" placeholder="Optional">
-            <small>Leave blank to use whichever vault Obsidian selects.</small>
-          </label>
-          <label class="field">
-            <span class="field-label">Destination folder</span>
-            <input id="folder" type="text" placeholder="Daggerheart/Homebrew">
-            <small>The toolkit must scan this folder to discover imported statblocks.</small>
-          </label>
-        </div>
-      </div>
+            <section class="panel options-card">
+                <div class="options-section">
+                    <h2>Obsidian destination</h2>
+                    <p>
+                        The clipper copies Markdown to your clipboard and opens an
+                        <code>obsidian://new</code> link. It never reads your vault.
+                    </p>
+                    <div class="field-grid">
+                        <label class="field">
+                            <span class="field-label">Vault name or ID</span>
+                            <input id="vault" type="text" placeholder="Optional" />
+                            <small>Leave blank to use whichever vault Obsidian selects.</small>
+                        </label>
+                        <label class="field">
+                            <span class="field-label">Destination folder</span>
+                            <input id="folder" type="text" placeholder="Daggerheart/Homebrew" />
+                            <small>The toolkit must scan this folder to discover imported statblocks.</small>
+                        </label>
+                    </div>
+                </div>
 
-      <div class="options-section">
-        <h2>Import behavior</h2>
-        <p>Control what happens when a note with the generated statblock name already exists.</p>
-        <label class="switch-row switch-row--compact">
-          <span><strong>Overwrite matching note</strong><small>Disabled by default to protect existing edits.</small></span>
-          <input id="overwrite" class="switch-input" type="checkbox">
-          <span class="switch" aria-hidden="true"></span>
-        </label>
-      </div>
+                <div class="options-section">
+                    <h2>Import behavior</h2>
+                    <p>Control what happens when a note with the generated statblock name already exists.</p>
+                    <label class="switch-row switch-row--compact">
+                        <span
+                            ><strong>Overwrite matching note</strong
+                            ><small>Disabled by default to protect existing edits.</small></span
+                        >
+                        <input id="overwrite" class="switch-input" type="checkbox" />
+                        <span class="switch" aria-hidden="true"></span>
+                    </label>
+                </div>
 
-      <div class="options-actions">
-        <span id="status" class="notice-inline" role="status" aria-live="polite"></span>
-        <button id="save" class="button button--primary" type="button">Save settings</button>
-      </div>
-    </section>
-  </main>
-  <script src="options.js"></script>
-</body>
+                <div class="options-actions">
+                    <span id="status" class="notice-inline" role="status" aria-live="polite"></span>
+                    <button id="save" class="button button--primary" type="button">Save settings</button>
+                </div>
+            </section>
+        </main>
+        <script type="module" src="./src/entries/options.ts"></script>
+    </body>
 </html>

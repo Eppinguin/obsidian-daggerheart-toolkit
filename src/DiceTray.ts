@@ -1,7 +1,6 @@
 import type DaggerheartStatblockPlugin from './main';
 import { Notice, setIcon } from 'obsidian';
 import * as dddice from './services/dddice-service';
-import type { IRoll } from './services/dddice-service';
 
 export interface RollComponent {
     value: number;
@@ -28,7 +27,6 @@ interface RollHistoryEntry extends RollCompletedPayload {
     id: string; // Changed to string for UUIDs
     timestamp: string;
 }
-
 
 export class DiceTray {
     plugin: DaggerheartStatblockPlugin;
@@ -63,12 +61,17 @@ export class DiceTray {
 
             this.historyContainer = this.trayContainer.createDiv({ cls: 'dh-dice-tray-history' });
 
-            const controlsWrapper = this.trayContainer.createDiv({ cls: 'dh-dice-tray-controls-wrapper' });
+            const controlsWrapper = this.trayContainer.createDiv({
+                cls: 'dh-dice-tray-controls-wrapper',
+            });
 
             const diceButtonsContainer = controlsWrapper.createDiv({ cls: 'dh-dice-buttons-container' });
             const diceTypes = [4, 6, 8, 10, 12, 20];
-            diceTypes.forEach(sides => {
-                const btn = diceButtonsContainer.createEl('button', { text: `d${sides}`, cls: 'dh-dice-button' });
+            diceTypes.forEach((sides) => {
+                const btn = diceButtonsContainer.createEl('button', {
+                    text: `d${sides}`,
+                    cls: 'dh-dice-button',
+                });
                 btn.title = `Left-click to add 1d${sides}.\nRight-click to remove 1d${sides}.`;
                 btn.addEventListener('click', () => this.addFormulaPart(`1d${sides}`));
                 btn.addEventListener('contextmenu', (e) => {
@@ -79,34 +82,58 @@ export class DiceTray {
 
             const mainControlsGrid = controlsWrapper.createDiv({ cls: 'dh-main-controls-grid' });
 
-            const dualityBtn = mainControlsGrid.createEl('button', { text: 'Duality', cls: 'dh-duality-button' });
+            const dualityBtn = mainControlsGrid.createEl('button', {
+                text: 'Duality',
+                cls: 'dh-duality-button',
+            });
             dualityBtn.title = 'Setup a Duality Roll (dr)';
-            dualityBtn.addEventListener('click', () => { this.setFormula('dr', 'Duality Roll'); });
+            dualityBtn.addEventListener('click', () => {
+                this.setFormula('dr', 'Duality Roll');
+            });
 
             const advDisContainer = mainControlsGrid.createDiv({ cls: 'dh-adv-dis-container' });
-            const advBtn = advDisContainer.createEl('button', { cls: 'dh-adv-dis-button dh-advantage-button' });
+            const advBtn = advDisContainer.createEl('button', {
+                cls: 'dh-adv-dis-button dh-advantage-button',
+            });
             setIcon(advBtn, 'dice');
-            advBtn.title = "Add Advantage (+1d6)";
+            advBtn.title = 'Add Advantage (+1d6)';
             advBtn.addEventListener('click', () => this.addFormulaPart('+1d6'));
-            advBtn.addEventListener('contextmenu', (e) => { e.preventDefault(); this.removeFormulaPart('d6'); });
+            advBtn.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.removeFormulaPart('d6');
+            });
 
-            const disBtn = advDisContainer.createEl('button', { cls: 'dh-adv-dis-button dh-disadvantage-button' });
+            const disBtn = advDisContainer.createEl('button', {
+                cls: 'dh-adv-dis-button dh-disadvantage-button',
+            });
             setIcon(disBtn, 'dice');
-            disBtn.title = "Add Disadvantage (-1d6)";
+            disBtn.title = 'Add Disadvantage (-1d6)';
             disBtn.addEventListener('click', () => this.addFormulaPart('-1d6'));
-            disBtn.addEventListener('contextmenu', (e) => { e.preventDefault(); this.removeFormulaPart('d6'); });
+            disBtn.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.removeFormulaPart('d6');
+            });
 
-            this.formulaInput = mainControlsGrid.createEl('input', { type: 'text', cls: 'dh-dice-tray-input' });
+            this.formulaInput = mainControlsGrid.createEl('input', {
+                type: 'text',
+                cls: 'dh-dice-tray-input',
+            });
             this.formulaInput.placeholder = 'e.g., dr, 2d6+3';
-            this.formulaInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.rollFromInput(); });
+            this.formulaInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.rollFromInput();
+            });
 
             const stepperWrapper = mainControlsGrid.createDiv({ cls: 'dh-stepper-wrapper' });
             const downBtn = stepperWrapper.createEl('button', { text: '−' });
             this.modifierInput = stepperWrapper.createEl('input', { type: 'number', value: '0' });
             const upBtn = stepperWrapper.createEl('button', { text: '+' });
 
-            downBtn.addEventListener('click', () => { this.modifierInput.stepDown(); });
-            upBtn.addEventListener('click', () => { this.modifierInput.stepUp(); });
+            downBtn.addEventListener('click', () => {
+                this.modifierInput.stepDown();
+            });
+            upBtn.addEventListener('click', () => {
+                this.modifierInput.stepUp();
+            });
 
             const buttonRow = controlsWrapper.createDiv({ cls: 'dh-button-row' });
             const rollBtn = buttonRow.createEl('button', { text: 'Roll' });
@@ -133,7 +160,7 @@ export class DiceTray {
     }
 
     private handleNewRoll = (payload: RollCompletedPayload) => {
-        const existingIndex = this.rolls.findIndex(r => r.id === payload.rollId);
+        const existingIndex = this.rolls.findIndex((r) => r.id === payload.rollId);
 
         if (existingIndex !== -1) {
             const updatedRoll = {
@@ -159,7 +186,6 @@ export class DiceTray {
         }
     };
 
-
     private showHistoryTemporarily() {
         if (!this.trayContainer || !this.trayButton) return;
         if (this.autoHideTimer) clearTimeout(this.autoHideTimer);
@@ -183,9 +209,8 @@ export class DiceTray {
             formula = `${formula} ${modifier > 0 ? '+' : ''}${modifier}`.trim();
         }
 
-        const context = this.formulaContext || "Tray Roll";
+        const context = this.formulaContext || 'Tray Roll';
         const result = await this.plugin.rollDice(formula, context, undefined, isHidden);
-
 
         if (result !== null) {
             this.formulaInput.value = '';
@@ -202,12 +227,14 @@ export class DiceTray {
         const updatedRollData = await dddice.getRoll(rollId);
 
         if (updatedRollData) {
-            const isStillHidden = updatedRollData.values.some(v => v.is_hidden);
+            const isStillHidden = updatedRollData.values.some((v) => v.is_hidden);
 
             if (!isStillHidden) {
                 // The roll has been revealed. Process it and update the history.
-                let isDaggerheartActionRoll = updatedRollData.values.some(d => d.label === 'Hope') && updatedRollData.values.some(d => d.label === 'Fear');
-                const d12s = updatedRollData.values.filter(d => d.type === 'd12');
+                let isDaggerheartActionRoll =
+                    updatedRollData.values.some((d) => d.label === 'Hope') &&
+                    updatedRollData.values.some((d) => d.label === 'Fear');
+                const d12s = updatedRollData.values.filter((d) => d.type === 'd12');
                 if (!isDaggerheartActionRoll && d12s.length === 2 && d12s[0].theme !== d12s[1].theme) {
                     isDaggerheartActionRoll = true;
                     d12s[0].label = 'Hope';
@@ -215,7 +242,11 @@ export class DiceTray {
                 }
 
                 const processedResult = dddice.handleRollResult(updatedRollData, isDaggerheartActionRoll);
-                const rollerName = updatedRollData.room?.participants?.find(p => p.user.uuid === updatedRollData.user?.uuid)?.username || updatedRollData.user?.username || 'Unknown Roller';
+                const rollerName =
+                    updatedRollData.room?.participants?.find((p) => p.user.uuid === updatedRollData.user?.uuid)
+                        ?.username ||
+                    updatedRollData.user?.username ||
+                    'Unknown Roller';
 
                 const payload: RollCompletedPayload = {
                     rollerName,
@@ -232,11 +263,11 @@ export class DiceTray {
                 };
                 this.plugin.app.workspace.trigger('daggerheart-roll-completed', payload);
             } else {
-                new Notice("Roll has not been revealed yet.");
+                new Notice('Roll has not been revealed yet.');
                 setIcon(buttonEl, 'refresh-cw');
             }
         } else {
-            new Notice("Could not retrieve roll update.");
+            new Notice('Could not retrieve roll update.');
             setIcon(buttonEl, 'refresh-cw');
         }
     }
@@ -244,12 +275,13 @@ export class DiceTray {
     private renderHistory() {
         if (!this.historyContainer) return;
         this.historyContainer.empty();
-        this.rolls.forEach(roll => {
+        this.rolls.forEach((roll) => {
             const entryEl = this.historyContainer.createDiv({ cls: 'dh-history-entry' });
 
             const currentUserUuid = dddice.getCurrentUserUuid();
             const isOwnRoll = !!(currentUserUuid && roll.userUUID && currentUserUuid === roll.userUUID);
-            const hasHiddenComponents = (roll.hiddenRolls && roll.hiddenRolls.some(h => h)) || !!roll.isModifierHidden;
+            const hasHiddenComponents =
+                (roll.hiddenRolls && roll.hiddenRolls.some((h) => h)) || !!roll.isModifierHidden;
             const shouldObscure = !isOwnRoll && hasHiddenComponents;
 
             const header = entryEl.createDiv({ cls: 'dh-history-header' });
@@ -285,7 +317,6 @@ export class DiceTray {
             }
             controlsContainer.createSpan({ text: roll.timestamp, cls: 'dh-history-timestamp' });
 
-
             const body = entryEl.createDiv({ cls: 'dh-history-body' });
 
             if (roll.structuredResult && roll.structuredResult.length > 0) {
@@ -302,21 +333,29 @@ export class DiceTray {
                     equationContainer.createSpan({
                         cls: `dh-roll-value ${component.type}`,
                         text: shouldObscure ? '?' : String(Math.abs(component.value)),
-                        attr: { title: component.label }
+                        attr: { title: component.label },
                     });
                 });
 
                 const totalContainer = body.createDiv({ cls: 'dh-history-total-container' });
                 totalContainer.createSpan({ cls: 'dh-history-equals', text: '=' });
-                totalContainer.createSpan({ text: shouldObscure ? '?' : roll.total, cls: 'dh-history-total' });
+                totalContainer.createSpan({
+                    text: shouldObscure ? '?' : roll.total,
+                    cls: 'dh-history-total',
+                });
 
                 if (roll.outcome && !shouldObscure) {
                     const outcomeClass = roll.outcome.toLowerCase().replace(/\s/g, '-').replace('!', '');
-                    totalContainer.createSpan({ text: roll.outcome, cls: `dh-history-outcome ${outcomeClass}` });
+                    totalContainer.createSpan({
+                        text: roll.outcome,
+                        cls: `dh-history-outcome ${outcomeClass}`,
+                    });
                 }
             } else {
                 if (shouldObscure) {
-                    body.createSpan({ cls: 'dh-history-result' }).innerHTML = `<span>Hidden Roll</span> = <strong class="dh-history-total">?</strong>`;
+                    body.createSpan({
+                        cls: 'dh-history-result',
+                    }).innerHTML = `<span>Hidden Roll</span> = <strong class="dh-history-total">?</strong>`;
                 } else {
                     const resultHtml = `<span>${roll.result || ''}</span> = <strong class="dh-history-total">${roll.total || ''}</strong>`;
                     body.createSpan({ cls: 'dh-history-result' }).innerHTML = resultHtml;
@@ -363,7 +402,10 @@ export class DiceTray {
             while (operatorSearchIndex >= 0 && /\s/.test(formula.charAt(operatorSearchIndex))) {
                 operatorSearchIndex--;
             }
-            if (operatorSearchIndex >= 0 && (formula.charAt(operatorSearchIndex) === '+' || formula.charAt(operatorSearchIndex) === '-')) {
+            if (
+                operatorSearchIndex >= 0 &&
+                (formula.charAt(operatorSearchIndex) === '+' || formula.charAt(operatorSearchIndex) === '-')
+            ) {
                 startIndex = operatorSearchIndex;
                 while (startIndex > 0 && /\s/.test(formula.charAt(startIndex - 1))) {
                     startIndex--;
@@ -408,7 +450,7 @@ export class DiceTray {
             const newFormula = existing.substring(0, existing.lastIndexOf(lastTerm)) + newLastTerm;
             this.formulaInput.value = newFormula;
         } else {
-            this.formulaInput.value = /[+\-]$/.test(existing.slice(-1))
+            this.formulaInput.value = /[+-]$/.test(existing.slice(-1))
                 ? `${existing} ${formulaPart}`
                 : `${existing} + ${formulaPart}`;
         }

@@ -10,7 +10,7 @@ export class EncounterLinkModal extends FuzzySuggestModal<SavedEncounter> {
         super(app);
         this.plugin = plugin;
         this.onChoose = onChoose;
-        this.setPlaceholder("Search for an encounter to link...");
+        this.setPlaceholder('Search for an encounter to link...');
     }
 
     getItems(): SavedEncounter[] {
@@ -21,7 +21,7 @@ export class EncounterLinkModal extends FuzzySuggestModal<SavedEncounter> {
         return item.name;
     }
 
-    onChooseItem(item: SavedEncounter, evt: MouseEvent | KeyboardEvent): void {
+    onChooseItem(item: SavedEncounter, _evt: MouseEvent | KeyboardEvent): void {
         this.onChoose(item);
     }
 }

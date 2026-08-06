@@ -6,20 +6,17 @@
         "module": "ESNext",
         "target": "ES6",
         "allowJs": true,
+        "noEmit": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
         "importHelpers": true,
         "isolatedModules": true,
         "strictNullChecks": true,
-        "lib": [
-            "DOM",
-            "ES5",
-            "ES6",
-            "ES7",
-            "ESNext"
-        ]
+        "lib": ["DOM", "ES5", "ES6", "ES7", "ESNext"]
     },
-    "include": [
-        "**/*.ts"
-    ]
+    "include": ["**/*.ts"],
+    // The browser extension is a separate TypeScript project with its own
+    // stricter tsconfig; `pnpm --dir tools/daggerheart-statblock-clipper run
+    // typecheck` covers it.
+    "exclude": ["node_modules", "tools/daggerheart-statblock-clipper"]
 }

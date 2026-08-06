@@ -11,9 +11,14 @@ Both builds use Manifest V3. The Firefox output adds a stable Gecko extension ID
 
 ## Build project
 
-This directory contains source files, not committed browser builds. Vite builds the popup and options pages. Runtime-injected parser files retain fixed package names.
+TypeScript source, bundled by Vite. This directory contains source files, not committed browser builds.
 
 ```text
+src/
+  entries/     popup, options, content-script, background
+  parsers/     extraction chain; index.ts composes it
+  format/      serialization over shared/statblock-format.js
+  lib/         browser API, storage, Obsidian launch
 manifests/     shared manifest plus browser overlays
 scripts/       build, validation, packaging, and publishing scripts
 tests/         parser, browser, UI, and manifest regressions
@@ -21,15 +26,27 @@ dist/          generated unpacked builds (ignored)
 artifacts/     generated ZIP/XPI packages (ignored)
 ```
 
+The parser chain is composed in `src/parsers/index.ts`. Entry points import from
+there rather than depending on script load order.
+
+`popup.html` and `options.html` each load one module entry; `background.js` and
+`content-script.js` build as self-contained IIFE bundles, which MV3 requires —
+the service worker and `scripting.executeScript` cannot follow an import graph.
+
 ```bash
-npm install
-npm test
-npm run build
-npm run validate
-npm run test:browser
-npm run lint:firefox
-npm run package
+pnpm install
+pnpm test
+pnpm run typecheck
+pnpm run build
+pnpm run validate
+pnpm run test:browser
+pnpm run lint:firefox
+pnpm run package
 ```
+
+`pnpm run ci` chains all of the above. CI uses npm; either works on a clean
+checkout. If an existing `node_modules` was installed by the other package
+manager, delete it before switching.
 
 Node.js 20.19 or newer is required. The browser integration test needs Chromium and a display server; CI installs Playwright Chromium and runs it through Xvfb.
 
@@ -71,6 +88,8 @@ The Obsidian command **Import Statblocks from Clipboard** opens the same reviewe
 ## Shared format
 
 `../../shared/statblock-format.js` is consumed by both the extension and plugin. It owns field normalization, feature costs, validation, JSON envelopes, and Markdown serialization so fields cannot drift between products.
+
+It stays plain JavaScript deliberately: the Obsidian plugin loads it as a side-effect import, as CommonJS, as dynamic ESM, and as raw text. The extension consumes it from TypeScript through `src/format/shared.d.ts`.
 
 ## Validation
 

@@ -1,60 +1,118 @@
 import { Notice, TFile, TFolder } from 'obsidian';
 import * as YAML from 'js-yaml';
 import DaggerheartStatblockPlugin from '../main';
-import { StatblockData } from '../types';
+import { StatblockData, StatblockFeature } from '../types';
+import { normalizeStatblockFeature } from './statblock-format';
 import { normalizeCompendiumPath } from './compendium-path';
+import { ContentSource, sortSourcesForMerge } from './content-source';
+import { findStatblockBlocks } from './markdown-statblock';
 
 const DATA_PATH = 'data';
 const USER_DATA_PATH = 'user_data';
 
 export class DaggerheartCompendium {
+    /** The merged, deduplicated view every consumer reads. */
     public statblocks: StatblockData[] = [];
+    /**
+     * Every entry keyed by source, including ones shadowed in the merge and
+     * ones from disabled sources. The manager UI reads this so it can show and
+     * edit content that is currently hidden.
+     */
+    public entriesBySource = new Map<string, StatblockData[]>();
+    /** Lowercase name -> ids of the sources that lost the merge for that name. */
+    public shadowed = new Map<string, string[]>();
 
     constructor(private plugin: DaggerheartStatblockPlugin) {}
 
     async load(): Promise<void> {
+        const sources = sortSourcesForMerge(this.plugin.getContentSources());
         const items = new Map<string, StatblockData>();
+        this.entriesBySource.clear();
+        this.shadowed.clear();
 
-        if (this.plugin.settings.useSrdAdversaries) {
-            for (const raw of await this.loadSrdFile<any>('adversaries.json')) {
-                this.parseAndAddStatblock(raw, 'adversary', items);
-            }
-        }
-        if (this.plugin.settings.useSrdEnvironments) {
-            for (const raw of await this.loadSrdFile<any>('environments.json')) {
-                this.parseAndAddStatblock(raw, 'environment', items);
-            }
-        }
+        for (const source of sources) {
+            const entries = await this.loadSource(source);
+            this.entriesBySource.set(source.id, entries);
+            if (!source.enabled) continue;
 
-        for (const item of await this.loadUserStatblocks()) {
-            items.set(item.name.toLowerCase(), item);
-        }
-        for (const item of await this.loadMarkdownStatblocks()) {
-            items.set(item.name.toLowerCase(), item);
+            for (const entry of entries) {
+                const key = entry.name.toLowerCase();
+                const previous = items.get(key);
+                if (previous?.sourceId) {
+                    const losers = this.shadowed.get(key) ?? [];
+                    losers.push(previous.sourceId);
+                    this.shadowed.set(key, losers);
+                }
+                items.set(key, entry);
+            }
         }
 
         this.statblocks = Array.from(items.values()).sort((a, b) => a.name.localeCompare(b.name));
-        console.log(`Daggerheart | Compendium loaded ${this.statblocks.length} GM statblocks.`);
+        const breakdown = sources
+            .map(
+                (source) =>
+                    `${source.id}:${this.entriesBySource.get(source.id)?.length ?? 0}${source.enabled ? '' : ' (off)'}`,
+            )
+            .join(', ');
+        console.log(`Daggerheart | Compendium loaded ${this.statblocks.length} GM statblocks [${breakdown}]`);
     }
 
     getStatblocks(): StatblockData[] {
         return this.statblocks;
     }
 
-    private async loadUserStatblocks(): Promise<StatblockData[]> {
-        const fileName = this.plugin.settings.userCompendiumFile;
-        if (!fileName) return [];
-        const path = `${this.plugin.manifest.dir}/${USER_DATA_PATH}/${fileName}`;
+    /** Entries belonging to one source, whether or not it is enabled. */
+    getEntriesForSource(sourceId: string): StatblockData[] {
+        return this.entriesBySource.get(sourceId) ?? [];
+    }
+
+    /** Whether this entry is currently hidden by a higher-priority source. */
+    isShadowed(entry: StatblockData): boolean {
+        const winner = this.statblocks.find((item) => item.name.toLowerCase() === entry.name.toLowerCase());
+        return !!winner && winner.sourceId !== entry.sourceId;
+    }
+
+    private async loadSource(source: ContentSource): Promise<StatblockData[]> {
+        switch (source.kind) {
+            case 'builtin-srd':
+                return this.loadSrdSource(source);
+            case 'user-json':
+                return this.loadUserJsonSource(source);
+            case 'markdown':
+                // Walking every Markdown file in the vault is the one load that
+                // is genuinely expensive, so a disabled folder is skipped
+                // outright rather than read for the manager's benefit.
+                return source.enabled ? this.loadMarkdownSource(source) : [];
+            default:
+                return [];
+        }
+    }
+
+    private async loadSrdSource(source: ContentSource): Promise<StatblockData[]> {
+        const category = source.forcedCategory ?? 'adversary';
+        const raws = await this.loadSrdFile<any>(source.path);
+        const entries: StatblockData[] = [];
+        for (const raw of raws) {
+            const parsed = this.parseSrdStatblock(raw, category);
+            if (parsed) entries.push({ ...parsed, sourceId: source.id });
+        }
+        return entries;
+    }
+
+    private async loadUserJsonSource(source: ContentSource): Promise<StatblockData[]> {
+        if (!source.path) return [];
+        const path = `${this.plugin.manifest.dir}/${USER_DATA_PATH}/${source.path}`;
         if (!(await this.plugin.app.vault.adapter.exists(path))) return [];
 
         try {
             let data = await this.plugin.app.vault.adapter.read(path);
-            if (data.charCodeAt(0) === 0xFEFF) data = data.slice(1);
+            if (data.charCodeAt(0) === 0xfeff) data = data.slice(1);
             if (!data.trim()) return [];
             const items = JSON.parse(data) as StatblockData[];
-            return items.map(item => ({ ...item, isCustom: true }));
+            if (!Array.isArray(items)) return [];
+            return items.filter((item) => item?.name).map((item) => ({ ...item, isCustom: true, sourceId: source.id }));
         } catch (error) {
-            new Notice(`Could not read user file: ${fileName}. Check console for details.`);
+            new Notice(`Could not read source "${source.label}" (${source.path}). Check console for details.`);
             console.error(error);
             return [];
         }
@@ -65,7 +123,7 @@ export class DaggerheartCompendium {
         try {
             if (!(await this.plugin.app.vault.adapter.exists(path))) return [];
             let content = await this.plugin.app.vault.adapter.read(path);
-            if (content.charCodeAt(0) === 0xFEFF) content = content.slice(1);
+            if (content.charCodeAt(0) === 0xfeff) content = content.slice(1);
             return JSON.parse(content) as T[];
         } catch (error) {
             console.error(`Daggerheart | Error loading SRD file ${fileName}:`, error);
@@ -73,10 +131,14 @@ export class DaggerheartCompendium {
         }
     }
 
-    private parseAndAddStatblock(raw: any, category: 'adversary' | 'environment', items: Map<string, StatblockData>): void {
+    /** Convert one flat SRD wire-format record into a StatblockData. */
+    private parseSrdStatblock(raw: any, category: 'adversary' | 'environment'): StatblockData | null {
         try {
-            const thresholds = raw.thresholds?.split('/').map((value: string) => value.trim()).filter(Boolean);
-            const statblock: StatblockData = {
+            const thresholds = raw.thresholds
+                ?.split('/')
+                .map((value: string) => value.trim())
+                .filter(Boolean);
+            return {
                 name: raw.name,
                 category,
                 tier: raw.tier,
@@ -98,33 +160,42 @@ export class DaggerheartCompendium {
                     damage: raw.damage || '',
                     modifier: raw.atk || '0',
                 },
-                features: (raw.feats || []).map((feat: any) => ({
-                    name: feat.name,
-                    type: feat.type || 'Passive',
-                    description: feat.text,
-                })),
+                features: (raw.feats || [])
+                    .map((feat: any) => normalizeStatblockFeature(feat))
+                    .filter((feat: StatblockFeature | null): feat is StatblockFeature => feat !== null),
             };
-            items.set(statblock.name.toLowerCase(), statblock);
         } catch (error) {
             console.error(`Daggerheart | Error parsing SRD ${category}:`, raw, error);
+            return null;
         }
     }
 
-    private async loadMarkdownStatblocks(): Promise<StatblockData[]> {
-        const folderPath = normalizeCompendiumPath(this.plugin.settings.compendiumFolder);
+    private async loadMarkdownSource(source: ContentSource): Promise<StatblockData[]> {
+        const folderPath = normalizeCompendiumPath(source.path);
         if (!folderPath) return [];
 
         const target = this.plugin.app.vault.getAbstractFileByPath(folderPath);
         const statblocks: StatblockData[] = [];
         if (target instanceof TFile && target.extension === 'md') {
-            this.extractStatblocksFromFile(await this.plugin.app.vault.cachedRead(target), target.path, statblocks);
+            this.extractStatblocksFromFile(
+                await this.plugin.app.vault.cachedRead(target),
+                target.path,
+                source.id,
+                statblocks,
+            );
         } else if (target instanceof TFolder) {
             const folderPrefix = `${target.path}/`;
-            const files = this.plugin.app.vault.getMarkdownFiles()
-                .filter(file => file.path.startsWith(folderPrefix))
+            const files = this.plugin.app.vault
+                .getMarkdownFiles()
+                .filter((file) => file.path.startsWith(folderPrefix))
                 .sort((a, b) => a.path.localeCompare(b.path));
             for (const file of files) {
-                this.extractStatblocksFromFile(await this.plugin.app.vault.cachedRead(file), file.path, statblocks);
+                this.extractStatblocksFromFile(
+                    await this.plugin.app.vault.cachedRead(file),
+                    file.path,
+                    source.id,
+                    statblocks,
+                );
             }
         } else {
             console.warn(`Daggerheart | Configured compendium path was not found: ${folderPath}`);
@@ -132,14 +203,25 @@ export class DaggerheartCompendium {
         return statblocks;
     }
 
-    private extractStatblocksFromFile(content: string, filePath: string, statblocks: StatblockData[]): void {
-        const pattern = /```daggerheart-statblock\s*([\s\S]*?)```/g;
-        let match: RegExpExecArray | null;
-        while ((match = pattern.exec(content)) !== null) {
+    private extractStatblocksFromFile(
+        content: string,
+        filePath: string,
+        sourceId: string,
+        statblocks: StatblockData[],
+    ): void {
+        // Indices come from the shared scanner so an in-place edit rewrites the
+        // same block this entry was read from.
+        for (const block of findStatblockBlocks(content)) {
             try {
-                const statblock = YAML.load(match[1]) as StatblockData;
+                const statblock = YAML.load(block.body) as StatblockData;
                 if (statblock?.name && (statblock.category === 'adversary' || statblock.category === 'environment')) {
-                    statblocks.push({ ...statblock, isCustom: true, sourceFile: filePath });
+                    statblocks.push({
+                        ...statblock,
+                        isCustom: true,
+                        sourceFile: filePath,
+                        sourceBlockIndex: block.index,
+                        sourceId,
+                    });
                 }
             } catch (error) {
                 console.warn(`Daggerheart | Failed to parse statblock YAML in ${filePath}:`, error);

@@ -6,7 +6,7 @@ import {
     STATBLOCK_FORMAT_VERSION,
     createStatblockEnvelope,
     normalizeStatblockData,
-    validateStatblockData
+    validateStatblockData,
 } from './statblock-format';
 
 export interface ExportedData<T> {
@@ -20,7 +20,7 @@ export interface ExportedData<T> {
 export enum ContentType {
     ENCOUNTER = 'encounter',
     ADVERSARY = 'adversary',
-    ENVIRONMENT = 'environment'
+    ENVIRONMENT = 'environment',
 }
 
 export interface ContentTypeInfo {
@@ -32,9 +32,27 @@ export interface ContentTypeInfo {
 }
 
 export const CONTENT_TYPE_INFO: Record<ContentType, ContentTypeInfo> = {
-    [ContentType.ENCOUNTER]: { type: ContentType.ENCOUNTER, displayName: 'Encounter', description: 'Export or import saved encounters', icon: 'swords', collection: 'encounters' },
-    [ContentType.ADVERSARY]: { type: ContentType.ADVERSARY, displayName: 'Adversary', description: 'Export or import adversary statblocks', icon: 'skull', collection: 'statblocks' },
-    [ContentType.ENVIRONMENT]: { type: ContentType.ENVIRONMENT, displayName: 'Environment', description: 'Export or import environment statblocks', icon: 'mountain-snow', collection: 'statblocks' }
+    [ContentType.ENCOUNTER]: {
+        type: ContentType.ENCOUNTER,
+        displayName: 'Encounter',
+        description: 'Export or import saved encounters',
+        icon: 'swords',
+        collection: 'encounters',
+    },
+    [ContentType.ADVERSARY]: {
+        type: ContentType.ADVERSARY,
+        displayName: 'Adversary',
+        description: 'Export or import adversary statblocks',
+        icon: 'skull',
+        collection: 'statblocks',
+    },
+    [ContentType.ENVIRONMENT]: {
+        type: ContentType.ENVIRONMENT,
+        displayName: 'Environment',
+        description: 'Export or import environment statblocks',
+        icon: 'mountain-snow',
+        collection: 'statblocks',
+    },
 };
 
 function isStatblockType(type: string): boolean {
@@ -54,16 +72,36 @@ function detectContentType(data: any): ContentType | 'unknown' {
     if (!data || typeof data !== 'object') return 'unknown';
     if (data._type && Object.values(ContentType).includes(data._type as ContentType)) return data._type as ContentType;
     if (Array.isArray(data.adversaries) && Array.isArray(data.adversaryGroupOrder)) return ContentType.ENCOUNTER;
-    if (data.category === 'environment' || data.impulses || data.potential_adversaries || data.tone) return ContentType.ENVIRONMENT;
-    if (data.category === 'adversary' || data.hp_stress || data.hp !== undefined || data.stress !== undefined || data.weapon || data.motives || data.motives_tactics) return ContentType.ADVERSARY;
+    if (data.category === 'environment' || data.impulses || data.potential_adversaries || data.tone)
+        return ContentType.ENVIRONMENT;
+    if (
+        data.category === 'adversary' ||
+        data.hp_stress ||
+        data.hp !== undefined ||
+        data.stress !== undefined ||
+        data.weapon ||
+        data.motives ||
+        data.motives_tactics
+    )
+        return ContentType.ADVERSARY;
     return 'unknown';
 }
 
-function normalizeItem(item: any, contentType: ContentType): { data: any; validation?: { valid: boolean; errors: string[]; warnings: string[] } } | null {
+function normalizeItem(
+    item: any,
+    contentType: ContentType,
+): { data: any; validation?: { valid: boolean; errors: string[]; warnings: string[] } } | null {
     if (contentType === ContentType.ADVERSARY || contentType === ContentType.ENVIRONMENT) {
         const validation = validateStatblockData({ ...item, category: contentType });
         if (!validation.data) return null;
-        return { data: validation.data, validation: { valid: validation.valid, errors: validation.errors, warnings: validation.warnings } };
+        return {
+            data: validation.data,
+            validation: {
+                valid: validation.valid,
+                errors: validation.errors,
+                warnings: validation.warnings,
+            },
+        };
     }
     if (!item.id) item.id = uuidv4();
     return { data: item };
@@ -75,7 +113,9 @@ export function parseImportJson<T extends AllCompendiumData>(jsonString: string)
     const processed: ExportedData<T>[] = [];
 
     if (parsed?.type && parsed?.data !== undefined) {
-        const declared = Object.values(ContentType).includes(parsed.type as ContentType) ? parsed.type as ContentType : null;
+        const declared = Object.values(ContentType).includes(parsed.type as ContentType)
+            ? (parsed.type as ContentType)
+            : null;
         const items = Array.isArray(parsed.data) ? parsed.data : [parsed.data];
         for (const item of items) {
             const contentType = declared || detectContentType(item);
@@ -87,13 +127,13 @@ export function parseImportJson<T extends AllCompendiumData>(jsonString: string)
                 version: parsed.version || STATBLOCK_FORMAT_VERSION,
                 exportDate: parsed.exportDate || new Date().toISOString(),
                 data: normalized.data as T,
-                validation: normalized.validation
+                validation: normalized.validation,
             });
         }
         return processed;
     }
 
-    const items = Array.isArray(parsed) ? parsed : (parsed && typeof parsed === 'object' ? [parsed] : []);
+    const items = Array.isArray(parsed) ? parsed : parsed && typeof parsed === 'object' ? [parsed] : [];
     for (const item of items) {
         const contentType = detectContentType(item);
         if (contentType === 'unknown') continue;
@@ -104,7 +144,7 @@ export function parseImportJson<T extends AllCompendiumData>(jsonString: string)
             version: STATBLOCK_FORMAT_VERSION,
             exportDate: new Date().toISOString(),
             data: normalized.data as T,
-            validation: normalized.validation
+            validation: normalized.validation,
         });
     }
     return processed;
@@ -154,8 +194,10 @@ export async function saveToFile(filename: string, content: string): Promise<voi
 
 export async function fetchJsonFromUrl(url: string): Promise<string> {
     let fetchUrl = url;
-    if (fetchUrl.includes('pastebin.com') && !fetchUrl.includes('/raw/')) fetchUrl = fetchUrl.replace('pastebin.com/', 'pastebin.com/raw/');
-    if (fetchUrl.includes('github.com') && fetchUrl.includes('/blob/')) fetchUrl = fetchUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+    if (fetchUrl.includes('pastebin.com') && !fetchUrl.includes('/raw/'))
+        fetchUrl = fetchUrl.replace('pastebin.com/', 'pastebin.com/raw/');
+    if (fetchUrl.includes('github.com') && fetchUrl.includes('/blob/'))
+        fetchUrl = fetchUrl.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
     if (fetchUrl.includes('gist.github.com') && !fetchUrl.includes('raw.githubusercontent.com')) {
         fetchUrl = fetchUrl.replace('gist.github.com', 'gist.githubusercontent.com');
         if (!fetchUrl.includes('/raw')) fetchUrl += '/raw';

@@ -1,6 +1,5 @@
 // This file serves as a barrel to export all modals from one place.
 import '../services/statblock-import-integration';
-import '../services/encounter-instance-controls';
 
 export { AdversaryReferenceModal } from './AdversaryReferenceModal';
 export { EncounterLinkModal } from './EncounterLinkModal';
@@ -14,3 +13,7 @@ export { ImportExportModal } from './ImportExportModal';
 export { StatblockImportPreviewModal } from './StatblockImportPreviewModal';
 export { CompendiumEntryTypeSuggester } from './CompendiumEntryTypeSuggester';
 export { SaveChoiceModal } from './SaveChoiceModal';
+export { ManageCompendiumModal } from './ManageCompendiumModal';
+export { SourcePickerModal } from './SourcePickerModal';
+export { SummonPickerModal } from './SummonPickerModal';
+export { SummonCountModal } from './SummonCountModal';

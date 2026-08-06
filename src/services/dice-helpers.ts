@@ -10,26 +10,26 @@ import { Notice } from 'obsidian';
 export function handleAdvantageDisadvantage(
     event: MouseEvent,
     baseDiceString: string,
-    rollTitle: string
+    rollTitle: string,
 ): { diceString: string; rollTitle: string } {
     let advantageString = '';
     let newRollTitle = rollTitle;
 
     // Check for Shift key (add a d6)
     if (event.shiftKey) {
-        advantageString += "+1d6";
-        newRollTitle += " [Advantage]";
+        advantageString += '+1d6';
+        newRollTitle += ' [Advantage]';
     }
 
     // Check for Alt key (subtract a d6)
     if (event.altKey) {
-        advantageString += "-1d6";
-        newRollTitle += " [Disadvantage]";
+        advantageString += '-1d6';
+        newRollTitle += ' [Disadvantage]';
     }
 
     return {
         diceString: `${baseDiceString}${advantageString}`,
-        rollTitle: newRollTitle
+        rollTitle: newRollTitle,
     };
 }
 
@@ -54,7 +54,7 @@ export function displayRollNotice(
     context: string,
     result: string,
     totalValue: number | string,
-    outcomeText?: string
+    outcomeText?: string,
 ): void {
     // Clean up the context by removing any [Advantage] or [Disadvantage] markers
     const cleanContext = context.replace(/\s*\[(Advantage|Disadvantage)\]/g, '');

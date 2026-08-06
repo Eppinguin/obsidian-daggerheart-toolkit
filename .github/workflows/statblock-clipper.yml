@@ -1,42 +1,46 @@
 name: Statblock Clipper
 
 on:
-  pull_request:
-    paths:
-      - 'shared/statblock-format.js'
-      - 'tools/daggerheart-statblock-clipper/**'
-      - '.github/workflows/statblock-clipper.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'shared/statblock-format.js'
-      - 'tools/daggerheart-statblock-clipper/**'
-      - '.github/workflows/statblock-clipper.yml'
-  workflow_dispatch:
+    pull_request:
+        paths:
+            - 'shared/statblock-format.js'
+            - 'tools/daggerheart-statblock-clipper/**'
+            - '.github/workflows/statblock-clipper.yml'
+    push:
+        branches: [main]
+        paths:
+            - 'shared/statblock-format.js'
+            - 'tools/daggerheart-statblock-clipper/**'
+            - '.github/workflows/statblock-clipper.yml'
+    workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tools/daggerheart-statblock-clipper
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: tools/daggerheart-statblock-clipper/package.json
-      - run: npm install
-      - run: npx playwright install --with-deps chromium
-      - run: npm test
-      - run: npm run build
-      - run: npm run validate
-      - run: xvfb-run -a npm run test:browser
-      - run: npm run lint:firefox
-      - run: npm run package
-      - uses: actions/upload-artifact@v4
-        with:
-          name: daggerheart-statblock-clipper
-          path: tools/daggerheart-statblock-clipper/artifacts/*
-          if-no-files-found: error
+    build:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: tools/daggerheart-statblock-clipper
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+              with:
+                  version: 9
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  cache-dependency-path: tools/daggerheart-statblock-clipper/pnpm-lock.yaml
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm exec playwright install --with-deps chromium
+            - run: pnpm run typecheck
+            - run: pnpm test
+            - run: pnpm run build
+            - run: pnpm run validate
+            - run: xvfb-run -a pnpm run test:browser
+            - run: pnpm run lint:firefox
+            - run: pnpm run package
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: daggerheart-statblock-clipper
+                  path: tools/daggerheart-statblock-clipper/artifacts/*
+                  if-no-files-found: error

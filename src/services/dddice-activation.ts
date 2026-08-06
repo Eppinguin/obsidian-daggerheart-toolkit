@@ -31,7 +31,7 @@ export class DddiceActivationModal extends Modal {
         const linkEl = instructionsEl.createEl('a', {
             text: 'dddice.com/activate',
             href: 'https://dddice.com/activate',
-            attr: { target: '_blank' }
+            attr: { target: '_blank' },
         });
         linkEl.addClass('dddice-link');
 
@@ -48,12 +48,11 @@ export class DddiceActivationModal extends Modal {
 
         // Section 2: Continue as Guest
         const guestButtonEl = contentEl.createEl('div', { cls: 'dddice-guest-button-container' });
-        new Setting(guestButtonEl)
-            .addButton(button => button
-                .setButtonText('Continue as Guest')
-                .onClick(async () => {
-                    await this.continueAsGuest();
-                }));
+        new Setting(guestButtonEl).addButton((button) =>
+            button.setButtonText('Continue as Guest').onClick(async () => {
+                await this.continueAsGuest();
+            }),
+        );
 
         // Initialize the activation process for the code flow
         this.startActivation();
@@ -127,9 +126,13 @@ export class DddiceActivationModal extends Modal {
         setTimeout(() => this.updateTimer(), 1000);
     }
 
-    private async generateActivationCode(): Promise<{ code: string, secret: string, expires_at: string }> {
+    private async generateActivationCode(): Promise<{
+        code: string;
+        secret: string;
+        expires_at: string;
+    }> {
         const response = await fetch('https://dddice.com/api/1.0/activate', {
-            method: 'POST'
+            method: 'POST',
         });
 
         if (!response.ok) {
@@ -157,8 +160,8 @@ export class DddiceActivationModal extends Modal {
 
             const response = await fetch(`https://dddice.com/api/1.0/activate/${this.activationCode}`, {
                 headers: {
-                    'Authorization': `Secret ${this.secret}`
-                }
+                    Authorization: `Secret ${this.secret}`,
+                },
             });
 
             if (!response.ok) {
@@ -187,7 +190,7 @@ export class DddiceActivationModal extends Modal {
         try {
             const loadingEl = this.contentEl.createEl('div', {
                 cls: 'dddice-loading',
-                text: 'Setting up dddice...'
+                text: 'Setting up dddice...',
             });
             loadingEl.style.textAlign = 'center';
             loadingEl.style.marginTop = '20px';
@@ -223,16 +226,16 @@ export class DddiceActivationModal extends Modal {
                     this.plugin.settings.dddice.room = newRoom.slug;
                     console.log(`dddice: Created and selected new room '${newRoom.slug}'.`);
                 } else {
-                    throw new Error("Failed to create a new dddice room.");
+                    throw new Error('Failed to create a new dddice room.');
                 }
             }
 
             const [rooms, themes] = await Promise.all([
                 dddice.fetchDddiceRooms(dddiceApi),
-                dddice.fetchDddiceThemes(dddiceApi)
+                dddice.fetchDddiceThemes(dddiceApi),
             ]);
 
-            this.plugin.settings.dddice.rooms = rooms.map(r => ({ slug: r.slug, name: r.name }));
+            this.plugin.settings.dddice.rooms = rooms.map((r) => ({ slug: r.slug, name: r.name }));
             this.plugin.settings.dddice.themes = themes;
 
             if (themes.length > 0) {
@@ -260,7 +263,9 @@ export class DddiceActivationModal extends Modal {
 
     private async continueAsGuest() {
         try {
-            const guestButtonEl = this.contentEl.querySelector('.dddice-guest-button-container .setting-item-control button');
+            const guestButtonEl = this.contentEl.querySelector(
+                '.dddice-guest-button-container .setting-item-control button',
+            );
             if (guestButtonEl) {
                 guestButtonEl.textContent = 'Connecting...';
                 guestButtonEl.setAttribute('disabled', 'true');

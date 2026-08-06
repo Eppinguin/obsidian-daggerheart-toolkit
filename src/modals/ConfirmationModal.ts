@@ -4,7 +4,7 @@ export class ConfirmationModal extends Modal {
     constructor(
         app: App,
         private message: string,
-        private onConfirm: () => Promise<void>
+        private onConfirm: () => Promise<void>,
     ) {
         super(app);
     }
@@ -15,16 +15,16 @@ export class ConfirmationModal extends Modal {
         contentEl.createEl('p', { text: this.message });
 
         new Setting(contentEl)
-            .addButton(btn => btn
-                .setButtonText('Cancel')
-                .onClick(() => this.close()))
-            .addButton(btn => btn
-                .setButtonText('Confirm')
-                .setCta()
-                .onClick(async () => {
-                    await this.onConfirm();
-                    this.close();
-                }));
+            .addButton((btn) => btn.setButtonText('Cancel').onClick(() => this.close()))
+            .addButton((btn) =>
+                btn
+                    .setButtonText('Confirm')
+                    .setCta()
+                    .onClick(async () => {
+                        await this.onConfirm();
+                        this.close();
+                    }),
+            );
     }
 
     onClose() {

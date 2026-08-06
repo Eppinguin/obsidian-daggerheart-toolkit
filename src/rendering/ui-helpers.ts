@@ -1,6 +1,6 @@
 import DaggerheartStatblockPlugin from '../main';
 import { Notice } from 'obsidian';
-import { EVENT_CREATE_COUNTDOWN } from '../constants';
+import { EVENT_CREATE_COUNTDOWN, EVENT_SPEND_FEAR } from '../constants';
 
 /**
  * Renders basic markdown formatting for descriptions.
@@ -28,7 +28,7 @@ export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string,
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i];
 
-            const unorderedMatch = line.match(/^\s*([\*\-\+])\s+(.*)$/);
+            const unorderedMatch = line.match(/^\s*([*\-+])\s+(.*)$/);
             if (unorderedMatch) {
                 const content = unorderedMatch[2].replace(/\*(.*?)\*/g, '<em>$1</em>');
                 if (!inList || listType !== 'ul') {
@@ -73,7 +73,7 @@ export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string,
 
         containerEl.innerHTML = finalHtml;
     } catch (error) {
-        console.error("Error formatting markdown:", error);
+        console.error('Error formatting markdown:', error);
         containerEl.appendText(text);
     }
 }
@@ -85,12 +85,21 @@ export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string,
  * @param containerEl The parent element for the rendered content.
  * @param context A string describing what the roll is for (e.g., an attack or feature name).
  */
-export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: string, containerEl: HTMLElement, context: string) {
-    const pattern = /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear))|\b(Countdown\s*\((Loop\s+)?(.*?)\))/gi;
+export function renderRollableContent(
+    plugin: DaggerheartStatblockPlugin,
+    text: string,
+    containerEl: HTMLElement,
+    context: string,
+) {
+    const pattern =
+        /(\b\d+d\d+(?:\s*[+-]\s*\d+)*\b)|(Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear))|\b(Countdown\s*\((Loop\s+)?(.*?)\))/gi;
     let lastIndex = 0;
     let match;
 
-    const isDiceRollerConfigured = plugin.settings.diceProvider === 'dice-roller' && plugin.settings.enableDiceRoller && plugin.isDiceRollerEnabled;
+    const isDiceRollerConfigured =
+        plugin.settings.diceProvider === 'dice-roller' &&
+        plugin.settings.enableDiceRoller &&
+        plugin.isDiceRollerEnabled;
     const isDddiceConfigured = plugin.settings.diceProvider === 'dddice' && !!plugin.settings.dddice.apiKey;
     const isRollable = isDiceRollerConfigured || isDddiceConfigured;
 
@@ -109,28 +118,52 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
 
         if (dicePart && isRollable) {
             const diceString = dicePart.replace(/\s/g, '');
-            containerEl.createSpan({
-                text: dicePart,
-                cls: 'dh-rollable-dice',
-                title: `Click to roll ${diceString} for ${context}`
-            }).addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Pass the context of the roll to the main dice rolling function
-                // Extract trait name from context if possible (e.g., "Weapon Attack with Strength")
-                const traitMatch = context.match(/with\s+(\w+)(?:\s|$)/i);
-                const traitName = traitMatch ? traitMatch[1] : undefined;
-                plugin.rollDice(diceString, context, traitName);
-            });
+            containerEl
+                .createSpan({
+                    text: dicePart,
+                    cls: 'dh-rollable-dice',
+                    title: `Click to roll ${diceString} for ${context}`,
+                })
+                .addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Pass the context of the roll to the main dice rolling function
+                    // Extract trait name from context if possible (e.g., "Weapon Attack with Strength")
+                    const traitMatch = context.match(/with\s+(\w+)(?:\s|$)/i);
+                    const traitName = traitMatch ? traitMatch[1] : undefined;
+                    plugin.rollDice(diceString, context, traitName);
+                });
         } else if (costPart) {
-            containerEl.createEl('strong', {
+            // "Spend a Fear" / "Spend 2 Fear" drives the encounter's Fear
+            // tracker directly: it is the one cost in this pattern the plugin
+            // actually holds state for. Hope and Stress belong to the players'
+            // sheets and to the individual adversary track respectively, so
+            // those stay as plain emphasis.
+            const fearMatch = costPart.match(/^Spend\s+(a|\d+)\s+fear$/i);
+            const costEl = containerEl.createEl('strong', {
                 text: costPart,
-                cls: 'dh-feature-cost-text dh-interactive-cost'
+                cls: 'dh-feature-cost-text dh-interactive-cost',
             });
+
+            if (fearMatch) {
+                const amount = /^a$/i.test(fearMatch[1]) ? 1 : parseInt(fearMatch[1], 10);
+                costEl.addClass('dh-spend-fear');
+                costEl.title = `Click to spend ${amount} Fear`;
+                costEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    costEl.dispatchEvent(
+                        new CustomEvent(EVENT_SPEND_FEAR, {
+                            detail: { amount, context },
+                            bubbles: true,
+                            composed: true,
+                        }),
+                    );
+                });
+            }
         } else if (countdownPart && countdownValue) {
             const countdownEl = containerEl.createSpan({
                 text: countdownPart,
                 cls: 'dh-rollable-dice',
-                title: `Click to create a Countdown`
+                title: `Click to create a Countdown`,
             });
 
             countdownEl.addEventListener('click', async (e) => {
@@ -154,21 +187,27 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
                 }
 
                 if (finalValue !== null) {
-                    const countdownName = `${cleanName}${countdownLoop ? ` (${countdownLoop.trim()})` : ''}`;
-                    containerEl.dispatchEvent(new CustomEvent(EVENT_CREATE_COUNTDOWN, {
-                        detail: {
-                            name: countdownName || 'Countdown',
-                            value: finalValue
-                        },
-                        bubbles: true,
-                        composed: true
-                    }));
+                    // The loop used to be concatenated onto the name, which left
+                    // the tracker unable to tell a looping countdown from one
+                    // that merely says "Loop" in its title. It travels as data
+                    // now, so the name stays the feature's own.
+                    containerEl.dispatchEvent(
+                        new CustomEvent(EVENT_CREATE_COUNTDOWN, {
+                            detail: {
+                                name: cleanName || 'Countdown',
+                                value: finalValue,
+                                start: trimmedValue,
+                                loops: !!countdownLoop,
+                            },
+                            bubbles: true,
+                            composed: true,
+                        }),
+                    );
                 } else {
                     new Notice(`Invalid countdown value: "${countdownValue}"`);
                 }
             });
-        }
-        else {
+        } else {
             containerEl.appendText(match[0]);
         }
 
@@ -192,13 +231,22 @@ export function renderRollableContent(plugin: DaggerheartStatblockPlugin, text: 
  * @param updateCallback A function to call when the value is updated.
  */
 export function createInteractiveTrack(
-    parentEl: HTMLElement, label: string, maxValue: number, trackIdPrefix: string,
-    currentValue: number, updateCallback: (newValue: number) => void
+    parentEl: HTMLElement,
+    label: string,
+    maxValue: number,
+    trackIdPrefix: string,
+    currentValue: number,
+    updateCallback: (newValue: number) => void,
 ) {
-    const trackDiv = parentEl.createDiv({ cls: `dh-interactive-track dh-${label.toLowerCase()}-track` });
+    const trackDiv = parentEl.createDiv({
+        cls: `dh-interactive-track dh-${label.toLowerCase()}-track`,
+    });
     trackDiv.createSpan({ text: label.toUpperCase(), cls: 'dh-track-label' });
     const controlsDiv = trackDiv.createDiv({ cls: 'dh-track-controls' });
-    const decrementButton = controlsDiv.createEl('button', { text: '−', cls: 'dh-track-btn dh-track-btn-decrement' });
+    const decrementButton = controlsDiv.createEl('button', {
+        text: '−',
+        cls: 'dh-track-btn dh-track-btn-decrement',
+    });
     const pipsContainer = controlsDiv.createDiv({ cls: 'dh-pips-container' });
     const pips: HTMLDivElement[] = [];
 
@@ -214,20 +262,23 @@ export function createInteractiveTrack(
         if (i < currentValue) pip.classList.add('dh-pip-marked');
         pip.addEventListener('click', () => {
             const clickedIndex = parseInt(pip.dataset.index!);
-            const currentMarkedCount = pips.filter(p => p.classList.contains('dh-pip-marked')).length;
+            const currentMarkedCount = pips.filter((p) => p.classList.contains('dh-pip-marked')).length;
             const isLastPip = clickedIndex === currentMarkedCount - 1;
             updatePipsAndState(pip.classList.contains('dh-pip-marked') && isLastPip ? clickedIndex : clickedIndex + 1);
         });
         pips.push(pip);
     }
 
-    const incButton = controlsDiv.createEl('button', { text: '+', cls: 'dh-track-btn dh-track-btn-increment' });
+    const incButton = controlsDiv.createEl('button', {
+        text: '+',
+        cls: 'dh-track-btn dh-track-btn-increment',
+    });
     decrementButton.addEventListener('click', () => {
-        const currentMarkedCount = pips.filter(p => p.classList.contains('dh-pip-marked')).length;
+        const currentMarkedCount = pips.filter((p) => p.classList.contains('dh-pip-marked')).length;
         if (currentMarkedCount > 0) updatePipsAndState(currentMarkedCount - 1);
     });
     incButton.addEventListener('click', () => {
-        const currentMarkedCount = pips.filter(p => p.classList.contains('dh-pip-marked')).length;
+        const currentMarkedCount = pips.filter((p) => p.classList.contains('dh-pip-marked')).length;
         if (currentMarkedCount < maxValue) updatePipsAndState(currentMarkedCount + 1);
     });
 }

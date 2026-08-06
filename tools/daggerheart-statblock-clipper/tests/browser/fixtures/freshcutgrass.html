@@ -1,14 +1,123 @@
-<!doctype html><html><head><meta charset="utf-8"><title>FreshCutGrass fixture</title><style>body{font-family:sans-serif}.card{width:520px;padding:20px;border:1px solid #ddd}</style></head><body>
-<article class="card statblock-card">
-  <h1>SHADOW HAG</h1>
-  <p>A fey creature that wields shadows and secrets</p>
-  <div><span>Tier</span><span>2</span></div>
-  <div><span>Type</span><span>Solo</span></div>
-  <h3>Motives &amp; Tactics</h3><p>Feed on nightmares, summon hellspawn, make deals</p>
-  <div><strong>Difficulty</strong><span>16</span></div>
-  <section><h3>Standard Attack</h3><p>Moon Staff</p><p>Range: Far</p><p>Damage: 2d10+3</p><p>Damage Type: Magical</p><p>Attack Mod: +2</p></section>
-  <section><h3>Damage Thresholds</h3><p>Minor 1 HP</p><p>14</p><p>Major 2 HP</p><p>28</p><p>Severe 3 HP</p></section>
-  <div><strong>HP</strong><span>8</span></div><div><strong>Stress</strong><span>6</span></div>
-  <section><h3>Features</h3><h4>Passives</h4><ul><li><strong>Fey Disguise</strong><p>The Hag can take on another creature's appearance.</p></li><li><strong>Relentless (3)</strong><p>The Hag can be spotlighted up to three times per GM turn.</p></li></ul><h4>Actions</h4><ul><li><strong>Waking Nightmare</strong><p>Fear 1</p><p>Force targets to relive a childhood nightmare.</p></li></ul></section>
-</article>
-</body></html>
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>FreshCutGrass fixture</title>
+        <style>
+            .grid {
+                display: block;
+            }
+            .MuiCard-root {
+                width: 520px;
+                padding: 20px;
+                border: 1px solid #ddd;
+                margin-bottom: 12px;
+            }
+        </style>
+    </head>
+    <!--
+        Mirrors https://freshcutgrass.app/homebrew?id=… : a grid of preview
+        cards with the targeted statblock expanded in place. Structure and
+        label formatting are copied from the live page.
+
+        Two things this reproduces that the previous fixture did not:
+          * the expanded card is a plain MuiCardContent-root div, NOT a dialog,
+            so the generic scope selectors match nothing;
+          * neighbouring preview cards sit in the same document, so a parser
+            that falls back to <body> bleeds their text into the result.
+    -->
+    <body>
+        <div class="grid">
+            <!-- Preview card: no FEATURES or HP & STRESS. -->
+            <div class="MuiPaper-root MuiCard-root">
+                <div class="MuiCardContent-root">
+                    <div>TRAVERSAL</div>
+                    <div>1</div>
+                    <h2>DENSE JUNGLE</h2>
+                    <p>The dense jungle is filled with thorny shrubs and danger lurking about.</p>
+                    <strong>Potential Adversaries:</strong>
+                    <p>Deeproot Defender, Minor Treant, Sylvan Soldier</p>
+                </div>
+            </div>
+
+            <!-- Preview card carrying its own Motives &amp; Tactics, which used
+                 to bleed into the expanded card's fields. -->
+            <div class="MuiPaper-root MuiCard-root">
+                <div class="MuiCardContent-root">
+                    <div>BRUISER</div>
+                    <div>1</div>
+                    <h2>GIANT SPIDER</h2>
+                    <p>A human-sized spider with poisonous fangs</p>
+                    <strong>Motives &amp; Tactics:</strong>
+                    <p>Ambush, Feed, Grapple, Poison</p>
+                </div>
+            </div>
+
+            <!-- The expanded statblock: the only card with both FEATURES and
+                 HP &amp; STRESS. Labels are colon-suffixed with the value on the
+                 next line, and "Experience" is singular, as the live page renders. -->
+            <div class="MuiPaper-root MuiCard-root">
+                <div class="MuiCardContent-root">
+                    <h1>SHADOW HAG</h1>
+                    <p>A fey creature that wields shadows and secrets</p>
+                    <div><span>Tier</span><span>2</span></div>
+                    <div><span>Type</span><span>Solo</span></div>
+                    <!-- Stat line and attack exactly as the live page emits
+                         them: one div, <strong> labels, <br> separators. -->
+                    <div class="MuiBox-root">
+                        <strong>Difficulty:</strong> 16 <br /><strong>Attack:</strong> +2 <br /><strong
+                            >Moon Staff:</strong
+                        >
+                        Far <span>|</span> 2d10+3 <br />
+                    </div>
+                    <div class="MuiStack-root">
+                        <div class="MuiBox-root">
+                            <strong>Experience:</strong>
+                            <div>Ageless Knowledge +2</div>
+                        </div>
+                        <div class="MuiBox-root">
+                            <strong>Motives &amp; Tactics:</strong>
+                            <div>Feed on nightmares, summon hellspawn, make deals</div>
+                        </div>
+                    </div>
+                    <h3>FEATURES</h3>
+                    <p>Fey Disguise - Passive</p>
+                    <p>The Hag can take on the appearance of a creature similar in size to them.</p>
+                    <!-- Threshold block as the live page emits it: each label
+                         and value in its own div, so innerText yields separate
+                         lines rather than "MINOR1 HP14". -->
+                    <h3>HP &amp; STRESS</h3>
+                    <div class="MuiBox-root">
+                        <div class="MuiBox-root">minor <br />1 HP</div>
+                        <div class="MuiBox-root">14</div>
+                        <div class="MuiBox-root">major <br />2 HP</div>
+                        <div class="MuiBox-root">28</div>
+                        <div class="MuiBox-root">severe <br />3 HP</div>
+                    </div>
+                    <div class="MuiBox-root">
+                        <div class="MuiBox-root">
+                            <div class="MuiBox-root">HP:</div>
+                            <div class="MuiBox-root">8</div>
+                        </div>
+                        <div class="MuiBox-root">
+                            <div class="MuiBox-root">STRESS:</div>
+                            <div class="MuiBox-root">6</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trailing preview card, to catch bleed in the other direction. -->
+            <div class="MuiPaper-root MuiCard-root">
+                <div class="MuiCardContent-root">
+                    <div>TRAVERSAL</div>
+                    <div>1</div>
+                    <h2>ANCIENT TUNNELS</h2>
+                    <p>A series of ancient tunnels with various hazards to traverse.</p>
+                    <strong>Tone &amp; feel:</strong>
+                    <p>Damp, dark, water droplets echoing</p>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

@@ -19,14 +19,18 @@ async function readClipboardText(): Promise<string> {
     }
 }
 
-async function openClipboardImport(plugin: DaggerheartStatblockPlugin, sourceLabel: string): Promise<void> {
+async function openClipboardImport(
+    plugin: DaggerheartStatblockPlugin,
+    sourceLabel: string,
+    addToEncounter = false,
+): Promise<void> {
     try {
         const text = await readClipboardText();
         if (!text.trim()) {
             new Notice('The clipboard is empty. Copy statblock JSON first.');
             return;
         }
-        if (!openStatblockImportPreviewFromJson(plugin.app, plugin, text, sourceLabel)) {
+        if (!openStatblockImportPreviewFromJson(plugin.app, plugin, text, sourceLabel, { addToEncounter })) {
             new Notice('The clipboard does not contain a supported Daggerheart statblock.');
         }
     } catch (error) {
@@ -42,15 +46,22 @@ export function installStatblockImportIntegration(plugin: DaggerheartStatblockPl
     plugin.addCommand({
         id: 'import-statblocks-from-clipboard',
         name: 'Import Statblocks from Clipboard',
-        callback: () => openClipboardImport(plugin, 'clipboard')
+        callback: () => openClipboardImport(plugin, 'clipboard'),
     });
 
     const protocolPlugin = plugin as DaggerheartStatblockPlugin & {
-        registerObsidianProtocolHandler?: (action: string, handler: (params: Record<string, string>) => void | Promise<void>) => void;
+        registerObsidianProtocolHandler?: (
+            action: string,
+            handler: (params: Record<string, string>) => void | Promise<void>,
+        ) => void;
     };
-    protocolPlugin.registerObsidianProtocolHandler?.('daggerheart-import', async params => {
+    protocolPlugin.registerObsidianProtocolHandler?.('daggerheart-import', async (params) => {
         const source = params.source ? `browser extension (${params.source})` : 'browser extension';
-        await openClipboardImport(plugin, source);
+        // The current extension never sends `target=encounter`: the review
+        // screen owns that choice, since only this side knows whether an
+        // encounter is open. Still honoured as a pre-tick so an older installed
+        // extension keeps working.
+        await openClipboardImport(plugin, source, params.target === 'encounter');
     });
 }
 

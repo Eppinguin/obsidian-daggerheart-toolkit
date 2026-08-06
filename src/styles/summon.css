@@ -1,0 +1,101 @@
+/* Summoning: features whose text brings creatures into play get a chip under
+   the description that adds them in one click.
+
+   The chip sits on its own row rather than inline in the prose. A summon phrase
+   spans several words ("summon 1d4 Bladed Guards"), and making that much
+   running text clickable both hurt readability and gave an awkward hit target
+   that reflowed across lines. */
+
+.dh-summon-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-1, 4px);
+    margin-top: var(--size-4-2, 8px);
+}
+
+.dh-summon-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    /* Overrides Obsidian's default button metrics, which are sized for dialogs
+       and would dwarf the feature text this chip belongs to. */
+    height: auto;
+    padding: 3px 9px 3px 7px;
+    border: none;
+    border-radius: var(--radius-s);
+    background-color: var(--background-modifier-hover);
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+    color: var(--text-normal);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-medium);
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        background-color 0.12s ease-in-out,
+        box-shadow 0.12s ease-in-out;
+}
+
+.dh-summon-chip:hover {
+    background-color: var(--interactive-accent);
+    box-shadow: inset 0 0 0 1px var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+
+.dh-summon-chip:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
+}
+
+.dh-summon-chip-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-accent);
+}
+
+.dh-summon-chip:hover .dh-summon-chip-icon {
+    color: inherit;
+}
+
+.dh-summon-chip-icon .svg-icon {
+    width: 13px;
+    height: 13px;
+}
+
+/* The creature name is the part the GM scans for, so it carries the weight
+   while the count stays quiet. */
+.dh-summon-chip-label {
+    white-space: nowrap;
+}
+
+/* A summon the text left to the GM ("Tier 1 adversaries"). Dashed, because it
+   opens a picker rather than adding something — the same visual language the
+   rest of the card uses for "this does something when clicked". */
+.dh-summon-chip.is-unresolved {
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+    background-color: transparent;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.dh-summon-chip.is-unresolved:hover {
+    background-color: var(--background-modifier-hover);
+    box-shadow: inset 0 0 0 1px var(--text-muted);
+    color: var(--text-normal);
+}
+
+/* Shown when a feature rolls for its count but no dice roller is configured,
+   so the GM knows which dice to roll before typing the result. */
+.dh-summon-count-hint {
+    margin-top: 0;
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+/* Tier and role beneath each name in the picker, so a GM choosing a stand-in
+   can tell the options apart without leaving the modal. */
+.dh-summon-suggestion-meta {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+}

@@ -15,14 +15,14 @@ export function addImportExportButtons(
     container: HTMLElement,
     plugin: DaggerheartStatblockPlugin,
     contentType: ContentType,
-    getActiveContentId?: () => string | null
+    getActiveContentId?: () => string | null,
 ) {
     const floatingContainer = container.createDiv({ cls: 'dh-floating-import-export' });
 
     // Import button
     const importBtn = floatingContainer.createEl('button', {
         cls: 'dh-import-export-btn',
-        attr: { 'aria-label': `Import ${CONTENT_TYPE_INFO[contentType].displayName}` }
+        attr: { 'aria-label': `Import ${CONTENT_TYPE_INFO[contentType].displayName}` },
     });
     setIcon(importBtn, 'download');
     importBtn.addEventListener('click', () => {
@@ -32,7 +32,7 @@ export function addImportExportButtons(
     // Export button (only shown if we have content to export)
     const exportBtn = floatingContainer.createEl('button', {
         cls: 'dh-import-export-btn',
-        attr: { 'aria-label': `Export ${CONTENT_TYPE_INFO[contentType].displayName}` }
+        attr: { 'aria-label': `Export ${CONTENT_TYPE_INFO[contentType].displayName}` },
     });
     setIcon(exportBtn, 'upload');
     exportBtn.addEventListener('click', () => {
@@ -53,7 +53,7 @@ export function addImportExportButtons(
 export function createImportExportButton(container: HTMLElement, icon: string, tooltip: string, onClick: () => void) {
     const button = container.createEl('button', {
         cls: 'dh-import-export-btn',
-        attr: { 'aria-label': tooltip }
+        attr: { 'aria-label': tooltip },
     });
     setIcon(button, icon);
     button.addEventListener('click', onClick);

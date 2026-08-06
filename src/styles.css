@@ -1,7 +1,34 @@
 @import "./styles/manage-encounters.css";
+@import "./styles/manage-compendium.css";
 @import "./styles/import-export.css";
 @import "./styles/dddice-activation.css";
 @import "./styles/dicetray.css";
+@import "./styles/summon.css";
+
+/* -----------------------------------------------------------------------------
+   0. DESIGN TOKENS
+   Scoped to the view root so they also reach the DiceTray, which renders into
+   containerEl rather than uiContainer.
+   ----------------------------------------------------------------------------- */
+.dh-encounter-view {
+    /* Condition chips */
+    --dh-chip-h: 18px;
+    --dh-chip-pad-x: 5px;
+    --dh-chip-gap: 3px;
+
+    /* Control sizing: inline controls are deliberately smaller than header ones */
+    --dh-micro-btn: 20px;
+    --dh-micro-icon: 14px;
+    --dh-icon-btn: 28px;
+
+    /* Card sizing */
+    --dh-card-w: 300px;
+
+    /* Role identity. Reassigned per role family by the .dh-type-* rules in §7a;
+       the values here are the fallback for homebrew and untyped content. */
+    --dh-accent: var(--text-muted);
+    --dh-accent-bg: transparent;
+}
 
 .dh-theme-selector-container {
     display: flex;
@@ -341,22 +368,31 @@
     height: 100%;
 }
 
+/* The header wraps rather than squeezing: docked in a narrow side panel there
+   is not room for title, budget, Fear and the view controls on one line. */
 .dh-encounter-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
     padding: var(--size-4-2);
     border-bottom: 1px solid var(--background-modifier-border);
     flex-shrink: 0;
-    gap: var(--size-4-4);
+    gap: var(--size-4-2) var(--size-4-3);
 }
 
 .dh-title-fear-wrapper {
     display: flex;
     align-items: center;
-    gap: var(--size-4-4);
+    flex-wrap: wrap;
+    gap: var(--size-4-2) var(--size-4-3);
     flex-grow: 1;
     min-width: 0;
+}
+
+.dh-right-side-trackers {
+    flex-wrap: wrap;
+    gap: var(--size-4-2) var(--size-4-3);
 }
 
 .dh-encounter-main-interface {
@@ -367,16 +403,35 @@
     padding: var(--size-4-2) var(--size-4-2) var(--size-4-2) 0;
 }
 
+/* Cards are laid out in a single row and each scrolls internally, so the
+   encounter area only ever scrolls horizontally: the live-state footer of every
+   card stays put no matter how long its statblock is. */
 .dh-encounter-area {
-    display: flex; 
-    flex-wrap: nowrap; 
-    gap: var(--size-4-3, 15px); 
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--size-4-3, 15px);
     align-items: stretch;
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: var(--size-4-3);
     flex-grow: 1;
+    min-height: 0;
     height: calc(100% - var(--size-4-3));
+}
+
+.dh-encounter-area .dh-adversary-group-container {
+    flex: 0 0 var(--dh-card-w);
+    max-width: 100%;
+    /* Never taller than the encounter area: the card scrolls internally instead
+       of pushing the layout past the bottom of the view. */
+    max-height: 100%;
+    min-height: 0;
+}
+
+.dh-encounter-area .dh-adversary-instance-card {
+    width: 100%;
+    max-height: 100%;
+    min-height: 0;
 }
 
 .dh-encounter-controls {
@@ -412,7 +467,16 @@
     background-color: var(--interactive-accent-hover);
 }
 
-.dh-panel-controls .dh-icon-button { 
+/* Keeps the header buttons on one row: the flex header would otherwise
+   squeeze this box until the buttons wrapped into a vertical stack. */
+.dh-panel-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-2-1, 2px);
+    flex-shrink: 0;
+}
+
+.dh-panel-controls .dh-icon-button {
     background-color: transparent;
     border: none;
     color: var(--text-muted);
@@ -424,6 +488,113 @@
 .dh-panel-controls .dh-icon-button:hover {
     background-color: var(--background-modifier-hover);
     color: var(--text-normal);
+}
+
+/* Inline per-instance controls. Deliberately smaller than header controls:
+   these sit next to the instance name and must not compete with it. */
+.dh-additional-tracker-controls .dh-icon-button {
+    width: var(--dh-micro-btn);
+    height: var(--dh-micro-btn);
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.55;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.dh-additional-tracker-controls .dh-icon-button:hover {
+    opacity: 1;
+}
+
+.dh-additional-tracker-controls .dh-icon-button .svg-icon {
+    width: var(--dh-micro-icon);
+    height: var(--dh-micro-icon);
+}
+
+/* Tier scaling: pick a tier directly rather than stepping through them, so the
+   row doubles as a readout of where this adversary sits.
+
+   It drops onto its own line beneath the control cluster rather than extending
+   it sideways, which would push the row across the card title. */
+.dh-tier-controls {
+    display: none;
+    position: absolute;
+    top: calc(100% + var(--size-4-1));
+    right: 0;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: var(--radius-s);
+    background-color: var(--background-secondary);
+    box-shadow: 0 0 0 1px var(--background-modifier-border), var(--shadow-s);
+}
+
+.dh-tier-controls.is-visible {
+    display: flex;
+}
+
+.dh-tier-btn {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: var(--radius-s);
+    background-color: transparent;
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.dh-tier-btn:hover {
+    background-color: var(--background-modifier-hover);
+    color: var(--text-normal);
+}
+
+/* The adversary's published tier, so "back to normal" is visible at a glance. */
+.dh-tier-btn.is-base {
+    color: var(--text-normal);
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+}
+
+.dh-tier-btn.is-current {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    box-shadow: none;
+}
+
+.dh-tier-btn.is-current:hover {
+    background-color: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
+}
+
+.dh-tier-reset-btn {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    margin-left: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dh-tier-reset-btn .svg-icon {
+    width: 12px;
+    height: 12px;
+}
+
+/* A scaled adversary no longer matches its published statblock. Mark the
+   toggle so that is apparent without opening the controls. */
+.dh-card-header-controls .dh-scale-toggle-btn.is-scaled {
+    color: var(--color-orange);
+    opacity: 1;
 }
 
 .dh-add-to-group-button-container {
@@ -467,49 +638,92 @@
     flex-shrink: 0;
 }
 
-.dh-fear-label {
-    font-size: var(--font-ui-small);
-    font-weight: var(--font-semibold);
-}
-
-.dh-fear-controls {
-    display: flex;
-    align-items: center;
+/* Compact numeric readout: the header is often narrow, and Fear needs to stay
+   legible there rather than degrade into a squeezed pip row. */
+.dh-fear-tracker {
     gap: var(--size-4-1);
 }
 
+.dh-fear-label {
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-semibold);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
 .dh-fear-btn {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    border: none;
+    border-radius: var(--radius-s);
+    background-color: var(--background-modifier-border);
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    line-height: 1;
     cursor: pointer;
-    font-size: var(--font-ui-medium);
+    box-shadow: none;
 }
 
 .dh-fear-btn:hover {
-    background-color: var(--interactive-hover);
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
 }
 
 .dh-fear-value {
-    min-width: 24px;
+    min-width: 20px;
     text-align: center;
     font-weight: var(--font-bold);
     font-size: var(--font-ui-medium);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-purple);
 }
 
 /* Budget tracker */
 .dh-budget-tracker {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     justify-content: center;
-    gap: var(--size-4-1);
+    gap: 3px;
     flex-shrink: 0;
-    padding: var(--size-2-2) var(--size-4-2);
+    min-width: 84px;
+    padding: var(--size-2-1) var(--size-4-2);
     border-radius: var(--radius-s);
     cursor: pointer;
     border: 1px solid transparent;
+}
+
+.dh-budget-readout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--size-4-1);
+}
+
+/* A fill bar answers "how full is this encounter" without reading the digits. */
+.dh-budget-bar {
+    height: 4px;
+    border-radius: 2px;
+    background-color: var(--background-modifier-border);
+    overflow: hidden;
+}
+
+.dh-budget-bar-fill {
+    height: 100%;
+    width: var(--dh-budget-pct, 0%);
+    background-color: var(--color-green);
+    transition: width 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+.dh-budget-tracker.is-over .dh-budget-bar-fill {
+    background-color: var(--color-red);
 }
 
 .dh-budget-tracker:hover {
@@ -625,16 +839,7 @@
    7. ADVERSARY CARDS AND GROUPS
    ----------------------------------------------------------------------------- */
 /* Adversary group */
-.dh-adversary-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-2);
-    flex-shrink: 0;
-    width: 280px;
-    align-items: stretch;
-}
-
-.dh-adversary-group-container { 
+.dh-adversary-group-container {
     display: flex;
     flex-direction: column; 
     flex-shrink: 0;
@@ -648,54 +853,448 @@
     border: var(--background-primary-alt) solid 1px;
     border-radius: var(--radius-m, 8px);
     padding: 0; 
-    width: 300px; 
+    width: var(--dh-card-w);
     box-shadow: var(--shadow-m);
     display: flex;
     flex-direction: column;
-    position: relative; 
+    position: relative;
     flex-grow: inherit;
     max-height: 100%;
-    overflow-y: auto;
+    /* The scroll boundary lives on .dh-card-static-region, not here, so the
+       live state block below it stays pinned. */
+    overflow: hidden;
 }
 
-.dh-remove-instance-btn { 
+/* -----------------------------------------------------------------------------
+   7a. ROLE IDENTITY
+   A card's role is what a GM needs first when scanning the table: whether this
+   is the Solo that can end someone or one of four disposable Minions. The stripe
+   carries that pre-attentively, the chip names it.
+
+   Each rule only reassigns the two tokens; the stripe and chip below consume
+   them. Unknown and homebrew types match nothing here and inherit the neutral
+   fallback from §0, so they stay legible rather than breaking.
+
+   Fourteen published families share eight hues. At 3px, hues that close together
+   are not tellable apart, so roles that play alike are deliberately grouped:
+   separating them would cost recognition and buy nothing.
+   ----------------------------------------------------------------------------- */
+.dh-encounter-view .dh-type-solo {
+    --dh-accent: var(--color-red);
+    --dh-accent-bg: rgba(var(--color-red-rgb), 0.15);
+}
+
+.dh-encounter-view .dh-type-bruiser {
+    --dh-accent: var(--color-orange);
+    --dh-accent-bg: rgba(var(--color-orange-rgb), 0.15);
+}
+
+.dh-encounter-view .dh-type-leader {
+    --dh-accent: var(--color-purple);
+    --dh-accent-bg: rgba(var(--color-purple-rgb), 0.15);
+}
+
+.dh-encounter-view .dh-type-horde {
+    --dh-accent: var(--color-yellow);
+    --dh-accent-bg: rgba(var(--color-yellow-rgb), 0.15);
+}
+
+.dh-encounter-view .dh-type-minion {
+    --dh-accent: var(--color-green);
+    --dh-accent-bg: rgba(var(--color-green-rgb), 0.15);
+}
+
+/* Standard, and the environment families, which the chip text disambiguates. */
+.dh-encounter-view .dh-type-standard,
+.dh-encounter-view .dh-type-event,
+.dh-encounter-view .dh-type-exploration,
+.dh-encounter-view .dh-type-traversal {
+    --dh-accent: var(--color-blue);
+    --dh-accent-bg: rgba(var(--color-blue-rgb), 0.15);
+}
+
+/* Positional threats. */
+.dh-encounter-view .dh-type-ranged,
+.dh-encounter-view .dh-type-skulk {
+    --dh-accent: var(--color-cyan);
+    --dh-accent-bg: rgba(var(--color-cyan-rgb), 0.15);
+}
+
+/* Roles that shape a scene rather than deal damage. */
+.dh-encounter-view .dh-type-support,
+.dh-encounter-view .dh-type-social {
+    --dh-accent: var(--color-pink);
+    --dh-accent-bg: rgba(var(--color-pink-rgb), 0.15);
+}
+
+/* The role tint.
+   The card carries no accent stripe of its own. The feature cards below it use
+   a coloured left border to mark Action/Reaction/Passive, so a second stripe in
+   the same column said "role" in exactly the visual language the feats use for
+   something else — two different meanings competing at the same edge.
+
+   The hue washes the title row instead. Kept to a shallow gradient that fades
+   out by the role chip rather than a filled band across both header rows: a
+   solid block reads as chrome, costs real vertical space in a column where
+   every row competes with the statblock, and boxes in a title that already
+   wraps to two lines on longer names.
+
+   Applied to existing rows rather than a new wrapper: the header controls float
+   over this area and their clearance is measured from the DOM (see
+   syncCardControlsWidth), so adding an element here would move the title. The
+   negative insets undo the static region's padding so the wash spans the full
+   card width instead of sitting inset. */
+.dh-encounter-view .dh-instance-card-content .dh-header {
+    /* Pinned to the top of the scroll container so the name and its role hue stay
+       put while a long feats list scrolls under them. Scrolling a card used to
+       lose both — with several cards side by side, the one thing a GM must never
+       have to scroll back for is which adversary they are reading.
+
+       The opaque colour is painted under the accent gradient rather than beside
+       it: `background-color` sits below `background-image` on the same element,
+       so one element gives both the tint and the cover the rows need. */
+    position: sticky;
+    /* Pulled up by the region's own top padding so the header sits flush against
+       the scroll edge. Without this the negative top margin leaves a 12px gap
+       above the pinned header that scrolling rows show through. */
+    top: calc(-1 * var(--size-4-3, 12px));
+    z-index: 2;
+    background-color: var(--background-primary);
+    background-image: linear-gradient(to bottom, var(--dh-accent-bg), transparent);
+    margin: calc(-1 * var(--size-4-3, 12px)) calc(-1 * var(--size-4-3, 12px)) 0;
+    padding: var(--size-4-3, 12px) var(--size-4-3, 12px) var(--size-4-1, 4px);
+}
+
+/* The fade that ends the header.
+   The header's opaque background used to stop dead at its bottom edge, which
+   pinned gives a hard line with half-cut glyphs sliding under it. This strip
+   continues that background past the edge and dissolves it, so rows disappear
+   into the header instead of being sliced by it.
+
+   It hangs *below* the header rather than inside it, so it must not exist when
+   there is nothing scrolling under: at rest it would cover the top 12px of the
+   role chip. `animation-timeline: scroll()` runs the strip's fade-in off the
+   card's own scroll position — 0 opacity at the top, full by the time the
+   header has anything to cover. Browsers without scroll-driven animations get
+   the @supports fallback below.
+
+   A pseudo-element rather than a real one: the header controls are positioned
+   against the card and their clearance is measured from the DOM (see
+   syncCardControlsWidth), so nothing new may enter the header's box. */
+.dh-encounter-view .dh-instance-card-content .dh-header::after {
+    content: "";
     position: absolute;
-    top: var(--size-4-1, 5px); 
-    right: var(--size-4-1, 5px); 
-    background-color: transparent; 
-    color: var(--text-faint); 
-    border: none; 
-    border-radius: var(--radius-s); 
-    width: 20px; 
-    height: 20px; 
-    line-height: 18px; 
-    text-align: center;
-    font-size: var(--font-ui-smaller, 12px); 
-    cursor: pointer;
-    z-index: 10;
-    opacity: 0.6; 
-    transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
+    /* Spans the full card width — the header's negative side margins are already
+       undone by its padding, so inset 0 here follows the padding box. */
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: var(--size-4-3, 12px);
+    background-image: linear-gradient(to bottom,
+        var(--background-primary) 0%,
+        rgba(0, 0, 0, 0) 100%);
+    pointer-events: none;
+    opacity: 0;
 }
 
-.dh-remove-instance-btn:hover { 
-    background-color: var(--background-modifier-hover); 
-    color: var(--text-normal);
-    opacity: 1;
+@supports (animation-timeline: scroll()) {
+    .dh-encounter-view .dh-instance-card-content .dh-header::after {
+        animation: dh-header-fade-in linear both;
+        animation-timeline: scroll(nearest block);
+        /* Full strength within the first few pixels of scroll: the strip's job
+           starts the moment anything passes beneath it. */
+        animation-range: 0 var(--size-4-3, 12px);
+    }
+}
+
+@keyframes dh-header-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Without scroll-driven animations there is no way to know from CSS whether the
+   card is scrolled, so the strip stays on permanently and the 12px it costs is
+   taken out of the gap below the header instead of off the role chip. Slightly
+   tighter than the scroll-aware path, and no overlap either way. */
+@supports not (animation-timeline: scroll()) {
+    .dh-encounter-view .dh-instance-card-content .dh-header::after {
+        opacity: 1;
+    }
+
+    .dh-encounter-view .dh-card-static-region > .dh-card-role-text {
+        margin-top: var(--size-4-3, 12px);
+    }
+}
+
+/* The role chip already carries the accent colour, so the line it sits on needs
+   no tint of its own — only tightened spacing now that the title row above is
+   shallower. */
+.dh-encounter-view .dh-card-static-region > .dh-card-role-text {
+    margin-bottom: var(--size-4-2, 8px);
+    padding-top: 0;
+}
+
+.dh-card-role-text .dh-role-chip {
+    display: inline-block;
+    padding: var(--size-2-1) var(--size-2-2);
+    border-radius: var(--radius-s);
+    background-color: var(--dh-accent-bg);
+    color: var(--dh-accent);
+    font-weight: var(--font-bold);
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+}
+
+.dh-card-role-text .dh-card-tier-text {
+    color: var(--text-muted);
+    font-weight: var(--font-semibold);
+}
+
+/* Statblock text stays selectable (replaces inline styles set in TS) */
+.dh-editor-statblock,
+.dh-instance-card-content {
+    user-select: text;
+}
+
+.dh-feature-title {
+    font-style: italic;
 }
 
 /* Card content */
-.dh-instance-card-content { 
-    background-color: var(--background-primary); 
-    border: none; 
-    border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px); 
-    padding: var(--size-4-3, 12px);
+.dh-instance-card-content {
+    background-color: var(--background-primary);
+    border: none;
+    border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px);
+    /* Padding lives on the child regions so the pinned footer can span the
+       full card width. */
+    padding: 0;
     margin: 0;
     box-shadow: none;
-    color: var(--text-normal); 
-    flex-grow: 1; 
-    overflow-y: visible;
+    color: var(--text-normal);
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
+}
+
+/* Static reference material: everything the GM reads but never changes.
+   This is the only part of the card that scrolls. */
+.dh-card-static-region {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--size-4-3, 12px);
+}
+
+/* Card density is published as one attribute on the card
+   (`data-density="full|compact|collapsed"`), which is the only hook these rules
+   need. It replaced a `:has()` chain matching a class on a descendant: that
+   selector was card-wide, could not express a third level, and would have
+   started misfiring the moment anything else inside a card collapsed.
+
+   `compact` needs no rules here at all — it is `full` with the feature
+   descriptions rendered closed, which is decided in TypeScript. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-static-region {
+    display: none;
+}
+
+/* The collapsed title only exists to label a card whose statblock (and so whose
+   name) is hidden. */
+.dh-card-collapsed-title {
+    display: none;
+}
+
+/* Collapsed, the card shrinks to just its live state rather than leaving an
+   empty void where the statblock was. */
+.dh-adversary-instance-card[data-density='collapsed'] {
+    align-self: flex-start;
+}
+
+.dh-adversary-instance-card[data-density='collapsed'] .dh-hp-stress-container {
+    max-height: none;
+    border-top: none;
+    box-shadow: none;
+    background-color: transparent;
+    padding-top: 0;
+}
+
+/* Collapsed cards get a real header bar: the name on the left, controls on the
+   right. The controls normally overlay artwork, but with the statblock hidden
+   there is nothing to overlay, and floating them left an empty band above the
+   damage thresholds. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-collapsed-title {
+    display: block;
+    /* Tall enough to contain the controls, which are absolutely positioned into
+       this same band. The name truncates rather than reserving a fixed width,
+       since the control count varies with the tier-scaling toggle. */
+    line-height: 34px;
+    /* Same measured clearance the expanded title uses. */
+    padding: 0 var(--dh-card-controls-w, 168px) 0 var(--size-4-3);
+    /* Carries the role tint, as the expanded header does. Collapsed is where the
+       hue matters most: the chip, the type and the whole statblock are hidden,
+       so without it a row of collapsed cards gives no way to tell the Solo from
+       the Minions without reading every name. Laid over the flat background
+       rather than replacing it, so the bar keeps its own weight. */
+    background-color: var(--background-secondary);
+    background-image: linear-gradient(to bottom, var(--dh-accent-bg), transparent);
+    border-bottom: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m) var(--radius-m) 0 0;
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Sit the controls inside that band rather than over the card body. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-header-controls {
+    top: 6px;
+    right: var(--size-4-2);
+}
+
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-header-controls .dh-icon-button,
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-header-controls .dh-drag-handle {
+    width: 22px;
+    height: 22px;
+    background-color: transparent;
+    backdrop-filter: none;
+    opacity: 0.6;
+}
+
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-header-controls .dh-icon-button:hover,
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-header-controls .dh-drag-handle:hover {
+    background-color: var(--interactive-accent);
+    opacity: 1;
+}
+
+/* Thresholds sit flush under the header bar. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-instance-card-content {
+    padding-top: var(--size-4-2);
+}
+
+/* The combat strip: Difficulty and the attack rolls, kept outside the region
+   that collapsing hides.
+
+   These are the numbers a GM reads on every single turn, and before this they
+   were the first thing a collapsed card threw away — it kept the HP track and
+   discarded what the GM needed to know to change it. The strip is always in the
+   DOM and revealed here, so cycling density stays a pure state change. */
+.dh-card-combat-strip {
+    display: none;
+}
+
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-combat-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--size-4-1, 4px);
+    padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
+    font-size: var(--font-ui-smaller, 12px);
+    color: var(--text-normal);
+}
+
+/* Difficulty becomes a chip here rather than the prose "Difficulty: 14" the
+   expanded card uses. Collapsed, it sits inches from ATK and DMG, and three
+   numbers a GM reads together should look like three of the same thing —
+   prose beside chips read as a stray sentence. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-combat-strip .dh-difficulty {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--size-4-1, 4px);
+    padding: 1px var(--size-4-2, 8px);
+    border-radius: var(--radius-s, 4px);
+    background-color: var(--background-modifier-hover);
+    font-weight: var(--font-bold);
+    white-space: nowrap;
+}
+
+/* "Difficulty:" is too long for a chip label at this size; the word is dropped
+   for "DIFF", matching the ATK/DMG labels beside it. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-combat-strip .dh-difficulty strong {
+    font-size: 0;
+    font-weight: var(--font-bold);
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+}
+
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-combat-strip .dh-difficulty strong::after {
+    content: 'DIFF';
+    font-size: var(--font-ui-smaller, 12px);
+}
+
+/* One row, not the stacked label-over-dice layout the expanded card uses: with
+   the statblock hidden there is no column of prose for the attack to line up
+   with, and a collapsed card exists to be short. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-combat-strip .dh-attack-block {
+    flex: 1 1 auto;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--size-4-1, 4px);
+    min-width: 0;
+}
+
+/* The attack's name and range are description, not action — the chips beside
+   them say everything the GM is about to do. Hidden outright rather than
+   truncated: at this width even an ellipsised name ate the row that ATK and DMG
+   need, and the card's title already names the creature. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-combat-strip .dh-attack-label {
+    display: none;
+}
+
+/* Rolls sit at the right edge, so ATK and DMG land in the same place on every
+   collapsed card regardless of what precedes them. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-card-combat-strip .dh-attack-rolls {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1, 4px);
+    margin-left: auto;
+}
+
+/* Environments have no live-state block, so the strip is the card's last row
+   and has to close it off itself. Without this the card ended in the flat
+   content background and read as a panel someone forgot to fill. */
+.dh-adversary-instance-card[data-density='collapsed'] .dh-instance-card-content:not(:has(.dh-hp-stress-container)) {
+    padding-bottom: 0;
+}
+
+.dh-adversary-instance-card[data-density='collapsed']
+    .dh-instance-card-content:not(:has(.dh-hp-stress-container))
+    .dh-card-combat-strip {
+    background-color: var(--background-secondary);
+    border-radius: 0 0 var(--radius-m, 8px) var(--radius-m, 8px);
+}
+
+/* Live, mutable state: HP, Stress and conditions. Pinned to the bottom of the
+   card so a long feature list can never push it out of view. Kept dense: every
+   pixel here is one the statblock above does not get. */
+.dh-instance-card-content .dh-hp-stress-container {
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding: var(--size-4-2) var(--size-4-3);
+    background-color: var(--background-secondary);
+    border-top: 1px solid var(--background-modifier-border);
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.12);
+    /* With several group members the footer can still outgrow the card; let it
+       scroll rather than squeeze the statblock to nothing. */
+    max-height: 55%;
+    overflow-y: auto;
+}
+
+.dh-hp-stress-container .dh-interactive-track {
+    margin-bottom: var(--size-4-1);
+    min-height: 22px;
+}
+
+.dh-hp-stress-container .dh-additional-tracker-row {
+    gap: 2px;
+}
+
+.dh-hp-stress-container .dh-interactive-track:last-child {
+    margin-bottom: 0;
 }
 
 /* Card header */
@@ -710,23 +1309,30 @@
 }
 
 .dh-instance-card-content .dh-header .dh-name {
-    font-size: var(--font-ui-medium, 1.15em); 
+    font-size: var(--font-ui-medium, 1.15em);
     font-weight: var(--font-bold);
-    color: var(--text-normal, #fff); 
+    color: var(--text-normal, #fff);
     display: inline;
     flex-grow: 1;
-    padding-right: 70px;
+    /* The header controls float over this row, so the title has to keep clear
+       of them. The width is published by the controls themselves rather than
+       guessed, since the cluster grows when the tier row is open. */
+    padding-right: var(--dh-card-controls-w, 168px);
     word-break: break-word;
     overflow-wrap: break-word;
 }
 
-.dh-card-role-text { 
-    font-size: var(--font-ui-small, 13px);
+.dh-card-role-text {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    flex-wrap: wrap;
+    font-size: var(--font-ui-smaller);
     font-weight: var(--font-semibold);
-    color: var(--text-muted); 
+    color: var(--text-muted);
     text-transform: uppercase;
-    margin-bottom: var(--size-4-2, 10px); 
-    padding: var(--size-4-1, 2px) 0; 
+    margin-bottom: var(--size-4-2, 10px);
+    padding: var(--size-4-1, 2px) 0;
 }
 
 /* Card description */
@@ -750,21 +1356,138 @@
      font-weight: var(--font-bold); 
 }
 
-/* Card stats */
+/* Card stats.
+   Sized with the rest of the card body rather than a step larger: Difficulty and
+   the attack are reference values, and the extra size bought emphasis at the
+   cost of a visibly chunkier block above the feats. */
 .dh-instance-card-content .dh-core-stats-line {
-    font-size: var(--font-ui-medium, 13px); 
+    font-size: var(--font-ui-small, 13px);
     color: var(--text-normal);
     display: flex;
-    flex-direction: column; 
-    gap: var(--size-4-1, 5px); 
-    padding: var(--size-4-2, 6px) 0;
+    flex-direction: column;
+    gap: var(--size-4-1, 4px);
+    padding: 0;
     margin-bottom: var(--size-4-2, 8px);
 }
 
-.dh-instance-card-content .dh-attack-details-span strong { 
-    color: var(--text-strong, var(--text-normal)); 
+/* The attack: name and range, then the dice on the row below.
+   Deliberately stacked rather than wrapping: with ATK/DMG labels the chips only
+   fit beside the name on short entries ("Claws · Melee"), so a wrapping layout
+   put the Giant Rat on one row and the Acid Burrower on two. Every card paying
+   the same two rows beats the same information sitting in a different place on
+   each card, which is what a GM scanning a row of cards actually pays for. */
+.dh-instance-card-content .dh-attack-block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1, 4px);
+}
+
+.dh-instance-card-content .dh-attack-label {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--size-4-1, 4px);
+    font-size: var(--font-ui-small, 13px);
+    line-height: 1.3;
+}
+
+.dh-instance-card-content .dh-attack-name {
+    color: var(--text-strong, var(--text-normal));
     font-weight: var(--font-bold);
-} 
+}
+
+/* Separated by a middot rather than a dash: the range qualifies the attack, it
+   is not a range between two values. Generated so the markup carries no
+   punctuation of its own and the dot disappears with the range. */
+.dh-instance-card-content .dh-attack-range {
+    color: var(--text-muted);
+}
+
+.dh-instance-card-content .dh-attack-range::before {
+    content: "·";
+    margin-right: var(--size-4-1, 4px);
+}
+
+.dh-instance-card-content .dh-attack-rolls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--size-4-2, 6px);
+}
+
+/* Same geometry as the cost and condition chips already on the card, so the
+   card reads as one system rather than three chip styles.
+
+   The tint is built with rgba() over the theme's *-rgb tokens rather than the
+   *-faint ones: faint resolves differently per theme and on several it is close
+   enough to the card background that the chip disappears into it. Mixing the
+   alpha here means the chip reads as a control in every theme, and matches how
+   the role stripe and condition chips already tint. */
+.dh-instance-card-content .dh-roll-chip {
+    --dh-roll-rgb: var(--mono-rgb-100, 255, 255, 255);
+    display: inline-flex;
+    align-items: baseline;
+    /* renderRollableContent splits "1d12+2 phy" into a rollable span and a
+       separate text span, so the space between them is real content and must
+       not be collapsed — without this the chip reads "1d12+2phy". */
+    white-space: pre-wrap;
+    padding: var(--size-2-1, 2px) var(--dh-chip-pad-x, 5px);
+    border-radius: var(--radius-s, 4px);
+    background-color: rgba(var(--dh-roll-rgb), 0.14);
+    color: var(--text-normal);
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-semibold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+}
+
+/* Which roll is which.
+   The label does this job on its own — colour, a border and a bold weight all
+   saying it at once turned two reference values into the loudest objects on a
+   card whose feats matter more.
+
+   Its colour is mixed from the chip's own hue rather than taken from a theme
+   grey. --text-faint varies enormously between themes (bright lavender in
+   AnuPpuccin, near-invisible grey in Minimal and ITS), so a grey label that
+   reads correctly in one theme disappears in the next. Mixing against
+   --text-normal keeps the label tied to whatever the theme considers readable
+   while still reading as a caption rather than a second value. */
+.dh-instance-card-content .dh-roll-chip-label {
+    margin-right: var(--size-4-1, 4px);
+    color: color-mix(in srgb, rgb(var(--dh-roll-rgb)) 40%, var(--text-muted));
+    font-size: var(--font-ui-smaller, 11px);
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.04em;
+    /* The label names the chip; only the dice inside it are clickable, so the
+       caption must not read as part of the roll target. */
+    cursor: default;
+}
+
+/* Hue is carried at a low alpha so the two chips are separable in peripheral
+   vision without either one announcing itself. Orange for the roll you make,
+   red for the damage it deals — the same pairing the ACTION and HP feature tags
+   already use, so the card keeps one vocabulary. */
+.dh-instance-card-content .dh-roll-chip-tohit {
+    --dh-roll-rgb: var(--color-orange-rgb);
+}
+
+.dh-instance-card-content .dh-roll-chip-damage {
+    --dh-roll-rgb: var(--color-red-rgb);
+}
+
+/* The chip only asserts itself under the cursor, where the GM has already shown
+   intent to roll it. */
+.dh-instance-card-content .dh-roll-chip:hover {
+    background-color: rgba(var(--dh-roll-rgb), 0.16);
+}
+
+/* Inside a chip the dashed underline is redundant — the chip is already the
+   affordance — and it makes the two chips read as different kinds of thing. */
+.dh-instance-card-content .dh-roll-chip .dh-rollable-dice {
+    text-decoration: none;
+    color: inherit;
+}
+
 
 /* Card experience */
 .dh-instance-card-content .dh-experience { 
@@ -777,13 +1500,6 @@
 
 .dh-instance-card-content .dh-experience strong { 
     font-weight: var(--font-bold); 
-}
-
-/* Card HP and Stress container */
-.dh-instance-card-content .dh-hp-stress-container {
-    margin-top: var(--size-4-3, 12px);
-    padding-top: var(--size-4-2, 8px);
-    border-top: 1px solid var(--background-modifier-border);
 }
 
 /* Card image */
@@ -806,6 +1522,8 @@
 
 /* Card header controls */
 .dh-card-header-controls {
+    /* Absolute against the card, and itself the anchor for the tier row, which
+       drops below rather than widening this cluster across the title. */
     position: absolute;
     top: var(--size-4-2);
     right: var(--size-4-2);
@@ -820,8 +1538,8 @@
     backdrop-filter: blur(2px);
     color: var(--text-muted);
     border-radius: var(--radius-s);
-    width: 28px;
-    height: 28px;
+    width: var(--dh-icon-btn);
+    height: var(--dh-icon-btn);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -838,6 +1556,13 @@
     opacity: 1;
 }
 
+/* The one control in the cluster that destroys work, so it does not share the
+   accent hover the harmless ones use. */
+.dh-card-header-controls .dh-card-delete-btn:hover {
+    background-color: var(--background-modifier-error);
+    color: var(--text-on-accent);
+}
+
 .dh-drag-handle {
     cursor: grab;
 }
@@ -851,49 +1576,108 @@
 }
 
 /* --- Drag and Drop Styles --- */
+
+/* The dragged card stays in the row as its own placeholder, so it must keep the
+   exact footprint it had: an added border would widen it by 2px and nudge every
+   neighbour sideways the moment the drag began. `outline` draws the dashed slot
+   without taking up space. */
 .dh-adversary-group-container.dh-dragging {
-    opacity: 0.5;
-    border: 2px dashed var(--interactive-accent);
+    opacity: 0.4;
+    outline: 2px dashed var(--interactive-accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-m);
     background: var(--background-modifier-hover);
+}
+
+/* Statblock prose is selectable text sitting under the pointer; without this a
+   drag that crosses a card starts highlighting paragraphs behind the ghost. */
+.dh-encounter-area.is-dragging {
+    user-select: none;
+    cursor: grabbing;
+}
+
+/* The header controls fade in on hover. Mid-drag the pointer sweeps across every
+   card in the row, so leaving that on flickers a control cluster on each one. */
+.dh-encounter-area.is-dragging .dh-card-header-controls {
+    opacity: 0;
 }
 
 /* -----------------------------------------------------------------------------
    8. FEATURES SECTION
    ----------------------------------------------------------------------------- */
-.dh-instance-features-title { 
-    font-size: var(--font-ui-small, 13px); 
+/* Deliberately not sticky. It held the top of the scroll container before the
+   card header did, which meant a scrolled card announced "FEATS" — a section
+   label that is obvious from the feats themselves — while the adversary's name
+   and role scrolled away. Only one thing can usefully pin to the top of a 300px
+   column, and identity beats a heading. */
+.dh-instance-features-title {
+    font-size: var(--font-ui-small, 13px);
     font-weight: var(--font-bold);
     text-align: left;
-    margin-top: var(--size-4-3, 15px); 
-    margin-bottom: var(--size-2-1, 8px); 
-    color: var(--text-muted, #b8c0c8); 
+    margin-top: var(--size-4-2);
+    margin-bottom: var(--size-2-1, 8px);
+    padding-block: var(--size-4-1);
+    color: var(--text-muted, #b8c0c8);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-.dh-instance-card-content .dh-features-list { 
-    list-style-type: none; 
-    padding-left: 0; 
+.dh-instance-card-content .dh-features-list {
+    list-style-type: none;
+    padding-left: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--size-4-1);
+    /* Tight: the per-type left rule now does the separating the gap used to,
+       and every pixel here is one the feature text does not get. */
+    gap: 2px;
 }
 
 .dh-instance-card-content .dh-feature-item {
     line-height: var(--line-height-normal);
 }
 
-.dh-instance-card-content .dh-feature-header-container { 
+.dh-instance-card-content .dh-feature-header-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: var(--size-4-2);
-    padding: var(--size-4-2);
+    /* Tightened vertically only: a 6-feat Solo recovers roughly a third of a
+       screen, which is most of the in-card scrolling. */
+    padding: var(--size-4-1) var(--size-4-2);
     background-color: var(--background-secondary-alt);
     border-radius: var(--radius-s);
     cursor: pointer;
     border: 1px solid var(--background-modifier-border);
+    border-left-width: var(--dh-feature-stripe-w);
+    border-left-color: var(--dh-feature-stripe);
     transition: all 0.2s ease;
+}
+
+/* Feature type as a colour, so Actions and Reactions can be picked out of a
+   list without reading each badge. Same three colours the badges use, so there
+   is one mapping to learn rather than two.
+
+   The stripe is the only pre-attentive cue for feature type — the badge is
+   small, right-aligned and has to be read — so all three types keep one,
+   including Passive: a gap where Passive's stripe should be would read as a
+   rendering fault rather than as meaning. It is deliberately faint, though. Its
+   job is to be findable when looked for, not to draw the eye off the feat text,
+   and there are up to six of these stacked in a 300px column. */
+.dh-instance-card-content .dh-feature-item {
+    --dh-feature-stripe-w: 1px;
+    --dh-feature-stripe: color-mix(in srgb, var(--dh-feature-accent, var(--background-modifier-border)) 60%, transparent);
+}
+
+.dh-instance-card-content .dh-feature-item[data-feature-type="action"] {
+    --dh-feature-accent: var(--color-orange);
+}
+
+.dh-instance-card-content .dh-feature-item[data-feature-type="reaction"] {
+    --dh-feature-accent: var(--color-blue);
+}
+
+.dh-instance-card-content .dh-feature-item[data-feature-type="passive"] {
+    --dh-feature-accent: var(--color-green);
 }
 
 .dh-instance-card-content .dh-feature-header-container:hover {
@@ -909,13 +1693,18 @@
 
 .dh-instance-card-content .dh-feature-name {
     flex-grow: 1;
+    /* Without this the name's min-content width wins over the badges and shoves
+       them past the card edge — a long feat name must wrap, not clip the type. */
+    min-width: 0;
+    overflow-wrap: break-word;
     font-weight: var(--font-bold);
 }
 
 .dh-feature-meta {
     display: flex;
     align-items: center;
-    gap: var(--size-4-2);
+    /* Tighter than the row gap: these chips belong to each other. */
+    gap: var(--size-4-1);
     flex-shrink: 0;
 }
 
@@ -931,7 +1720,35 @@
 
 /* Feature tags by type */
 .dh-feature-tag-cost {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
     font-weight: var(--font-bold);
+}
+
+/* Sized to sit level with the type badge's cap height beside it. */
+.dh-feature-cost-icon {
+    display: inline-flex;
+}
+
+.dh-feature-cost-icon .svg-icon {
+    width: 12px;
+    height: 12px;
+    stroke-width: 2.5;
+}
+
+/* A count of one is the overwhelming default and is implied by the icon; only
+   the rarer 2 and 3 are worth the extra characters in a 300px column. */
+.dh-feature-cost-count {
+    font-size: var(--font-ui-smaller);
+    line-height: 1;
+}
+
+/* HP costs are vanishingly rare (one feat in the SRD), but a chip that renders
+   unstyled would be worse than one that is merely plain. */
+.dh-feature-tag-hp {
+    background-color: rgba(var(--color-red-rgb), 0.15);
+    color: var(--color-red);
 }
 
 .dh-feature-tag-stress {
@@ -944,19 +1761,58 @@
     color: var(--color-cyan-strong);
 }
 
-.dh-feature-tag-action {
-    background-color: var(--color-orange-faint);
-    color: var(--color-orange-strong);
+/* The badge takes its colour from the same --dh-feature-accent the item's left
+   border uses, rather than from the theme's *-faint / *-strong pair.
+
+   Those two tokens are optional: AnuPpuccin (and others) never define them, so
+   the badges silently fell back to Obsidian's stock hues while the border beside
+   them used the themed --color-*. One feat then showed two different greens.
+   Mixing from the accent keeps badge and border in step in every theme, and the
+   colour lands on the text where it reads as the type rather than as a filled
+   block. */
+.dh-instance-card-content .dh-feature-tag-action,
+.dh-instance-card-content .dh-feature-tag-reaction,
+.dh-instance-card-content .dh-feature-tag-passive {
+    background-color: color-mix(in srgb, var(--dh-feature-accent) 12%, transparent);
+    /* Weighted toward --text-normal rather than straight accent: several themes
+       pick deep, low-luminance hues (Things' blue especially) that fall under
+       4.5:1 on their own tint. The blend keeps the type legible everywhere while
+       still reading as its colour. */
+    color: color-mix(in srgb, var(--dh-feature-accent) 62%, var(--text-normal));
 }
 
-.dh-feature-tag-reaction {
-    background-color: var(--color-blue-faint);
-    color: var(--color-blue-strong);
+/* A countdown is live scene state rather than a property of the feat, so it sits
+   with the description instead of in the header's chip row — where its length
+   ("Countdown (Loop 1d6)") also pushed the type badge off a 300px card. */
+.dh-feature-countdown {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    margin-bottom: var(--size-4-2);
+    padding-bottom: var(--size-4-1);
+    border-bottom: 1px solid var(--background-modifier-border);
+    color: var(--text-accent);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-semibold);
 }
 
-.dh-feature-tag-passive {
-    background-color: var(--color-green-faint);
-    color: var(--color-green-strong);
+.dh-feature-countdown-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.dh-feature-countdown-icon .svg-icon {
+    width: 13px;
+    height: 13px;
+}
+
+/* System colours flatten backgrounds but keep borders, so the chips need an
+   explicit outline to stay chips. Mirrors encounter-thresholds.css. */
+@media (forced-colors: active) {
+    .dh-encounter-view .dh-role-chip,
+    .dh-encounter-view .dh-feature-tag {
+        border: 1px solid CanvasText;
+    }
 }
 
 .dh-feature-cost-text {
@@ -975,6 +1831,22 @@
     text-decoration: underline;
 }
 
+/* A Fear cost actually drives the encounter's Fear tracker, so it gets the same
+   dashed-underline affordance as a rollable dice string — the two are the only
+   things in a feature's text that do something when clicked. */
+.dh-spend-fear {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 3px;
+    transition: color 0.12s ease-in-out;
+}
+
+.dh-spend-fear:hover {
+    color: var(--text-accent-hover);
+    text-decoration-style: solid;
+}
+
 /* Feature toggle (expand/collapse) */
 .dh-instance-card-content .dh-feature-toggle {
     color: var(--text-muted); 
@@ -988,11 +1860,15 @@
 /* Feature description */
 .dh-instance-card-content .dh-feature-description {
     font-size: var(--font-smaller);
-    padding: var(--size-4-3); 
-    color: var(--text-muted); 
+    padding: var(--size-4-2);
+    color: var(--text-muted);
     background-color: var(--background-secondary-alt);
     border: 1px solid var(--background-modifier-border);
     border-top: none;
+    /* Matches the header's left edge, or the fused block visibly steps in by a
+       pixel when expanded. Both read the same two tokens so they cannot drift. */
+    border-left-width: var(--dh-feature-stripe-w);
+    border-left-color: var(--dh-feature-stripe);
     border-radius: 0 0 var(--radius-s) var(--radius-s);
 }
 
@@ -1004,27 +1880,77 @@
 /* -----------------------------------------------------------------------------
    9. ADDITIONAL TRACKERS
    ----------------------------------------------------------------------------- */
+/* Each instance in a group is its own block.
+
+   Four Minions render four identical name/HP/Stress triplets, and a 1px divider
+   cannot separate a repeating unit that is three rows tall — the stack read as
+   one striped slab and finding "#3" meant counting.
+
+   The blocks sit *inside* the live-state panel's padding and never reach the
+   card's edges: an earlier pass let them define the card's own bottom, which
+   cost the card its outline and its corners. The card draws its own frame; these
+   only furnish the panel within it. */
 .dh-additional-trackers-container {
-    margin-top: var(--size-4-2, 8px); 
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-1, 4px);
+    margin-top: var(--size-4-1, 4px);
 }
 
 .dh-additional-tracker-row {
     display: flex;
     flex-direction: column;
-    gap: var(--size-4-1, 6px); 
-    padding-top: var(--size-4-2);
-    margin-top: var(--size-4-2);
-    border-top: 1px solid var(--background-modifier-border);
+    gap: 2px;
+    padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
+    /* Recessed rather than raised: the panel is already the card's darker
+       footer, so lifting these would push them toward the statblock's surface
+       and flatten the card's own layering. */
+    background-color: var(--background-primary);
+    border-radius: var(--radius-s, 4px);
+    /* Left stripe only, in the card's role tint. A full border boxed each
+       instance in a frame that competed with the card's; a single edge marks
+       where a block starts, ties the stack to its card, and adds no outline the
+       eye can mistake for structure. */
+    border-left: 2px solid color-mix(in srgb, var(--dh-accent, var(--background-modifier-border)) 55%, transparent);
+    transition:
+        background-color 0.15s ease,
+        border-left-color 0.15s ease;
+}
+
+.dh-additional-tracker-row:hover {
+    border-left-color: var(--dh-accent, var(--background-modifier-border));
 }
 
 .dh-additional-tracker-row:last-child {
-    margin-bottom: 0; 
+    margin-bottom: 0;
 }
 
+/* The first instance is built into the panel rather than the list below it, so
+   it needs the same block treatment to sit in the same rhythm as its siblings. */
 .dh-hp-stress-container > .dh-additional-tracker-row {
     margin-top: 0;
-    padding-top: 0;
+    padding: var(--size-4-1, 4px) var(--size-4-2, 8px);
     border-top: none;
+}
+
+/* Defeated instances recede. In Daggerheart the HP track fills as damage lands,
+   so "all pips marked" is dead, and on a four-Minion card which of them are
+   still up is the question asked most often. Struck through as well as dimmed,
+   since opacity alone left the name ambiguous at a glance. */
+.dh-additional-tracker-row[data-defeated] {
+    opacity: 0.5;
+}
+
+.dh-additional-tracker-row[data-defeated] .dh-additional-tracker-name {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    color: var(--text-muted);
+}
+
+/* Back to full strength on hover: at 0.5 the pips are hard to aim at, and
+   undoing a kill is a click on those same pips. */
+.dh-additional-tracker-row[data-defeated]:hover {
+    opacity: 1;
 }
 
 .dh-additional-tracker-header {
@@ -1034,11 +1960,52 @@
     gap: var(--size-4-2);
 }
 
+/* Click to rename. Renaming instances happens constantly in play, so it is a
+   click on the name rather than a trip through a modal.
+
+   Set smaller and tracked rather than at body weight: the name heads the block
+   below it, and at the same size as the HP and STRESS rows it read as a third
+   row of content instead of a label for the other two. Kept at normal text
+   colour — the block already separates it from its neighbours, so muting it
+   here would only cost legibility. */
 .dh-additional-tracker-name {
+    font-size: var(--font-ui-small, 0.875em);
+    font-weight: var(--font-bold);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-normal);
+    flex-grow: 1;
+    min-width: 0;
+    padding: 1px var(--size-4-1);
+    margin-left: calc(-1 * var(--size-4-1));
+    border-radius: var(--radius-s);
+    cursor: text;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dh-additional-tracker-name:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+.dh-additional-tracker-name.is-editing {
+    background-color: transparent;
+    padding: 0;
+    overflow: visible;
+}
+
+.dh-instance-name-input {
+    width: 100%;
+    padding: 1px var(--size-4-1);
+    border: 1px solid var(--interactive-accent);
+    border-radius: var(--radius-s);
+    background-color: var(--background-primary);
+    color: var(--text-normal);
+    font-family: inherit;
     font-size: var(--font-ui-medium, 1em);
     font-weight: var(--font-semibold);
-    color: var(--text-normal); 
-    flex-grow: 1;
+    line-height: inherit;
 }
 
 .dh-additional-tracker-controls {
@@ -1051,17 +2018,30 @@
 .dh-remove-additional-btn {
     background:none;
     border: none;
-    color: var(--text-faint); 
-    font-size: var(--font-ui-larger);
+    color: var(--text-faint);
+    font-size: var(--font-ui-small);
+    line-height: 1;
+    width: var(--dh-micro-btn);
+    height: var(--dh-micro-btn);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
-    padding: 0 var(--size-4-1, 3px);
-    opacity: 0.6; 
+    padding: 0;
+    opacity: 0.55;
     transition: opacity 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
-.dh-remove-additional-btn:hover { 
-    color: var(--color-red); 
+.dh-remove-additional-btn:hover {
+    color: var(--color-red);
     opacity: 1;
+}
+
+/* Statblock preview popover content (replaces inline styles set in TS;
+   the popover's *position* stays inline as it is computed at runtime) */
+.dh-popover-content {
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
 
@@ -1069,106 +2049,126 @@
    10. CONDITIONS
    ----------------------------------------------------------------------------- */
 .dh-conditions-container {
-    margin-bottom: var(--size-4-2);
     display: flex;
     flex-wrap: wrap;
-    gap: var(--size-4-1);
+    gap: var(--dh-chip-gap);
     align-items: center;
 }
 
-.dh-additional-tracker-row .dh-conditions-container {
-    padding: var(--size-4-2) 0 0 0;
+/* Only take up vertical space when there is something to show */
+.dh-conditions-container:not(:empty) {
+    margin: var(--size-4-1) 0;
 }
 
+/* Chips follow the .dh-feature-tag model: compact, uppercase, colour-coded,
+   so a row of cards can be read at a glance rather than word by word. */
+/* The chip itself is the remove button, so it needs button resets. */
 .dh-condition-tag {
-    background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    padding: var(--size-2-1);
-    border-radius: var(--radius-s);
-    font-size: var(--font-ui-smaller);
+    /* Every chip is a tint of one hue, set per colour family below. Conditions
+       are live state the GM has to notice mid-combat, so the chip is a solid
+       fill with a matching ring rather than the faint wash used for the static
+       feature tags — it has to win against the card it sits on. */
+    --dh-cond-hue: var(--text-muted);
+    --dh-cond-ink: var(--text-normal);
+    position: relative;
     display: inline-flex;
     align-items: center;
-    cursor: default;
-}
-
-.dh-condition-remove {
-    margin-left: var(--size-4-1);
-    cursor: pointer;
-    font-weight: var(--font-bold);
-    opacity: 0.7;
-}
-
-.dh-condition-remove:hover {
-    opacity: 1;
-}
-
-/* Condition list in menus */
-.dh-conditions-list-container {
-    padding: 0;
-    margin: var(--size-4-1) 0 var(--size-4-2) 0;
-}
-
-.dh-condition-tags-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-4-1);
-    align-items: center;
-    justify-content: center;
-    min-height: 24px;
-}
-
-.dh-condition-tags-list .dh-empty-text {
-    color: var(--text-faint);
-    font-style: italic;
-}
-
-.dh-condition-tag > span {
-    margin-right: var(--size-4-1);
-}
-
-.dh-remove-condition-btn {
-    background: none;
+    gap: 3px;
+    height: var(--dh-chip-h);
+    padding: 0 var(--dh-chip-pad-x);
     border: none;
-    color: var(--text-faint);
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
+    border-radius: var(--radius-s);
+    font-family: inherit;
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     line-height: 1;
-    font-size: var(--font-ui-small);
+    cursor: pointer;
+    transition: filter 0.12s ease-in-out, box-shadow 0.12s ease-in-out;
+    /* Neutral fallback: custom conditions carry no colour */
+    background-color: color-mix(in srgb, var(--dh-cond-hue) 22%, var(--background-primary));
+    color: var(--dh-cond-ink);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dh-cond-hue) 55%, transparent);
 }
 
-.dh-remove-condition-btn:hover {
-    color: var(--text-error);
+.dh-condition-tag:hover {
+    filter: brightness(1.15);
+    box-shadow: inset 0 0 0 1px var(--dh-cond-hue);
 }
 
-/* --- Condition Modal --- */
-.dh-predefined-conditions-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--size-4-2);
-    max-height: 200px;
-    overflow-y: auto;
-    margin-bottom: var(--size-4-4);
+/* The icon carries the hue at full strength; the label stays high-contrast so
+   it is legible at chip size. */
+.dh-condition-tag .dh-condition-icon {
+    color: var(--dh-cond-hue);
 }
 
-.dh-condition-card {
-    background-color: var(--background-secondary);
+.dh-condition-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.dh-condition-icon .svg-icon {
+    width: 11px;
+    height: 11px;
+}
+
+/* On hover the leading icon becomes an x, so the chip shows what a click does
+   without needing a separate control. */
+.dh-condition-icon-remove {
+    display: none;
+}
+
+.dh-condition-tag:hover .dh-condition-icon-remove {
+    display: inline-flex;
+}
+
+.dh-condition-tag:hover .dh-condition-icon:not(.dh-condition-icon-remove) {
+    display: none;
+}
+
+/* Rules text on hover. Rendered into <body> because every ancestor of the chip
+   clips overflow, and as a real element rather than a title attribute so it
+   appears instantly and stays readable. */
+.dh-condition-tooltip {
+    position: fixed;
+    z-index: 100;
+    width: max-content;
+    max-width: 300px;
+    padding: var(--size-4-2) var(--size-4-3);
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
-    padding: var(--size-4-3);
-    cursor: pointer;
-    transition: background-color 0.2s;
+    background-color: var(--background-secondary);
+    box-shadow: var(--shadow-l);
+    pointer-events: none;
 }
 
-.dh-condition-card:hover {
-    background-color: var(--background-modifier-hover);
+.dh-condition-tooltip-title {
+    margin-bottom: var(--size-4-1);
+    color: var(--text-normal);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-.dh-condition-card > p {
-    font-size: var(--font-ui-small);
+.dh-condition-tooltip-body {
     color: var(--text-muted);
-    margin-top: var(--size-4-1);
+    font-size: var(--font-ui-smaller);
+    line-height: 1.45;
 }
+
+/* Keyed on colour family rather than condition name: eight rules cover every
+   present, future and user-created condition. Each only sets the hue; the tint,
+   ring and text colour are derived from it in .dh-condition-tag above. */
+.dh-condition-tag.dh-cond-red    { --dh-cond-hue: var(--color-red); }
+.dh-condition-tag.dh-cond-orange { --dh-cond-hue: var(--color-orange); }
+.dh-condition-tag.dh-cond-yellow { --dh-cond-hue: var(--color-yellow); }
+.dh-condition-tag.dh-cond-green  { --dh-cond-hue: var(--color-green); }
+.dh-condition-tag.dh-cond-cyan   { --dh-cond-hue: var(--color-cyan); }
+.dh-condition-tag.dh-cond-blue   { --dh-cond-hue: var(--color-blue); }
+.dh-condition-tag.dh-cond-purple { --dh-cond-hue: var(--color-purple); }
+.dh-condition-tag.dh-cond-pink   { --dh-cond-hue: var(--color-pink); }
 
 /* -----------------------------------------------------------------------------
    11. COMPENDIUM PANEL
@@ -1215,6 +2215,10 @@
     margin: 0;
     font-size: var(--font-ui-large, 1.2em);
     color: var(--text-normal, #aaa);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Compendium list and entries */
@@ -1227,13 +2231,14 @@
     min-height: 0;
 }
 
+/* icon | name + metadata | add button */
 .dh-compendium-entry {
-    display: flex; 
-    justify-content: space-between; 
+    display: flex;
     align-items: center;
-    padding: var(--size-4-2, 8px); 
+    gap: var(--size-4-2);
+    padding: var(--size-4-2, 8px);
     background-color: var(--background-secondary, #3a3a44);
-    border-radius: var(--radius-s, 4px); 
+    border-radius: var(--radius-s, 4px);
     border: 1px solid var(--background-modifier-border, #555);
     color: var(--text-normal, #ccc);
     cursor: pointer;
@@ -1244,10 +2249,11 @@
     background-color: var(--background-modifier-hover, #4a4a54);
 }
 
-.dh-compendium-entry .dh-add-compendium-btn { 
+.dh-compendium-entry .dh-add-compendium-btn {
+    flex: 0 0 auto;
     padding: var(--size-4-1, 3px) var(--size-4-2, 8px);
     font-size: var(--font-ui-small, 0.9em);
-    background-color: var(--interactive-accent); 
+    background-color: var(--interactive-accent);
     color: var(--text-on-accent);
     border: none;
     border-radius: var(--radius-s, 3px);
@@ -1257,9 +2263,47 @@
     background-color: var(--interactive-accent-hover);
 }
 
-.dh-environment-entry .dh-entry-icon {
-    margin-right: var(--size-4-2);
+/* Category icon in a fixed leading column, so the eye tracks one vertical line
+   down the list instead of hunting for a glyph that moved with the name. */
+.dh-entry-icon {
+    flex: 0 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+}
+
+.dh-entry-icon .svg-icon {
+    width: 15px;
+    height: 15px;
+}
+
+/* Environments are a small minority of the compendium, so only they carry
+   colour: enough to pick out, not enough to make the list noisy. */
+.dh-entry-environment .dh-entry-icon {
+    color: var(--color-green);
+}
+
+.dh-entry-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.dh-entry-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dh-entry-meta {
+    font-size: var(--font-ui-smaller);
     color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Active adversaries panel */
@@ -1665,22 +2709,246 @@
     gap: var(--size-4-2);
 }
 
+/* The draggable unit: the row, plus the loop editor when it is open. */
 .dh-countdown-item {
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-2);
+    border-radius: var(--radius-s);
+    /* Declared so the spent state below has something to transition from. */
+    background-color: transparent;
 }
 
-.dh-countdown-name-input {
-    flex-grow: 1;
+/* Everything stays on one line, including spent rows. The name is the only
+   flexible element, so it gives up space rather than the controls wrapping. */
+.dh-countdown-row {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    padding: var(--size-4-1) var(--size-4-2);
+}
+
+/* A looping countdown that has triggered and not been reset. This is a debt,
+   not an alert: the GM saw it reach zero (nothing ticks on its own), but may
+   well forget to send it round again. So it stays marked until dealt with
+   rather than announcing itself once. */
+.dh-countdown-item.is-spent-loop {
+    background-color: rgba(var(--color-yellow-rgb), 0.13);
+    box-shadow: inset 2px 0 0 var(--color-yellow);
+}
+
+/* A one-shot countdown at zero has done its job and owes nothing. Dimming it
+   keeps the spent-loop marking meaningful instead of one more highlighted row. */
+.dh-countdown-item.is-finished .dh-countdown-name-input,
+.dh-countdown-item.is-finished .dh-countdown-value {
+    color: var(--text-muted);
+}
+
+/* The one element that yields. A basis of 0 stops the input claiming its
+   default ~170px intrinsic width, which is what was stretching the row and
+   squeezing everything else out. */
+.dh-countdown-name-wrap {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    min-width: 0;
+}
+
+/* Quiet while the loop is running: it is reference, not a control, and has no
+   border or colour of its own. */
+.dh-countdown-loop-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    height: 22px;
+    padding: 0 var(--size-2-2);
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    background-color: transparent;
+    color: var(--text-faint);
+    font-size: var(--font-ui-smaller);
+    line-height: 1;
+}
+
+/* Spent: the same element becomes the reset button. It is the only thing on the
+   row that looks actionable, and it looks that way exactly when it is. */
+.dh-countdown-loop-badge.is-spent {
+    border-color: var(--color-yellow);
+    color: var(--color-yellow);
+    cursor: pointer;
+}
+
+.dh-countdown-loop-badge.is-spent:hover {
+    background-color: rgba(var(--color-yellow-rgb), 0.2);
+}
+
+.dh-countdown-loop-icon {
+    display: inline-flex;
+}
+
+.dh-countdown-loop-icon .svg-icon {
+    width: 11px;
+    height: 11px;
+}
+
+/* Loop settings, expanded under the row. Inline rather than a modal: two fields
+   do not warrant leaving the list, and the current values stay in view. */
+.dh-countdown-loop-editor {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    padding: var(--size-4-1) var(--size-4-2) var(--size-4-2);
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.dh-countdown-loop-editor-label {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-countdown-loop-editor-start {
+    flex: 0 0 52px;
+    width: 52px;
+    height: 24px;
+    text-align: center;
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    color: var(--text-normal);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-countdown-loop-editor-start:focus {
+    border-color: var(--interactive-accent);
+}
+
+.dh-countdown-loop-editor-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    margin-left: auto;
+}
+
+.dh-countdown-loop-editor-actions button {
+    height: 24px;
+    padding: 0 var(--size-2-3);
+    font-size: var(--font-ui-smaller);
+}
+
+.dh-countdown-loop-editor-save {
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+}
+
+.dh-countdown-loop-editor-save:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+/* Destructive, so it reads as such — but quiet, since it sits beside the
+   affirmative action. */
+.dh-countdown-loop-editor-stop {
+    color: var(--text-error);
+    background-color: transparent;
+}
+
+/* Add row: name, start, loop toggle, submit. */
+.dh-countdown-composer {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1);
+    flex-wrap: wrap;
+    padding-bottom: var(--size-4-2);
+    margin-bottom: var(--size-4-2);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.dh-countdown-composer-name {
+    flex: 1 1 110px;
+    min-width: 0;
+}
+
+.dh-countdown-composer-start {
+    flex: 0 0 52px;
+    width: 52px;
+    text-align: center;
+}
+
+.dh-countdown-composer-name,
+.dh-countdown-composer-start {
     background-color: var(--background-primary);
     border: 1px solid var(--background-modifier-border);
     color: var(--text-normal);
     border-radius: var(--radius-s);
     padding: var(--size-2-2);
+    font-size: var(--font-ui-small);
 }
-.dh-countdown-name-input:focus {
+
+.dh-countdown-composer-name:focus,
+.dh-countdown-composer-start:focus {
     border-color: var(--interactive-accent);
+}
+
+.dh-countdown-composer-loop {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    padding: 0 var(--size-2-3);
+    height: 26px;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+    background-color: transparent;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+}
+
+.dh-countdown-composer-loop.is-active {
+    color: var(--color-yellow);
+    border-color: var(--color-yellow);
+    background-color: rgba(var(--color-yellow-rgb), 0.13);
+}
+
+.dh-countdown-composer-add {
+    flex-shrink: 0;
+    height: 26px;
+}
+
+/* Still editable in place, but it reads as text until touched — a field-looking
+   box was drawing more attention than the name deserves and setting a wide
+   intrinsic width. */
+.dh-countdown-name-input {
+    flex: 1 1 0;
+    min-width: 0;
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: var(--text-normal);
+    border-radius: var(--radius-s);
+    padding: var(--size-2-1) var(--size-2-2);
+    font-size: var(--font-ui-small);
+    text-overflow: ellipsis;
+}
+
+.dh-countdown-name-input:hover {
+    border-color: var(--background-modifier-border);
+}
+
+.dh-countdown-name-input:focus {
+    background-color: var(--background-primary);
+    border-color: var(--interactive-accent);
+    text-overflow: clip;
+}
+
+/* Only shows itself on hover or focus: it is the row's rarely-used escape
+   hatch, not something to advertise on every line. */
+.dh-countdown-menu-btn {
+    flex-shrink: 0;
+    opacity: 0.45;
+}
+
+.dh-countdown-item:hover .dh-countdown-menu-btn,
+.dh-countdown-menu-btn:focus-visible {
+    opacity: 1;
 }
 
 .dh-countdown-controls {
@@ -1707,46 +2975,6 @@
     padding: var(--size-4-3);
 }
 
-
-/* --- Condition Tag Styles --- */
-
-.dh-conditions-list-container {
-    padding: 0;
-    margin: var(--size-4-1) 0 var(--size-4-2) 0;
-}
-
-.dh-condition-tags-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--size-4-1);
-    align-items: center;
-    justify-content: center;
-    min-height: 24px;
-}
-
-.dh-condition-tags-list .dh-empty-text {
-    color: var(--text-faint);
-    font-style: italic;
-}
-
-.dh-condition-tag > span {
-    margin-right: var(--size-4-1);
-}
-
-.dh-remove-condition-btn {
-    background: none;
-    border: none;
-    color: var(--text-faint);
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
-    line-height: 1;
-    font-size: var(--font-ui-small);
-}
-
-.dh-remove-condition-btn:hover {
-    color: var(--text-error);
-}
 
 .dh-budget-modal h4 {
     margin-top: var(--size-4-5);

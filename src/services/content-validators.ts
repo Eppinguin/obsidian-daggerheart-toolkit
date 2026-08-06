@@ -2,14 +2,17 @@
 import { ContentType } from './export-import';
 import { SavedEncounter } from '../types';
 
-export function debugEncounterValidation(data: any): { valid: boolean; details: Record<string, boolean> } {
+export function debugEncounterValidation(data: any): {
+    valid: boolean;
+    details: Record<string, boolean>;
+} {
     const details = {
         isObject: typeof data === 'object',
         notNull: data !== null,
         hasStringId: typeof data?.id === 'string',
         hasStringName: typeof data?.name === 'string',
         hasAdversariesArray: Array.isArray(data?.adversaries),
-        hasAdversaryGroupOrderArray: Array.isArray(data?.adversaryGroupOrder)
+        hasAdversaryGroupOrderArray: Array.isArray(data?.adversaryGroupOrder),
     };
     return { valid: Object.values(details).every(Boolean), details };
 }
@@ -34,7 +37,11 @@ export function isValidContentData(data: any, contentType: ContentType): boolean
         case ContentType.ENVIRONMENT:
             return isValidStatblockData(data, 'environment');
         default:
-            return typeof data === 'object' && data !== null &&
-                typeof data.name === 'string' && data.name.trim().length > 0;
+            return (
+                typeof data === 'object' &&
+                data !== null &&
+                typeof data.name === 'string' &&
+                data.name.trim().length > 0
+            );
     }
 }

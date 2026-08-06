@@ -57,7 +57,7 @@
 
 .dddice-separator::before,
 .dddice-separator::after {
-    content: "";
+    content: '';
     position: absolute;
     top: 50%;
     width: 40%;

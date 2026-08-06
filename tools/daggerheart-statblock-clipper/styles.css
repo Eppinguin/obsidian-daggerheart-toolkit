@@ -65,6 +65,7 @@ svg { display: block; fill: none; stroke: currentColor; stroke-width: 1.8; strok
   background: var(--surface);
 }
 .brand-lockup { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.header-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .app-icon { width: 28px; height: 28px; border-radius: 6px; }
 .brand-copy { min-width: 0; }
 .app-header h1 { margin: 0; font-size: 14px; line-height: 1.2; font-weight: 650; letter-spacing: -.01em; }
@@ -87,15 +88,20 @@ body[data-site="heartofdaggers"] .site-indicator { background: #c47b2c; }
 }
 .icon-button:hover { color: var(--text); background: var(--surface-subtle); }
 .icon-button:active { transform: translateY(1px); }
+.icon-button:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent); }
+.icon-button:disabled { opacity: .45; cursor: default; }
 .icon-button svg { width: 17px; height: 17px; }
+/* The gear outline carries far more detail than the refresh arrow; at 17px the
+   shared 1.8 stroke closes up its teeth into a blob. */
+#openOptions svg { stroke-width: 1.5; }
 .icon-button.is-spinning svg { animation: spin .75s linear infinite; }
 
 .notice {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 36px;
-  padding: 8px 14px;
+  min-height: 30px;
+  padding: 6px 14px;
   border-bottom: 1px solid var(--line);
   background: var(--info-soft);
   color: var(--info);
@@ -107,6 +113,23 @@ body[data-site="heartofdaggers"] .site-indicator { background: #c47b2c; }
 .notice--neutral { background: var(--surface-subtle); color: var(--text-muted); }
 .notice-icon { width: 16px; height: 16px; display: grid; place-items: center; flex: 0 0 auto; }
 .notice-icon svg { width: 15px; height: 15px; }
+#statusText { min-width: 0; flex: 1; }
+/* The recovery action sits in the status bar so it appears next to whatever
+   went wrong, rather than as tertiary text below the import buttons. */
+.notice-action {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: inherit;
+  background: none;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: .75;
+}
+.notice-action:hover { opacity: 1; }
+.notice-action:focus-visible { outline: none; box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent); }
 .spinner { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -120,10 +143,6 @@ body[data-site="heartofdaggers"] .site-indicator { background: #c47b2c; }
   background: var(--surface);
 }
 .panel { padding: 12px; }
-.section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.section-heading h2 { margin: 2px 0 0; font-size: 13px; font-weight: 650; }
-.eyebrow { display: block; color: var(--text-faint); font-size: 9.5px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
-.count-label { color: var(--text-faint); font-size: 10.5px; }
 
 .field { display: grid; gap: 5px; }
 .field-label { color: var(--text-muted); font-size: 10.5px; font-weight: 600; }
@@ -177,37 +196,57 @@ input[type="text"]:focus, select:focus { border-color: var(--accent); box-shadow
 .switch-input:checked + .switch::after { transform: translateX(14px); }
 .switch-input:focus-visible + .switch { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent); }
 
-.stat-card { padding: 15px; }
-.type-line { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; color: var(--text-faint); font-size: 10px; }
+.stat-card { padding: 12px; }
+.type-line { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; color: var(--text-faint); font-size: 9.5px; }
 .badge { color: var(--accent); font-weight: 650; text-transform: uppercase; letter-spacing: .035em; }
 .badge--quiet { color: var(--text-muted); }
 .badge--environment { color: #a66518; }
 @media (prefers-color-scheme: dark) { .badge--environment { color: #dca65f; } }
-.stat-card h2 { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 680; letter-spacing: -.025em; }
-.description { margin: 7px 0 0; color: var(--text-muted); font-size: 11.5px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 14px 0 0; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.stat-tile { min-width: 0; padding: 0 8px; text-align: center; }
+.stat-card h2 { margin: 0; font-size: 17px; line-height: 1.2; font-weight: 680; letter-spacing: -.025em; }
+/* Two lines is enough to identify a statblock; the third mostly repeated
+   flavour the user can read on the page they are already looking at. */
+.description { margin: 5px 0 0; color: var(--text-muted); font-size: 11px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 10px 0 0; padding: 7px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stat-tile { min-width: 0; padding: 0 6px; text-align: center; }
 .stat-tile + .stat-tile { border-left: 1px solid var(--line); }
-.stat-tile dt { color: var(--text-faint); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .035em; }
-.stat-tile dd { margin: 3px 0 0; font-size: 17px; line-height: 1.05; font-weight: 650; font-variant-numeric: tabular-nums; }
-.detail-row { margin-top: 12px; }
-.detail-copy > span { display: block; color: var(--text-faint); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .035em; }
-.detail-copy strong { display: block; margin-top: 2px; font-size: 12px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.detail-copy small { display: block; margin-top: 2px; color: var(--text-muted); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stat-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line); }
-.meta-chip { color: var(--text-muted); font-size: 10.5px; }
-.source-line { min-width: 0; color: var(--text-faint); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+.stat-tile dt { color: var(--text-faint); font-size: 8.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .035em; }
+.stat-tile dd { margin: 1px 0 0; font-size: 15px; line-height: 1.1; font-weight: 650; font-variant-numeric: tabular-nums; }
+/* Label beside the value, not stacked above it. Each of these rows used to
+   spend a full line on a caption for a single value. */
+.detail-row { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: baseline; gap: 8px; margin-top: 7px; }
+.detail-label { color: var(--text-faint); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .035em; }
+.detail-value { min-width: 0; display: flex; align-items: baseline; gap: 6px; overflow: hidden; }
+/* The name may be long, but the modifier/range/damage beside it is the part a
+   GM reads mid-session, so neither is allowed to squeeze the other to nothing:
+   both shrink and ellipsize instead. */
+.detail-value strong { min-width: 0; flex: 0 1 auto; font-size: 11.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detail-value small { min-width: 0; flex: 1 1 auto; color: var(--text-muted); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detail-value small:empty { display: none; }
+.stat-card-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
+.meta-chip { flex: 0 0 auto; color: var(--text-muted); font-size: 10.5px; }
+.source-line { min-width: 0; flex: 1; color: var(--text-faint); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; }
+/* The escape hatch for a successful-but-wrong capture. Quiet by default so it
+   does not compete with the import buttons, obvious on hover. */
+.button--link { flex: 0 0 auto; padding: 0; border: 0; color: var(--text-faint); background: none; font-size: 10px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.button--link:hover { color: var(--accent); }
+.button--link:focus-visible { outline: none; color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent); border-radius: 3px; }
 
 .action-stack { display: grid; gap: 8px; }
 .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+/* Nothing to import: the export controls would all be dead, so they step aside
+   for a single line pointing at the two ways forward. */
+body.is-empty:not(.is-loading) .action-stack,
+body.is-empty:not(.is-loading) .settings-panel { display: none; }
+.empty-hint { display: none; margin: 0; padding: 4px 2px 0; color: var(--text-faint); font-size: 11px; line-height: 1.5; text-align: center; }
+body.is-empty:not(.is-loading) .empty-hint { display: block; }
 .button {
   appearance: none;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 9px;
-  min-height: 40px;
-  padding: 8px 11px;
+  min-height: 34px;
+  padding: 7px 11px;
   border: 1px solid transparent;
   border-radius: 8px;
   outline: none;
@@ -221,34 +260,63 @@ input[type="text"]:focus, select:focus { border-color: var(--accent); box-shadow
 .button:disabled { opacity: .45; cursor: default; }
 .button--primary { color: white; background: var(--accent); }
 .button--primary:hover:not(:disabled) { border-color: transparent; background: var(--accent-hover); }
-.button--hero { min-height: 50px; }
 .button--secondary { border-color: var(--line); background: var(--surface); }
 .button--secondary:hover:not(:disabled) { background: var(--surface-subtle); }
-.button--text { justify-content: center; min-height: 32px; padding: 5px 8px; color: var(--text-muted); font-size: 10.5px; font-weight: 600; }
+.button--text { justify-content: center; min-height: 30px; padding: 5px 8px; color: var(--text-muted); font-size: 11px; font-weight: 600; }
 .button--text:hover:not(:disabled) { color: var(--text); background: var(--surface-subtle); }
-.button--small { min-height: 32px; padding: 5px 9px; }
-.button-leading-icon { width: 18px; height: 18px; flex: 0 0 auto; }
-.button-copy { min-width: 0; display: block; flex: 1; }
-.button-copy strong { display: block; font-size: 11.5px; line-height: 1.2; font-weight: 650; }
-.button--hero .button-copy strong { font-size: 12px; }
-.button-copy small { display: block; margin-top: 2px; color: var(--text-faint); font-size: 9.5px; line-height: 1.2; }
-.button--primary .button-copy small { color: rgba(255, 255, 255, .75); }
-.button-arrow { width: 16px; height: 16px; flex: 0 0 auto; }
+.button--small { min-height: 30px; padding: 4px 9px; }
+.button--compact { min-height: 34px; gap: 6px; padding-inline: 9px; }
+.button--wide { justify-content: center; }
+/* Copy confirmed on the button itself. The label is swapped via ::after rather
+   than by rewriting textContent, so the original label cannot be lost if the
+   reset timer is interrupted. */
+.button.is-copied { border-color: var(--success); color: var(--success); }
+.button.is-copied .button-copy { visibility: hidden; }
+.button.is-copied .button-kbd { opacity: 0; }
+.button--compact.is-copied::after {
+  content: "Copied";
+  position: absolute;
+  left: 0;
+  right: 0;
+  font-size: 12px;
+  font-weight: 650;
+  text-align: center;
+}
+/* Copy diagnostics has no .button-copy wrapper, so it just tints. */
+.button--text.is-copied { color: var(--success); }
+.button { position: relative; }
+.button-leading-icon { width: 17px; height: 17px; flex: 0 0 auto; }
+/* One line of label per button. The subtitles that used to sit under each one
+   ("Toolkit code block", "Native import format") doubled every button's height
+   in a 400px popup to restate what the label already said. */
+.button-copy { min-width: 0; flex: 1; font-size: 12px; line-height: 1.25; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.button--wide .button-copy { flex: 0 0 auto; }
 
 .settings-panel { padding: 0; overflow: hidden; }
-.settings-panel summary { display: flex; align-items: center; gap: 10px; padding: 11px 12px; cursor: pointer; list-style: none; user-select: none; }
+.settings-panel summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; list-style: none; user-select: none; }
 .settings-panel summary::-webkit-details-marker { display: none; }
+.settings-panel summary:hover { background: var(--surface-subtle); }
+.settings-panel summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
 .summary-copy { min-width: 0; flex: 1; }
-.summary-copy strong { display: block; font-size: 11px; font-weight: 600; }
-.summary-copy small { display: block; margin-top: 2px; color: var(--text-faint); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chevron { width: 15px; height: 15px; color: var(--text-faint); transition: transform .15s ease; }
+.summary-copy strong { display: block; font-size: 11.5px; font-weight: 600; }
+.summary-copy small { display: block; margin-top: 1px; color: var(--text-faint); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chevron { width: 14px; height: 14px; flex: 0 0 auto; color: var(--text-faint); transition: transform .15s ease; }
 details[open] .chevron { transform: rotate(90deg); }
-.settings-body { display: grid; gap: 11px; padding: 12px; border-top: 1px solid var(--line); background: var(--surface-subtle); }
+.settings-body { display: grid; gap: 10px; padding: 12px; border-top: 1px solid var(--line); background: var(--surface-subtle); }
+.settings-intro { margin: 0; color: var(--text-muted); font-size: 10.5px; line-height: 1.45; }
 .field-grid { display: grid; gap: 10px; }
 .switch-row--compact { margin: 0; padding: 0; border: 0; }
-.settings-actions { display: flex; justify-content: flex-end; gap: 7px; }
+.settings-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+/* Settings save themselves; this confirms it in place instead of taking over
+   the status bar, which reports on the extraction. */
+.save-state { margin-right: auto; color: var(--success); font-size: 10.5px; font-weight: 600; opacity: 0; transition: opacity .15s ease; }
+.save-state.is-visible { opacity: 1; }
 
-.app-footer { padding: 0 12px 11px; color: var(--text-faint); font-size: 9.5px; text-align: center; }
+kbd { font: inherit; font-size: .92em; }
+/* Shown on the buttons themselves, so the popup no longer needs a footer
+   legend listing every shortcut. */
+.button-kbd { flex: 0 0 auto; min-width: 18px; padding: 1px 5px; border-radius: 4px; color: inherit; font-size: 10px; line-height: 1.5; text-align: center; background: color-mix(in srgb, currentColor 12%, transparent); opacity: .65; }
+.button:disabled .button-kbd { opacity: .4; }
 
 .stat-card--loading { display: grid; gap: 10px; min-height: 190px; }
 .skeleton { display: block; border-radius: 5px; background: var(--surface-subtle); }
