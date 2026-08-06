@@ -6,4 +6,4 @@
 # pnpm 11 renamed this from `onlyBuiltDependencies` (a list) to `allowBuilds`
 # (a map); the old key is silently ignored.
 allowBuilds:
-  esbuild: true
+    esbuild: true
