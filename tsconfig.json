@@ -9,6 +9,7 @@
         "noEmit": true,
         "noImplicitAny": true,
         "moduleResolution": "node",
+        "resolveJsonModule": true,
         "importHelpers": true,
         "isolatedModules": true,
         "strictNullChecks": true,

@@ -6,9 +6,24 @@ import { normalizeStatblockFeature } from './statblock-format';
 import { normalizeCompendiumPath } from './compendium-path';
 import { ContentSource, sortSourcesForMerge } from './content-source';
 import { findStatblockBlocks } from './markdown-statblock';
+// Namespace imports: the repo does not set esModuleInterop, and JSON modules
+// need no default-import interop to resolve to their array.
+import * as srdAdversaries from '../../data/adversaries.json';
+import * as srdEnvironments from '../../data/environments.json';
 
-const DATA_PATH = 'data';
 const USER_DATA_PATH = 'user_data';
+
+/** The bundled SRD, keyed by the `path` its content source declares.
+ *
+ * These used to be read from `<plugin dir>/data/` at load time, but Obsidian's
+ * installer and BRAT only ever fetch main.js, manifest.json and styles.css —
+ * neither creates a `data/` folder. Every BRAT install therefore came up with
+ * an empty compendium and no error, since a missing file read as zero entries.
+ * Bundling them makes the SRD present by construction. */
+const BUNDLED_SRD: Record<string, unknown[]> = {
+    'adversaries.json': srdAdversaries as unknown[],
+    'environments.json': srdEnvironments as unknown[],
+};
 
 export class DaggerheartCompendium {
     /** The merged, deduplicated view every consumer reads. */
@@ -90,7 +105,7 @@ export class DaggerheartCompendium {
 
     private async loadSrdSource(source: ContentSource): Promise<StatblockData[]> {
         const category = source.forcedCategory ?? 'adversary';
-        const raws = await this.loadSrdFile<any>(source.path);
+        const raws = this.loadSrdFile<any>(source.path);
         const entries: StatblockData[] = [];
         for (const raw of raws) {
             const parsed = this.parseSrdStatblock(raw, category);
@@ -118,17 +133,13 @@ export class DaggerheartCompendium {
         }
     }
 
-    private async loadSrdFile<T>(fileName: string): Promise<T[]> {
-        const path = `${this.plugin.manifest.dir}/${DATA_PATH}/${fileName}`;
-        try {
-            if (!(await this.plugin.app.vault.adapter.exists(path))) return [];
-            let content = await this.plugin.app.vault.adapter.read(path);
-            if (content.charCodeAt(0) === 0xfeff) content = content.slice(1);
-            return JSON.parse(content) as T[];
-        } catch (error) {
-            console.error(`Daggerheart | Error loading SRD file ${fileName}:`, error);
+    private loadSrdFile<T>(fileName: string): T[] {
+        const bundled = BUNDLED_SRD[fileName];
+        if (!bundled) {
+            console.error(`Daggerheart | No bundled SRD data for ${fileName}`);
             return [];
         }
+        return bundled as T[];
     }
 
     /** Convert one flat SRD wire-format record into a StatblockData. */

@@ -57,10 +57,9 @@ command palette.
    They are attached as individual files; you can also take the
    `daggerheart-toolkit-<version>.zip` and unpack it.
 2. Create the folder `<your vault>/.obsidian/plugins/daggerheart-toolkit/` and
-   put the three files in it.
-3. Copy the release's `data/` folder in alongside them — that is the bundled
-   SRD compendium.
-4. Reload Obsidian, then enable **Daggerheart Toolkit** under
+   put the three files in it. The SRD compendium is compiled into `main.js`, so
+   there is nothing else to copy.
+3. Reload Obsidian, then enable **Daggerheart Toolkit** under
    **Settings → Community plugins**.
 
 ### From source
@@ -72,9 +71,12 @@ pnpm install
 pnpm run build
 ```
 
-Copy `main.js`, `manifest.json`, `styles.css` and `data/` into
+Copy `main.js`, `manifest.json` and `styles.css` into
 `<your vault>/.obsidian/plugins/daggerheart-toolkit/`, or clone directly into
 that folder and build in place. `pnpm run dev` rebuilds on change.
+
+The SRD JSON in `data/` is a build input: `pnpm run build` inlines it into
+`main.js`, so edits there need a rebuild to take effect.
 
 ### Requirements
 
@@ -316,7 +318,8 @@ keeps in step. See [CHANGELOG.md](CHANGELOG.md) for what has changed.
 
 The plugin code is MIT. See [LICENSE](LICENSE).
 
-The compendium data in `data/` includes materials from the Daggerheart System
+The compendium data in `data/`, which is compiled into the released `main.js`,
+includes materials from the Daggerheart System
 Reference Document 1.0, © Critical Role, LLC, under the terms of the Darrington
 Press Community Gaming License (DPCGL). More information can be found at
 <https://www.daggerheart.com/>. There are minor modifications to format and

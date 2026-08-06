@@ -81,4 +81,4 @@ jobs:
                     --title="$tag" \
                     --notes-file release-notes.md \
                     --draft \
-                    main.js manifest.json styles.css "daggerheart-toolkit-$tag.zip"
+                    main.js manifest.json styles.css LICENSE "daggerheart-toolkit-$tag.zip"

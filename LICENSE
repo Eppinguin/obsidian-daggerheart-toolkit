@@ -26,8 +26,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 The MIT License above covers the source in `src/`, `shared/`, `scripts/` and
-`tools/`, the build configuration, and the compiled `main.js` and `styles.css`.
-It does not cover the game content described below.
+`tools/`, the build configuration, and `styles.css`. It does not cover the game
+content described below. Note that the build inlines that content into
+`main.js`, so the compiled bundle carries both: the MIT terms apply to its code
+and the DPCGL terms to the SRD data within it.
 
 ================================================================================
 GAME CONTENT — Darrington Press Community Gaming License
