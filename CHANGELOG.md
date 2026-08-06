@@ -13,8 +13,10 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
-- **Encounter tracking.** Fear is shown as pips, and the encounter budget as a
-  bar that flags when you go over.
+- **Encounter budget.** A bar showing how much of the budget an encounter
+  spends, which flags when you go over.
+- **Spend Fear from a feature.** A feature's cost text is clickable, so Fear
+  can be spent from the card instead of the header tracker.
 - **Summons.** Summon adversaries directly from a feature, with a picker for
   what to summon and a prompt for how many.
 - **Tier scaling.** Scale an adversary to a different tier from the card, with
