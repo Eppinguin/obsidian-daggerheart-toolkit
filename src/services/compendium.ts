@@ -6,24 +6,9 @@ import { normalizeStatblockFeature } from './statblock-format';
 import { normalizeCompendiumPath } from './compendium-path';
 import { ContentSource, sortSourcesForMerge } from './content-source';
 import { findStatblockBlocks } from './markdown-statblock';
-// Namespace imports: the repo does not set esModuleInterop, and JSON modules
-// need no default-import interop to resolve to their array.
-import * as srdAdversaries from '../../data/adversaries.json';
-import * as srdEnvironments from '../../data/environments.json';
+import { getBundledSrd } from './bundled-srd';
 
 const USER_DATA_PATH = 'user_data';
-
-/** The bundled SRD, keyed by the `path` its content source declares.
- *
- * These used to be read from `<plugin dir>/data/` at load time, but Obsidian's
- * installer and BRAT only ever fetch main.js, manifest.json and styles.css —
- * neither creates a `data/` folder. Every BRAT install therefore came up with
- * an empty compendium and no error, since a missing file read as zero entries.
- * Bundling them makes the SRD present by construction. */
-const BUNDLED_SRD: Record<string, unknown[]> = {
-    'adversaries.json': srdAdversaries as unknown[],
-    'environments.json': srdEnvironments as unknown[],
-};
 
 export class DaggerheartCompendium {
     /** The merged, deduplicated view every consumer reads. */
@@ -134,7 +119,7 @@ export class DaggerheartCompendium {
     }
 
     private loadSrdFile<T>(fileName: string): T[] {
-        const bundled = BUNDLED_SRD[fileName];
+        const bundled = getBundledSrd<T>(fileName);
         if (!bundled) {
             console.error(`Daggerheart | No bundled SRD data for ${fileName}`);
             return [];

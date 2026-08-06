@@ -38,19 +38,21 @@
         "release:extension": "node scripts/release.mjs extension"
     },
     "dependencies": {
-        "dddice-js": "0.19.34-974",
-        "js-yaml": "^4.1.0",
-        "uuid": "^10.0.0"
+        "dddice-js": "0.21.8",
+        "js-yaml": "^5.2.3",
+        "uuid": "^14.0.1"
     },
     "devDependencies": {
-        "@types/js-yaml": "^4.0.9",
-        "@types/node": "^16.11.7",
-        "@types/uuid": "^10.0.0",
-        "esbuild": "^0.17.17",
+        "@types/node": "^26.1.2",
+        "esbuild": "^0.28.1",
         "obsidian": "latest",
         "oxfmt": "^0.62.0",
         "oxlint": "^1.77.0",
         "tslib": "^2.8.1",
-        "typescript": "^5.0.4"
-    }
+        "typescript": "^7.0.2"
+    },
+    "engines": {
+        "node": ">=22.13"
+    },
+    "packageManager": "pnpm@11.20.0"
 }

@@ -96,9 +96,9 @@ function getThemePreviewUrl(theme: ITheme): string | undefined {
 }
 
 export default class DaggerheartStatblockPlugin extends Plugin {
-    settings: DaggerheartPluginSettings;
-    compendium: DaggerheartCompendium;
-    statblockStore: StatblockStore;
+    settings!: DaggerheartPluginSettings;
+    compendium!: DaggerheartCompendium;
+    statblockStore!: StatblockStore;
     isDiceRollerEnabled: boolean = false;
     private encounters: SavedEncounter[] = [];
     public settingsTab: DaggerheartSettingTab | null = null;
@@ -1153,7 +1153,8 @@ class DaggerheartSettingTab extends PluginSettingTab {
                     .addOption('dice-roller', 'Obsidian Dice Roller')
                     .addOption('dddice', 'dddice.com')
                     .setValue(this.plugin.settings.diceProvider)
-                    .onChange(async (value: 'dice-roller' | 'dddice') => {
+                    .onChange(async (value) => {
+                        if (value !== 'dice-roller' && value !== 'dddice') return;
                         this.plugin.settings.diceProvider = value;
                         await this.plugin.saveSettings();
                         this.display(); // Re-render settings
@@ -1594,7 +1595,7 @@ class ThemeSelectionModal extends Modal {
     plugin: DaggerheartStatblockPlugin;
     settingKey: 'theme' | 'hopeTheme' | 'fearTheme';
     onSelect: (themeId: string) => void;
-    private themeGrid: HTMLElement;
+    private themeGrid!: HTMLElement;
     private loadMoreButton: HTMLElement | null = null;
     private isLoadingMore: boolean = false;
     private dddiceApi: any;

@@ -32,9 +32,9 @@ export class DiceTray {
     plugin: DaggerheartStatblockPlugin;
     private trayButton: HTMLElement | null = null;
     private trayContainer: HTMLElement | null = null;
-    private formulaInput: HTMLInputElement;
-    private modifierInput: HTMLInputElement;
-    private historyContainer: HTMLElement;
+    private formulaInput!: HTMLInputElement;
+    private modifierInput!: HTMLInputElement;
+    private historyContainer!: HTMLElement;
     private rolls: RollHistoryEntry[] = [];
     private isOpen: boolean = false;
     private manuallyOpened: boolean = false;
@@ -515,6 +515,9 @@ export class DiceTray {
     public unload() {
         this.trayButton?.remove();
         this.trayContainer?.remove();
-        this.plugin.app.workspace.off('daggerheart-roll-completed', this.handleNewRoll);
+        this.plugin.app.workspace.off(
+            'daggerheart-roll-completed',
+            this.handleNewRoll as (...data: unknown[]) => unknown,
+        );
     }
 }

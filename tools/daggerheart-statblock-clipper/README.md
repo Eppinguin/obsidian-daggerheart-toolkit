@@ -48,7 +48,7 @@ pnpm run package
 checkout. If an existing `node_modules` was installed by the other package
 manager, delete it before switching.
 
-Node.js 20.19 or newer is required. The browser integration test needs Chromium and a display server; CI installs Playwright Chromium and runs it through Xvfb.
+Node.js 22.13 or newer is required. The browser integration test needs Chromium and a display server; CI installs Playwright Chromium and runs it through Xvfb.
 
 Generated builds:
 

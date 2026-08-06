@@ -6,6 +6,7 @@ import { build } from 'esbuild';
 
 const root = resolve(import.meta.dirname, '..');
 const temporaryModule = resolve(root, '.compendium-path-test.mjs');
+const temporarySrdModule = resolve(root, '.bundled-srd-test.mjs');
 const result = await build({
     entryPoints: [resolve(root, 'src/services/compendium-path.ts')],
     bundle: true,
@@ -22,6 +23,23 @@ try {
     assert.equal(helpers.isPathInsideCompendium('Daggerheart/Homebrew/Nested/Hag.md', 'Daggerheart/Homebrew/'), true);
     assert.equal(helpers.isPathInsideCompendium('Daggerheart/Other/Hag.md', 'Daggerheart/Homebrew'), false);
     assert.equal(helpers.isPathInsideCompendium('Daggerheart/Homebrew/image.png', 'Daggerheart/Homebrew'), false);
+
+    const bundledSrdResult = await build({
+        entryPoints: [resolve(root, 'src/services/bundled-srd.ts')],
+        bundle: true,
+        platform: 'node',
+        format: 'esm',
+        write: false,
+    });
+    await writeFile(temporarySrdModule, bundledSrdResult.outputFiles[0].text);
+    const { getBundledSrd } = await import(`${pathToFileURL(temporarySrdModule).href}?${Date.now()}`);
+    const adversaries = getBundledSrd('adversaries.json');
+    const environments = getBundledSrd('environments.json');
+    assert.ok(Array.isArray(adversaries), 'bundled adversaries must be an iterable array at plugin startup');
+    assert.ok(Array.isArray(environments), 'bundled environments must be an iterable array at plugin startup');
+    assert.ok(adversaries.length > 0, 'bundled adversaries must not be empty');
+    assert.ok(environments.length > 0, 'bundled environments must not be empty');
+    assert.equal(getBundledSrd('missing.json'), undefined);
 
     const main = await readFile(resolve(root, 'src/main.ts'), 'utf8');
     const saveSettings = main.match(/async saveSettings\(\)[\s\S]*?\n    }/m)?.[0] || '';
@@ -73,7 +91,8 @@ try {
     const compendium = await readFile(resolve(root, 'src/services/compendium.ts'), 'utf8');
     assert.match(compendium, /getMarkdownFiles\(\)/);
     assert.match(compendium, /file\.path\.startsWith\(folderPrefix\)/);
-    console.log('Compendium folder path and reload regressions passed');
+    console.log('Compendium path, reload, and bundled SRD regressions passed');
 } finally {
     await rm(temporaryModule, { force: true });
+    await rm(temporarySrdModule, { force: true });
 }

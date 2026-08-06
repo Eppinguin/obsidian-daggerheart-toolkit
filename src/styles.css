@@ -2421,10 +2421,10 @@
    13. MODALS
    ----------------------------------------------------------------------------- */
 /* General modal styles */
-.dh-name-modal .modal-title, 
-.dh-manage-encounters-modal .modal-title { 
+.dh-name-modal .modal-title,
+.dh-manage-encounters-modal .modal-title {
     color: var(--text-normal);
-    text-align: center; 
+    text-align: center;
 }
 
 .dh-name-modal .setting-item-info,

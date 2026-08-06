@@ -1,13 +1,13 @@
 import { Modal, Setting, Notice } from 'obsidian';
 import { ThreeDDiceAPI } from 'dddice-js';
-import DaggerheartStatblockPlugin from 'src/main';
+import DaggerheartStatblockPlugin from '../main';
 import * as dddice from './dddice-service';
 
 export class DddiceActivationModal extends Modal {
     private plugin: DaggerheartStatblockPlugin;
     private activationCode: string = '';
     private expiresAt: Date = new Date();
-    private pollingInterval: NodeJS.Timeout | null = null;
+    private pollingInterval: ReturnType<typeof setInterval> | null = null;
     private secret: string = '';
     private codeDisplayEl: HTMLElement | null = null;
     private timerEl: HTMLElement | null = null;
@@ -187,6 +187,9 @@ export class DddiceActivationModal extends Modal {
     }
 
     private async handleActivationSuccess(apiKey: string) {
+        const previousProvider = this.plugin.settings.diceProvider;
+        const previousApiKey = this.plugin.settings.dddice.apiKey;
+        const previousRoom = this.plugin.settings.dddice.room;
         try {
             const loadingEl = this.contentEl.createEl('div', {
                 cls: 'dddice-loading',
@@ -209,8 +212,14 @@ export class DddiceActivationModal extends Modal {
                     await dddiceApi.room.get(currentRoomSlug);
                     roomIsValid = true;
                 } catch (e: any) {
-                    if (e?.response?.status === 404) {
-                        console.warn(`dddice: Saved room '${currentRoomSlug}' not found. A new room will be created.`);
+                    const status = e?.response?.status;
+                    // Any 4xx here means the saved room is unusable for this
+                    // account; recover by creating a fresh one. Only network or
+                    // 5xx failures should abort activation.
+                    if (status >= 400 && status < 500) {
+                        console.warn(
+                            `dddice: Saved room '${currentRoomSlug}' is not usable (status ${status}). A new room will be created.`,
+                        );
                         this.plugin.settings.dddice.room = null;
                         roomIsValid = false;
                     } else {
@@ -221,20 +230,37 @@ export class DddiceActivationModal extends Modal {
             }
 
             if (!roomIsValid) {
-                const newRoom = (await dddiceApi.room.create())?.data;
-                if (newRoom && newRoom.slug) {
-                    this.plugin.settings.dddice.room = newRoom.slug;
-                    console.log(`dddice: Created and selected new room '${newRoom.slug}'.`);
+                // Free/guest accounts are capped at one room, so creating one
+                // unconditionally fails with 402 for anybody who already has
+                // one. Adopt an existing room first and only create when the
+                // account genuinely has none.
+                const existingRooms = (await dddiceApi.room.list())?.data ?? [];
+
+                if (existingRooms.length > 0) {
+                    this.plugin.settings.dddice.room = existingRooms[0].slug;
+                    console.log(`dddice: Reusing existing room '${existingRooms[0].slug}'.`);
                 } else {
-                    throw new Error('Failed to create a new dddice room.');
+                    const newRoom = (await dddiceApi.room.create())?.data;
+                    if (newRoom && newRoom.slug) {
+                        this.plugin.settings.dddice.room = newRoom.slug;
+                        console.log(`dddice: Created and selected new room '${newRoom.slug}'.`);
+                    } else {
+                        throw new Error('Failed to create a new dddice room.');
+                    }
                 }
             }
 
-            const [rooms, themes] = await Promise.all([
+            // Only the first page of themes is needed here: the cached list feeds
+            // the settings dropdowns (and is stripped by saveSettings anyway),
+            // while rolling only ever needs the selected theme *id*. Crawling
+            // every page blocked activation for seconds on accounts with many
+            // themes, so the rest is loaded lazily by the settings tab.
+            const [rooms, firstThemePage] = await Promise.all([
                 dddice.fetchDddiceRooms(dddiceApi),
-                dddice.fetchDddiceThemes(dddiceApi),
+                dddice.fetchDddiceThemesPage(dddiceApi, true),
             ]);
 
+            const themes = firstThemePage.themes;
             this.plugin.settings.dddice.rooms = rooms.map((r) => ({ slug: r.slug, name: r.name }));
             this.plugin.settings.dddice.themes = themes;
 
@@ -248,15 +274,29 @@ export class DddiceActivationModal extends Modal {
             this.plugin.initializeDddiceIfNeeded();
 
             if (this.plugin.settingsTab) {
-                await this.plugin.settingsTab.preloadDddiceData(true);
+                // Rooms are complete, so keep that cache warm. The theme cache is
+                // deliberately left cold: the settings tab fills in the remaining
+                // pages in the background, after this modal has already closed.
+                this.plugin.settingsTab.dddiceRoomsCacheTimestamp = Date.now();
+                this.plugin.settingsTab.display();
             }
 
             new Notice('Successfully connected to dddice!');
             this.close();
-        } catch (error) {
-            console.error('Error handling activation success:', error);
-            new Notice('Error setting up dddice. Please try again.');
-            this.plugin.settings.dddice.apiKey = '';
+        } catch (error: any) {
+            // Surface the server's own message; a bare "please try again" made
+            // these failures impossible to diagnose from the UI.
+            const status = error?.response?.status;
+            const serverMsg = error?.response?.data?.data?.message ?? error?.response?.data?.message;
+            const detail = [status && `HTTP ${status}`, serverMsg ?? error?.message].filter(Boolean).join(' — ');
+            console.error('Error handling activation success:', status, error?.response?.data ?? error, error);
+            new Notice(`Error setting up dddice${detail ? `: ${detail}` : '.'}`, 10000);
+            // Restore the whole previous connection, not just the key. The room
+            // is cleared mid-flight during validation, so persisting a partial
+            // failure left the next attempt with no room to fall back on.
+            this.plugin.settings.dddice.apiKey = previousApiKey;
+            this.plugin.settings.dddice.room = previousRoom;
+            this.plugin.settings.diceProvider = previousProvider;
             await this.plugin.saveSettings();
         }
     }
@@ -271,7 +311,15 @@ export class DddiceActivationModal extends Modal {
                 guestButtonEl.setAttribute('disabled', 'true');
             }
 
+            // ThreeDDiceAPI writes the Authorization header into axios' *global*
+            // defaults and only ever sets it when a key is truthy, so constructing
+            // with `undefined` leaves any previously-set Bearer token in place.
+            // Guest creation would then be attributed to the stale account instead
+            // of minting a new one, so clear the key explicitly.
             const api = new ThreeDDiceAPI(undefined, 'Daggerheart-Obsidian-Plugin');
+            // The `apiKey` setter is public at runtime but typed `private` in the
+            // shipped .d.ts, so this cast is required to reach it.
+            (api as unknown as { apiKey: string | undefined }).apiKey = undefined;
             const guestData = await api.user.guest();
 
             if (guestData && guestData.data) {

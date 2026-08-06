@@ -21,7 +21,6 @@ function singleFileBundle(name, entry, target) {
                 output: {
                     format: 'iife',
                     entryFileNames: `${name}.js`,
-                    inlineDynamicImports: true,
                 },
             },
         },

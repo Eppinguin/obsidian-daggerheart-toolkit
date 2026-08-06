@@ -1,9 +1,9 @@
 import { Notice } from 'obsidian';
-import { DddiceSettings } from 'src/types';
+import { DddiceSettings } from '../types';
 import { ThreeDDiceAPI, ThreeDDice, ThreeDDiceRollEvent } from 'dddice-js';
 import type { IRoom, ITheme, IDiceRoll, IDiceRollOptions, IDieType, IRoll, IRoomParticipant } from 'dddice-js';
-import DaggerheartStatblockPlugin from 'src/main';
-import { RollCompletedPayload } from 'src/DiceTray';
+import DaggerheartStatblockPlugin from '../main';
+import { RollCompletedPayload } from '../DiceTray';
 
 // Re-export types that are needed by the UI
 export type { IRoom, ITheme, IRoll };

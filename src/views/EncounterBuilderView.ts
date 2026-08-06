@@ -26,9 +26,9 @@ import {
     SummonCountModal,
 } from '../modals/index';
 import type { SummonTarget } from '../services/summon-parser';
-import { DAGGERHEART_CONDITIONS, DAGGERHEART_ADVERSARY_CONDITIONS } from 'src/constants';
-import { EVENT_CREATE_COUNTDOWN, EVENT_RENAME_INSTANCE, EVENT_SPEND_FEAR, EVENT_SUMMON } from 'src/constants';
-import { DiceTray } from 'src/DiceTray';
+import { DAGGERHEART_CONDITIONS, DAGGERHEART_ADVERSARY_CONDITIONS } from '../constants';
+import { EVENT_CREATE_COUNTDOWN, EVENT_RENAME_INSTANCE, EVENT_SPEND_FEAR, EVENT_SUMMON } from '../constants';
+import { DiceTray } from '../DiceTray';
 import { AdversaryScaler } from '../services/adversary-scaler';
 
 export const ENCOUNTER_BUILDER_VIEW_TYPE = 'dh-encounter-builder-view';
@@ -1562,7 +1562,7 @@ export class EncounterBuilderView extends ItemView {
 
     getDragAfterElement(container: HTMLElement, y: number): Element | null {
         const draggableElements = Array.from(container.querySelectorAll('.dh-countdown-item:not(.dh-dragging)'));
-        return draggableElements.reduce(
+        return draggableElements.reduce<{ offset: number; element: Element | null }>(
             (closest, child) => {
                 const box = child.getBoundingClientRect();
                 const offset = y - box.top - box.height / 2;
@@ -2813,7 +2813,7 @@ export class EncounterBuilderView extends ItemView {
             this.uiContainer.removeEventListener(EVENT_RENAME_INSTANCE, this.boundHandleRenameInstanceEvent);
             this.uiContainer.removeEventListener(EVENT_SPEND_FEAR, this.boundHandleSpendFearEvent);
             this.uiContainer.removeEventListener(EVENT_SUMMON, this.boundHandleSummonEvent);
-            const encounterArea = this.uiContainer.querySelector('.dh-encounter-area');
+            const encounterArea = this.uiContainer.querySelector<HTMLElement>('.dh-encounter-area');
             if (encounterArea) {
                 encounterArea.removeEventListener('dragstart', this.boundHandleDragStart);
                 encounterArea.removeEventListener('dragover', this.boundHandleDragOver);

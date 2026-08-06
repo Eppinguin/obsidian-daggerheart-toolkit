@@ -223,7 +223,7 @@ test('manifest overlays stay browser-specific', () => {
     assert.equal(chromium.minimum_chrome_version, '111', 'world:MAIN executeScript needs Chrome 111');
 
     assert.deepEqual(firefox.background.scripts, ['background.js']);
-    assert.equal(firefox.browser_specific_settings.gecko.strict_min_version, '128.0');
+    assert.equal(firefox.browser_specific_settings.gecko.strict_min_version, '142.0');
     assert.deepEqual(firefox.browser_specific_settings.gecko.data_collection_permissions.required, ['none']);
     assert.equal(firefox.minimum_chrome_version, undefined, 'Chromium-only keys must not leak into Firefox');
 });

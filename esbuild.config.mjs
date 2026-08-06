@@ -12,6 +12,7 @@ const commonConfig = {
     outdir: './',
     logLevel: 'info',
     sourcemap: isProduction ? false : 'inline',
+    minify: isProduction,
     treeShaking: true,
 };
 
