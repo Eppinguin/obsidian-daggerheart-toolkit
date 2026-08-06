@@ -89,6 +89,10 @@ const pkgPath = resolve(config.cwd, 'package.json');
 const version = JSON.parse(readFileSync(pkgPath, 'utf8')).version;
 const tag = config.tag(version);
 
+// Under --dry-run the bump above never ran, so this is the *current* version,
+// not the one a real run would produce. Say so rather than looking authoritative.
+if (dryRun) console.log(`\n  (dry-run: version unchanged, so the tag below reflects ${version}, not the ${bump} bump)`);
+
 console.log(`\n== Committing and tagging ${tag} ==`);
 run('git', ['add', ...config.files]);
 run('git', ['commit', '-m', `Release ${tag}`]);
