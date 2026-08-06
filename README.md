@@ -39,9 +39,9 @@ from a GitHub repository and keeps them up to date, including pre-releases.
 3. Open **Settings → BRAT → Add beta plugin**.
 4. Paste this repository URL:
 
-   ```text
-   https://github.com/Eppinguin/obsidian-daggerheart-toolkit
-   ```
+    ```text
+    https://github.com/Eppinguin/obsidian-daggerheart-toolkit
+    ```
 
 5. Choose the latest version, leave **Enable after installing** on, and click
    **Add plugin**.
@@ -93,7 +93,7 @@ layout adapts when the panel is narrow.
 The compendium panel beside the encounter area searches every enabled source at
 once, and filters by category (adversary or environment), tier, type, and
 source.
-Adding an adversary creates an *instance* — its own card with its own HP,
+Adding an adversary creates an _instance_ — its own card with its own HP,
 Stress, conditions and name, so three Jagged Knife Bandits can be tracked
 apart. Cards can be renamed inline, reordered by drag and drop, grouped, and
 collapsed to a header bar when the panel gets tight.
@@ -284,15 +284,15 @@ Chrome and Firefox, is versioned and released separately, and lives in
 
 All available from the command palette:
 
-| Command | What it does |
-| --- | --- |
-| Open Encounter Builder | Opens the builder view |
-| Insert Adversary Statblock | Picks an adversary and inserts an embed block |
-| Insert Environment Statblock | Picks an environment and inserts an embed block |
-| Insert Encounter Link | Inserts a link that opens a saved encounter |
-| Create or Edit Compendium Entry | Opens the entry editor |
-| Import Daggerheart Content | Imports statblocks from a JSON file |
-| Export Daggerheart Content | Exports statblocks to a JSON file |
+| Command                         | What it does                                    |
+| ------------------------------- | ----------------------------------------------- |
+| Open Encounter Builder          | Opens the builder view                          |
+| Insert Adversary Statblock      | Picks an adversary and inserts an embed block   |
+| Insert Environment Statblock    | Picks an environment and inserts an embed block |
+| Insert Encounter Link           | Inserts a link that opens a saved encounter     |
+| Create or Edit Compendium Entry | Opens the entry editor                          |
+| Import Daggerheart Content      | Imports statblocks from a JSON file             |
+| Export Daggerheart Content      | Exports statblocks to a JSON file               |
 
 ## Development
 
