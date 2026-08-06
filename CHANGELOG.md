@@ -13,8 +13,8 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 
-- **Encounter tracking.** The builder now tracks the spotlight and the round
-  count, shows Fear as pips, and renders the encounter budget as a bar.
+- **Encounter tracking.** Fear is shown as pips, and the encounter budget as a
+  bar that flags when you go over.
 - **Summons.** Summon adversaries directly from a feature, with a picker for
   what to summon and a prompt for how many.
 - **Tier scaling.** Scale an adversary to a different tier from the card, with
