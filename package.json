@@ -34,7 +34,8 @@
         "test:instance-blocks": "node scripts/test-instance-blocks.mjs",
         "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
         "version": "node version-bump.mjs && git add manifest.json versions.json",
-        "release": "pnpm run build && git add . && git commit -m \"Release $npm_package_version\" && git tag $npm_package_version && git push && git push --tags"
+        "release:plugin": "node scripts/release.mjs plugin",
+        "release:extension": "node scripts/release.mjs extension"
     },
     "dependencies": {
         "dddice-js": "0.19.34-974",
