@@ -9,7 +9,9 @@ name: Release Obsidian plugin
 on:
     push:
         tags:
-            - '[0-9]+.[0-9]+.[0-9]+'
+            # Glob, not regex: `[0-9]` is a class but `*` is the only repeat.
+            # This matches 0.0.3 and 1.10.2 while excluding statblock-clipper-v*.
+            - '[0-9]*.[0-9]*.[0-9]*'
     workflow_dispatch:
 
 jobs:
