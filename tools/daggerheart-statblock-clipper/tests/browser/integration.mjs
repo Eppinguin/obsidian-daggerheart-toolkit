@@ -3,7 +3,6 @@ import { chromium } from 'playwright';
 import selfsigned from 'selfsigned';
 import { createServer } from 'node:https';
 import { cp, mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
-import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 
@@ -64,31 +63,24 @@ if (!address || typeof address === 'string') throw new Error('Fixture server did
 const port = address.port;
 const profile = await mkdtemp(join(tmpdir(), 'dh-clipper-playwright-'));
 
+/** The extension's own service worker reports its ID.
+ *
+ * This used to poll the profile's `Preferences` / `Secure Preferences` JSON for
+ * an `extensions.settings` entry whose recorded path matched extensionDir. That
+ * reads Chromium's private on-disk format, waits on a file it writes only when
+ * it feels like it, and compares realpaths across the tmpdir symlink — three
+ * ways to fail for one answer Chromium hands over directly. It timed out on CI
+ * under xvfb, where extension startup is slower than the 10s budget.
+ *
+ * MV3 registers a worker at chrome-extension://<id>/background.js, so the URL
+ * *is* the ID. The generous timeout covers a cold CI runner; the worker may
+ * already be up, hence checking the live list before waiting for the event. */
 async function extensionId() {
-    const files = [join(profile, 'Default', 'Preferences'), join(profile, 'Default', 'Secure Preferences')];
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-        for (const file of files) {
-            try {
-                const preferences = JSON.parse(await readFile(file, 'utf8'));
-                const settings = preferences?.extensions?.settings || {};
-                for (const [id, value] of Object.entries(settings)) {
-                    // Compare resolved paths: on macOS mkdtemp yields /var/...
-                    // while Chrome records the /private/var/... realpath.
-                    const recorded = String(value?.path || '');
-                    if (!recorded) continue;
-                    try {
-                        if (realpathSync(recorded) === realpathSync(extensionDir)) return id;
-                    } catch {
-                        /* path no longer resolvable */
-                    }
-                }
-            } catch (_error) {
-                /* profile file not written yet */
-            }
-        }
-        await new Promise((resolveWait) => setTimeout(resolveWait, 100));
-    }
-    throw new Error('Could not determine the unpacked extension ID.');
+    const worker =
+        context.serviceWorkers()[0] ||
+        (await context.waitForEvent('serviceworker', { timeout: 60000 }).catch(() => null));
+    if (!worker) throw new Error('The extension service worker never registered, so its ID is unknown.');
+    return new URL(worker.url()).host;
 }
 
 /** Belt-and-braces retry. The real fix for the ~20% flake this test used to
