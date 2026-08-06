@@ -30,13 +30,7 @@ let currentDiagnostics: Record<string, unknown> = {};
 const $ = (id: string): HTMLElement => document.getElementById(id) as HTMLElement;
 const input = (id: string): HTMLInputElement => document.getElementById(id) as HTMLInputElement;
 
-const ACTION_BUTTON_IDS = [
-    'copyMarkdown',
-    'copyJson',
-    'sendObsidian',
-    'createNote',
-    'copyDiagnostics',
-];
+const ACTION_BUTTON_IDS = ['copyMarkdown', 'copyJson', 'sendObsidian', 'createNote', 'copyDiagnostics'];
 
 /** Icon path data per status. Built with DOM calls rather than assigned as an
  * innerHTML string: the values are static, but `web-ext lint` flags any

@@ -45,7 +45,9 @@ const dryRun = flags.includes('--dry-run');
 const noPush = flags.includes('--no-push') || dryRun;
 
 if (!TARGETS[target] || !bump) {
-    console.error('Usage: node scripts/release.mjs <plugin|extension> <patch|minor|major|x.y.z> [--dry-run] [--no-push]');
+    console.error(
+        'Usage: node scripts/release.mjs <plugin|extension> <patch|minor|major|x.y.z> [--dry-run] [--no-push]',
+    );
     process.exit(2);
 }
 
