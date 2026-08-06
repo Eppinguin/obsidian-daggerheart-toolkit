@@ -57,6 +57,9 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 - The plugin release now attaches `main.js`, `manifest.json` and `styles.css`
   as individual assets. Obsidian's installer cannot read them out of the zip,
   so 0.0.2 could not be installed from its release page.
+- Removed 45 dead CSS rules left behind by features that were tried and
+  dropped: a damage-threshold display, an import/export modal, filter chips,
+  and a renamed cost class. `styles.css` is 88kb, down from 94kb.
 - Added oxlint and oxfmt with a CI quality workflow.
 
 ## [0.0.2] - 2025-07-21
