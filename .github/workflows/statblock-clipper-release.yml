@@ -39,10 +39,15 @@ jobs:
             - run: xvfb-run -a pnpm run test:browser
             - run: pnpm run lint:firefox
             - run: pnpm run package
+            # `git archive` resolves pathspecs from the repo root, so this runs
+            # there rather than under the job's clipper working-directory, and
+            # writes back into the artifacts dir the upload step reads.
             - name: Create source archive
+              working-directory: .
               run: |
-                  git archive --format=zip --output=artifacts/daggerheart-statblock-clipper-source.zip HEAD \
-                    shared/statblock-format.js tools/daggerheart-statblock-clipper
+                  git archive --format=zip \
+                    --output=tools/daggerheart-statblock-clipper/artifacts/daggerheart-statblock-clipper-source.zip \
+                    HEAD shared/statblock-format.js tools/daggerheart-statblock-clipper
             - uses: actions/upload-artifact@v4
               with:
                   name: statblock-clipper-release
