@@ -5,6 +5,6 @@
     "minAppVersion": "0.15.0",
     "description": "An Obsidian.md extension for Daggerheart GMs to render statblocks, build and run encounters, and track Fear and countdowns.",
     "author": "Eppinguin",
-    "authorUrl": "https://yourwebsite.com",
+    "authorUrl": "https://github.com/Eppinguin",
     "isDesktopOnly": false
 }

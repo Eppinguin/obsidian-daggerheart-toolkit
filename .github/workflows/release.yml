@@ -54,6 +54,9 @@ jobs:
                   tag="${GITHUB_REF#refs/tags/}"
                   mkdir -p daggerheart-toolkit/data
                   cp main.js manifest.json styles.css daggerheart-toolkit/
+                  # The zip ships the SRD data, so the DPCGL notice covering it
+                  # has to travel with it.
+                  cp LICENSE daggerheart-toolkit/
                   cp -r data/* daggerheart-toolkit/data/
                   zip -r "daggerheart-toolkit-$tag.zip" daggerheart-toolkit/
 
