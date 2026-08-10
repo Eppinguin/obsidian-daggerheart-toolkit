@@ -44,6 +44,7 @@ import * as dddice from './services/dddice-service';
 import type { ITheme } from './services/dddice-service';
 import { DddiceActivationModal } from './services/dddice-activation';
 import { RollCompletedPayload, RollComponent } from './DiceTray';
+import { ensureUserDataFolder, USER_DATA_FOLDER, writeUserDataJson } from './services/user-data-storage';
 
 declare module 'obsidian' {
     interface Workspace {
@@ -55,8 +56,6 @@ declare module 'obsidian' {
         trigger(name: 'daggerheart-roll-completed', payload: RollCompletedPayload): void;
     }
 }
-
-const USER_COMPENDIUM_FOLDER = 'user_data';
 
 addIcon(
     'brush-cleaning',
@@ -111,6 +110,9 @@ export default class DaggerheartStatblockPlugin extends Plugin {
 
         this.statblockStore = new StatblockStore(this);
         this.compendium = new DaggerheartCompendium(this);
+        // Release installs contain only packaged assets. Create the gitignored
+        // writable folder before encounters or custom sources need it.
+        await this.ensureUserDataFolderExists();
         // Runs before the first load so recovered sources appear immediately.
         await this.rescueOrphanedSourceFiles();
         await this.compendium.load();
@@ -284,7 +286,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     private async loadEncounters() {
-        const path = `${this.manifest.dir}/user_data/encounters.json`;
+        const path = `${this.manifest.dir}/${USER_DATA_FOLDER}/encounters.json`;
         if (await this.app.vault.adapter.exists(path)) {
             try {
                 const data = await this.app.vault.adapter.read(path);
@@ -299,8 +301,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
     }
 
     private async saveEncounters() {
-        const path = `${this.manifest.dir}/user_data/encounters.json`;
-        await this.app.vault.adapter.write(path, JSON.stringify(this.encounters, null, 2));
+        await writeUserDataJson(this.app.vault.adapter, this.manifest.dir, 'encounters.json', this.encounters);
     }
 
     public async updateDddiceParticipantName() {
@@ -366,11 +367,8 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         }, 250);
     }
 
-    private async ensureUserCompendiumFolderExists() {
-        const path = `${this.manifest.dir}/${USER_COMPENDIUM_FOLDER}`;
-        if (!(await this.app.vault.adapter.exists(path))) {
-            await this.app.vault.adapter.mkdir(path);
-        }
+    public async ensureUserDataFolderExists() {
+        await ensureUserDataFolder(this.app.vault.adapter, this.manifest.dir);
     }
 
     public async triggerCompendiumUpdate() {
@@ -446,7 +444,7 @@ export default class DaggerheartStatblockPlugin extends Plugin {
         if (this.settings.sourcesRescued) return;
         this.settings.sourcesRescued = true;
 
-        const folder = `${this.manifest.dir}/${USER_COMPENDIUM_FOLDER}`;
+        const folder = `${this.manifest.dir}/${USER_DATA_FOLDER}`;
         try {
             if (!(await this.app.vault.adapter.exists(folder))) {
                 await this.saveSettings();

@@ -11,8 +11,7 @@ import {
     replaceStatblockBlock,
 } from './markdown-statblock';
 import { statblockToYaml } from './statblock-format';
-
-const USER_DATA_FOLDER = 'user_data';
+import { USER_DATA_FOLDER, writeUserDataJson } from './user-data-storage';
 
 /**
  * Fields that only make sense on a live encounter instance, or that the loader
@@ -403,11 +402,7 @@ export class StatblockStore {
     }
 
     private async writeSource(source: ContentSource, entries: StatblockData[]): Promise<void> {
-        const folder = `${this.plugin.manifest.dir}/${USER_DATA_FOLDER}`;
-        if (!(await this.plugin.app.vault.adapter.exists(folder))) {
-            await this.plugin.app.vault.adapter.mkdir(folder);
-        }
-        await this.plugin.app.vault.adapter.write(this.pathFor(source), JSON.stringify(entries, null, 2));
+        await writeUserDataJson(this.plugin.app.vault.adapter, this.plugin.manifest.dir, source.path, entries);
         await this.plugin.triggerCompendiumUpdate();
     }
 }

@@ -10,6 +10,7 @@ on:
             - 'scripts/test-encounter-thresholds.mjs'
             - 'scripts/test-statblock-format.mjs'
             - 'scripts/test-statblock-import-integration.mjs'
+            - 'scripts/test-user-data-storage.mjs'
             - 'package.json'
             - 'pnpm-lock.yaml'
             - '.github/workflows/plugin-build.yml'
@@ -21,6 +22,7 @@ on:
             - 'scripts/test-encounter-thresholds.mjs'
             - 'scripts/test-statblock-format.mjs'
             - 'scripts/test-statblock-import-integration.mjs'
+            - 'scripts/test-user-data-storage.mjs'
             - 'package.json'
             - 'pnpm-lock.yaml'
             - '.github/workflows/plugin-build.yml'
@@ -43,4 +45,5 @@ jobs:
             - run: pnpm run test:thresholds
             - run: pnpm run test:statblock-format
             - run: pnpm run test:statblock-import
+            - run: pnpm run test:user-data
             - run: pnpm run build

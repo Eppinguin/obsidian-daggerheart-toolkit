@@ -25,7 +25,10 @@ assert.match(previewStyles, /@media\s*\(max-width:\s*600px\)/);
 assert.match(batch, /statblockStore\.upsertMany\(/);
 assert.equal((batch.match(/adapter\.write/g) || []).length, 0, 'the batch writer must not write files directly');
 const store = await readFile('src/services/statblock-store.ts', 'utf8');
-assert.equal((store.match(/adapter\.write/g) || []).length, 1, 'writes must funnel through one place');
+const userDataStorage = await readFile('src/services/user-data-storage.ts', 'utf8');
+assert.match(store, /writeUserDataJson\(/, 'statblock writes must use the shared user-data boundary');
+assert.equal((store.match(/adapter\.write/g) || []).length, 0, 'the store must not write files directly');
+assert.equal((userDataStorage.match(/adapter\.write/g) || []).length, 1, 'writes must funnel through one place');
 assert.match(store, /async upsertMany\([\s\S]*?await this\.writeSource\(/, 'upsertMany must write once for the batch');
 
 // The clipboard import command is installed by monkey-patching this prototype

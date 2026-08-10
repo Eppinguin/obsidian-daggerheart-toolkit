@@ -42,6 +42,10 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Fixed
 
+- Clean release installs now create their writable `user_data` folder before
+  saving encounters or custom statblocks. Encounter autosaves therefore persist
+  across plugin reloads, and tier scaling no longer stops when its autosave
+  targets a folder that was present only in development vaults.
 - Tier changes now always recalculate from the immutable published statblock,
   preventing accumulated rounding and prose changes across repeated tier
   selections. Returning to the source tier restores the original statistics
