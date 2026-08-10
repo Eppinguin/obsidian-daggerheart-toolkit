@@ -62,7 +62,7 @@ function renderAttackBlock(
     // Only a plain integer can be turned into "1d20+N". Anything else (a dash, a
     // homebrew note) is shown verbatim rather than dropped or mis-rolled.
     const modLabel = isNumericMod
-        ? `d20${modValue === '0' ? '' : modValue.startsWith('+') || modValue.startsWith('-') ? modValue : `+${modValue}`}`
+        ? `${modValue === '0' ? '' : modValue.startsWith('+') || modValue.startsWith('-') ? modValue : `+${modValue}`}`
         : modValue;
     if (modLabel) {
         const toHit = rolls.createSpan({

@@ -95,6 +95,8 @@ export class EncounterBuilderView extends ItemView {
     private editingLoopIds: Set<string> = new Set();
 
     private activeScalingGroups: Set<string> = new Set();
+    /** Invalidates stale Undo buttons when a group is scaled again. */
+    private scalingRevisionByGroup: Map<string, number> = new Map();
     /**
      * How much of each card is showing, keyed by groupId. Groups absent from the
      * map are 'full'.
@@ -491,7 +493,11 @@ export class EncounterBuilderView extends ItemView {
         this.countdownsPopup.style.right = `${parentRect.right - buttonRect.right}px`;
     }
 
-    private async scaleGroup(groupId: string, targetTier: number) {
+    private async scaleGroup(
+        groupId: string,
+        targetTier: number,
+        options: { offerUndo?: boolean; restored?: boolean } = {},
+    ) {
         // Find all instances in this group
         const groupIndices: number[] = [];
         this.activeEncounterItems.forEach((item, index) => {
@@ -500,36 +506,26 @@ export class EncounterBuilderView extends ItemView {
 
         if (groupIndices.length === 0) return;
 
+        const revision = (this.scalingRevisionByGroup.get(groupId) ?? 0) + 1;
+        this.scalingRevisionByGroup.set(groupId, revision);
+
         const before = this.activeEncounterItems[groupIndices[0]];
         const beforeSummary = {
             name: before.displayName || before.name,
             tier: Number(before.tier) || 0,
-            hp: Number(before.hp_stress?.hp) || 0,
-            damage: before.attack?.damage ?? '',
         };
 
-        // Scale each one
+        // Scale each one. Group members share a template, so de-duplicate the
+        // review guidance emitted for unsupported or ambiguous source fields.
+        const scalingWarnings = new Set<string>();
+        const scalingAdvisories = new Set<string>();
         groupIndices.forEach((index) => {
             const original = this.activeEncounterItems[index];
-            const scaled = AdversaryScaler.scale(original, targetTier);
-            this.activeEncounterItems[index] = scaled;
+            const result = AdversaryScaler.scaleWithResult(original, targetTier);
+            this.activeEncounterItems[index] = result.adversary;
+            result.warnings.forEach((warning) => scalingWarnings.add(warning));
+            result.advisories.forEach((advisory) => scalingAdvisories.add(advisory));
         });
-
-        // Scaling rewrites HP, damage and feature text at once. Summarise what
-        // actually moved, so the GM can trust the change without diffing the
-        // card against a statblock they no longer have on screen.
-        const after = this.activeEncounterItems[groupIndices[0]];
-        const changes: string[] = [];
-        const afterHp = Number(after.hp_stress?.hp) || 0;
-        if (afterHp !== beforeSummary.hp) changes.push(`HP ${beforeSummary.hp} → ${afterHp}`);
-        const afterDamage = after.attack?.damage ?? '';
-        if (afterDamage && afterDamage !== beforeSummary.damage) {
-            changes.push(`damage ${beforeSummary.damage} → ${afterDamage}`);
-        }
-        new Notice(
-            `${beforeSummary.name}: tier ${beforeSummary.tier} → ${targetTier}` +
-                (changes.length ? `\n${changes.join(', ')}` : ''),
-        );
 
         await this.autoSaveCurrentEncounter();
 
@@ -545,6 +541,31 @@ export class EncounterBuilderView extends ItemView {
                 this.drawEncounterBudget(rightSideTrackers);
                 if (this.plugin.settings.enableFearTracker) this.drawFearTracker(rightSideTrackers);
             }
+        }
+
+        if (scalingWarnings.size) {
+            console.warn(`Tier scaling needs attention for ${beforeSummary.name}:`, Array.from(scalingWarnings));
+        }
+        if (scalingAdvisories.size) {
+            console.info(`Tier scaling design guidance for ${beforeSummary.name}:`, Array.from(scalingAdvisories));
+        }
+        const notice = new Notice(
+            scalingWarnings.size
+                ? `${beforeSummary.name} moved to Tier ${targetTier}, but one or more values could not be adjusted safely.`
+                : `${beforeSummary.name} ${options.restored ? 'restored' : 'scaled'} to Tier ${targetTier}.${
+                      scalingAdvisories.size ? ' Review suggested; see the console for design guidance.' : ''
+                  }`,
+            7000,
+        );
+        if (options.offerUndo !== false) {
+            notice.noticeEl.createEl('button', { text: 'Undo' }).onclick = async () => {
+                if (this.scalingRevisionByGroup.get(groupId) !== revision) {
+                    notice.hide();
+                    return;
+                }
+                notice.hide();
+                await this.scaleGroup(groupId, beforeSummary.tier, { offerUndo: false, restored: true });
+            };
         }
     }
 

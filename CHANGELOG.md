@@ -9,6 +9,49 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [0.0.5] - 2026-08-10
+
+### Changed
+
+- Tier scaling now applies RightKnight's role-specific boundary progression to
+  Difficulty, thresholds, HP, Stress, and attack modifiers. Social adversaries
+  instead map through their broad tier bands so bespoke deviations are
+  preserved without treating Monarch as the benchmark.
+- Standard attacks now preserve their position within the source role's damage
+  band when moving to the destination role band. Out-of-band attacks retain
+  their absolute deviation, destination dice counts follow tier, and Minion
+  attacks use their dedicated flat-damage bands.
+- Social attacks now preserve low-impact and combat-capable dice paths. Tier 2
+  can retain one die or use the guide's two-die path, while higher tiers follow
+  the matching Social damage profile.
+- Horde passives now rebuild to approximately half the scaled standard attack.
+  Minion overflow passives move through their dedicated tier bands. Their
+  feature names and matching rules text remain synchronized.
+- Damage-aware feature scaling now preserves a feature's relationship to the
+  scaled standard attack and accounts for Fear and Stress costs before capping
+  free area or secondary damage. Explicit flat and supported compound damage
+  expressions scale without changing unrelated resource, target-count, or
+  countdown dice.
+- Feature text scaling exposes damage-aware, all-dice, and structured-only
+  modes. Unsupported damage formulas remain unchanged and produce review
+  warnings.
+- Tier-scaling confirmations are now concise and offer Undo. Unsafe values
+  remain warnings, while large tier jumps and Social-specific design guidance
+  are reported separately as advisories.
+- Numeric ATK labels no longer include the `d20` prefix.
+
+### Fixed
+
+- Tier changes now always recalculate from the immutable published statblock,
+  preventing accumulated rounding and prose changes across repeated tier
+  selections. Returning to the source tier restores the original statistics
+  and feature text while preserving instance identity and live encounter state.
+- Existing `d20` damage inputs now normalize onto the ordinary d4-d12 output
+  ladder instead of generating scaled `d20` expressions.
+- Missing thresholds remain absent. Extreme downscales repair zero HP, negative
+  Stress, and crossed thresholds while preserving the source threshold
+  relationship where repair is required.
+
 ## [0.0.4] - 2026-08-06
 
 ### Fixed
@@ -99,7 +142,8 @@ Initial public releases.
 
 ## [0.0.1] - 2025-07-09
 
-[Unreleased]: https://github.com/Eppinguin/obsidian-daggerheart-toolkit/compare/0.0.4...HEAD
+[Unreleased]: https://github.com/Eppinguin/obsidian-daggerheart-toolkit/compare/0.0.5...HEAD
+[0.0.5]: https://github.com/Eppinguin/obsidian-daggerheart-toolkit/compare/0.0.4...0.0.5
 [0.0.4]: https://github.com/Eppinguin/obsidian-daggerheart-toolkit/compare/0.0.3...0.0.4
 [0.0.3]: https://github.com/Eppinguin/obsidian-daggerheart-toolkit/compare/0.0.2...0.0.3
 [0.0.2]: https://github.com/Eppinguin/obsidian-daggerheart-toolkit/compare/0.0.1...0.0.2

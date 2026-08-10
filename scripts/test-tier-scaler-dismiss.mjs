@@ -80,4 +80,23 @@ assert.match(closeBody, /syncCardControlsWidth/, 'closing must recompute the tit
 // The row renders out of flow, which is what keeps it off the card title.
 assert.match(styles, /\.dh-tier-controls\s*\{[^}]*position:\s*absolute/s);
 
+// Scaling is a one-click play aid: routine implementation details stay out of
+// the Notice, and the GM gets a short-lived Undo instead of a review workflow.
+const scaleGroupAt = view.indexOf('private async scaleGroup(');
+const scaleGroupBlock = view.slice(scaleGroupAt, view.indexOf('private redrawItemGroup(', scaleGroupAt));
+assert.doesNotMatch(scaleGroupBlock, /Review:|changes\.join|damage .*→/);
+assert.match(scaleGroupBlock, /scaled'\} to Tier \$\{targetTier\}/);
+assert.match(scaleGroupBlock, /notice\.noticeEl\.createEl\('button', \{ text: 'Undo' \}\)/);
+assert.match(scaleGroupBlock, /scalingRevisionByGroup\.get\(groupId\) !== revision/);
+assert.match(
+    scaleGroupBlock,
+    /scaleGroup\(groupId, beforeSummary\.tier, \{ offerUndo: false, restored: true \}\)/,
+    'Undo must restore the tier through the path-independent scaler',
+);
+assert.ok(
+    scaleGroupBlock.indexOf('await this.autoSaveCurrentEncounter()') <
+        scaleGroupBlock.indexOf('const notice = new Notice('),
+    'success should only be announced after the scaled encounter is saved',
+);
+
 console.log('Tier scaler dismissal regression passed');
