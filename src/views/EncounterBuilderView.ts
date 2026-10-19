@@ -15,6 +15,7 @@ import { countdownState, fixedStartValue, isDiceStart, isValidStart, resetLabel 
 import { shouldScrollHorizontally, type ScrollableBox } from '../services/wheel-scroll';
 import { renderConditionTags, renderConditionButton } from '../rendering/conditions';
 import { renderInstanceName } from '../rendering/instance-name';
+import { onActivateKey } from '../rendering/ui-helpers';
 import {
     EncounterBudgetModal,
     CustomConditionModal,
@@ -403,7 +404,8 @@ export class EncounterBuilderView extends ItemView {
         this.autoSaveCurrentEncounter();
     }
 
-    showEncounterSwitcherMenu(event: MouseEvent) {
+    /** Opens at the pointer when clicked, or under the title when opened from the keyboard. */
+    showEncounterSwitcherMenu(event: MouseEvent | KeyboardEvent) {
         const menu = new Menu();
         menu.addItem((item) =>
             item
@@ -431,7 +433,12 @@ export class EncounterBuilderView extends ItemView {
                 });
             });
         }
-        menu.showAtMouseEvent(event);
+        if (event instanceof MouseEvent) {
+            menu.showAtMouseEvent(event);
+        } else {
+            const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+            menu.showAtPosition({ x: rect.left, y: rect.bottom });
+        }
     }
 
     toggleCompendiumVisibility() {
@@ -997,9 +1004,21 @@ export class EncounterBuilderView extends ItemView {
         this.closeAllTierScalers();
     };
 
+    /**
+     * Escape dismisses the view's transient surfaces, innermost first: the tier
+     * scaler, then the statblock preview, then the countdowns popup. A field
+     * that handles Escape itself (the loop editor) prevents default and is left
+     * alone.
+     */
     private handleTierScalerKeydown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape' && this.activeScalingGroups.size > 0) {
+        if (e.key !== 'Escape' || e.defaultPrevented) return;
+        if (this.activeScalingGroups.size > 0) {
             this.closeAllTierScalers();
+        } else if (this.activePopover) {
+            this.hideStatblockPreview();
+        } else if (this.isCountdownsPopupVisible && this.countdownsPopup?.contains(document.activeElement)) {
+            this.toggleCountdownsPopup();
+            (this.uiContainer?.querySelector('.dh-countdowns-toggle-btn') as HTMLElement | null)?.focus();
         }
     };
 
@@ -1049,8 +1068,10 @@ export class EncounterBuilderView extends ItemView {
         const titleEl = titleAndTrackersWrapper.createEl('h3', {
             text: titleText,
             cls: 'dh-active-encounter-title-clickable',
+            attr: { role: 'button', tabindex: '0', 'aria-haspopup': 'menu', title: 'Switch encounter' },
         });
         titleEl.addEventListener('click', (e) => this.showEncounterSwitcherMenu(e));
+        onActivateKey(titleEl, (e) => this.showEncounterSwitcherMenu(e));
         const rightSideTrackers = titleAndTrackersWrapper.createDiv({ cls: 'dh-right-side-trackers' });
         if (this.plugin.settings.enableEncounterBudget) this.drawEncounterBudget(rightSideTrackers);
         if (this.plugin.settings.enableFearTracker) this.drawFearTracker(rightSideTrackers);
@@ -1107,9 +1128,9 @@ export class EncounterBuilderView extends ItemView {
         }
         if (orderedGroupIds.length === 0) {
             const emptyText = currentEncounter
-                ? `Encounter "${currentEncounter.name}" is empty. Add adversaries or environments.`
-                : 'No active encounter or encounter is empty.';
-            encounterArea.createEl('p', { text: emptyText });
+                ? `"${currentEncounter.name}" is empty. Add adversaries or environments from the Compendium.`
+                : 'No active encounter. Click the title to create or load one.';
+            encounterArea.createEl('p', { text: emptyText, cls: 'dh-encounter-empty' });
         } else {
             for (const groupId of orderedGroupIds) {
                 this.drawItemGroup(groupId, encounterArea);
@@ -1224,13 +1245,20 @@ export class EncounterBuilderView extends ItemView {
         const { spent, total } = this.calculateEncounterBudget();
         const budgetTrackerEl = parent.createDiv({
             cls: 'dh-budget-tracker',
-            title: 'Click to configure encounter budget',
+            attr: {
+                role: 'button',
+                tabindex: '0',
+                title: 'Configure encounter budget',
+                'aria-label': `Budget ${spent} of ${total}. Configure encounter budget`,
+            },
         });
-        budgetTrackerEl.addEventListener('click', () => {
+        const openBudget = () => {
             new EncounterBudgetModal(this.app, this.plugin, () => {
                 this.drawUI();
             }).open();
-        });
+        };
+        budgetTrackerEl.addEventListener('click', openBudget);
+        onActivateKey(budgetTrackerEl, openBudget);
         const readout = budgetTrackerEl.createDiv({ cls: 'dh-budget-readout' });
         readout.createSpan({ text: 'Budget:', cls: 'dh-budget-label' });
         const valueEl = readout.createSpan({ cls: 'dh-budget-value' });
@@ -1631,10 +1659,18 @@ export class EncounterBuilderView extends ItemView {
         // the same left position on every row instead of shifting with the
         // length of the name beside them.
         const controls = itemEl.createDiv({ cls: 'dh-countdown-controls' });
-        const decrementBtn = controls.createEl('button', { text: '−', cls: 'dh-countdown-btn' });
+        const decrementBtn = controls.createEl('button', {
+            text: '−',
+            cls: 'dh-countdown-btn',
+            attr: { type: 'button', 'aria-label': `Tick "${countdown.name}" down` },
+        });
         decrementBtn.addEventListener('click', () => this.handleCountdownValueChange(countdown.id, -1));
         controls.createSpan({ text: countdown.value.toString(), cls: 'dh-countdown-value' });
-        const incrementBtn = controls.createEl('button', { text: '+', cls: 'dh-countdown-btn' });
+        const incrementBtn = controls.createEl('button', {
+            text: '+',
+            cls: 'dh-countdown-btn',
+            attr: { type: 'button', 'aria-label': `Tick "${countdown.name}" up` },
+        });
         incrementBtn.addEventListener('click', () => this.handleCountdownValueChange(countdown.id, 1));
 
         const nameWrap = itemEl.createDiv({ cls: 'dh-countdown-name-wrap' });
@@ -1642,6 +1678,7 @@ export class EncounterBuilderView extends ItemView {
             type: 'text',
             value: countdown.name,
             cls: 'dh-countdown-name-input',
+            attr: { 'aria-label': 'Countdown name' },
         });
         nameInput.addEventListener('change', () => this.handleRenameCountdown(countdown.id, nameInput.value));
 
@@ -1895,7 +1932,17 @@ export class EncounterBuilderView extends ItemView {
             });
         } else {
             filteredItems.forEach((itemData) => {
-                const itemEntry = listContainer.createDiv({ cls: 'dh-compendium-entry' });
+                // Focusable so the preview is reachable from the keyboard. Not
+                // role="button": the entry contains its own Add button.
+                const itemEntry = listContainer.createDiv({
+                    cls: 'dh-compendium-entry',
+                    attr: { tabindex: '0', title: `Preview ${itemData.name}` },
+                });
+                itemEntry.addEventListener('keydown', (e) => {
+                    if (e.target !== itemEntry || (e.key !== 'Enter' && e.key !== ' ')) return;
+                    e.preventDefault();
+                    itemEntry.click();
+                });
 
                 // Add click event listener for the popover
                 itemEntry.addEventListener('click', (e) => {
@@ -1966,6 +2013,7 @@ export class EncounterBuilderView extends ItemView {
                     text: '+',
                     title: 'Add to active encounter',
                     cls: 'dh-add-compendium-btn',
+                    attr: { type: 'button', 'aria-label': `Add ${itemData.name} to encounter` },
                 });
                 addButton.addEventListener('click', (_e) => {
                     // Close any open popover when adding to encounter
@@ -2639,10 +2687,11 @@ export class EncounterBuilderView extends ItemView {
         const controlsWrapper = header.createDiv({ cls: 'dh-additional-tracker-controls' });
         renderConditionButton(instance.id, instance.displayName || instance.name, controlsWrapper, trackerRow);
         const removeBtn = controlsWrapper.createEl('button', {
-            text: '✕',
             title: 'Remove this instance',
             cls: 'dh-remove-additional-btn',
+            attr: { type: 'button', 'aria-label': `Remove ${instance.displayName || instance.name}` },
         });
+        setIcon(removeBtn, 'x');
         removeBtn.addEventListener('click', () => {
             this.uiContainer?.dispatchEvent(
                 new CustomEvent('dh-remove-instance', {

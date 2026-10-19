@@ -9,6 +9,22 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+### Added
+
+- Keyboard support for feature expansion, encounter titles, the budget tracker,
+  and compendium entries, plus Escape to close the preview and countdowns popup.
+
+### Changed
+
+- Clicking anywhere on an ATK or DMG chip rolls it.
+- Printed statblocks keep their parchment colours in dark themes.
+
+### Fixed
+
+- Half-written homebrew statblocks no longer show "HP: undefined".
+- Statblocks with several experiences show all of them.
+- ATK rolls work with dddice as well as the Dice Roller.
+
 ## [0.0.5] - 2026-08-10
 
 ### Changed

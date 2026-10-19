@@ -148,29 +148,54 @@
 }
 
 /* -----------------------------------------------------------------------------
-   1. VARIABLES
-   ----------------------------------------------------------------------------- */
-
-/* -----------------------------------------------------------------------------
    2. EDITOR STATBLOCK STYLES 
    ----------------------------------------------------------------------------- */
+/* The in-note statblock is a printed card: parchment and ink in every theme.
+   Its own palette lives here, and the theme variables that nested content
+   reads (dice links, cost emphasis, Markdown links) are pinned to it, because a
+   dark theme's pale accent is unreadable on parchment. */
 .dh-editor-statblock {
-    background-color: #f3f0e9;
-    border: 1px solid #dcdad5;
+    --dh-sb-paper: #f3f0e9;
+    --dh-sb-edge: #dcdad5;
+    --dh-sb-rule: #cfcac0;
+    --dh-sb-ink: #2b2925;
+    --dh-sb-ink-strong: #111;
+    --dh-sb-ink-faint: #6e6a62;
+    /* Oxblood: reads as ink rather than UI chrome, and holds 7:1 on the paper. */
+    --dh-sb-accent: #8b2c1f;
+    --dh-sb-accent-hover: #6b1f15;
+
+    --interactive-accent: var(--dh-sb-accent);
+    --interactive-accent-hover: var(--dh-sb-accent-hover);
+    --text-accent: var(--dh-sb-accent);
+    --text-accent-hover: var(--dh-sb-accent-hover);
+    --link-color: var(--dh-sb-accent);
+    --link-color-hover: var(--dh-sb-accent-hover);
+    --text-normal: var(--dh-sb-ink);
+    --text-muted: var(--dh-sb-ink-faint);
+
+    background-color: var(--dh-sb-paper);
+    border: 1px solid var(--dh-sb-edge);
     border-radius: 8px;
-    padding: 1em;
-    color: #333;
+    padding: 1em 1.125em;
+    color: var(--dh-sb-ink);
     max-width: 550px;
     box-shadow: none;
     line-height: var(--line-height-normal);
     font-size: var(--font-text-size, 16px);
 }
 
+.dh-editor-statblock ::selection {
+    background-color: color-mix(in srgb, var(--dh-sb-accent) 22%, transparent);
+    color: inherit;
+}
+
 /* Name styling */
 .dh-editor-statblock .dh-name {
     font-size: 1.5em;
     font-weight: var(--font-black);
-    color: #111;
+    color: var(--dh-sb-ink-strong);
+    text-wrap: balance;
     text-transform: uppercase;
     margin: 0 0 0.1em 0;
     padding: 0;
@@ -181,15 +206,15 @@
 .dh-editor-statblock .dh-tier-type {
     font-size: var(--font-ui-medium);
     font-weight: var(--font-semibold);
-    color: #333;
-    margin: 0.2em 0 0.2em 0;
+    color: var(--dh-sb-ink);
+    margin: 0.2em 0 0.5em 0;
 }
 
 /* Description styling */
 .dh-editor-statblock .dh-description {
     font-style: italic;
-    margin-bottom: 0.2em;
-    color: #333;
+    margin-bottom: 0.5em;
+    color: var(--dh-sb-ink);
 }
 
 /* Motives section */
@@ -205,11 +230,13 @@
 .dh-editor-statblock .dh-stats-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5em 0.75em;
-    margin: 0.5em 0;
-    border-top: 2px solid #ccc;
-    border-bottom: 2px solid #ccc;
+    gap: 0.25em 0.75em;
+    margin: 0.75em 0;
+    padding: 0.4em 0;
+    border-top: 2px solid var(--dh-sb-rule);
+    border-bottom: 2px solid var(--dh-sb-rule);
     align-items: center;
+    font-variant-numeric: tabular-nums;
 }
 
 .dh-editor-statblock .dh-stats-grid > span {
@@ -221,15 +248,23 @@
 }
 
 .dh-editor-statblock .dh-stat-separator {
-    color: #aaa;
+    color: var(--dh-sb-ink-faint);
+}
+
+/* A Fear cost only drives a tracker inside the encounter builder. In a note
+   nothing listens, so it keeps its emphasis but drops the click affordance. */
+.dh-editor-statblock .dh-spend-fear {
+    cursor: text;
+    text-decoration: none;
 }
 
 /* Features section */
 .dh-editor-statblock .dh-features-title {
     font-size: var(--font-ui-larger);
     font-weight: var(--font-black);
-    color: #111;
+    color: var(--dh-sb-ink-strong);
     text-transform: uppercase;
+    margin: 0 0 0.35em;
     padding: 0;
     border: none;
     text-align: left;
@@ -338,7 +373,6 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow: hidden;
     position: relative !important;
     overflow: visible !important;
 }
@@ -386,11 +420,6 @@
     min-width: 0;
 }
 
-.dh-right-side-trackers {
-    flex-wrap: wrap;
-    gap: var(--size-4-2) var(--size-4-3);
-}
-
 .dh-encounter-main-interface {
     display: flex;
     flex-grow: 1; 
@@ -436,6 +465,35 @@
     gap: var(--size-4-1);
 }
 
+/* Sits where the first card would, rather than as a bare paragraph at the
+   top-left of an empty board. */
+.dh-encounter-empty {
+    align-self: center;
+    margin: 0 auto;
+    max-width: 36ch;
+    padding: var(--size-4-6) var(--size-4-4);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+/* One focus ring for every control in the view. Most controls here reset
+   Obsidian's button styles (box-shadow included), which also removed the only
+   visible focus indicator; an outline survives those resets. */
+.dh-encounter-view :is(button, [role='button'], [tabindex='0'], select):focus-visible,
+.dh-statblock-preview-popover :is(button, [tabindex='0']):focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
+}
+
+/* Header controls on a card sit at reduced opacity; a focused one should read
+   at full strength like a hovered one. */
+.dh-card-header-controls .dh-icon-button:focus-visible,
+.dh-additional-tracker-controls .dh-icon-button:focus-visible,
+.dh-remove-additional-btn:focus-visible {
+    opacity: 1;
+}
+
 
 /* -----------------------------------------------------------------------------
    5. BUTTONS AND CONTROLS
@@ -473,17 +531,7 @@
 }
 
 .dh-panel-controls .dh-icon-button {
-    background-color: transparent;
-    border: none;
-    color: var(--text-muted);
     padding: var(--size-2-1);
-    cursor: pointer;
-    border-radius: var(--radius-s);
-}
-
-.dh-panel-controls .dh-icon-button:hover {
-    background-color: var(--background-modifier-hover);
-    color: var(--text-normal);
 }
 
 /* Inline per-instance controls. Deliberately smaller than header controls:
@@ -621,23 +669,19 @@
 .dh-right-side-trackers {
     display: flex;
     align-items: center;
-    gap: var(--size-4-3);
-    margin-left: auto; 
+    flex-wrap: wrap;
+    gap: var(--size-4-2) var(--size-4-3);
+    margin-left: auto;
 }
 
-/* Fear tracker */
+/* Fear tracker. A compact numeric readout: the header is often narrow, and
+   Fear needs to stay legible there rather than degrade into a squeezed pip row. */
 .dh-fear-tracker {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--size-4-1);
     flex-shrink: 0;
-}
-
-/* Compact numeric readout: the header is often narrow, and Fear needs to stay
-   legible there rather than degrade into a squeezed pip row. */
-.dh-fear-tracker {
-    gap: var(--size-4-1);
 }
 
 .dh-fear-label {
@@ -715,7 +759,6 @@
     height: 100%;
     width: var(--dh-budget-pct, 0%);
     background-color: var(--color-green);
-    transition: width 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
 
 .dh-budget-tracker.is-over .dh-budget-bar-fill {
@@ -738,6 +781,7 @@
     text-align: center;
     font-weight: var(--font-bold);
     font-size: var(--font-ui-medium);
+    font-variant-numeric: tabular-nums;
     color: var(--text-normal);
 }
 
@@ -1345,7 +1389,7 @@
 /* Card motives */
 .dh-instance-card-content .dh-motives {
     font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-light);
+    font-weight: var(--font-normal);
     color: var(--text-normal);
     margin-top: var(--size-4-1);
     padding-top: var(--size-4-1);
@@ -1534,19 +1578,6 @@
 }
 
 
-/* Card experience */
-.dh-instance-card-content .dh-experience { 
-    font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-light);
-    color: var(--text-normal);
-    margin-top: var(--size-4-1);
-    padding-top: var(--size-4-1);
-}
-
-.dh-instance-card-content .dh-experience strong { 
-    font-weight: var(--font-bold); 
-}
-
 /* Card image */
 .dh-card-image-container {
     width: 100%;
@@ -1589,7 +1620,10 @@
     align-items: center;
     justify-content: center;
     opacity: 0.7;
-    transition: all 0.2s ease-in-out;
+    transition:
+        opacity 0.15s ease-out,
+        background-color 0.15s ease-out,
+        color 0.15s ease-out;
     border: none;
     padding: 0;
 }
@@ -1615,10 +1649,6 @@
     cursor: grabbing;
 }
 
-
-.dh-card-image-container {
-    padding-top: 0;
-}
 
 /* --- Drag and Drop Styles --- */
 
@@ -1695,7 +1725,15 @@
     border: 1px solid var(--background-modifier-border);
     border-left-width: var(--dh-feature-stripe-w);
     border-left-color: var(--dh-feature-stripe);
-    transition: all 0.2s ease;
+    transition:
+        background-color 0.15s ease-out,
+        border-color 0.15s ease-out;
+}
+
+/* A feat with no description has nothing to open (no button role is set on
+   it), so it must not promise a click: no pointer, no hover lift. */
+.dh-instance-card-content .dh-feature-header-container:not([role='button']) {
+    cursor: default;
 }
 
 /* Feature type as a colour, so Actions and Reactions can be picked out of a
@@ -1725,7 +1763,7 @@
     --dh-feature-accent: var(--color-green);
 }
 
-.dh-instance-card-content .dh-feature-header-container:hover {
+.dh-instance-card-content .dh-feature-header-container[role='button']:hover {
     background-color: var(--background-modifier-hover);
     border-color: var(--background-modifier-border-hover);
 }
@@ -1796,14 +1834,17 @@
     color: var(--color-red);
 }
 
+/* Mixed from the base --color-* hue, like the type badges below, rather than
+   the optional *-faint / *-strong pair: themes that omit those (AnuPpuccin
+   among them) left these two chips untinted beside a tinted HP chip. */
 .dh-feature-tag-stress {
-    background-color: var(--color-purple-faint);
-    color: var(--color-purple-strong);
+    background-color: rgba(var(--color-purple-rgb), 0.15);
+    color: color-mix(in srgb, var(--color-purple) 62%, var(--text-normal));
 }
 
 .dh-feature-tag-fear {
-    background-color: var(--color-cyan-faint);
-    color: var(--color-cyan-strong);
+    background-color: rgba(var(--color-cyan-rgb), 0.15);
+    color: color-mix(in srgb, var(--color-cyan) 62%, var(--text-normal));
 }
 
 /* The badge takes its colour from the same --dh-feature-accent the item's left
@@ -1897,13 +1938,21 @@
 }
 
 /* Feature toggle (expand/collapse) */
+/* One chevron, turned rather than swapped (see renderFeatureList). */
 .dh-instance-card-content .dh-feature-toggle {
-    color: var(--text-muted); 
-    transition: transform 0.2s ease;
+    display: inline-flex;
+    color: var(--text-muted);
+    transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dh-feature-header-container.is-expanded .dh-feature-toggle {
-    transform: rotate(0); /* Explicitly set for transition */
+    transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dh-instance-card-content .dh-feature-toggle {
+        transition: none;
+    }
 }
 
 /* Feature description */
@@ -2086,6 +2135,11 @@
     opacity: 1;
 }
 
+.dh-remove-additional-btn .svg-icon {
+    width: var(--dh-micro-icon);
+    height: var(--dh-micro-icon);
+}
+
 /* Statblock preview popover content (replaces inline styles set in TS;
    the popover's *position* stays inline as it is computed at runtime) */
 .dh-popover-content {
@@ -2233,7 +2287,6 @@
     min-width: 240px;
     height: 100%;
     color: var(--text-normal, #ccc);
-    transition: flex-basis 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out, border 0.3s ease-in-out, margin 0.3s ease-in-out; 
     order: 2;
 }
 
@@ -2384,7 +2437,7 @@
 
 /* Compendium search */
 .dh-compendium-search {
-    width: calc(100% - var(--size-4-2) * 2); 
+    width: 100%;
     padding: var(--size-4-2);
     margin-bottom: var(--size-4-3);
     border: 1px solid var(--background-modifier-border);
@@ -2554,32 +2607,6 @@
 }
 
 /* --- Add Item Modal (Reworked) --- */
-
-.menu-item-icon { 
-    margin-right: var(--size-4-2);
-}
-
-.menu { 
-    background-color: var(--background-secondary);
-    color: var(--text-normal);
-    border: 1px solid var(--background-modifier-border);
-    box-shadow: var(--shadow-l); 
-}
-.menu-item { 
-    color: var(--text-normal);
-}
-.menu-item:hover {
-    background-color: var(--background-modifier-hover);
-}
-.menu-item.is-checked > .menu-item-icon { 
-    color: var(--interactive-accent);
-}
-.menu-separator { 
-    background-color: var(--background-modifier-border);
-}
-.menu.context-menu .menu-item-icon { 
-    color: var(--text-muted);
-}
 
 
 /* -----------------------------------------------------------------------------
@@ -2877,6 +2904,7 @@
     font-weight: var(--font-bold);
     min-width: 20px;
     text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
 .dh-no-items-message {
@@ -3063,18 +3091,6 @@
     align-self: flex-start;
 }
 
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
 .dh-edit-adversary-modal .modal-footer {
     flex-shrink: 0;
     padding: var(--size-4-3) var(--modal-padding);
@@ -3122,7 +3138,7 @@
 }
 
 .dh-statblock-preview-popover .dh-popover-content {
-    padding: 1;
+    padding: 0;
     overflow-y: auto;
     scrollbar-width: thin;
 }
@@ -3144,7 +3160,7 @@
     max-width: 100%;
     box-shadow: none;
     border: none;
-    padding: 0;
+    border-radius: 0;
 }
 
 /* -----------------------------------------------------------------------------

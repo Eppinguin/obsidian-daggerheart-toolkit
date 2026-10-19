@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import { StatblockData, AdversaryInstance, StatblockFeature } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { normalizeFeatureType, normalizeRoleFamily } from './statblock-type';
-import { canRollDice, createInteractiveTrack, renderRollableContent, renderMarkdown } from './ui-helpers';
+import { canRollDice, createInteractiveTrack, onActivateKey, renderRollableContent, renderMarkdown } from './ui-helpers';
 import { renderConditionTags, renderConditionButton } from './conditions';
 import { renderInstanceName } from './instance-name';
 import { renderSummonControls } from './summon';
@@ -316,10 +316,18 @@ export function renderFeatureList(
             cls: `dh-feature-tag dh-feature-tag-${featureType.toLowerCase()}`,
         });
 
+        // A feat with no description has nothing to open, so its header stays a
+        // plain row: no button role, and (via CSS) no pointer or hover.
         if (!feature.description) return;
 
-        const toggle = metaContainer.createSpan({ cls: 'dh-feature-toggle' });
-        setIcon(toggle, isExpanded ? 'chevron-down' : 'chevron-right');
+        header.setAttribute('role', 'button');
+        header.setAttribute('tabindex', '0');
+        header.setAttribute('aria-expanded', String(isExpanded));
+
+        // One chevron, turned by CSS on .is-expanded, rather than swapping the
+        // icon: the swap could not animate and briefly left the row iconless.
+        const toggle = metaContainer.createSpan({ cls: 'dh-feature-toggle', attr: { 'aria-hidden': 'true' } });
+        setIcon(toggle, 'chevron-right');
 
         const descDiv = li.createDiv({
             cls: `dh-feature-description ${isExpanded ? '' : 'dh-feature-description-hidden'}`,
@@ -334,13 +342,15 @@ export function renderFeatureList(
         renderRollableContent(plugin, feature.description, descDiv, feature.name);
         renderSummonControls(descDiv, feature.description, plugin.compendium.getStatblocks(), feature.name);
 
-        header.addEventListener('click', (e: MouseEvent) => {
+        const toggleDescription = (e: Event) => {
             e.stopPropagation();
             const isHidden = descDiv.classList.toggle('dh-feature-description-hidden');
             header.classList.toggle('is-expanded', !isHidden);
-            setIcon(toggle, isHidden ? 'chevron-right' : 'chevron-down');
+            header.setAttribute('aria-expanded', String(!isHidden));
             options.onToggle?.(feature, !isHidden);
-        });
+        };
+        header.addEventListener('click', toggleDescription);
+        onActivateKey(header, toggleDescription);
     });
 }
 
@@ -406,47 +416,55 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
             span.appendText(thresholds.join('/'));
             statElements.push(span);
         }
-        const hpSpan = document.createElement('span');
-        hpSpan.createEl('strong', { text: 'HP: ' });
-        hpSpan.appendText(String(data.hp_stress.hp));
-        statElements.push(hpSpan);
-
-        const stressSpan = document.createElement('span');
-        stressSpan.createEl('strong', { text: 'Stress: ' });
-        stressSpan.appendText(String(data.hp_stress.stress));
-        statElements.push(stressSpan);
+        // A half-written homebrew block may not have these yet; "HP: undefined"
+        // is worse than leaving the stat out.
+        if (data.hp_stress.hp != null) {
+            const hpSpan = document.createElement('span');
+            hpSpan.createEl('strong', { text: 'HP: ' });
+            hpSpan.appendText(String(data.hp_stress.hp));
+            statElements.push(hpSpan);
+        }
+        if (data.hp_stress.stress != null) {
+            const stressSpan = document.createElement('span');
+            stressSpan.createEl('strong', { text: 'Stress: ' });
+            stressSpan.appendText(String(data.hp_stress.stress));
+            statElements.push(stressSpan);
+        }
     }
 
-    if (data.attack) {
+    // Same placeholder test as the encounter card: an environment's empty
+    // `{name: 'Attack', modifier: '0'}` would otherwise print "ATK: 0 | Attack:".
+    if (hasAttack(data)) {
+        const attack = data.attack;
+        const attackName = attack.name || 'Attack';
         const atkSpan = document.createElement('span');
         atkSpan.createEl('strong', { text: 'ATK: ' });
 
-        const modifierValue = String(data.attack.modifier ?? '0').trim();
-        if (/^[+-]?\d+$/.test(modifierValue) && plugin.isDiceRollerEnabled) {
-            let normalizedModifier = modifierValue;
-            if (
-                !normalizedModifier.startsWith('+') &&
-                !normalizedModifier.startsWith('-') &&
-                normalizedModifier !== '0'
-            ) {
-                normalizedModifier = `+${modifierValue}`;
-            }
-            const diceString = `1d20${normalizedModifier === '+0' || normalizedModifier === '0' ? '' : normalizedModifier}`;
-            const atkRollable = atkSpan.createSpan({ text: modifierValue, cls: 'dh-rollable-dice' });
-            atkRollable.title = `Click to roll ${diceString}`;
+        const modifierValue = String(attack.modifier ?? '0').trim();
+        const isNumericMod = /^[+-]?\d+$/.test(modifierValue);
+        // Printed signed ("+3"), as the published statblocks do; a bare "3" reads
+        // as a target number rather than a bonus.
+        const signedMod = isNumericMod && !/^[+-]/.test(modifierValue) ? `+${modifierValue}` : modifierValue;
+        // canRollDice rather than the Dice Roller flag alone, so the to-hit agrees
+        // with the damage beside it on every provider (dddice included).
+        if (isNumericMod && canRollDice(plugin)) {
+            const diceString = `1d20${Number(modifierValue) === 0 ? '' : signedMod}`;
+            const atkRollable = atkSpan.createSpan({ text: signedMod, cls: 'dh-rollable-dice' });
+            atkRollable.title = `Click to roll ${diceString} for ${attackName}`;
             atkRollable.addEventListener('click', (e) => {
                 e.stopPropagation();
-                plugin.rollDice(diceString, data.attack?.name || 'Attack');
+                plugin.rollDice(diceString, attackName);
             });
         } else {
-            atkSpan.appendText(modifierValue);
+            atkSpan.appendText(signedMod);
         }
         statElements.push(atkSpan);
 
         const attackDetailsSpan = document.createElement('span');
-        attackDetailsSpan.createEl('strong', { text: `${data.attack.name || 'Attack'}: ` });
-        attackDetailsSpan.appendText(`${data.attack.range || ''} `);
-        renderRollableContent(plugin, data.attack.damage || '', attackDetailsSpan, data.attack.name || 'Attack');
+        const range = (attack.range || '').trim();
+        attackDetailsSpan.createEl('strong', { text: `${attackName}: ` });
+        if (range) attackDetailsSpan.appendText(`${range} `);
+        renderRollableContent(plugin, attack.damage || '', attackDetailsSpan, attackName);
         statElements.push(attackDetailsSpan);
     }
 
@@ -455,16 +473,15 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
         expSpan.createEl('strong', { text: 'Experience: ' });
 
         if (typeof data.experience === 'string') {
-            // If experience is just a string, display it directly
             expSpan.appendText(data.experience);
         } else {
-            // If experience is a StatblockExperience object, format it like "Key +Value"
-            const experienceEntries = Object.entries(data.experience);
-            if (experienceEntries.length > 0) {
-                const [key, value] = experienceEntries[0]; // Take first entry as shown in screenshot
-                const formattedValue = value > 0 ? `+${value}` : value.toString();
-                expSpan.appendText(`${key} ${formattedValue}`);
-            }
+            // Every entry, formatted "Key +Value" and comma-joined as the
+            // published statblocks print them.
+            expSpan.appendText(
+                Object.entries(data.experience)
+                    .map(([key, value]) => `${key} ${Number(value) > 0 ? `+${value}` : value}`)
+                    .join(', '),
+            );
         }
         statElements.push(expSpan);
     }
@@ -495,17 +512,15 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
             const strongEl = p.createEl('strong', { cls: 'dh-feature-title' });
             renderRollableContent(plugin, `${title}: `, strongEl, feature.name);
 
-            let description = feature.description || '';
+            const description = feature.description || '';
 
             const descSpan = p.createSpan({ cls: 'dh-feature-description' });
-            // Also check for countdown in the description to ensure it's processed
-            if (
-                description.includes('d20') ||
-                description.includes('d6') ||
-                description.includes('Mark stress') ||
-                description.includes('Spend fear') ||
-                description.toLowerCase().includes('countdown')
-            ) {
+            // renderRollableContent splits the text into fragments, which costs a
+            // multi-line description its list structure, so it is reserved for
+            // text that actually holds something it would mark up. The test
+            // mirrors that helper's pattern: any die size, and the costs and
+            // countdowns in their published wording.
+            if (/\d+d\d+|Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear)|Countdown\s*\(/i.test(description)) {
                 renderRollableContent(plugin, description, descSpan, feature.name);
             } else {
                 renderMarkdown(plugin, description, descSpan);
@@ -712,10 +727,11 @@ function renderAdversaryInstance(
         const controlsWrapper = header.createDiv({ cls: 'dh-additional-tracker-controls' });
         renderConditionButton(data.id, data.displayName || data.name, controlsWrapper, containerEl);
         const removeBtn = controlsWrapper.createEl('button', {
-            text: '✕',
             title: 'Remove this instance',
             cls: 'dh-remove-additional-btn',
+            attr: { type: 'button', 'aria-label': `Remove ${data.displayName || data.name}` },
         });
+        setIcon(removeBtn, 'x');
         removeBtn.addEventListener('click', () =>
             containerEl.dispatchEvent(
                 new CustomEvent('dh-remove-instance', { bubbles: true, detail: { instanceId: data.id } }),

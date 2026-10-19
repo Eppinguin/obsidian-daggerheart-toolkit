@@ -277,6 +277,18 @@ function markStress(track: HTMLElement, amount: number, context: string) {
 }
 
 /**
+ * Enter and Space activation for an element given role="button", matching what
+ * a native button does. Only fires for the element itself, not a nested control.
+ */
+export function onActivateKey(el: HTMLElement, handler: (e: KeyboardEvent) => void) {
+    el.addEventListener('keydown', (e) => {
+        if (e.target !== el || (e.key !== 'Enter' && e.key !== ' ')) return;
+        e.preventDefault();
+        handler(e);
+    });
+}
+
+/**
  * Creates an interactive track with pips for things like HP and Stress.
  * @param parentEl The parent element to attach the track to.
  * @param label The label for the track (e.g., "HP").
@@ -301,6 +313,7 @@ export function createInteractiveTrack(
     const decrementButton = controlsDiv.createEl('button', {
         text: '−',
         cls: 'dh-track-btn dh-track-btn-decrement',
+        attr: { type: 'button', 'aria-label': `Clear one ${label}` },
     });
     const pipsContainer = controlsDiv.createDiv({ cls: 'dh-pips-container' });
     const pips: HTMLDivElement[] = [];
@@ -327,6 +340,7 @@ export function createInteractiveTrack(
     const incButton = controlsDiv.createEl('button', {
         text: '+',
         cls: 'dh-track-btn dh-track-btn-increment',
+        attr: { type: 'button', 'aria-label': `Mark one ${label}` },
     });
     decrementButton.addEventListener('click', () => {
         const currentMarkedCount = pips.filter((p) => p.classList.contains('dh-pip-marked')).length;
