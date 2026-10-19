@@ -79,6 +79,20 @@ export function renderMarkdown(plugin: DaggerheartStatblockPlugin, text: string,
 }
 
 /**
+ * Whether the configured dice provider can take a roll right now. Shared by
+ * every roll target so the attack and damage chips on one card never disagree
+ * about whether they are clickable.
+ */
+export function canRollDice(plugin: DaggerheartStatblockPlugin): boolean {
+    const isDiceRollerConfigured =
+        plugin.settings.diceProvider === 'dice-roller' &&
+        plugin.settings.enableDiceRoller &&
+        plugin.isDiceRollerEnabled;
+    const isDddiceConfigured = plugin.settings.diceProvider === 'dddice' && !!plugin.settings.dddice.apiKey;
+    return isDiceRollerConfigured || isDddiceConfigured;
+}
+
+/**
  * Renders content with rollable dice strings and feature costs.
  * @param plugin The main plugin instance.
  * @param text The text to process.
@@ -96,12 +110,7 @@ export function renderRollableContent(
     let lastIndex = 0;
     let match;
 
-    const isDiceRollerConfigured =
-        plugin.settings.diceProvider === 'dice-roller' &&
-        plugin.settings.enableDiceRoller &&
-        plugin.isDiceRollerEnabled;
-    const isDddiceConfigured = plugin.settings.diceProvider === 'dddice' && !!plugin.settings.dddice.apiKey;
-    const isRollable = isDiceRollerConfigured || isDddiceConfigured;
+    const isRollable = canRollDice(plugin);
 
     while ((match = pattern.exec(text)) !== null) {
         if (match.index > lastIndex) {
@@ -134,11 +143,12 @@ export function renderRollableContent(
                 });
         } else if (costPart) {
             // "Spend a Fear" / "Spend 2 Fear" drives the encounter's Fear
-            // tracker directly: it is the one cost in this pattern the plugin
-            // actually holds state for. Hope and Stress belong to the players'
-            // sheets and to the individual adversary track respectively, so
-            // those stay as plain emphasis.
+            // tracker directly. "Mark a Stress" drives the adversary's own
+            // Stress track, but only when the card holds a single instance —
+            // with a group there is no telling whose Stress it means. Hope
+            // belongs to the players' sheets and stays plain emphasis.
             const fearMatch = costPart.match(/^Spend\s+(a|\d+)\s+fear$/i);
+            const stressMatch = costPart.match(/^Mark\s+(a|\d+)\s+stress$/i);
             const costEl = containerEl.createEl('strong', {
                 text: costPart,
                 cls: 'dh-feature-cost-text dh-interactive-cost',
@@ -157,6 +167,21 @@ export function renderRollableContent(
                             composed: true,
                         }),
                     );
+                });
+            } else if (stressMatch) {
+                const amount = /^a$/i.test(stressMatch[1]) ? 1 : parseInt(stressMatch[1], 10);
+                costEl.addClass('dh-mark-stress');
+                costEl.addEventListener('click', (e) => {
+                    // Resolved at click time rather than render time: group
+                    // members are added and removed without redrawing the
+                    // statblock, so the card's shape can change underneath it.
+                    const stressTrack = findSoleStressTrack(costEl);
+                    if (!stressTrack) return;
+                    e.stopPropagation();
+                    markStress(stressTrack, amount, context);
+                });
+                costEl.addEventListener('mouseenter', () => {
+                    costEl.title = findSoleStressTrack(costEl) ? `Click to mark ${amount} Stress` : '';
                 });
             }
         } else if (countdownPart && countdownValue) {
@@ -219,6 +244,36 @@ export function renderRollableContent(
         const remainingEl = containerEl.createSpan();
         renderMarkdown(plugin, remainingText, remainingEl);
     }
+}
+
+/**
+ * The Stress track a "Mark a Stress" link should drive, or null when there is
+ * no single answer: outside an encounter card, on an environment, or on a card
+ * holding a group.
+ */
+function findSoleStressTrack(el: HTMLElement): HTMLElement | null {
+    const card = el.closest('.dh-adversary-instance-card');
+    if (!card) return null;
+    const tracks = card.querySelectorAll<HTMLElement>('.dh-hp-stress-container .dh-stress-track');
+    return tracks.length === 1 ? tracks[0] : null;
+}
+
+/**
+ * Mark Stress through the track's own + button, so the pips, the saved state
+ * and any callbacks move exactly as if the GM had clicked it.
+ */
+function markStress(track: HTMLElement, amount: number, context: string) {
+    const incButton = track.querySelector<HTMLButtonElement>('.dh-track-btn-increment');
+    if (!incButton) return;
+    const max = track.querySelectorAll('.dh-pip').length;
+    const marked = () => track.querySelectorAll('.dh-pip.dh-pip-marked').length;
+    const room = max - marked();
+    if (room <= 0) {
+        new Notice(`${context}: Stress is already full.`);
+        return;
+    }
+    for (let i = 0; i < Math.min(amount, room); i++) incButton.click();
+    if (amount > room) new Notice(`${context}: only ${room} Stress left to mark.`);
 }
 
 /**

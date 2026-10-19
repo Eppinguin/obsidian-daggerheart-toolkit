@@ -2,7 +2,7 @@ import { setIcon } from 'obsidian';
 import { StatblockData, AdversaryInstance, StatblockFeature } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { normalizeFeatureType, normalizeRoleFamily } from './statblock-type';
-import { createInteractiveTrack, renderRollableContent, renderMarkdown } from './ui-helpers';
+import { canRollDice, createInteractiveTrack, renderRollableContent, renderMarkdown } from './ui-helpers';
 import { renderConditionTags, renderConditionButton } from './conditions';
 import { renderInstanceName } from './instance-name';
 import { renderSummonControls } from './summon';
@@ -70,7 +70,7 @@ function renderAttackBlock(
             attr: { title: 'Attack roll' },
         });
         toHit.createSpan({ cls: 'dh-roll-chip-label', text: 'ATK' });
-        if (isNumericMod && plugin.isDiceRollerEnabled) {
+        if (isNumericMod && canRollDice(plugin)) {
             const diceString = `1d20${modValue === '0' ? '' : modValue.startsWith('+') || modValue.startsWith('-') ? modValue : `+${modValue}`}`;
             const rollSpan = toHit.createSpan({
                 text: modLabel,
@@ -98,6 +98,50 @@ function renderAttackBlock(
         damageChip.createSpan({ cls: 'dh-roll-chip-label', text: 'DMG' });
         renderRollableContent(plugin, damage, damageChip, attackName);
     }
+
+    rolls.querySelectorAll<HTMLElement>('.dh-roll-chip').forEach(promoteChipToRollTarget);
+}
+
+/**
+ * Make the whole chip the click target when it holds exactly one roll.
+ *
+ * Only the dice text used to be clickable: on "ATK +3" that was a ~14px-wide
+ * span inside a chip that lit up on hover across its full width, so a click on
+ * the label or the padding looked like it should roll and did nothing. The GM
+ * reaches for these every turn, often mid-conversation, and should not have to
+ * aim.
+ *
+ * A chip with several rollable parts (prose damage like "1d6 or 2d4") keeps
+ * per-span targets, since there is no single roll the chip could mean. Clicks
+ * are forwarded to the existing span so the roll logic stays in one place.
+ */
+function promoteChipToRollTarget(chip: HTMLElement) {
+    const targets = chip.querySelectorAll<HTMLElement>('.dh-rollable-dice');
+    if (targets.length !== 1) return;
+    const target = targets[0];
+
+    chip.addClass('is-rollable');
+    chip.setAttribute('role', 'button');
+    chip.setAttribute('tabindex', '0');
+    const tooltip = target.title || chip.title;
+    chip.title = tooltip;
+    // A screen reader already announces "button"; "Click to" would be noise.
+    chip.setAttribute('aria-label', tooltip.replace(/^Click to r/, 'R'));
+    // The span's own tooltip would otherwise flicker in as the cursor crosses it.
+    target.removeAttribute('title');
+
+    chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // A click on the span itself has already rolled and stopped propagating;
+        // anything reaching here landed on the label or padding.
+        target.click();
+    });
+    chip.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        e.stopPropagation();
+        target.click();
+    });
 }
 
 /**

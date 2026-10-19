@@ -1199,8 +1199,11 @@
    prose beside chips read as a stray sentence. */
 .dh-adversary-instance-card[data-density='collapsed'] .dh-card-combat-strip .dh-difficulty {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--size-4-1, 4px);
+    /* Same height as the roll chips beside it (see .dh-roll-chip), so the
+       strip reads as one row. */
+    min-height: 24px;
     padding: 1px var(--size-4-2, 8px);
     border-radius: var(--radius-s, 4px);
     background-color: var(--background-modifier-hover);
@@ -1422,7 +1425,10 @@
 .dh-instance-card-content .dh-roll-chip {
     --dh-roll-rgb: var(--mono-rgb-100, 255, 255, 255);
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
+    /* The 24px WCAG target minimum. Set on every chip, rollable or not, so the
+       combat strip keeps one row height whatever the dice settings are. */
+    min-height: 24px;
     /* renderRollableContent splits "1d12+2 phy" into a rollable span and a
        separate text span, so the space between them is real content and must
        not be collapsed — without this the chip reads "1d12+2phy". */
@@ -1454,9 +1460,6 @@
     font-size: var(--font-ui-smaller, 11px);
     font-weight: var(--font-semibold);
     letter-spacing: 0.04em;
-    /* The label names the chip; only the dice inside it are clickable, so the
-       caption must not read as part of the roll target. */
-    cursor: default;
 }
 
 /* Hue is carried at a low alpha so the two chips are separable in peripheral
@@ -1471,10 +1474,56 @@
     --dh-roll-rgb: var(--color-red-rgb);
 }
 
+/* A chip holding a single roll is the button itself (see
+   promoteChipToRollTarget), so the label and padding roll too. An invisible
+   vertical slop extends the hit area: the rows above and below are prose, so
+   it can grow there without stealing anyone's click, while the 6px gap between
+   the two chips stays theirs alone. */
+.dh-instance-card-content .dh-roll-chip.is-rollable {
+    position: relative;
+    padding-inline: var(--size-4-2, 8px);
+    cursor: pointer;
+    user-select: none;
+    transition:
+        background-color 120ms ease-out,
+        transform 120ms ease-out;
+}
+
+.dh-instance-card-content .dh-roll-chip.is-rollable::before {
+    content: "";
+    position: absolute;
+    inset: -4px 0;
+}
+
 /* The chip only asserts itself under the cursor, where the GM has already shown
-   intent to roll it. */
-.dh-instance-card-content .dh-roll-chip:hover {
-    background-color: rgba(var(--dh-roll-rgb), 0.16);
+   intent to roll it. A chip that cannot roll (dice disabled, prose damage)
+   stays still, so hover never promises a click that does nothing. */
+.dh-instance-card-content .dh-roll-chip.is-rollable:hover {
+    background-color: rgba(var(--dh-roll-rgb), 0.24);
+}
+
+.dh-instance-card-content .dh-roll-chip.is-rollable:active {
+    background-color: rgba(var(--dh-roll-rgb), 0.32);
+    transform: scale(0.96);
+}
+
+.dh-instance-card-content .dh-roll-chip.is-rollable:focus-visible {
+    outline: 2px solid rgb(var(--dh-roll-rgb));
+    outline-offset: 1px;
+}
+
+.dh-instance-card-content .dh-roll-chip.is-rollable .dh-roll-chip-label {
+    color: color-mix(in srgb, rgb(var(--dh-roll-rgb)) 55%, var(--text-muted));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dh-instance-card-content .dh-roll-chip.is-rollable {
+        transition: none;
+    }
+
+    .dh-instance-card-content .dh-roll-chip.is-rollable:active {
+        transform: none;
+    }
 }
 
 /* Inside a chip the dashed underline is redundant — the chip is already the
@@ -1827,6 +1876,22 @@
 }
 
 .dh-spend-fear:hover {
+    color: var(--text-accent-hover);
+    text-decoration-style: solid;
+}
+
+/* "Mark a Stress" is only live on a card holding one instance with a Stress
+   track (see findSoleStressTrack); on a group it stays plain emphasis rather
+   than promising a click whose target is ambiguous. */
+.dh-adversary-instance-card:has(.dh-hp-stress-container .dh-stress-track):not(:has(.dh-additional-trackers-container .dh-additional-tracker-row)) .dh-mark-stress {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 3px;
+    transition: color 0.12s ease-in-out;
+}
+
+.dh-adversary-instance-card:has(.dh-hp-stress-container .dh-stress-track):not(:has(.dh-additional-trackers-container .dh-additional-tracker-row)) .dh-mark-stress:hover {
     color: var(--text-accent-hover);
     text-decoration-style: solid;
 }
