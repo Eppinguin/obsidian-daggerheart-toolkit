@@ -2,7 +2,13 @@ import { setIcon } from 'obsidian';
 import { StatblockData, AdversaryInstance, StatblockFeature } from '../types';
 import DaggerheartStatblockPlugin from '../main';
 import { normalizeFeatureType, normalizeRoleFamily } from './statblock-type';
-import { canRollDice, createInteractiveTrack, onActivateKey, renderRollableContent, renderMarkdown } from './ui-helpers';
+import {
+    canRollDice,
+    createInteractiveTrack,
+    onActivateKey,
+    renderRollableContent,
+    renderMarkdown,
+} from './ui-helpers';
 import { renderConditionTags, renderConditionButton } from './conditions';
 import { renderInstanceName } from './instance-name';
 import { renderSummonControls } from './summon';
@@ -520,7 +526,9 @@ function renderEditorStatblock(plugin: DaggerheartStatblockPlugin, data: Statblo
             // text that actually holds something it would mark up. The test
             // mirrors that helper's pattern: any die size, and the costs and
             // countdowns in their published wording.
-            if (/\d+d\d+|Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear)|Countdown\s*\(/i.test(description)) {
+            if (
+                /\d+d\d+|Mark\s+(?:a|\d+)\s+stress|Spend\s+(?:a|\d+)\s+(?:hope|fear)|Countdown\s*\(/i.test(description)
+            ) {
                 renderRollableContent(plugin, description, descSpan, feature.name);
             } else {
                 renderMarkdown(plugin, description, descSpan);

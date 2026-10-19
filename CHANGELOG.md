@@ -9,6 +9,8 @@ and this project uses [semantic versioning](https://semver.org/spec/v2.0.0.html)
 
 ## [Unreleased]
 
+## [0.0.6] - 2026-10-19
+
 ### Added
 
 - Keyboard support for feature expansion, encounter titles, the budget tracker,
